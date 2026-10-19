@@ -40,6 +40,13 @@ final class NoteTextView: NSTextView {
     /// the same as Paste). Attachments (plan 4) extend this.
     override var readablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string] }
 
+    /// Starts the `keystroke` signpost interval that the performance tests measure: from the key press until what it
+    /// typed is on screen (`Signposts.beginEditorInterval`).
+    override func keyDown(with event: NSEvent) {
+        Signposts.beginEditorInterval("keystroke")
+        super.keyDown(with: event)
+    }
+
     /// Makes the view a plain-text editor: the note font and colours, undo, the find bar, and every automatic
     /// substitution off, so the characters a note holds are exactly the ones typed or pasted (spec §4 "Mangled code").
     func applyScratchConfiguration() {

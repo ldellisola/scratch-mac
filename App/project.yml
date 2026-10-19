@@ -75,13 +75,15 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Scratch
 
-  # Performance tests (plan 1, task 10). They run in the Release configuration through the ScratchPerf scheme.
+  # Performance tests (plan 1, task 10). They run in the Release configuration through the ScratchPerf scheme, and
+  # drive the app like the UI tests do, so they share AccessibilityID and UITestSupport with them.
   ScratchPerfTests:
     type: bundle.ui-testing
     platform: macOS
     sources:
       - path: Tests/ScratchPerfTests
       - path: Sources/Support/AccessibilityID.swift
+      - path: Tests/ScratchUITests/UITestSupport.swift
     dependencies:
       - target: Scratch
     settings:

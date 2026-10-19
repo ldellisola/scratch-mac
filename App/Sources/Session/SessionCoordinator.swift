@@ -118,6 +118,8 @@ final class SessionCoordinator {
     /// Shows the note `id` in the tab. The note being left is saved first, or discarded when it was never used.
     func open(_ id: NoteID) {
         guard let leaving = current, leaving.id != id else { return }
+        // The performance tests measure this interval: from the click until the note is on screen.
+        Signposts.beginEditorInterval("switch-note")
         do {
             guard let note = try storage.notes.note(id), note.deletedAt == nil else {
                 // The note is gone, so the list is stale.

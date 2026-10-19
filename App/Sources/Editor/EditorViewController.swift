@@ -74,6 +74,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         view.window?.makeFirstResponder(textView)
     }
 
+    /// The scroll view's clip view, whose bounds change when the editor scrolls (`FrameMonitor` watches it).
+    var clipView: NSClipView { scrollView.contentView }
+
     /// The editor's whole text.
     var currentText: String { textView.string }
 

@@ -30,7 +30,7 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   SQLValue and Row, Schema (version 1 and the migration rule), ScratchStorage (opens
                                   the data directory and its stores; refuses a fixture on the real directory)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), TextKitMode and
-                                  AppearanceOverride
+                                  AppearanceOverride. Also `-ScratchFrameMonitor <path>` (performance tests)
   Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes) and FixtureContent, their notes and
                                   session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
@@ -48,17 +48,25 @@ App/Sources/Session/              SessionCoordinator (which note is open, autosa
                                   the one place that writes to storage)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy), TextViewFactory (TextKit 1
                                   or 2 stack), EditorViewController (shows a note, reports edits, cursor and scroll)
-App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts
+App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke` and
+                                  `switch-note` intervals the performance tests read), RunLoopIdle (runs work when the
+                                  main run loop is next about to wait: after the frame is drawn), FrameMonitor (the
+                                  longest frame while scrolling, `-ScratchFrameMonitor`)
 App/Resources/                    Assets.xcassets (placeholder app icon)
-App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app
+App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
+                                  50,000-line paste returns within 500 ms, FrameMonitorTests)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, ScreenshotTests (one test per screenshot, section 3)
-App/Tests/ScratchPerfTests/       placeholder until plan 1, Task 10
+App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
+                                  EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
+                                  UITestSupport and AccessibilityID with the UI tests
+perf/                             budgets.json (spec §7, in milliseconds) and baseline.json (CI's own numbers)
 scripts/                          install-swift-linux.sh (toolchain), session-setup.sh (SessionStart hook),
                                   ci-summary.py, publish-ci-results.sh, ci-wait.sh, ci-fetch.sh (the ci-results loop,
                                   section 4), lib-ci-results.sh (shared by those), name-screenshots.py (names the
-                                  exported screenshots), tests/ (their tests)
+                                  exported screenshots), perf-extract.py (a ScratchPerf result bundle to numbers),
+                                  perf-check.py (numbers against baseline and budgets), tests/ (their tests)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests. Job `macos`: XcodeGen, core tests on
                                   macOS, app build and app tests, screenshots. Both publish to `ci-results`.
 docs/architecture.md              module boundaries, data flow, threading
@@ -80,8 +88,8 @@ macOS and runs on GitHub's Macs.
 - `swift test --package-path Packages/ScratchCore --filter <name>` `[linux]`: run matching tests only.
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
-- `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop). Prints `all ci script tests
-  passed`.
+- `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py` and
+  `perf-extract.py`). Each test file ends with an `all ... passed` line.
 - `make ci-wait SHA=<sha> [JOBS="linux macos"]` `[linux]`: wait for CI to publish results for a commit and print them.
   See section 4 for how to read the outcome.
 - `scripts/ci-fetch.sh <sha> <dest>` `[linux]`: copy a commit's published CI results (summaries, log tails,
@@ -97,6 +105,12 @@ macOS and runs on GitHub's Macs.
   `typical-dark`, `empty-light` and `huge-note-light` (the names in the Makefile's `SCREENSHOT_NAMES`). The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
+- `make perf [TEXTKIT=1|2]` `[macOS]`: run the performance tests (the `ScratchPerf` scheme, Release build) into
+  `build/results/perf.xcresult`. Turn that into numbers with `python3 scripts/perf-extract.py
+  build/results/perf.xcresult <out.json>`, and compare them with `python3 scripts/perf-check.py --results <out.json>
+  --baseline perf/baseline.json --budgets perf/budgets.json`.
+- `make perf-baseline` `[macOS]`: run `make perf` and write its numbers to `perf/baseline.json`. Record the baseline
+  from a CI run (`macos/perf/results.json` in `ci-results`), not from a laptop: CI compares with it.
 - `make run FIXTURE=<name>` `[macOS]`: build the app and open it on a fixture in a throwaway data directory.
 
 Commands for performance and releases are added by the tasks that create them.
@@ -112,6 +126,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 | `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes` | delete the database in the data directory and seed that fixture |
 | `-ScratchTextKit <1\|2>` | `1` or `2` | choose the TextKit version (removed when the TextKit decision is made) |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
+| `-ScratchFrameMonitor <path>` | any path | write the longest frame seen while scrolling, as JSON, to `<path>` (performance tests) |
 
 A fixture without `-ScratchDataDir` runs in a new `Scratch-<uuid>` directory under the temporary directory. A fixture
 is refused on the real data directory (`StorageError.fixtureRequiresIsolatedDirectory`), also when

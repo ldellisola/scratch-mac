@@ -21,6 +21,7 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(options.fixture == nil)
     #expect(options.textKit == nil)
     #expect(options.appearance == nil)
+    #expect(options.frameMonitorFile == nil)
 }
 
 @Test func dataDirFlagOverridesAndIsolates() throws {
@@ -72,6 +73,12 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(two.textKit == .two && two.appearance == .light)
 }
 
+@Test func parsesFrameMonitorFile() throws {
+    let options = try parse(["-ScratchFrameMonitor", "/tmp/scratch-frames.json", "-ScratchFixture", "huge-note"])
+    #expect(options.frameMonitorFile == URL(fileURLWithPath: "/tmp/scratch-frames.json"))
+    #expect(options.fixture == .hugeNote)
+}
+
 @Test func lastOccurrenceOfAFlagWins() throws {
     let options = try parse(["-ScratchAppearance", "dark", "-ScratchAppearance", "light"])
     #expect(options.appearance == .light)
@@ -92,6 +99,8 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
 @Test func missingValueThrows() {
     #expect(throws: LaunchOptionsError.missingValue("-ScratchDataDir")) { try parse(["-ScratchDataDir"]) }
     #expect(throws: LaunchOptionsError.missingValue("-ScratchFixture")) { try parse(["-ScratchFixture"]) }
+    #expect(throws: LaunchOptionsError.missingValue("-ScratchFrameMonitor")) { try parse(["-ScratchFrameMonitor"]) }
+    #expect(throws: LaunchOptionsError.missingValue("-ScratchTextKit")) { try parse(["-ScratchTextKit", ""]) }
 }
 
 @Test func aFlagFollowedByAnotherFlagHasNoValue() {

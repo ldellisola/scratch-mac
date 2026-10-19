@@ -101,9 +101,10 @@ enum UITestSupport {
         return condition()
     }
 
-    /// A new directory under the temporary directory. A sandboxed test runner's own temporary directory lives inside
-    /// its container, which the app is not allowed to write to, so that case uses /tmp instead.
-    private static func makeDataDirectory() -> URL {
+    /// A new directory under the temporary directory (not created yet: the app creates it). A sandboxed test runner's
+    /// own temporary directory lives inside its container, which the app is not allowed to write to, so that case uses
+    /// /tmp instead. The performance tests use it too.
+    static func makeDataDirectory() -> URL {
         let sandboxed = ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
         let base = sandboxed ? URL(fileURLWithPath: "/tmp", isDirectory: true) : FileManager.default.temporaryDirectory
         return base.appendingPathComponent("ScratchUITests-\(UUID().uuidString)", isDirectory: true)

@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var coordinator: SessionCoordinator?
     /// The window's toolbar keeps its delegate weakly.
     private var toolbarController: ToolbarController?
+    /// Only with `-ScratchFrameMonitor` (the performance tests).
+    private var frameMonitor: FrameMonitor?
 
     // MARK: Launch
 
@@ -65,6 +67,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.restore()
         windowController.showWindow(nil)
         editor.focus()
+
+        if let file = environment.options.frameMonitorFile {
+            let monitor = FrameMonitor(file: file, clipView: editor.clipView)
+            monitor.start()
+            frameMonitor = monitor
+        }
     }
 
     /// The app cannot work without its storage. Say why, then quit.
