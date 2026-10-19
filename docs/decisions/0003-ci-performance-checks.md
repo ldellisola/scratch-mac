@@ -54,17 +54,19 @@ ADR 0001 (three of TextKit 1 and two of TextKit 2, the same suite each time) two
    layout and drawing are inside the `keystroke` and `switch-note` intervals (ADR 0001 has the evidence: TextKit 2
    never calls `draw(_:)`).
 7. **The baseline is the slowest run, not an average** (`perf/baseline.json`). Per metric, the largest median of the
-   runs of TextKit 1 of the decision (the keystroke's 6.7 ms is from an earlier round of runs, the others from the
-   last one):
+   runs of TextKit 1 of the decision, and of the first full CI run of the `macos` job with the check in it (that run is
+   where the scroll's 11.1 ms and the keystroke's 6.8 ms come from: the performance tests run after the app tests and the
+   screenshots, and the job's first minutes are the slowest, so a baseline taken from the spike's later runs failed it):
 
    | | `launch_ms` | `keystroke_ms` | `scroll_frame_ms` | `switch_small_ms` | `switch_huge_ms` |
    |---|---|---|---|---|---|
-   | baseline | 581.5 | 6.7 | 7.2 | 13.5 | 64.1 |
-   | allowed (1.2 x) | 697.8 | 8.0 | 8.6 | 16.2 | 76.9 |
+   | baseline | 581.5 | 6.8 | 11.1 | 13.5 | 64.1 |
+   | allowed (1.2 x) | 697.8 | 8.2 | 13.3 | 16.2 | 76.9 |
 
    With the first run of a job 1.5 to 2 times slower than the later ones, a baseline taken from a fast run would fail
-   a good build. This baseline still fails a TextKit 2 build (keystroke 19.8 to 28.0 ms), which is the kind of
-   regression the check is for.
+   a good build, as the first one did. This baseline still fails a TextKit 2 build (keystroke 19.8 to 28.0 ms, scroll
+   15.1 and 16.2 ms), which is the kind of regression the check is for. It does not catch a regression of 50% in a
+   metric that is usually far below its baseline: the check is only as sharp as the runner is repeatable.
 
 ## How to change them
 
