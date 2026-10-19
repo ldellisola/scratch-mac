@@ -322,7 +322,7 @@ A `Makefile`, or scripts it calls, gives one obvious command for each of:
   - delete then restore from Recently Deleted
   - a pasted image becomes an attachment
 - **Performance tests** cover every §7 budget, using launch metrics and signposts. CI fails when a budget is exceeded.
-- **Screenshots:** a command renders the key screens in light and dark mode to PNG files, and CI publishes them as artifacts. Agents can't see the screen, so this is how they check visual changes. Comparing against reference images is recommended.
+- **Screenshots:** a command renders the key screens in light and dark mode to PNG files, and CI pushes them to the `ci-results` branch (§9.0). Agents can't see the screen, so this is how they check visual changes. Comparing against reference images is recommended.
 - **Fixtures:** launch arguments load a named fixture database (empty, typical, huge note, many notes, every formatting feature) and can reset state. That makes UI tests, screenshots and benchmarks reproducible.
 - **CI:**
   - a fast Linux job runs core tests and lint
