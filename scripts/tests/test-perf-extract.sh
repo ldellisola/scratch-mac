@@ -98,7 +98,7 @@ JSON
 
 # What `xcresulttool export attachments` writes: the files and a manifest.json that names them.
 mkdir -p "$TMP/attachments"
-printf '{"max_frame_ms": 12.5, "p95_frame_ms": 7.5, "mean_frame_ms": 2.1, "frames": 300}\n' >"$TMP/attachments/A1.txt"
+printf '{"max_frame_ms": 12.5, "p95_frame_ms": 7.5, "median_frame_ms": 1.75, "mean_frame_ms": 2.1, "frames": 300, "frame_ms": [1.5, 2]}\n' >"$TMP/attachments/A1.txt"
 printf 'not a number\n' >"$TMP/attachments/B2.txt"
 cat >"$TMP/attachments/manifest.json" <<'JSON'
 [
@@ -125,7 +125,8 @@ value_is "launch_ms is the median of the launches, in milliseconds" "$TMP/out/re
 value_is "keystroke_ms picks the signpost metric, not the clock, and ignores an outlier" "$TMP/out/results.json" keystroke_ms 4.000
 value_is "switch_small_ms converts seconds" "$TMP/out/results.json" switch_small_ms 4.000
 value_is "switch_huge_ms converts microseconds" "$TMP/out/results.json" switch_huge_ms 50.000
-value_is "scroll_frame_ms is the 95th percentile in the scroll_frame_ms attachment" "$TMP/out/results.json" scroll_frame_ms 7.500
+value_is "scroll_frame_ms is the median frame in the scroll_frame_ms attachment" "$TMP/out/results.json" scroll_frame_ms 1.750
+value_is "scroll_frame_p95_ms is its 95th percentile" "$TMP/out/results.json" scroll_frame_p95_ms 7.500
 value_is "scroll_frame_max_ms is the longest frame there" "$TMP/out/results.json" scroll_frame_max_ms 12.500
 
 echo "== raw copies"

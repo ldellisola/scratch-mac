@@ -16,9 +16,10 @@ import AppKit
 ///   few events a second, and the arrow and page keys scroll a third of a window or a whole one at a time.
 /// - Scrolling during the first `warmUp` seconds after launch is ignored: restoring the note and the first layout move
 ///   the clip view as well, and are the launch budget's business.
-/// - `reportDelay` seconds after the last frame the file is written, with the longest frame (`max_frame_ms`), the 95th
-///   percentile (`p95_frame_ms`), the mean (`mean_frame_ms`) and the number of frames (`frames`). It is written again
-///   after any later scrolling, with every frame since launch.
+/// - `reportDelay` seconds after the last frame the file is written, with the median frame (`median_frame_ms`), the
+///   95th percentile (`p95_frame_ms`), the longest (`max_frame_ms`), the mean (`mean_frame_ms`), the number of frames
+///   (`frames`) and every frame in milliseconds, in order (`frame_ms`). It is written again after any later scrolling,
+///   with every frame since launch.
 @MainActor
 final class FrameMonitor {
     static let warmUp: TimeInterval = 3
@@ -124,21 +125,32 @@ final class FrameMonitor {
 
     // MARK: The report
 
-    /// The numbers of `frameMilliseconds`, rounded to microseconds: `frames`, `max_frame_ms`, `p95_frame_ms` (nearest
-    /// rank) and `mean_frame_ms`. All zero without frames.
-    static func report(frameMilliseconds frames: [Double]) -> [String: Double] {
+    /// The numbers of `frameMilliseconds`, rounded to microseconds: `frames`, `median_frame_ms`, `p95_frame_ms` (nearest
+    /// rank), `max_frame_ms` and `mean_frame_ms`, and `frame_ms`, the frames themselves in the order they came. All
+    /// zero, and no frames, without frames.
+    static func report(frameMilliseconds frames: [Double]) -> [String: Any] {
         guard !frames.isEmpty else {
-            return ["frames": 0, "max_frame_ms": 0, "p95_frame_ms": 0, "mean_frame_ms": 0]
+            return [
+                "frames": 0, "median_frame_ms": 0.0, "p95_frame_ms": 0.0, "max_frame_ms": 0.0, "mean_frame_ms": 0.0,
+                "frame_ms": [Double](),
+            ]
         }
         let sorted = frames.sorted()
-        let rank = Int((0.95 * Double(sorted.count)).rounded(.up))
         let mean = frames.reduce(0, +) / Double(frames.count)
         return [
-            "frames": Double(frames.count),
+            "frames": frames.count,
+            "median_frame_ms": rounded(percentile(0.5, of: sorted)),
+            "p95_frame_ms": rounded(percentile(0.95, of: sorted)),
             "max_frame_ms": rounded(sorted[sorted.count - 1]),
-            "p95_frame_ms": rounded(sorted[max(rank - 1, 0)]),
             "mean_frame_ms": rounded(mean),
+            "frame_ms": frames.map(rounded),
         ]
+    }
+
+    /// The nearest-rank percentile `fraction` (0.5 is the median) of `sorted`, which must not be empty.
+    private static func percentile(_ fraction: Double, of sorted: [Double]) -> Double {
+        let rank = Int((fraction * Double(sorted.count)).rounded(.up))
+        return sorted[min(max(rank - 1, 0), sorted.count - 1)]
     }
 
     /// The report as JSON, with sorted keys.
