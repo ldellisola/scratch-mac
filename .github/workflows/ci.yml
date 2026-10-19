@@ -1,0 +1,78 @@
+# Continuous integration. Every job publishes its result to the orphan `ci-results` branch (scripts/ci-summary.py and
+# scripts/publish-ci-results.sh), because cloud agents cannot download Actions artifacts. See AGENTS.md section 4.
+name: CI
+
+on:
+  push:
+    branches-ignore: [ci-results]
+  workflow_dispatch:
+
+# contents: write lets the job push to ci-results with the checkout's token.
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: linux
+    runs-on: ubuntu-24.04
+    container: swift:6.3.3-noble
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - id: deps
+        name: Install tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git make python3 libsqlite3-dev
+
+      # fetch-depth 0: the publish step fetches and pushes ci-results from this checkout.
+      - id: checkout
+        name: Check out
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: safe-directory
+        name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # Each check writes its output to build/ci/linux/<step>.log as well as to the job log.
+      - id: lint
+        name: Lint
+        run: |
+          mkdir -p build/ci/linux
+          make lint 2>&1 | tee build/ci/linux/lint.log
+
+      - id: core-test
+        name: ScratchCore tests
+        run: make core-test 2>&1 | tee build/ci/linux/core-test.log
+
+      - id: script-test
+        name: Script tests
+        run: make script-test 2>&1 | tee build/ci/linux/script-test.log
+
+      - id: publish
+        name: Publish results to ci-results
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          mkdir -p build/ci/linux
+          for log in build/ci/linux/*.log; do
+            [ -e "$log" ] || continue
+            tail -n 300 "$log" > "$log.tail" && mv "$log.tail" "$log"
+          done
+          python3 scripts/ci-summary.py --job linux --sha "${{ github.sha }}" --run-url "$RUN_URL" --out build/ci/linux \
+            --step "deps=${{ steps.deps.outcome }}" \
+            --step "checkout=${{ steps.checkout.outcome }}" \
+            --step "safe-directory=${{ steps.safe-directory.outcome }}" \
+            --step "lint=${{ steps.lint.outcome }}" \
+            --step "core-test=${{ steps.core-test.outcome }}" \
+            --step "script-test=${{ steps.script-test.outcome }}"
+          scripts/publish-ci-results.sh "${{ github.sha }}" linux build/ci/linux
