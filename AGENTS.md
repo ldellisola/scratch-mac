@@ -195,6 +195,9 @@ A change is done when:
   `defer`, because an override must match the SDK's isolation for them.
 - **Never touch `NSTextView.layoutManager` on a TextKit 2 view.** It silently converts the view to TextKit 1. Use
   `textLayoutManager` and `textContentStorage` there. `TextViewFactory` builds both stacks.
+- **A TextKit 1 text view does not own its text storage.** The storage owns the layout manager, which owns the
+  container, and the links back are unowned. `TextViewFactory` keeps the storage in `NoteTextView.ownedTextStorage`;
+  without it the stack is freed when `makeEditor(mode: .one)` returns.
 - **A text view needs `NSScrollView.contentInsets` in mind.** The window uses `fullSizeContentView`, so the toolbar
   overlaps the scroll view, and the top of a note is at `y = -contentInsets.top`, not 0 (`EditorViewController.show`).
 - **There is no storyboard, so there is no menu bar until `MainMenu.install` runs.** ⌘Q, ⌘C, ⌘V and ⌘Z only work

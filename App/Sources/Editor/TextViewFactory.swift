@@ -37,7 +37,10 @@ enum TextViewFactory {
             let container = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
             container.widthTracksTextView = true
             layoutManager.addTextContainer(container)
-            return NoteTextView(frame: .zero, textContainer: container)
+            let textView = NoteTextView(frame: .zero, textContainer: container)
+            // The view does not own the storage, and the storage is what keeps the layout manager alive.
+            textView.ownedTextStorage = storage
+            return textView
         case .two:
             // Never touch `layoutManager` on this view: that silently switches it back to TextKit 1.
             return NoteTextView(usingTextLayoutManager: true)

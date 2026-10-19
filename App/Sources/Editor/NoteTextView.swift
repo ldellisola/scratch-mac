@@ -6,6 +6,12 @@ final class NoteTextView: NSTextView {
     /// The one font of every note: SF Mono, 13 pt (spec §6.4).
     static let noteFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
 
+    /// Keeps the TextKit 1 text storage alive for as long as the view lives. In TextKit 1 the storage owns the layout
+    /// manager, which owns the container, while `NSLayoutManager.textStorage` and `NSTextContainer.layoutManager` are
+    /// unowned and the view does not own the storage. Without this reference the whole stack is freed when
+    /// `TextViewFactory.makeEditor(mode: .one)` returns. Nil on a TextKit 2 view, whose content storage the view owns.
+    var ownedTextStorage: NSTextStorage?
+
     /// How every character of a note looks: the note font in the standard text colour.
     static var noteAttributes: [NSAttributedString.Key: Any] {
         [.font: noteFont, .foregroundColor: NSColor.textColor]
