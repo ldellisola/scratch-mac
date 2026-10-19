@@ -98,7 +98,7 @@ JSON
 
 # What `xcresulttool export attachments` writes: the files and a manifest.json that names them.
 mkdir -p "$TMP/attachments"
-printf '{"max_frame_ms": 12.5, "frames": 60}\n' >"$TMP/attachments/A1.txt"
+printf '{"max_frame_ms": 12.5, "p95_frame_ms": 7.5, "median_frame_ms": 1.75, "max_cpu_ms": 6.5, "p95_cpu_ms": 2.5, "median_cpu_ms": 0.75, "frames": 300}\n' >"$TMP/attachments/A1.txt"
 printf 'not a number\n' >"$TMP/attachments/B2.txt"
 cat >"$TMP/attachments/manifest.json" <<'JSON'
 [
@@ -125,7 +125,10 @@ value_is "launch_ms is the median of the launches, in milliseconds" "$TMP/out/re
 value_is "keystroke_ms picks the signpost metric, not the clock, and ignores an outlier" "$TMP/out/results.json" keystroke_ms 4.000
 value_is "switch_small_ms converts seconds" "$TMP/out/results.json" switch_small_ms 4.000
 value_is "switch_huge_ms converts microseconds" "$TMP/out/results.json" switch_huge_ms 50.000
-value_is "scroll_frame_ms comes from the scroll_frame_ms attachment" "$TMP/out/results.json" scroll_frame_ms 12.500
+value_is "scroll_frame_ms is the median CPU time in the scroll_frame_ms attachment" "$TMP/out/results.json" scroll_frame_ms 0.750
+value_is "scroll_frame_wall_ms is the median frame by the clock" "$TMP/out/results.json" scroll_frame_wall_ms 1.750
+value_is "scroll_frame_p95_ms is the 95th percentile of the CPU time" "$TMP/out/results.json" scroll_frame_p95_ms 2.500
+value_is "scroll_frame_max_ms is the longest CPU time there" "$TMP/out/results.json" scroll_frame_max_ms 6.500
 
 echo "== raw copies"
 expect_exit "--raw-dir keeps what was read" 0 extract "$TMP/out2/results.json" --raw-dir "$TMP/raw"
@@ -137,6 +140,7 @@ echo "== something missing"
 rm "$TMP/attachments/A1.txt"
 expect_exit "a missing scroll attachment is a warning, not an error" 0 extract "$TMP/out3/results.json"
 value_is "the scroll metric is left out" "$TMP/out3/results.json" scroll_frame_ms absent
+value_is "so is the longest frame" "$TMP/out3/results.json" scroll_frame_max_ms absent
 value_is "the others are still there" "$TMP/out3/results.json" launch_ms 250.000
 output_has "the warning names the metric" "scroll_frame_ms"
 

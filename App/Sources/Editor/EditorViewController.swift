@@ -19,13 +19,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// which also changes the clip view's bounds, does not count as scrolling.
     private var lastScrollY: Double = 0
 
-    init(textKit: TextKitMode) {
-        let editor = TextViewFactory.makeEditor(mode: textKit)
+    init() {
+        let editor = TextViewFactory.makeEditor()
         scrollView = editor.0
         textView = editor.1
         super.init(nibName: nil, bundle: nil)
         textView.delegate = self
-        MarkerHidingSpike.installIfRequested(on: textView)
         textView.setAccessibilityIdentifier(AccessibilityID.editorTextView)
         textView.setAccessibilityLabel("Note")
         NotificationCenter.default.addObserver(
@@ -58,7 +57,6 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         defer { isLoadingNote = false }
 
         textView.load(note.body)
-        MarkerHidingSpike.applyIfRequested(to: textView)
         let offset = TextOffset.clamp(selection, in: note.body)
         textView.setSelectedRange(NSRange(location: offset, length: 0))
         textView.undoManager?.removeAllActions()
@@ -92,9 +90,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func textDidChange(_ notification: Notification) {
         guard !isLoadingNote else { return }
-        let state = Signposts.editor.beginInterval("t-didChange", id: Signposts.editor.makeSignpostID())
         onTextChange?(textView.string)
-        Signposts.editor.endInterval("t-didChange", state)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {

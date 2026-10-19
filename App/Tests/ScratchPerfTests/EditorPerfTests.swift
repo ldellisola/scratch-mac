@@ -18,8 +18,8 @@ final class EditorPerfTests: XCTestCase {
         return app
     }
 
-    /// Page Down presses that move the cursor and the view about a third of the way into the huge note (about 36
-    /// lines each, so line 4,000 or so).
+    /// Page Down presses that move the view about a third of the way into the huge note (about 36 lines each, so line
+    /// 4,000 or so).
     private static let pageDownPresses = 120
 
     /// `keystroke_ms`: the `keystroke` signpost interval, from `NoteTextView.keyDown` until the character is on screen.
@@ -63,8 +63,9 @@ final class EditorPerfTests: XCTestCase {
         XCTAssertTrue(written, "the frame monitor wrote nothing to \(report.path)")
         Thread.sleep(forTimeInterval: 2)
         let data = try Data(contentsOf: report)
-        let numbers = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Double])
-        XCTAssertGreaterThan(numbers["frames"] ?? 0, 100, "the frame report: \(numbers)")
+        let numbers = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let summary = numbers.filter { $0.key != "frame_ms" }
+        XCTAssertGreaterThan(numbers["frames"] as? Int ?? 0, 100, "the frame report: \(summary)")
 
         let attachment = XCTAttachment(string: String(decoding: data, as: UTF8.self))
         attachment.name = "scroll_frame_ms"

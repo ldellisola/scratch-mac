@@ -10,13 +10,6 @@ enum PerfSupport {
         XCTOSSignpostMetric(subsystem: "io.github.ldellisola.Scratch", category: "editor", name: name)
     }
 
-    /// `-ScratchTextKit <n>` when `make perf TEXTKIT=<n>` asked for one TextKit version (it reaches the tests as the
-    /// environment variable SCRATCH_TEXTKIT). An empty or missing value asks for nothing: the flag has no empty form.
-    static var textKitArguments: [String] {
-        guard let version = ProcessInfo.processInfo.environment["SCRATCH_TEXTKIT"], !version.isEmpty else { return [] }
-        return ["-ScratchTextKit", version]
-    }
-
     /// Launches the app on `fixture`, seeded into `dataDirectory`, in light mode. `extraArguments` come last.
     static func launch(fixture: String, dataDirectory: URL, extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
@@ -25,7 +18,7 @@ enum PerfSupport {
                 "-ScratchDataDir", dataDirectory.path,
                 "-ScratchFixture", fixture,
                 "-ScratchAppearance", "light",
-            ] + textKitArguments + extraArguments
+            ] + extraArguments
         app.launch()
         return app
     }

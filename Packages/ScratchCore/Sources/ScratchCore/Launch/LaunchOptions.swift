@@ -1,11 +1,5 @@
 import Foundation
 
-/// Which TextKit the editor uses. Task 10 of plan 1 decides between them, then removes this switch.
-public enum TextKitMode: String, Sendable {
-    case one = "1"
-    case two = "2"
-}
-
 /// Forces the app's appearance, so a screenshot in light or dark mode does not depend on the machine's setting.
 public enum AppearanceOverride: String, Sendable {
     case light
@@ -16,7 +10,6 @@ public enum AppearanceOverride: String, Sendable {
 public enum LaunchOptionsError: Error, Equatable {
     case missingValue(String)
     case unknownFixture(String)
-    case unknownTextKit(String)
     case unknownAppearance(String)
 }
 
@@ -27,7 +20,6 @@ public enum LaunchOptionsError: Error, Equatable {
 /// |---|---|
 /// | `-ScratchDataDir <path>` | the data directory |
 /// | `-ScratchFixture <name>` | a ``Fixture`` raw value: the database is replaced by that fixture |
-/// | `-ScratchTextKit <1\|2>` | the TextKit version |
 /// | `-ScratchAppearance <light\|dark>` | the appearance |
 /// | `-ScratchFrameMonitor <path>` | scroll the note by itself, and write the frame times to this JSON file (performance tests) |
 public struct LaunchOptions: Equatable, Sendable {
@@ -35,7 +27,6 @@ public struct LaunchOptions: Equatable, Sendable {
     /// False only for the real data directory. A fixture refuses to run when this is false (see ``ScratchStorage``).
     public var isIsolated: Bool
     public var fixture: Fixture?
-    public var textKit: TextKitMode?
     public var appearance: AppearanceOverride?
     /// Where the app writes the frame times of a scroll that it does by itself, a few seconds after launch. Nil means
     /// it neither scrolls nor measures. A debug flag for the performance tests: the app has no other use for it.
@@ -45,14 +36,12 @@ public struct LaunchOptions: Equatable, Sendable {
         dataDirectory: URL,
         isIsolated: Bool,
         fixture: Fixture? = nil,
-        textKit: TextKitMode? = nil,
         appearance: AppearanceOverride? = nil,
         frameMonitorFile: URL? = nil
     ) {
         self.dataDirectory = dataDirectory
         self.isIsolated = isIsolated
         self.fixture = fixture
-        self.textKit = textKit
         self.appearance = appearance
         self.frameMonitorFile = frameMonitorFile
     }
@@ -74,7 +63,6 @@ public struct LaunchOptions: Equatable, Sendable {
     public static func parse(_ arguments: [String], home: URL, temporaryDirectory: URL) throws -> LaunchOptions {
         var dataDirectoryPath: String?
         var fixture: Fixture?
-        var textKit: TextKitMode?
         var appearance: AppearanceOverride?
         var frameMonitorPath: String?
 
@@ -97,9 +85,6 @@ public struct LaunchOptions: Equatable, Sendable {
             case .fixture:
                 guard let parsed = Fixture(rawValue: value) else { throw LaunchOptionsError.unknownFixture(value) }
                 fixture = parsed
-            case .textKit:
-                guard let parsed = TextKitMode(rawValue: value) else { throw LaunchOptionsError.unknownTextKit(value) }
-                textKit = parsed
             case .appearance:
                 guard let parsed = AppearanceOverride(rawValue: value) else {
                     throw LaunchOptionsError.unknownAppearance(value)
@@ -121,14 +106,13 @@ public struct LaunchOptions: Equatable, Sendable {
         }
         return LaunchOptions(
             dataDirectory: directory, isIsolated: identity(of: directory) != identity(of: defaultDirectory),
-            fixture: fixture, textKit: textKit, appearance: appearance,
+            fixture: fixture, appearance: appearance,
             frameMonitorFile: frameMonitorPath.map { URL(fileURLWithPath: $0) })
     }
 
     private enum Flag: String {
         case dataDirectory = "-ScratchDataDir"
         case fixture = "-ScratchFixture"
-        case textKit = "-ScratchTextKit"
         case appearance = "-ScratchAppearance"
         case frameMonitor = "-ScratchFrameMonitor"
     }

@@ -1,11 +1,14 @@
 import AppKit
-import ScratchCore
 
-/// Builds the editor's scroll view and text view on either TextKit (plan 1 decides which one stays, task 10).
+/// Builds the editor's scroll view and text view on the TextKit 1 stack (ADR 0001: TextKit 2 missed the keystroke
+/// budget in a 10,000-line note by a factor of three).
+///
+/// An `NSTextView` made in any other way (`NSTextView()`, `NSTextView(frame:)`, a nib) is a TextKit 2 view on macOS 26,
+/// so every editor is made here.
 enum TextViewFactory {
     /// A scroll view whose document view is a configured `NoteTextView`.
-    static func makeEditor(mode: TextKitMode) -> (NSScrollView, NoteTextView) {
-        let textView = makeTextView(mode: mode)
+    static func makeEditor() -> (NSScrollView, NoteTextView) {
+        let textView = makeTextView()
 
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
@@ -26,24 +29,18 @@ enum TextViewFactory {
         return (scrollView, textView)
     }
 
-    private static func makeTextView(mode: TextKitMode) -> NoteTextView {
-        switch mode {
-        case .one:
-            // The TextKit 1 stack, built by hand: storage, then layout manager, then container, then the view.
-            let storage = NSTextStorage()
-            let layoutManager = NSLayoutManager()
-            layoutManager.allowsNonContiguousLayout = true
-            storage.addLayoutManager(layoutManager)
-            let container = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
-            container.widthTracksTextView = true
-            layoutManager.addTextContainer(container)
-            let textView = NoteTextView(frame: .zero, textContainer: container)
-            // The view does not own the storage, and the storage is what keeps the layout manager alive.
-            textView.ownedTextStorage = storage
-            return textView
-        case .two:
-            // Never touch `layoutManager` on this view: that silently switches it back to TextKit 1.
-            return NoteTextView(usingTextLayoutManager: true)
-        }
+    /// The TextKit 1 stack, built by hand: storage, then layout manager, then container, then the view.
+    private static func makeTextView() -> NoteTextView {
+        let storage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        layoutManager.allowsNonContiguousLayout = true
+        storage.addLayoutManager(layoutManager)
+        let container = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
+        container.widthTracksTextView = true
+        layoutManager.addTextContainer(container)
+        let textView = NoteTextView(frame: .zero, textContainer: container)
+        // The view does not own the storage, and the storage is what keeps the layout manager alive.
+        textView.ownedTextStorage = storage
+        return textView
     }
 }

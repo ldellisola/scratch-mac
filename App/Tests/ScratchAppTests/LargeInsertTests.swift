@@ -1,13 +1,12 @@
 import AppKit
-import ScratchCore
 import XCTest
 
 @testable import Scratch
 
 /// Hosted in the app. Covers plan 1 "Review Focus" 5 and spec §7 ("very large pastes, such as a 50,000-line log, must
-/// never freeze the UI"): putting 50,000 lines into the editor, by insertion or by paste, returns within half a second
-/// on either TextKit stack. The text is laid out as far as a window needs, which is where a text system pays for a big
-/// insert (TextKit lays out lazily, so the cost must not grow with the length of the text).
+/// never freeze the UI"): putting 50,000 lines into the editor, by insertion or by paste, returns within half a second.
+/// The text is laid out as far as a window needs, which is where a text system pays for a big insert (TextKit lays out
+/// lazily, so the cost must not grow with the length of the text).
 @MainActor
 final class LargeInsertTests: XCTestCase {
     private static let lineCount = 50_000
@@ -18,8 +17,8 @@ final class LargeInsertTests: XCTestCase {
     }
 
     /// A configured editor in a window that is never shown, so that the text view has a width to lay out for.
-    private func makeEditor(mode: TextKitMode) -> (window: NSWindow, scrollView: NSScrollView, view: NoteTextView) {
-        let (scrollView, view) = TextViewFactory.makeEditor(mode: mode)
+    private func makeEditor() -> (window: NSWindow, scrollView: NSScrollView, view: NoteTextView) {
+        let (scrollView, view) = TextViewFactory.makeEditor()
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 600), styleMask: [.titled], backing: .buffered,
             defer: false)
@@ -32,34 +31,31 @@ final class LargeInsertTests: XCTestCase {
     func testInsertingFiftyThousandLinesIsFast() {
         let text = makeText()
         let clock = ContinuousClock()
-        for mode in [TextKitMode.one, .two] {
-            let label = "TextKit \(mode.rawValue)"
 
-            // Typed or inserted by a service: `insertText`.
-            let inserting = makeEditor(mode: mode)
-            let inserted = clock.measure {
-                inserting.view.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
-                inserting.scrollView.layoutSubtreeIfNeeded()
-            }
-            XCTAssertLessThan(inserted, Self.limit, "insertText, \(label)")
-            XCTAssertEqual(inserting.view.string.utf16.count, text.utf16.count, "insertText, \(label)")
-            withExtendedLifetime(inserting.window) {}  // the window must outlive the layout above
-
-            // Pasted: `readSelection(from:)` is what Paste runs.
-            let pasting = makeEditor(mode: mode)
-            let pasteboard = NSPasteboard.withUniqueName()
-            defer { pasteboard.releaseGlobally() }
-            pasteboard.clearContents()
-            pasteboard.setString(text, forType: .string)
-            var didPaste = false
-            let pasted = clock.measure {
-                didPaste = pasting.view.readSelection(from: pasteboard)
-                pasting.scrollView.layoutSubtreeIfNeeded()
-            }
-            XCTAssertTrue(didPaste, "paste, \(label)")
-            XCTAssertLessThan(pasted, Self.limit, "paste, \(label)")
-            XCTAssertEqual(pasting.view.string.utf16.count, text.utf16.count, "paste, \(label)")
-            withExtendedLifetime(pasting.window) {}
+        // Typed or inserted by a service: `insertText`.
+        let inserting = makeEditor()
+        let inserted = clock.measure {
+            inserting.view.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+            inserting.scrollView.layoutSubtreeIfNeeded()
         }
+        XCTAssertLessThan(inserted, Self.limit, "insertText")
+        XCTAssertEqual(inserting.view.string.utf16.count, text.utf16.count, "insertText")
+        withExtendedLifetime(inserting.window) {}  // the window must outlive the layout above
+
+        // Pasted: `readSelection(from:)` is what Paste runs.
+        let pasting = makeEditor()
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        var didPaste = false
+        let pasted = clock.measure {
+            didPaste = pasting.view.readSelection(from: pasteboard)
+            pasting.scrollView.layoutSubtreeIfNeeded()
+        }
+        XCTAssertTrue(didPaste, "paste")
+        XCTAssertLessThan(pasted, Self.limit, "paste")
+        XCTAssertEqual(pasting.view.string.utf16.count, text.utf16.count, "paste")
+        withExtendedLifetime(pasting.window) {}
     }
 }

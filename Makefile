@@ -87,58 +87,18 @@ run:
 # [macOS] Run the performance tests (the ScratchPerf scheme, Release build): launch, keystroke, scrolling and note
 # switching on the huge-note and typical fixtures (spec §7). The result bundle is build/results/perf.xcresult. Turn it
 # into numbers with `python3 scripts/perf-extract.py build/results/perf.xcresult build/results/perf.json`, and compare
-# them with the stored baseline using scripts/perf-check.py. TEXTKIT=1|2 starts the app on that TextKit
-# (-ScratchTextKit, passed by the tests through the TEST_RUNNER_SCRATCH_TEXTKIT environment variable). Without it the
-# app picks its own. The flag is only passed when TEXTKIT is not empty: an empty value is a launch error.
-# The test time allowances are wide because a test types or scrolls through a 10,000-line note.
+# them with the stored baseline using scripts/perf-check.py (CI does both). The test time allowances are wide because
+# a test types or scrolls through a 10,000-line note.
 perf: project
 	rm -rf build/results/perf.xcresult
 	mkdir -p build/results
-	$(if $(TEXTKIT),TEST_RUNNER_SCRATCH_TEXTKIT=$(TEXTKIT)) xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf \
+	xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf \
 	  -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/perf.xcresult \
 	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
-	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
-	  -skip-testing:ScratchPerfTests/MarkerHidingSpikeTests -skip-testing:ScratchPerfTests/KeystrokeBreakdownSpikeTests
+	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600
 
 # [macOS] Record this machine's numbers as the new baseline (perf/baseline.json). CI compares every run with that file,
 # and a result more than 20% slower fails the job, so record it from a CI run (ci-results/<sha>/macos/perf/results.json)
 # and not from a laptop. See AGENTS.md.
 perf-baseline: perf
 	python3 scripts/perf-extract.py build/results/perf.xcresult perf/baseline.json
-
-# THROWAWAY (branch spike/textkit only, plan 1 task 10).
-# [macOS] The marker hiding screenshots (MarkerHidingSpikeTests) into build/screenshots-spike/<name>.png.
-SPIKE_NAMES := tk1-plain tk1-glyphs tk1-tiny tk2-plain tk2-paragraph tk2-zerowidth tk2-tiny
-.PHONY: spike-screenshots spike-diagnostics
-spike-screenshots: project
-	rm -rf build/results/spike-screenshots.xcresult build/screenshots-spike
-	mkdir -p build/results build/screenshots-spike
-	xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf -destination '$(DESTINATION)' \
-	  -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/spike-screenshots.xcresult \
-	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
-	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
-	  -only-testing:ScratchPerfTests/MarkerHidingSpikeTests
-	xcrun xcresulttool export attachments --path build/results/spike-screenshots.xcresult \
-	  --output-path build/screenshots-spike/raw
-	python3 scripts/name-screenshots.py build/screenshots-spike/raw build/screenshots-spike $(SPIKE_NAMES)
-
-# [macOS] The hosted diagnostics (caret geometry and conversion cost) into build/results/spike-diagnostics.xcresult.
-spike-diagnostics: project
-	rm -rf build/results/spike-diagnostics.xcresult
-	mkdir -p build/results
-	xcodebuild test -project $(APP_PROJECT) -scheme Scratch -destination '$(DESTINATION)' \
-	  -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/spike-diagnostics.xcresult \
-	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
-	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
-	  -only-testing:ScratchAppTests/MarkerHidingGeometryTests -only-testing:ScratchAppTests/ConversionCostTests
-
-# [macOS] The keystroke breakdown (KeystrokeBreakdownSpikeTests): make spike-breakdown TEXTKIT=1|2.
-.PHONY: spike-breakdown
-spike-breakdown: project
-	rm -rf build/results/spike-breakdown.xcresult
-	mkdir -p build/results
-	$(if $(TEXTKIT),TEST_RUNNER_SCRATCH_TEXTKIT=$(TEXTKIT)) xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf \
-	  -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/spike-breakdown.xcresult \
-	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
-	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
-	  -only-testing:ScratchPerfTests/KeystrokeBreakdownSpikeTests

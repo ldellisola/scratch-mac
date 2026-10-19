@@ -16,9 +16,7 @@ final class LaunchPerfTests: XCTestCase {
         seeding.terminate()
 
         let app = XCUIApplication()
-        app.launchArguments =
-            ["-ScratchDataDir", dataDirectory.path, "-ScratchAppearance", "light"]
-            + PerfSupport.textKitArguments
+        app.launchArguments = ["-ScratchDataDir", dataDirectory.path, "-ScratchAppearance", "light"]
         defer { app.terminate() }
 
         // The first launches of an instance are the slowest (0.53 s, then 0.37 s in the first runs): launch a few times

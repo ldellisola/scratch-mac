@@ -51,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.appearance = NSAppearance(named: appearance == .dark ? .darkAqua : .aqua)
         }
 
-        let editor = EditorViewController(textKit: environment.options.textKit ?? .two)
+        let editor = EditorViewController()
         let sidebar = SidebarViewController()
         let content = MainSplitViewController(sidebar: sidebar, editor: editor)
         let windowController = MainWindowController(environment: environment, content: content)

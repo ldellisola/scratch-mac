@@ -78,13 +78,13 @@ jobs:
             --step "script-test=${{ steps.script-test.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" linux build/ci/linux
 
-  # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests. Runs on
-  # GitHub's Macs, because cloud agents have none (AGENTS.md section 4).
+  # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests, the
+  # screenshots and the performance tests. Runs on GitHub's Macs, because cloud agents have none (AGENTS.md section 4).
   macos:
     name: macos
     if: ${{ false }}  # spike/textkit: only perf-spike runs
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -132,6 +132,24 @@ jobs:
         timeout-minutes: 15
         run: make screenshots 2>&1 | tee build/ci/macos/screenshots.log
 
+      # The performance tests (make perf, about 5 minutes), then the numbers and their comparison with the baseline and
+      # the budgets (docs/decisions/0003). A FAIL in the check fails the job. Skipped only when the project could not be
+      # generated, or on cancel.
+      - id: perf
+        name: Performance tests
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        timeout-minutes: 25
+        run: make perf 2>&1 | tee build/ci/macos/perf.log
+
+      - id: perf-check
+        name: Performance check
+        if: ${{ !cancelled() && steps.perf.outcome == 'success' }}
+        run: |
+          mkdir -p build/ci/macos/perf
+          python3 scripts/perf-extract.py build/results/perf.xcresult build/ci/macos/perf/results.json
+          python3 scripts/perf-check.py --results build/ci/macos/perf/results.json \
+            --baseline perf/baseline.json --budgets perf/budgets.json | tee build/ci/macos/perf/report.md
+
       - id: publish
         name: Publish results to ci-results
         if: always()
@@ -147,6 +165,23 @@ jobs:
             xcrun xcresulttool export attachments --path build/results/app.xcresult \
               --output-path build/ci/macos/failure-attachments --only-failures \
               > build/ci/macos/failure-attachments.log 2>&1 || true
+          fi
+          # The performance run: what failed, everything xcresulttool knows about the metrics, the attachments (the
+          # screenshots of the keystroke test and the frame report), and the numbers when perf-check did not get to
+          # extract them. Best effort, like the rest. Screen recordings of failed tests are left out: they are large.
+          mkdir -p build/ci/macos/perf
+          if [ -d build/results/perf.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path build/results/perf.xcresult \
+              > build/ci/macos/perf/test-summary.json 2> build/ci/macos/perf/test-summary.err || true
+            xcrun xcresulttool get test-results metrics --path build/results/perf.xcresult \
+              > build/ci/macos/perf/metrics.json 2> build/ci/macos/perf/metrics.err || true
+            xcrun xcresulttool export attachments --path build/results/perf.xcresult \
+              --output-path build/ci/macos/perf/attachments > build/ci/macos/perf/attachments.log 2>&1 || true
+            find build/ci/macos/perf/attachments -name '*.mp4' -delete 2> /dev/null || true
+            if [ ! -f build/ci/macos/perf/results.json ]; then
+              python3 scripts/perf-extract.py build/results/perf.xcresult build/ci/macos/perf/results.json \
+                > build/ci/macos/perf/extract.log 2>&1 || true
+            fi
           fi
           # The screenshots (make screenshots): the named PNGs go to screenshots/. The manifest that names them is kept
           # too, and, if naming failed, the files as exported, so that a failed naming can be diagnosed from here.
@@ -180,16 +215,17 @@ jobs:
             --step "project=${{ steps.project.outcome }}" \
             --step "core-test=${{ steps.core-test.outcome }}" \
             --step "app-test=${{ steps.app-test.outcome }}" \
-            --step "screenshots=${{ steps.screenshots.outcome }}"
+            --step "screenshots=${{ steps.screenshots.outcome }}" \
+            --step "perf=${{ steps.perf.outcome }}" \
+            --step "perf-check=${{ steps.perf-check.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" macos build/ci/macos
 
-  # THROWAWAY (branch spike/textkit only, plan 1 task 10): the TextKit decision. Runs the performance tests twice on
-  # each TextKit version, takes the marker hiding screenshots and the caret and conversion diagnostics, and publishes
-  # all of it to ci-results/<sha>/perf-spike/.
+  # THROWAWAY (branch spike/textkit only): four runs of the final performance suite in a fresh job, to see how the
+  # numbers vary from run to run (docs/decisions/0003).
   perf-spike:
     name: perf-spike
     runs-on: macos-26
-    timeout-minutes: 100
+    timeout-minutes: 80
     defaults:
       run:
         shell: bash
@@ -205,8 +241,6 @@ jobs:
         run: |
           mkdir -p build/ci/perf-spike
           sudo xcode-select -s /Applications/Xcode_26.6.app
-          xcodebuild -version
-          swift --version
 
       - id: xcodegen
         name: Install XcodeGen
@@ -216,102 +250,53 @@ jobs:
         name: Generate the Xcode project
         run: make project 2>&1 | tee build/ci/perf-spike/project.log
 
-      - id: tk1a
-        name: Performance, TextKit 1, run A
-        continue-on-error: true
-        timeout-minutes: 25
-        run: |
-          set +e
-          make perf TEXTKIT=1 2>&1 | tee build/ci/perf-spike/perf-tk1-a.log
-          status=${PIPESTATUS[0]}
-          mv build/results/perf.xcresult build/results/perf-tk1-a.xcresult
-          exit $status
-
-      - id: tk2a
-        name: Performance, TextKit 2, run A
+      - id: run1
+        name: Performance, run 1
         if: ${{ !cancelled() && steps.project.outcome == 'success' }}
         continue-on-error: true
         timeout-minutes: 25
         run: |
           set +e
-          make perf TEXTKIT=2 2>&1 | tee build/ci/perf-spike/perf-tk2-a.log
+          make perf 2>&1 | tee build/ci/perf-spike/perf-run1.log
           status=${PIPESTATUS[0]}
-          mv build/results/perf.xcresult build/results/perf-tk2-a.xcresult
+          mv build/results/perf.xcresult build/results/perf-run1.xcresult
           exit $status
 
-      - id: tk1b
-        name: Performance, TextKit 1, run B
+      - id: run2
+        name: Performance, run 2
         if: ${{ !cancelled() && steps.project.outcome == 'success' }}
         continue-on-error: true
         timeout-minutes: 25
         run: |
           set +e
-          make perf TEXTKIT=1 2>&1 | tee build/ci/perf-spike/perf-tk1-b.log
+          make perf 2>&1 | tee build/ci/perf-spike/perf-run2.log
           status=${PIPESTATUS[0]}
-          mv build/results/perf.xcresult build/results/perf-tk1-b.xcresult
+          mv build/results/perf.xcresult build/results/perf-run2.xcresult
           exit $status
 
-      - id: tk2b
-        name: Performance, TextKit 2, run B
+      - id: run3
+        name: Performance, run 3
         if: ${{ !cancelled() && steps.project.outcome == 'success' }}
         continue-on-error: true
         timeout-minutes: 25
         run: |
           set +e
-          make perf TEXTKIT=2 2>&1 | tee build/ci/perf-spike/perf-tk2-b.log
+          make perf 2>&1 | tee build/ci/perf-spike/perf-run3.log
           status=${PIPESTATUS[0]}
-          mv build/results/perf.xcresult build/results/perf-tk2-b.xcresult
+          mv build/results/perf.xcresult build/results/perf-run3.xcresult
           exit $status
 
-      - id: tk1c
-        name: Performance, TextKit 1, run C
+      - id: run4
+        name: Performance, run 4
         if: ${{ !cancelled() && steps.project.outcome == 'success' }}
         continue-on-error: true
         timeout-minutes: 25
         run: |
           set +e
-          make perf TEXTKIT=1 2>&1 | tee build/ci/perf-spike/perf-tk1-c.log
+          make perf 2>&1 | tee build/ci/perf-spike/perf-run4.log
           status=${PIPESTATUS[0]}
-          mv build/results/perf.xcresult build/results/perf-tk1-c.xcresult
+          mv build/results/perf.xcresult build/results/perf-run4.xcresult
           exit $status
-
-      - id: bd1
-        name: Keystroke breakdown, TextKit 1
-        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
-        continue-on-error: true
-        timeout-minutes: 15
-        run: |
-          set +e
-          make spike-breakdown TEXTKIT=1 2>&1 | tee build/ci/perf-spike/breakdown-tk1.log
-          status=${PIPESTATUS[0]}
-          mv build/results/spike-breakdown.xcresult build/results/breakdown-tk1.xcresult
-          exit $status
-
-      - id: bd2
-        name: Keystroke breakdown, TextKit 2
-        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
-        continue-on-error: true
-        timeout-minutes: 15
-        run: |
-          set +e
-          make spike-breakdown TEXTKIT=2 2>&1 | tee build/ci/perf-spike/breakdown-tk2.log
-          status=${PIPESTATUS[0]}
-          mv build/results/spike-breakdown.xcresult build/results/breakdown-tk2.xcresult
-          exit $status
-
-      - id: hiding
-        name: Marker hiding screenshots
-        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
-        continue-on-error: true
-        timeout-minutes: 15
-        run: make spike-screenshots 2>&1 | tee build/ci/perf-spike/spike-screenshots.log
-
-      - id: diagnostics
-        name: Caret geometry and conversion cost
-        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
-        continue-on-error: true
-        timeout-minutes: 15
-        run: make spike-diagnostics 2>&1 | tee build/ci/perf-spike/spike-diagnostics.log
 
       - id: publish
         name: Publish results to ci-results
@@ -320,50 +305,24 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           mkdir -p build/ci/perf-spike
-          for label in tk1-a tk2-a tk1-b tk2-b tk1-c breakdown-tk1 breakdown-tk2; do
-            bundle=build/results/perf-$label.xcresult
-            case $label in breakdown-*) bundle=build/results/$label.xcresult ;; esac
+          for n in 1 2 3 4; do
+            bundle=build/results/perf-run$n.xcresult
             [ -d "$bundle" ] || continue
-            out=build/ci/perf-spike/$label
+            out=build/ci/perf-spike/run$n
             mkdir -p "$out"
             python3 scripts/perf-extract.py "$bundle" "$out/results.json" --raw-dir "$out" > "$out/extract.log" 2>&1 || true
-            xcrun xcresulttool get test-results metrics --path "$bundle" > "$out/metrics.json" 2> "$out/metrics.err" || true
-            xcrun xcresulttool get test-results summary --path "$bundle" > "$out/test-summary.json" 2> "$out/test-summary.err" || true
-            xcrun xcresulttool get test-results tests --path "$bundle" > "$out/tests.json" 2> "$out/tests.err" || true
+            xcrun xcresulttool get test-results summary --path "$bundle" > "$out/test-summary.json" 2> /dev/null || true
             xcrun xcresulttool export attachments --path "$bundle" --output-path "$out/attachments" > "$out/attachments.log" 2>&1 || true
+            find "$out/attachments" -name '*.mp4' -delete 2> /dev/null || true
           done
-          mkdir -p build/ci/perf-spike/marker-hiding
-          if ls build/screenshots-spike/*.png > /dev/null 2>&1; then
-            cp build/screenshots-spike/*.png build/ci/perf-spike/marker-hiding/
-          elif [ -d build/screenshots-spike/raw ]; then
-            cp -R build/screenshots-spike/raw build/ci/perf-spike/marker-hiding/raw
-          fi
-          if [ -d build/results/spike-screenshots.xcresult ]; then
-            xcrun xcresulttool get test-results summary --path build/results/spike-screenshots.xcresult \
-              > build/ci/perf-spike/marker-hiding/test-summary.json 2> /dev/null || true
-          fi
-          if [ -d build/results/spike-diagnostics.xcresult ]; then
-            xcrun xcresulttool export attachments --path build/results/spike-diagnostics.xcresult \
-              --output-path build/ci/perf-spike/diagnostics > build/ci/perf-spike/diagnostics.log 2>&1 || true
-            xcrun xcresulttool get test-results summary --path build/results/spike-diagnostics.xcresult \
-              > build/ci/perf-spike/diagnostics/test-summary.json 2> /dev/null || true
-          fi
           for log in build/ci/perf-spike/*.log; do
             [ -e "$log" ] || continue
             tail -n 300 "$log" > "$log.tail" && mv "$log.tail" "$log"
           done
           python3 scripts/ci-summary.py --job perf-spike --sha "${{ github.sha }}" --run-url "$RUN_URL" --out build/ci/perf-spike \
-            --step "checkout=${{ steps.checkout.outcome }}" \
-            --step "xcode=${{ steps.xcode.outcome }}" \
-            --step "xcodegen=${{ steps.xcodegen.outcome }}" \
             --step "project=${{ steps.project.outcome }}" \
-            --step "tk1a=${{ steps.tk1a.outcome }}" \
-            --step "tk2a=${{ steps.tk2a.outcome }}" \
-            --step "tk1b=${{ steps.tk1b.outcome }}" \
-            --step "tk2b=${{ steps.tk2b.outcome }}" \
-            --step "tk1c=${{ steps.tk1c.outcome }}" \
-            --step "bd1=${{ steps.bd1.outcome }}" \
-            --step "bd2=${{ steps.bd2.outcome }}" \
-            --step "hiding=${{ steps.hiding.outcome }}" \
-            --step "diagnostics=${{ steps.diagnostics.outcome }}"
+            --step "run1=${{ steps.run1.outcome }}" \
+            --step "run2=${{ steps.run2.outcome }}" \
+            --step "run3=${{ steps.run3.outcome }}" \
+            --step "run4=${{ steps.run4.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" perf-spike build/ci/perf-spike

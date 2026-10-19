@@ -16,7 +16,12 @@ Two sources, both read from <xcresult> with `xcrun xcresulttool`:
   among keystrokes of 3 ms moved the mean by 6 ms), and a metric that such an iteration moves cannot be compared
   with a baseline.
 - `export attachments`: EditorPerfTests/testScrollHugeNote attaches the app's FrameMonitor report under the name
-  `scroll_frame_ms` (XCTest has no metric for the most expensive frame). scroll_frame_ms is its `max_frame_ms`.
+  `scroll_frame_ms` (XCTest has no metric for the main thread's work per frame). scroll_frame_ms is its
+  `median_cpu_ms`: the median, over 300 frames, of the CPU time the main thread used for a frame. scroll_frame_wall_ms
+  (the median of the frames by the clock), scroll_frame_p95_ms and scroll_frame_max_ms (the 95th percentile and the
+  longest frame by CPU time) are for a person: no budget checks them. CPU time, because the clock time of a frame on
+  a shared virtual Mac is the main thread's work and its waiting for the window server and for other tenants, and that
+  varied between runs of the same build by a factor of five (a median of 1.5 to 9 ms).
 
 A metric that is not found is left out of <out.json> with a warning on stderr, and perf-check.py fails the run for it.
 Nothing found at all is an error.
@@ -45,10 +50,15 @@ XCTEST_METRICS = {
     "switch_small_ms": ("EditorPerfTests/testSwitchToSmallNote", "switch-note"),
     "switch_huge_ms": ("EditorPerfTests/testSwitchToHugeNote", "switch-note"),
 }
-# The attachment of the scroll test: its name, and the key of its JSON that is the result.
+# The attachment of the scroll test: its name, and the keys of its JSON that are results: result key -> JSON key.
 SCROLL_KEY = "scroll_frame_ms"
 SCROLL_ATTACHMENT = "scroll_frame_ms"
-SCROLL_FIELD = "max_frame_ms"
+SCROLL_FIELDS = {
+    "scroll_frame_ms": "median_cpu_ms",
+    "scroll_frame_wall_ms": "median_frame_ms",
+    "scroll_frame_p95_ms": "p95_cpu_ms",
+    "scroll_frame_max_ms": "max_cpu_ms",
+}
 
 TO_MILLISECONDS = {
     "s": 1000.0, "sec": 1000.0, "secs": 1000.0, "second": 1000.0, "seconds": 1000.0,
@@ -131,12 +141,12 @@ def extract_xctest_metrics(metrics_json: object) -> dict[str, float]:
     return results
 
 
-def extract_scroll(attachments_dir: Path, raw_dir: Path | None) -> float | None:
-    """The `max_frame_ms` of the last attachment named scroll_frame_ms, or None."""
+def extract_scroll(attachments_dir: Path, raw_dir: Path | None) -> dict[str, float]:
+    """The numbers of the last attachment named scroll_frame_ms that has the median CPU time (SCROLL_FIELDS), or {}."""
     try:
         manifest = json.loads((attachments_dir / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return None
+        return {}
     if isinstance(manifest, dict):
         manifest = manifest.get("tests") or manifest.get("attachments") or []
     files = []
@@ -149,14 +159,14 @@ def extract_scroll(attachments_dir: Path, raw_dir: Path | None) -> float | None:
     for source in reversed(files):
         try:
             report = json.loads(source.read_text(encoding="utf-8"))
-            value = report[SCROLL_FIELD]
-        except (OSError, ValueError, KeyError, TypeError):
+            numbers = {key: report[field] for key, field in SCROLL_FIELDS.items() if field in report}
+        except (OSError, ValueError, TypeError):
             continue
-        if is_number(value):
+        if is_number(numbers.get(SCROLL_KEY)) and all(is_number(value) for value in numbers.values()):
             if raw_dir is not None:
                 shutil.copyfile(source, raw_dir / "scroll_frame_ms.json")
-            return float(value)
-    return None
+            return {key: float(value) for key, value in numbers.items()}
+    return {}
 
 
 def run_xcresulttool(*arguments: str) -> str:
@@ -204,10 +214,12 @@ def main() -> int:
                 attachments_dir = Path(scratch)
                 run_xcresulttool("export", "attachments", "--path", str(args.xcresult), "--output-path", scratch)
             scroll = extract_scroll(attachments_dir, args.raw_dir)
-        if scroll is None:
-            print(f"perf-extract.py: warning: no measurement for {SCROLL_KEY} (no attachment {SCROLL_ATTACHMENT})", file=sys.stderr)
-        else:
-            results[SCROLL_KEY] = scroll
+        if SCROLL_KEY not in scroll:
+            print(
+                f"perf-extract.py: warning: no measurement for {SCROLL_KEY} (no attachment {SCROLL_ATTACHMENT})",
+                file=sys.stderr,
+            )
+        results.update(scroll)
     except SourceError as error:
         print(f"perf-extract.py: {error}", file=sys.stderr)
         return 1
@@ -215,7 +227,7 @@ def main() -> int:
     if not results:
         print("perf-extract.py: no performance numbers found in the result bundle", file=sys.stderr)
         return 1
-    ordered = {key: round(results[key], 3) for key in [*XCTEST_METRICS, SCROLL_KEY] if key in results}
+    ordered = {key: round(results[key], 3) for key in [*XCTEST_METRICS, *SCROLL_FIELDS] if key in results}
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(ordered, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {args.out}: {json.dumps(ordered)}")
