@@ -1,8 +1,8 @@
 import AppKit
 
-/// Measures how long the main thread works for each frame while the editor scrolls, and writes the numbers to a JSON
-/// file. A debug tool for the performance tests, switched on by `-ScratchFrameMonitor <path>` (`LaunchOptions`); a
-/// normal launch never creates one.
+/// Scrolls the editor by itself and measures how long the main thread works for each frame, then writes the numbers to
+/// a JSON file. A debug tool for the performance tests, switched on by `-ScratchFrameMonitor <path>`
+/// (`LaunchOptions`); a normal launch never creates one.
 ///
 /// XCTest has no metric for the most expensive frame of a scroll on macOS (`XCTOSSignpostMetric`'s scrolling metrics
 /// are not there), and a display link only reports the time between two frames, which includes the time the main
@@ -11,6 +11,9 @@ import AppKit
 /// - A frame is one pass of the main run loop in which the editor's clip view scrolled. It starts when the loop wakes
 ///   up and ends when the loop is next about to wait, after AppKit has drawn and Core Animation has committed
 ///   (`RunLoopIdle`).
+/// - The scroll is the monitor's own: `warmUp` seconds after launch it moves the note `scrollStep` points down every
+///   1/60 s, `scrollTicks` times (a quick scroll with a trackpad). A test that scrolled through UI events would send a
+///   few events a second, and the arrow and page keys scroll a third of a window or a whole one at a time.
 /// - Scrolling during the first `warmUp` seconds after launch is ignored: restoring the note and the first layout move
 ///   the clip view as well, and are the launch budget's business.
 /// - `reportDelay` seconds after the last frame the file is written, with the longest frame (`max_frame_ms`), the 95th
@@ -20,6 +23,10 @@ import AppKit
 final class FrameMonitor {
     static let warmUp: TimeInterval = 3
     static let reportDelay: TimeInterval = 0.8
+    /// The scripted scroll: how far each tick moves the note, how often, and how many ticks there are (5 seconds).
+    static let scrollStep: CGFloat = 20
+    static let scrollInterval: TimeInterval = 1.0 / 60
+    static let scrollTicks = 300
 
     private let file: URL
     private let clipView: NSClipView
@@ -30,6 +37,8 @@ final class FrameMonitor {
     private var runLoopObserver: CFRunLoopObserver?
     private var scrollObserver: (any NSObjectProtocol)?
     private var reportTimer: Timer?
+    private var scrollTimer: Timer?
+    private var scrollTicksLeft = FrameMonitor.scrollTicks
 
     /// `clipView` is the one to watch (the editor's), `file` is where the report goes.
     init(file: URL, clipView: NSClipView) {
@@ -52,7 +61,36 @@ final class FrameMonitor {
         }
         CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
         runLoopObserver = observer
+
+        // Just after the warm-up, so that the first frame is already counted.
+        Timer.scheduledTimer(withTimeInterval: Self.warmUp + 0.5, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.beginScrolling() }
+        }
     }
+
+    // MARK: The scripted scroll
+
+    private func beginScrolling() {
+        scrollTimer = Timer.scheduledTimer(withTimeInterval: Self.scrollInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.scrollOneStep() }
+        }
+    }
+
+    private func scrollOneStep() {
+        guard scrollTicksLeft > 0, let scrollView = clipView.enclosingScrollView else {
+            scrollTimer?.invalidate()
+            scrollTimer = nil
+            return
+        }
+        scrollTicksLeft -= 1
+        let bounds = clipView.bounds
+        let documentHeight = clipView.documentView?.frame.height ?? 0
+        let lastY = max(documentHeight - bounds.height, bounds.origin.y)
+        clipView.scroll(to: NSPoint(x: bounds.origin.x, y: min(bounds.origin.y + Self.scrollStep, lastY)))
+        scrollView.reflectScrolledClipView(clipView)
+    }
+
+    // MARK: Measuring
 
     private func clipViewDidScroll() {
         let seconds = Double(DispatchTime.now().uptimeNanoseconds - startedAt) / 1_000_000_000

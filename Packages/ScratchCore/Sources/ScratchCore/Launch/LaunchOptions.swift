@@ -29,7 +29,7 @@ public enum LaunchOptionsError: Error, Equatable {
 /// | `-ScratchFixture <name>` | a ``Fixture`` raw value: the database is replaced by that fixture |
 /// | `-ScratchTextKit <1\|2>` | the TextKit version |
 /// | `-ScratchAppearance <light\|dark>` | the appearance |
-/// | `-ScratchFrameMonitor <path>` | a JSON file the app writes its scrolling frame times to (performance tests) |
+/// | `-ScratchFrameMonitor <path>` | scroll the note by itself, and write the frame times to this JSON file (performance tests) |
 public struct LaunchOptions: Equatable, Sendable {
     public var dataDirectory: URL
     /// False only for the real data directory. A fixture refuses to run when this is false (see ``ScratchStorage``).
@@ -37,8 +37,8 @@ public struct LaunchOptions: Equatable, Sendable {
     public var fixture: Fixture?
     public var textKit: TextKitMode?
     public var appearance: AppearanceOverride?
-    /// Where the app writes the frame times it saw while scrolling. Nil means it does not measure them. A debug flag
-    /// for the performance tests: the app has no other use for it.
+    /// Where the app writes the frame times of a scroll that it does by itself, a few seconds after launch. Nil means
+    /// it neither scrolls nor measures. A debug flag for the performance tests: the app has no other use for it.
     public var frameMonitorFile: URL?
 
     public init(

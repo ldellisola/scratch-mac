@@ -60,15 +60,15 @@ if [[ -f $SCRIPT ]]; then pass "scripts/perf-extract.py exists"; else
     exit 1
 fi
 
-# A metrics file in the shape of `xcresulttool get test-results metrics` (the signpost metrics are as a real run on
-# macos-26 wrote them; the launch metric's name is a guess, because the first runs lost it): tests, their runs, their
-# metrics.
+# A metrics file in the shape of `xcresulttool get test-results metrics` (the metric names are as a real run on
+# macos-26 wrote them): tests, their runs, their metrics.
 cat >"$TMP/metrics.json" <<'JSON'
 [
   {
     "testIdentifier": "LaunchPerfTests/testLaunch()",
     "testRuns": [{"metrics": [{
-      "displayName": "Application Launch", "identifier": "com.apple.dt.XCTMetric_ApplicationLaunch",
+      "displayName": "Duration (ApplicationLaunch)",
+      "identifier": "com.apple.dt.XCTMetric_ApplicationLaunch-ApplicationLaunch.duration",
       "unitOfMeasurement": "s", "measurements": [0.2, 0.25, 0.3]}]}]
   },
   {

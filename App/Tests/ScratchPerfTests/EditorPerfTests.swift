@@ -43,15 +43,11 @@ final class EditorPerfTests: XCTestCase {
         PerfSupport.attachScreenshot(of: app, named: "keystroke-after", to: self)
     }
 
-    /// Down arrow presses of the scroll test. The cursor starts at the top and moves down one line per press. The
-    /// first presses (about 36) stay inside the window, and every press after that scrolls the note by one line.
-    private static let scrollPresses = 250
-
-    /// `scroll_frame_ms`: the longest frame the app's `FrameMonitor` saw while the test scrolled through the huge note
-    /// one line at a time, like a slow scroll, where each frame lays out and draws one new line. (Page Down jumps a
-    /// whole window of new text per press: the first runs measured that, and a frame of 16 to 33 ms is the cost of a
-    /// full-window redraw, not of scrolling.) The monitor writes its report to a file, and the test attaches it as
-    /// `scroll_frame_ms` for perf-extract.py.
+    /// `scroll_frame_ms`: the longest frame the app's `FrameMonitor` saw while it scrolled the huge note by itself, 20
+    /// points every 1/60 s for 5 seconds, starting 3.5 seconds after launch. (UI events are no way to drive a scroll
+    /// for this: `typeKey` sends ten a second at best, Page Down jumps a whole window of new text per press, and an
+    /// arrow key scrolls a third of a window per press, which the first runs measured: 11 frames of 11 to 20 ms.) The
+    /// monitor writes its report to a file, and the test attaches it as `scroll_frame_ms` for perf-extract.py.
     func testScrollHugeNote() throws {
         continueAfterFailure = false
         let dataDirectory = UITestSupport.makeDataDirectory()
@@ -59,13 +55,9 @@ final class EditorPerfTests: XCTestCase {
         let app = launchHugeNote(dataDirectory: dataDirectory, extraArguments: ["-ScratchFrameMonitor", report.path])
         defer { app.terminate() }
 
-        // The monitor ignores the first seconds after launch.
-        Thread.sleep(forTimeInterval: 4)
-        for _ in 0..<Self.scrollPresses { app.typeKey(.downArrow, modifierFlags: []) }
-
-        let written = UITestSupport.wait(timeout: 20) { FileManager.default.fileExists(atPath: report.path) }
+        // The scroll ends about 9 seconds after launch, and the report is written 0.8 seconds after that.
+        let written = UITestSupport.wait(timeout: 60) { FileManager.default.fileExists(atPath: report.path) }
         XCTAssertTrue(written, "the frame monitor wrote nothing to \(report.path)")
-        // The file is rewritten after any later frame, so wait for the paging to be over before reading it.
         Thread.sleep(forTimeInterval: 2)
         let data = try Data(contentsOf: report)
         let numbers = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Double])
