@@ -23,6 +23,9 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   row. NoteStore: reads and writes the notes table (pinned first, newest edit first)
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores), SessionStore (JSON under key
                                   "state"), TextOffset (clamps a saved cursor offset to a Character boundary)
+  Sources/ScratchCore/Autosave/   Autosaver (decides when unsaved changes are written: 300 ms after the last change,
+                                  at most 1 s after the first, no repeating timers) and the AutosaveScheduler clocks it
+                                  runs on: DispatchAutosaveScheduler (production), ManualAutosaveScheduler (tests)
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
                                   SQLValue and Row, Schema (version 1 and the migration rule)
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
@@ -132,5 +135,8 @@ A change is done when:
   `transaction` is a savepoint.
 - **Schema changes are new migration steps in `Schema.swift`.** Raise `Schema.currentVersion` and add a step. Never edit
   an old step, because it has already run on real databases. Dates are stored as REAL `timeIntervalSinceReferenceDate`.
+- **`swift test --sanitize=thread` reports false data races on `Synchronization.Mutex` on Linux.** TSAN does not see
+  the futex that `Mutex` uses, so every `Mutex`-guarded access looks unsynchronised (`Database` and `Autosaver` both
+  show it). A report whose two accesses are both inside `withLock` is noise.
 - **Do not link Homebrew's SQLite.** `CSQLite` deliberately has no `pkgConfig`, so macOS links the system library.
 - **Never commit `App/Scratch.xcodeproj`.** It is generated from `App/project.yml`.
