@@ -60,7 +60,7 @@ enum MainMenu {
         menu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         // The same as Paste: pasted text always takes the note's font (spec §6.5).
         let pasteAndMatch = menu.addItem(
-            withTitle: "Paste and Match Style", action: Selector(("pasteAsPlainText:")), keyEquivalent: "v")
+            withTitle: "Paste and Match Style", action: #selector(NSTextView.pasteAsPlainText(_:)), keyEquivalent: "v")
         pasteAndMatch.keyEquivalentModifierMask = [.command, .option, .shift]
         menu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         menu.addItem(.separator())
@@ -74,7 +74,7 @@ enum MainMenu {
             ("Find Previous", "G", NSTextFinder.Action.previousMatch),
         ] {
             let item = findMenu.addItem(
-                withTitle: title, action: Selector(("performTextFinderAction:")), keyEquivalent: key)
+                withTitle: title, action: #selector(NSTextView.performTextFinderAction(_:)), keyEquivalent: key)
             item.tag = action.rawValue
         }
         find.submenu = findMenu
