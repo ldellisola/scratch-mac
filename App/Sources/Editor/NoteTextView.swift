@@ -9,7 +9,7 @@ final class NoteTextView: NSTextView {
     /// Keeps the TextKit 1 text storage alive for as long as the view lives. In TextKit 1 the storage owns the layout
     /// manager, which owns the container, while `NSLayoutManager.textStorage` and `NSTextContainer.layoutManager` are
     /// unowned and the view does not own the storage. Without this reference the whole stack is freed when
-    /// `TextViewFactory.makeEditor(mode: .one)` returns. Nil on a TextKit 2 view, whose content storage the view owns.
+    /// `TextViewFactory.makeEditor()` returns.
     var ownedTextStorage: NSTextStorage?
 
     /// How every character of a note looks: the note font in the standard text colour.

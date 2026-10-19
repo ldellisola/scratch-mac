@@ -87,14 +87,12 @@ run:
 # [macOS] Run the performance tests (the ScratchPerf scheme, Release build): launch, keystroke, scrolling and note
 # switching on the huge-note and typical fixtures (spec §7). The result bundle is build/results/perf.xcresult. Turn it
 # into numbers with `python3 scripts/perf-extract.py build/results/perf.xcresult build/results/perf.json`, and compare
-# them with the stored baseline using scripts/perf-check.py. TEXTKIT=1|2 starts the app on that TextKit
-# (-ScratchTextKit, passed by the tests through the TEST_RUNNER_SCRATCH_TEXTKIT environment variable). Without it the
-# app picks its own. The flag is only passed when TEXTKIT is not empty: an empty value is a launch error.
-# The test time allowances are wide because a test types or scrolls through a 10,000-line note.
+# them with the stored baseline using scripts/perf-check.py (CI does both). The test time allowances are wide because
+# a test types or scrolls through a 10,000-line note.
 perf: project
 	rm -rf build/results/perf.xcresult
 	mkdir -p build/results
-	$(if $(TEXTKIT),TEST_RUNNER_SCRATCH_TEXTKIT=$(TEXTKIT)) xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf \
+	xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf \
 	  -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/perf.xcresult \
 	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
 	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600

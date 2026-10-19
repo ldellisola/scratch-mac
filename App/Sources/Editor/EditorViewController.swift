@@ -19,8 +19,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// which also changes the clip view's bounds, does not count as scrolling.
     private var lastScrollY: Double = 0
 
-    init(textKit: TextKitMode) {
-        let editor = TextViewFactory.makeEditor(mode: textKit)
+    init() {
+        let editor = TextViewFactory.makeEditor()
         scrollView = editor.0
         textView = editor.1
         super.init(nibName: nil, bundle: nil)

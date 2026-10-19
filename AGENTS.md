@@ -29,8 +29,7 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
                                   SQLValue and Row, Schema (version 1 and the migration rule), ScratchStorage (opens
                                   the data directory and its stores; refuses a fixture on the real directory)
-  Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), TextKitMode and
-                                  AppearanceOverride. Also `-ScratchFrameMonitor <path>` (performance tests)
+  Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
   Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes) and FixtureContent, their notes and
                                   session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
@@ -46,12 +45,13 @@ App/Sources/Window/               MainWindowController (one window, closing it q
 App/Sources/Sidebar/              SidebarViewController (the note list: an NSTableView in the glass sidebar)
 App/Sources/Session/              SessionCoordinator (which note is open, autosave, restore, new note, the sidebar list;
                                   the one place that writes to storage)
-App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy), TextViewFactory (TextKit 1
-                                  or 2 stack), EditorViewController (shows a note, reports edits, cursor and scroll)
+App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy), TextViewFactory (builds the
+                                  TextKit 1 stack, docs/decisions/0001), EditorViewController (shows a note, reports
+                                  edits, cursor and scroll)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke` and
                                   `switch-note` intervals the performance tests read), RunLoopIdle (runs work when the
-                                  main run loop is next about to wait: after the frame is drawn), FrameMonitor (the
-                                  longest frame while scrolling, `-ScratchFrameMonitor`)
+                                  main run loop is next about to wait: after the frame is drawn), FrameMonitor
+                                  (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames)
 App/Resources/                    Assets.xcassets (placeholder app icon)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, FrameMonitorTests)
@@ -61,18 +61,21 @@ App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
                                   UITestSupport and AccessibilityID with the UI tests
-perf/                             budgets.json (spec §7, in milliseconds) and baseline.json (CI's own numbers)
+perf/                             budgets.json (the budgets CI enforces, in milliseconds) and baseline.json (CI's own
+                                  numbers, the slowest decision run: docs/decisions/0003)
 scripts/                          install-swift-linux.sh (toolchain), session-setup.sh (SessionStart hook),
                                   ci-summary.py, publish-ci-results.sh, ci-wait.sh, ci-fetch.sh (the ci-results loop,
                                   section 4), lib-ci-results.sh (shared by those), name-screenshots.py (names the
                                   exported screenshots), perf-extract.py (a ScratchPerf result bundle to numbers),
                                   perf-check.py (numbers against baseline and budgets), tests/ (their tests)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests. Job `macos`: XcodeGen, core tests on
-                                  macOS, app build and app tests, screenshots. Both publish to `ci-results`.
+                                  macOS, app build and app tests, screenshots, performance tests and their check. Both
+                                  publish to `ci-results`.
 docs/architecture.md              module boundaries, data flow, threading
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md (more as
                                   features land)
-docs/decisions/                   numbered decision records
+docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
+                                  marker hiding prototypes), 0003 (what the CI performance check compares)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -105,12 +108,12 @@ macOS and runs on GitHub's Macs.
   `typical-dark`, `empty-light` and `huge-note-light` (the names in the Makefile's `SCREENSHOT_NAMES`). The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
-- `make perf [TEXTKIT=1|2]` `[macOS]`: run the performance tests (the `ScratchPerf` scheme, Release build) into
+- `make perf` `[macOS]`: run the performance tests (the `ScratchPerf` scheme, Release build) into
   `build/results/perf.xcresult`. Turn that into numbers with `python3 scripts/perf-extract.py
   build/results/perf.xcresult <out.json>`, and compare them with `python3 scripts/perf-check.py --results <out.json>
-  --baseline perf/baseline.json --budgets perf/budgets.json`.
-- `make perf-baseline` `[macOS]`: run `make perf` and write its numbers to `perf/baseline.json`. Record the baseline
-  from a CI run (`macos/perf/results.json` in `ci-results`), not from a laptop: CI compares with it.
+  --baseline perf/baseline.json --budgets perf/budgets.json` (CI does both, section 4).
+- `make perf-baseline` `[macOS]`: run `make perf` and write its numbers to `perf/baseline.json`. Do not use it to
+  update the baseline CI compares with: that is the slowest of at least three CI runs (docs/decisions/0003).
 - `make run FIXTURE=<name>` `[macOS]`: build the app and open it on a fixture in a throwaway data directory.
 
 Commands for performance and releases are added by the tasks that create them.
@@ -124,9 +127,8 @@ always pass `-ScratchDataDir`, so they never touch real data.
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
 | `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes` | delete the database in the data directory and seed that fixture |
-| `-ScratchTextKit <1\|2>` | `1` or `2` | choose the TextKit version (removed when the TextKit decision is made) |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
-| `-ScratchFrameMonitor <path>` | any path | write the longest frame seen while scrolling, as JSON, to `<path>` (performance tests) |
+| `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 
 A fixture without `-ScratchDataDir` runs in a new `Scratch-<uuid>` directory under the temporary directory. A fixture
 is refused on the real data directory (`StorageError.fixtureRequiresIsolatedDirectory`), also when
@@ -138,6 +140,35 @@ is refused on the real data directory (`StorageError.fixtureRequiresIsolatedDire
 2. `make core-test` and `make lint`, both green.
 3. If the change touches behaviour, update the matching `docs/features/*.md` and make sure a test references it.
 
+### Performance
+
+`make perf` runs `App/Tests/ScratchPerfTests` (UI tests on the Release build, the `ScratchPerf` scheme). CI runs it after
+the screenshots, extracts the numbers (`scripts/perf-extract.py`) and compares them (`scripts/perf-check.py`) with
+`perf/baseline.json` and `perf/budgets.json`. Every metric prints `OK`, `WARN` or `FAIL`, and a `FAIL` fails the job.
+The `macos` job's folder in `ci-results` has `perf/report.md` (the table), `perf/results.json` (the numbers),
+`perf/metrics.json` (everything `xcresulttool` knew), `perf/test-summary.json` and `perf/attachments/` (screenshots of
+the keystroke test before and after, and the frame report). The measurements, and why each is what it is, are in
+docs/decisions/0001 and 0003. What to know when one fails or changes:
+
+- **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 10 launches. `keystroke_ms`: the
+  `keystroke` signpost, `NoteTextView.keyDown` until the main run loop is idle, one character per iteration typed about
+  a third into the huge note. `switch_small_ms` and `switch_huge_ms`: the `switch-note` signpost, from
+  `SessionCoordinator.open` until the note is on screen. `scroll_frame_ms`: the 95th percentile of the main thread's
+  work per frame while the app scrolls the huge note by itself (`FrameMonitor`, `-ScratchFrameMonitor`). Scrolling is
+  measured with this in-app monitor, not with XCTest's scroll metrics. All in milliseconds, medians but the last.
+- **The CI runner is slow and noisy.** Runs of the same build differ by up to a factor of two (the first run of a job is
+  the slowest), and a launch takes about 400 ms there (Calculator takes 1 s). The baseline is therefore the slowest of
+  several runs, and `launch_ms` is budgeted at 400 instead of the spec's 200 (docs/decisions/0003). A failure that no
+  change explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline.
+- **A signpost interval ends when the run loop is idle** (`RunLoopIdle`, `Signposts.beginEditorInterval`), not when the
+  code returns, so that TextKit's lazy layout and drawing count. A new interval for the tests belongs there too.
+- **`XCTApplicationLaunchMetric(waitUntilResponsive: true)` reports one launch** of ten on macos-26. Use the plain one.
+- **XCTest cannot report a custom number.** `scroll_frame_ms` reaches the result bundle as an attachment named
+  `scroll_frame_ms` (JSON), which `perf-extract.py` reads with `xcresulttool export attachments`.
+- **Perf tests type and scroll through a 10,000-line note, so `make perf` takes about 5 minutes** and its tests have wide
+  time limits (`make perf`). The keystroke test attaches `keystroke-before` and `keystroke-after`: look at them when
+  its number changes, to see that the characters landed in the middle of the note.
+
 ### The CI loop
 
 Everything that needs macOS runs on GitHub's Macs, and cloud sessions cannot download Actions artifacts. So every CI
@@ -145,7 +176,7 @@ job pushes its results to the orphan `ci-results` branch, in a folder `<sha>/<jo
 (`sha`, `job`, `status`, `steps`, `run_url`, `finished_at`), the last 300 lines of each step's log, and for macOS the
 screenshots. The branch keeps the newest 30 shas.
 
-The `macos` job adds to its folder: `test-summary.json` (from `xcresulttool`: passed and failed counts, and each
+The `macos` job adds to its folder: `perf/` (see Performance above), `test-summary.json` (from `xcresulttool`: passed and failed counts, and each
 failure's test name and message in `testFailures`), `app-test-diagnostics.txt` (every compiler warning and error of the
 whole build log, which the 300-line tail would cut), `failure-attachments/` (screenshots that failed UI tests
 attached) and `screenshots/<name>.png` (the key screens, `make screenshots`). A hosted test's failure message is also
@@ -222,11 +253,16 @@ A change is done when:
 - **Test classes need `@MainActor`.** The app target's default actor isolation is MainActor, the test targets' is not,
   and AppKit views are main-actor types. The tests so far avoid `setUp` and `tearDown` and use helper functions and
   `defer`, because an override must match the SDK's isolation for them.
-- **Never touch `NSTextView.layoutManager` on a TextKit 2 view.** It silently converts the view to TextKit 1. Use
-  `textLayoutManager` and `textContentStorage` there. `TextViewFactory` builds both stacks.
+- **The editor is a TextKit 1 text view, and only `TextViewFactory` may make one** (docs/decisions/0001: TextKit 2
+  needs 20 to 28 ms per keystroke in a 10,000-line note, the budget is 8). An `NSTextView` made any other way
+  (`NSTextView()`, `NSTextView(frame:)`, a nib) is a TextKit 2 view on macOS 26. Do not read `textLayoutManager` or
+  `textContentStorage` in the editor: they exist only on a TextKit 2 view.
 - **A TextKit 1 text view does not own its text storage.** The storage owns the layout manager, which owns the
   container, and the links back are unowned. `TextViewFactory` keeps the storage in `NoteTextView.ownedTextStorage`;
-  without it the stack is freed when `makeEditor(mode: .one)` returns.
+  without it the stack is freed when `makeEditor()` returns.
+- **Hide characters on TextKit 1 with null glyphs.** Plan 3's marker hiding is an `NSLayoutManagerDelegate` that sets
+  `.null` on the marker glyphs in `shouldGenerateGlyphs` (the code and the measurements are in docs/decisions/0001). The
+  caret still stops at each hidden character.
 - **A text view needs `NSScrollView.contentInsets` in mind.** The window uses `fullSizeContentView`, so the toolbar
   overlaps the scroll view, and the top of a note is at `y = -contentInsets.top`, not 0 (`EditorViewController.show`).
 - **There is no storyboard, so there is no menu bar until `MainMenu.install` runs.** ⌘Q, ⌘C, ⌘V and ⌘Z only work

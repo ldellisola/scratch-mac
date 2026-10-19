@@ -8,7 +8,7 @@ enum Signposts {
     /// Begins the editor interval `name` and ends it when the main run loop is next about to wait, which is when what
     /// began it (a key press, a click on a note) has been laid out, drawn and committed (`RunLoopIdle`). An interval
     /// that ended when the work returned would leave out the text system's layout and drawing, which TextKit does
-    /// lazily and which is where the two TextKit versions differ.
+    /// lazily and which is where the two TextKit versions differed (ADR 0001).
     ///
     /// The names in use: `keystroke` (`NoteTextView.keyDown`) and `switch-note` (`SessionCoordinator.open`).
     static func beginEditorInterval(_ name: StaticString) {

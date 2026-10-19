@@ -19,7 +19,6 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(options.dataDirectory.path == "/Users/tester/Library/Application Support/Scratch")
     #expect(options.isIsolated == false)
     #expect(options.fixture == nil)
-    #expect(options.textKit == nil)
     #expect(options.appearance == nil)
     #expect(options.frameMonitorFile == nil)
 }
@@ -66,11 +65,16 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(Fixture.allCases.map(\.rawValue) == ["empty", "typical", "huge-note", "many-notes"])
 }
 
-@Test func parsesTextKitAndAppearance() throws {
-    let one = try parse(["-ScratchTextKit", "1", "-ScratchAppearance", "dark"])
-    #expect(one.textKit == .one && one.appearance == .dark)
-    let two = try parse(["-ScratchAppearance", "light", "-ScratchTextKit", "2"])
-    #expect(two.textKit == .two && two.appearance == .light)
+@Test func parsesAppearance() throws {
+    #expect(try parse(["-ScratchAppearance", "dark"]).appearance == .dark)
+    #expect(try parse(["-ScratchAppearance", "light"]).appearance == .light)
+}
+
+// ADR 0001 chose TextKit 1 and removed the switch: the flag is an unrelated argument now, even with a value that was
+// invalid, and it does not hide a flag that follows it.
+@Test func theRemovedTextKitFlagIsIgnored() throws {
+    #expect(try parse(["-ScratchTextKit", "3"]) == (try parse([])))
+    #expect(try parse(["-ScratchTextKit", "2", "-ScratchAppearance", "dark"]).appearance == .dark)
 }
 
 @Test func parsesFrameMonitorFile() throws {
@@ -88,10 +92,6 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(throws: LaunchOptionsError.unknownFixture("nope")) { try parse(["-ScratchFixture", "nope"]) }
 }
 
-@Test func unknownTextKitThrows() {
-    #expect(throws: LaunchOptionsError.unknownTextKit("3")) { try parse(["-ScratchTextKit", "3"]) }
-}
-
 @Test func unknownAppearanceThrows() {
     #expect(throws: LaunchOptionsError.unknownAppearance("sepia")) { try parse(["-ScratchAppearance", "sepia"]) }
 }
@@ -100,7 +100,6 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(throws: LaunchOptionsError.missingValue("-ScratchDataDir")) { try parse(["-ScratchDataDir"]) }
     #expect(throws: LaunchOptionsError.missingValue("-ScratchFixture")) { try parse(["-ScratchFixture"]) }
     #expect(throws: LaunchOptionsError.missingValue("-ScratchFrameMonitor")) { try parse(["-ScratchFrameMonitor"]) }
-    #expect(throws: LaunchOptionsError.missingValue("-ScratchTextKit")) { try parse(["-ScratchTextKit", ""]) }
 }
 
 @Test func aFlagFollowedByAnotherFlagHasNoValue() {

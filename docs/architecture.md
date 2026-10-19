@@ -65,3 +65,17 @@ key press
   skips its pending save. `AppDelegate` keeps the coordinator for the app's lifetime, and the save closure holds the
   coordinator weakly.
 - A note list read carries a number, and only the newest read is shown, so a slow, stale list never replaces a newer one.
+
+## The text system and the performance instrumentation
+
+- **The editor is an `NSTextView` on TextKit 1**, built by `TextViewFactory` (`docs/decisions/0001-textkit-version.md`).
+  The factory builds the stack by hand (storage, layout manager with non-contiguous layout, container, view), and
+  `NoteTextView.ownedTextStorage` keeps the storage alive. A text view made any other way is TextKit 2 and slower in
+  a long note.
+- **Signposts** (`Signposts.editor`, subsystem `io.github.ldellisola.Scratch`, category `editor`) mark two intervals that
+  the performance tests read: `keystroke` (`NoteTextView.keyDown`) and `switch-note` (`SessionCoordinator.open`). Both
+  end when the main run loop is next about to wait (`RunLoopIdle`), so they include the layout and drawing that
+  TextKit does after the work returns.
+- **`FrameMonitor`**, started only by `-ScratchFrameMonitor <path>`, scrolls the note by itself and records the main
+  thread's work per frame. It observes the main run loop and the editor's clip view and does not touch the data flow.
+- The performance tests, their metrics and the CI check: AGENTS.md ("Performance") and `docs/decisions/0003-ci-performance-checks.md`.

@@ -77,12 +77,12 @@ jobs:
             --step "script-test=${{ steps.script-test.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" linux build/ci/linux
 
-  # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests. Runs on
-  # GitHub's Macs, because cloud agents have none (AGENTS.md section 4).
+  # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests, the
+  # screenshots and the performance tests. Runs on GitHub's Macs, because cloud agents have none (AGENTS.md section 4).
   macos:
     name: macos
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -130,6 +130,24 @@ jobs:
         timeout-minutes: 15
         run: make screenshots 2>&1 | tee build/ci/macos/screenshots.log
 
+      # The performance tests (make perf, about 5 minutes), then the numbers and their comparison with the baseline and
+      # the budgets (docs/decisions/0003). A FAIL in the check fails the job. Skipped only when the project could not be
+      # generated, or on cancel.
+      - id: perf
+        name: Performance tests
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        timeout-minutes: 25
+        run: make perf 2>&1 | tee build/ci/macos/perf.log
+
+      - id: perf-check
+        name: Performance check
+        if: ${{ !cancelled() && steps.perf.outcome == 'success' }}
+        run: |
+          mkdir -p build/ci/macos/perf
+          python3 scripts/perf-extract.py build/results/perf.xcresult build/ci/macos/perf/results.json
+          python3 scripts/perf-check.py --results build/ci/macos/perf/results.json \
+            --baseline perf/baseline.json --budgets perf/budgets.json | tee build/ci/macos/perf/report.md
+
       - id: publish
         name: Publish results to ci-results
         if: always()
@@ -145,6 +163,23 @@ jobs:
             xcrun xcresulttool export attachments --path build/results/app.xcresult \
               --output-path build/ci/macos/failure-attachments --only-failures \
               > build/ci/macos/failure-attachments.log 2>&1 || true
+          fi
+          # The performance run: what failed, everything xcresulttool knows about the metrics, the attachments (the
+          # screenshots of the keystroke test and the frame report), and the numbers when perf-check did not get to
+          # extract them. Best effort, like the rest. Screen recordings of failed tests are left out: they are large.
+          mkdir -p build/ci/macos/perf
+          if [ -d build/results/perf.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path build/results/perf.xcresult \
+              > build/ci/macos/perf/test-summary.json 2> build/ci/macos/perf/test-summary.err || true
+            xcrun xcresulttool get test-results metrics --path build/results/perf.xcresult \
+              > build/ci/macos/perf/metrics.json 2> build/ci/macos/perf/metrics.err || true
+            xcrun xcresulttool export attachments --path build/results/perf.xcresult \
+              --output-path build/ci/macos/perf/attachments > build/ci/macos/perf/attachments.log 2>&1 || true
+            find build/ci/macos/perf/attachments -name '*.mp4' -delete 2> /dev/null || true
+            if [ ! -f build/ci/macos/perf/results.json ]; then
+              python3 scripts/perf-extract.py build/results/perf.xcresult build/ci/macos/perf/results.json \
+                > build/ci/macos/perf/extract.log 2>&1 || true
+            fi
           fi
           # The screenshots (make screenshots): the named PNGs go to screenshots/. The manifest that names them is kept
           # too, and, if naming failed, the files as exported, so that a failed naming can be diagnosed from here.
@@ -178,5 +213,7 @@ jobs:
             --step "project=${{ steps.project.outcome }}" \
             --step "core-test=${{ steps.core-test.outcome }}" \
             --step "app-test=${{ steps.app-test.outcome }}" \
-            --step "screenshots=${{ steps.screenshots.outcome }}"
+            --step "screenshots=${{ steps.screenshots.outcome }}" \
+            --step "perf=${{ steps.perf.outcome }}" \
+            --step "perf-check=${{ steps.perf-check.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" macos build/ci/macos
