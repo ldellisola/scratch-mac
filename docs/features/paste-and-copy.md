@@ -34,8 +34,8 @@ All of it is in `App/Sources/Editor/NoteTextView.swift`:
 ## Tests
 
 Hosted tests in `App/Tests/ScratchAppTests/NoteTextViewTests.swift`. They run inside the app on CI and use a
-pasteboard of their own, never the real clipboard. The first four run on both the TextKit 1 and the TextKit 2 editor,
-because `-ScratchTextKit` can start the app on either.
+pasteboard of their own, never the real clipboard. The editor is TextKit 1 only (docs/decisions/0001), so every test
+runs on the one editor `TextViewFactory.makeEditor` makes.
 
 | Behaviour | Test |
 |---|---|
@@ -43,8 +43,8 @@ because `-ScratchTextKit` can start the app on either.
 | Every substitution flag is off, plain text mode, note font | `testSmartSubstitutionsAreOff` |
 | Typed straight quotes and `--` stay as typed | `testTypedStraightQuotesStayStraight` |
 | Copy writes `.string` and no `.rtf`, `.rtfd` or `.html` | `testCopyWritesOnlyPlainText` |
-| The TextKit 1 editor keeps its text storage and layout manager after `makeEditor` returns | `testTextKitOneEditorKeepsItsTextStack` |
-| The TextKit 2 editor has a text layout manager and no owned TextKit 1 storage | `testTextKitTwoEditorUsesTextLayoutManager` |
+| The editor is TextKit 1 and keeps its text storage and layout manager after `makeEditor` returns | `testEditorKeepsItsTextKitOneStack` |
+| Loading and typing leave the editor on TextKit 1 (a layout manager, no text layout manager) | `testEditorStaysOnTextKitOneWhileEditing` |
 
 Not covered yet: pasting through the real Edit menu in a running app, and Cut. Both go through the same two pasteboard
 type lists as the tests above.

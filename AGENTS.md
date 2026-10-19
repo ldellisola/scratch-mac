@@ -256,9 +256,10 @@ A change is done when:
   and AppKit views are main-actor types. The tests so far avoid `setUp` and `tearDown` and use helper functions and
   `defer`, because an override must match the SDK's isolation for them.
 - **The editor is a TextKit 1 text view, and only `TextViewFactory` may make one** (docs/decisions/0001: TextKit 2
-  needs 20 to 28 ms per keystroke in a 10,000-line note, the budget is 8). An `NSTextView` made any other way
-  (`NSTextView()`, `NSTextView(frame:)`, a nib) is a TextKit 2 view on macOS 26. Do not read `textLayoutManager` or
-  `textContentStorage` in the editor: they exist only on a TextKit 2 view.
+  needs 12.9 to 16.3 ms per keystroke in the middle of a 10,000-line note and 19.5 to 38.5 ms at its start, the budget
+  is 8). An `NSTextView` made any other way (`NSTextView()`, `NSTextView(frame:)`, a nib) is a TextKit 2 view on
+  macOS 26. Do not read `textLayoutManager` or `textContentStorage` in the editor: they exist only on a TextKit 2
+  view.
 - **A TextKit 1 text view does not own its text storage.** The storage owns the layout manager, which owns the
   container, and the links back are unowned. `TextViewFactory` keeps the storage in `NoteTextView.ownedTextStorage`;
   without it the stack is freed when `makeEditor()` returns.
