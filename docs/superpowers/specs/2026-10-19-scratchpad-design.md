@@ -63,9 +63,10 @@ Scratch is that Notepad habit, rebuilt as a proper Mac app. It's a window that i
 ## 5. Platform constraints
 
 - macOS 26 (Tahoe) or later, arm64 (Apple Silicon) only [owner: Apple Silicon. Tahoe is required because Liquid Glass ships in macOS 26].
-- Fully native: Swift and Apple frameworks. No web views, Electron, Catalyst or cross-platform UI toolkits [owner: native].
-- The app makes no network requests [call]. It's App Sandboxed without the network entitlement.
-- All data is stored under the app's Application Support container, so Time Machine covers it [call].
+- Fully native: Swift and Apple frameworks. No web views, Electron, Catalyst or cross-platform UI toolkits [owner: native, Swift]. Rust + GPUI (Zed's UI framework) was considered and rejected: it draws its own controls, so it can't use real Liquid Glass.
+- The app makes no network requests [call].
+- The app is **not** App Sandboxed [call]. Releases are signed without an Apple Developer account (§9.6), and macOS ties a sandboxed app's data container to its signing identity. A sandbox would therefore risk locking the app out of its own notes, or prompting on every update.
+- All data lives in `~/Library/Application Support/Scratch/`, so Time Machine covers it [call].
 
 ## 6. Product behaviour
 
@@ -195,17 +196,24 @@ Marker rules:
 
 ## 7. Performance budgets
 
-These are measured on the reference machine: a base M1 MacBook Air [call]. Every budget must have an automated measurement (§9.4). The thresholds below are starting points [call]. The builder may tighten them, and may loosen one only by recording why in a decision record.
+The reference machine is the owner's **M4 Mac** [owner]. Frame budgets are expressed as main-thread work per frame: at most 8 ms, which stays smooth on a 120 Hz display [call]. The thresholds below are starting points [call]. The builder may tighten them, and may loosen one only by recording why in a decision record.
 
 | Scenario | Budget |
 |---|---|
 | Launch, app not running, files in disk cache, to the restored note on screen and accepting keystrokes | ≤ 200 ms |
 | Same, from a cold boot (first launch after login) | ≤ 500 ms |
-| Keystroke to pixels, any note up to 10,000 lines | within one display frame at 120 Hz |
-| Scrolling a 10,000-line note that's half code blocks | no dropped frames at 120 Hz |
+| Keystroke to pixels, any note up to 10,000 lines | ≤ 8 ms main-thread work |
+| Scrolling a 10,000-line note that's half code blocks | no frame over 8 ms |
 | Highlight colours appearing after a 500-line code paste | ≤ 50 ms |
-| Switching tabs or notes (up to 10,000 lines) | ≤ 1 frame for ≤ 1,000 lines, ≤ 50 ms otherwise |
+| Switching tabs or notes (up to 10,000 lines) | ≤ 8 ms for ≤ 1,000 lines, ≤ 50 ms otherwise |
 | Idle (window open, not typing) | 0% CPU, no timers firing |
+
+**How budgets are enforced.** Every budget except cold boot has an automated measurement (§9.4). CI runs on virtual Macs with no real display and noisy timings, so CI uses two checks [call]:
+
+- It **fails** when a result regresses more than 20% against the stored baseline, or exceeds twice the budget.
+- It **warns** when a result is over budget but within those limits.
+
+The cold-boot number is a target, checked by hand when someone is at a real Mac.
 
 Very large pastes, such as a 50,000-line log, must never freeze the UI. Highlighting may be skipped for blocks above a size the builder chooses, as long as the text still pastes instantly.
 
@@ -246,6 +254,15 @@ The launch budget means:
 ## 9. Built for AI agents [owner]
 
 Every agent arrives without memory of previous work. The repository must tell it what the app is, where things live, how to change them, and how to prove the change works, without a human in the loop.
+
+### 9.0 Where the work happens
+
+- **Agents work in Linux cloud sessions** [owner]. They write all the code there, but they can't build or run the Mac app there.
+- **Core logic is tested in the session.** `ScratchCore` (§9.2) builds and tests on Linux with the Swift toolchain:
+  - The cloud environment must allow `download.swift.org`. As of 2026-10-19 it's blocked, and only the owner can change that setting.
+  - A session start hook installs the Swift version that matches Xcode 26's [call].
+- **Everything that needs macOS runs on GitHub's Macs** [call]: building the app, UI tests, performance tests, screenshots and releases. They run on GitHub-hosted `macos-26` arm64 runners, which are free because the repository is public [owner: repo made public].
+- **Results come back through a branch** [call]. Cloud sessions can't download GitHub Actions artifacts, because the storage host is blocked (verified 2026-10-19). They can read the GitHub API (including job logs) and `raw.githubusercontent.com`. So CI also pushes screenshots and test and benchmark summaries to an orphan `ci-results` branch, in one folder per commit. Agents read them with `git fetch` or raw URLs.
 
 ### 9.1 Docs agents read first
 
@@ -309,7 +326,7 @@ A `Makefile`, or scripts it calls, gives one obvious command for each of:
 - **Fixtures:** launch arguments load a named fixture database (empty, typical, huge note, many notes, every formatting feature) and can reset state. That makes UI tests, screenshots and benchmarks reproducible.
 - **CI:**
   - a fast Linux job runs core tests and lint
-  - a macOS job builds the app and runs UI tests, performance tests and screenshots, and publishes a built `Scratch.app` as an artifact
+  - a macOS job builds the app, runs UI tests, performance tests and screenshots, and pushes screenshots and summaries to the `ci-results` branch (§9.0)
 
 ### 9.5 Definition of done (goes into AGENTS.md)
 
@@ -320,6 +337,19 @@ A change is done when:
 - screenshots of any affected screen have been looked at
 - the feature doc and AGENTS.md are updated if behaviour or commands changed
 - a decision record exists for any new dependency or any changed [call]
+- the pull request is merged, and a release is published if the app changed (§9.6)
+
+### 9.6 Merging, releases and signing
+
+- **No human review** [owner]. Agents work on a branch, open a pull request, and merge it themselves once CI is green.
+- **Issues** [call]. Feature requests and bugs are tracked as GitHub issues.
+- **Releases** [owner: publish a new version on GitHub when a feature request is finished]:
+  - Every merge to `main` that changes the app publishes a GitHub Release, with a zipped `Scratch.app` and short release notes [call].
+  - Version numbers get a minor bump for features and a patch bump for fixes [call].
+- **Signing** [owner: no Apple Developer account, unsigned is fine, the owner will click through macOS prompts]:
+  - Every release is signed with the **same self-signed code-signing certificate**, so the app's identity never changes between versions and macOS keeps treating it as the same app [call].
+  - The certificate is stored as a GitHub Actions secret. The owner adds that secret once, and the plan says when.
+  - Builds aren't notarised. After downloading each new version, the owner approves it once in System Settings → Privacy & Security → Open Anyway. The release notes repeat these steps.
 
 ## 10. Success looks like
 
@@ -331,4 +361,9 @@ A change is done when:
 
 ## 11. Open questions for the owner
 
-None yet. This section is filled in after the builder review.
+None. The builder review's questions were answered on 2026-10-19.
+
+Two one-time setup steps fall to the owner:
+
+1. Allow `download.swift.org` in the cloud environment's network settings, before work on `ScratchCore` starts.
+2. Add the signing-certificate secret to the repository, when the plan reaches the first release.
