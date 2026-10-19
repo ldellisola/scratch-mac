@@ -223,8 +223,15 @@ A change is done when:
   `open(_:)` on the main thread only, and never from a block that runs on the storage queue.
 - **A new note that nobody has used is not in the sidebar** and is discarded when left empty. It is "untouched" while it
   was created in this session (or restored empty) and has no text. Test changes that look at the sidebar must type first.
-- **`NSToolbar` holds its delegate weakly.** `AppDelegate` keeps the `ToolbarController`. The new note button is an
-  `NSButton` as the item's view, because that is how UI tests get an accessibility identifier on it.
+- **`NSToolbar` holds its delegate weakly.** `AppDelegate` keeps the `ToolbarController`.
+- **A toolbar item only gets a Liquid Glass capsule when it is a plain `NSToolbarItem` with an `image`.** The new note
+  button was first an `NSButton` as the item's view, and the screenshot showed a small bare icon, also with
+  `isBordered = true` on the item. A view-less item has no accessibility identifier of its own, so its item identifier
+  is `AccessibilityID.newNoteButton` and `UITestSupport.newNoteButton` finds it by identifier, label or title.
+- **Screenshots are 1024 x 674 px, not 1100 x 700.** The runner's screen is small, so AppKit shrinks the window to fit.
+  A screenshot is a picture of the window only (no desktop), light or dark, and its caret may or may not be showing.
+  Exporting them needs the attachment `name`: `xcresulttool export attachments` suggests `<name>_<index>_<UUID>.png`,
+  which `scripts/name-screenshots.py` turns into `<name>.png`.
 - **UI tests type without clicking the editor first** (`editor.typeText`): the editor is first responder at launch, and a
   click would move the cursor that `testCursorRestoredAfterRelaunch` checks. `typeText` and `typeKey` need keyboard focus.
   Kill the app with `NSRunningApplication.forceTerminate()`, never `XCUIApplication.terminate()`, which may quit

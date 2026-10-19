@@ -39,8 +39,9 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
     /// Only the "new note" item is made here. AppKit makes the standard ones (sidebar button, separator, space).
     ///
     /// It is a plain item with an image, not a custom view, so that the system draws it on a Liquid Glass capsule like
-    /// every other toolbar item (a custom NSButton got no capsule). Its item identifier is the accessibility
-    /// identifier, because a view-less item has no view to carry one: UI tests find the button by it.
+    /// every other toolbar item: a custom `NSButton` view got no capsule, bordered item or not (screenshots, plan 1
+    /// task 9). A view-less item has no view to carry an accessibility identifier, so its item identifier is
+    /// `AccessibilityID.newNoteButton`, and UI tests find the button by that, its label or its title.
     func toolbar(
         _ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar flag: Bool
