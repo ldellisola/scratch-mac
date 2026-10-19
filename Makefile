@@ -2,7 +2,13 @@
 
 CORE_PACKAGE := Packages/ScratchCore
 
-.PHONY: core-test lint format script-test ci-wait
+# App build settings. Every xcodebuild call uses the same DerivedData folder, so the built app is always at
+# $(DERIVED_DATA)/Build/Products/Debug/Scratch.app.
+APP_PROJECT := App/Scratch.xcodeproj
+DERIVED_DATA := build/DerivedData
+DESTINATION := platform=macOS,arch=arm64
+
+.PHONY: core-test lint format script-test ci-wait project app-build app-test run
 
 # [linux] Run the ScratchCore tests.
 core-test:
@@ -26,3 +32,30 @@ script-test:
 ci-wait:
 	@test -n "$(SHA)" || { echo 'usage: make ci-wait SHA=<sha> [JOBS="linux macos"]' >&2; exit 64; }
 	scripts/ci-wait.sh $(SHA) $(JOBS)
+
+# [macOS] Generate App/Scratch.xcodeproj from App/project.yml (needs XcodeGen: brew install xcodegen). The project is
+# generated, never committed. VERSION feeds the app's marketing version.
+project:
+	cd App && SCRATCH_VERSION=$$(cat ../VERSION) xcodegen
+
+# [macOS] Build the app (Debug) into build/DerivedData.
+app-build: project
+	xcodebuild build -project $(APP_PROJECT) -scheme Scratch -destination '$(DESTINATION)' \
+	  -derivedDataPath $(DERIVED_DATA)
+
+# [macOS] Build the app and run its hosted unit tests and UI tests. The result bundle is build/results/app.xcresult.
+# Tests get a time limit each, so that a stuck UI test fails instead of hanging the job.
+app-test: project
+	rm -rf build/results/app.xcresult
+	mkdir -p build/results
+	xcodebuild test -project $(APP_PROJECT) -scheme Scratch -destination '$(DESTINATION)' \
+	  -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/app.xcresult \
+	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
+	  -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 300
+
+# [macOS] Build the app and open it on a named fixture in a throwaway data directory:
+# make run FIXTURE=<empty|typical|huge-note|many-notes>. It never touches real data.
+run:
+	@test -n "$(FIXTURE)" || { echo 'usage: make run FIXTURE=<empty|typical|huge-note|many-notes>' >&2; exit 64; }
+	$(MAKE) app-build
+	open -n $(DERIVED_DATA)/Build/Products/Debug/Scratch.app --args -ScratchFixture $(FIXTURE)

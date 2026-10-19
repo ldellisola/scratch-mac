@@ -111,3 +111,17 @@ private func fileNames(in directory: URL) throws -> [String] {
     let storage = try ScratchStorage.open(options(directory: directory, isolated: false))
     #expect(try storage.notes.summaries().isEmpty)
 }
+
+@Test func fixtureRunsInTheSystemTemporaryDirectory() throws {
+    // Launch arguments as the UI tests pass them, resolved against the real home and the real temporary directory.
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+        "ScratchStorageTests-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let parsed = try LaunchOptions.parse(
+        ["-ScratchDataDir", directory.path, "-ScratchFixture", "typical"],
+        home: FileManager.default.homeDirectoryForCurrentUser,
+        temporaryDirectory: FileManager.default.temporaryDirectory)
+    #expect(parsed.isIsolated)
+    let storage = try ScratchStorage.open(parsed)
+    #expect(try storage.notes.summaries().count == 6)
+}

@@ -113,3 +113,20 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     ])
     #expect(options.appearance == .dark)
 }
+
+// The system temporary directory is what UI tests and fixtures use. On macOS it is under /var/folders, and /var is a
+// symbolic link to /private/var, so this is the case that must not be mistaken for the real data directory.
+@Test func systemTemporaryDirectoryIsIsolatedInEverySpelling() throws {
+    let realHome = FileManager.default.homeDirectoryForCurrentUser
+    let temporary = FileManager.default.temporaryDirectory
+    let resolved = temporary.resolvingSymlinksInPath()
+    for directory in [temporary, resolved] {
+        let named = directory.appendingPathComponent("ScratchUITests-\(UUID().uuidString)")
+        let explicit = try LaunchOptions.parse(
+            ["-ScratchDataDir", named.path], home: realHome, temporaryDirectory: temporary)
+        #expect(explicit.isIsolated, "\(named.path)")
+        #expect(explicit.dataDirectory.path == named.path)
+    }
+    let seeded = try LaunchOptions.parse(["-ScratchFixture", "typical"], home: realHome, temporaryDirectory: temporary)
+    #expect(seeded.isIsolated, "\(seeded.dataDirectory.path)")
+}

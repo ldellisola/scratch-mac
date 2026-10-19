@@ -76,3 +76,77 @@ jobs:
             --step "core-test=${{ steps.core-test.outcome }}" \
             --step "script-test=${{ steps.script-test.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" linux build/ci/linux
+
+  # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests. Runs on
+  # GitHub's Macs, because cloud agents have none (AGENTS.md section 4).
+  macos:
+    name: macos
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # fetch-depth 0: the publish step fetches and pushes ci-results from this checkout.
+      - id: checkout
+        name: Check out
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: xcode
+        name: Select Xcode 26.6
+        run: |
+          mkdir -p build/ci/macos
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+          swift --version
+
+      - id: xcodegen
+        name: Install XcodeGen
+        run: brew install xcodegen
+
+      # Each check writes its output to build/ci/macos/<step>.log as well as to the job log.
+      - id: project
+        name: Generate the Xcode project
+        run: make project 2>&1 | tee build/ci/macos/project.log
+
+      - id: core-test
+        name: ScratchCore tests on macOS
+        run: make core-test 2>&1 | tee build/ci/macos/core-test.log
+
+      # A step limit as well as the per-test limits in the Makefile: a hung UI test must fail this step, not the whole
+      # job, so that the publish step still runs and the results reach ci-results.
+      - id: app-test
+        name: App tests (hosted unit tests and UI tests)
+        timeout-minutes: 30
+        run: make app-test 2>&1 | tee build/ci/macos/app-test.log
+
+      - id: publish
+        name: Publish results to ci-results
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          mkdir -p build/ci/macos
+          # What failed, from the result bundle. Best effort: a missing bundle or an unknown flag must not stop
+          # the results from being published.
+          if [ -d build/results/app.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path build/results/app.xcresult \
+              > build/ci/macos/test-summary.json 2> build/ci/macos/test-summary.err || true
+            xcrun xcresulttool export attachments --path build/results/app.xcresult \
+              --output-path build/ci/macos/failure-attachments --only-failures \
+              > build/ci/macos/failure-attachments.log 2>&1 || true
+          fi
+          for log in build/ci/macos/*.log; do
+            [ -e "$log" ] || continue
+            tail -n 300 "$log" > "$log.tail" && mv "$log.tail" "$log"
+          done
+          python3 scripts/ci-summary.py --job macos --sha "${{ github.sha }}" --run-url "$RUN_URL" --out build/ci/macos \
+            --step "checkout=${{ steps.checkout.outcome }}" \
+            --step "xcode=${{ steps.xcode.outcome }}" \
+            --step "xcodegen=${{ steps.xcodegen.outcome }}" \
+            --step "project=${{ steps.project.outcome }}" \
+            --step "core-test=${{ steps.core-test.outcome }}" \
+            --step "app-test=${{ steps.app-test.outcome }}"
+          scripts/publish-ci-results.sh "${{ github.sha }}" macos build/ci/macos
