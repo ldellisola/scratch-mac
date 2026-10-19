@@ -1,0 +1,115 @@
+import Foundation
+import Testing
+
+@testable import ScratchCore
+
+// Spec §9.4 (fixtures): launch arguments choose the data directory and a named fixture, so UI tests, screenshots and
+// benchmarks never touch real data.
+
+private let home = URL(fileURLWithPath: "/Users/tester")
+private let temporaryDirectory = URL(fileURLWithPath: "/tmp/scratch-tests")
+
+private func parse(_ arguments: [String]) throws -> LaunchOptions {
+    try LaunchOptions.parse(arguments, home: home, temporaryDirectory: temporaryDirectory)
+}
+
+@Test func defaultsToApplicationSupport() throws {
+    let options = try parse([])
+    #expect(options.dataDirectory == LaunchOptions.defaultDataDirectory(home: home))
+    #expect(options.dataDirectory.path == "/Users/tester/Library/Application Support/Scratch")
+    #expect(options.isIsolated == false)
+    #expect(options.fixture == nil)
+    #expect(options.textKit == nil)
+    #expect(options.appearance == nil)
+}
+
+@Test func dataDirFlagOverridesAndIsolates() throws {
+    let options = try parse(["-ScratchDataDir", "/tmp/scratch-ui-1"])
+    #expect(options.dataDirectory == URL(fileURLWithPath: "/tmp/scratch-ui-1"))
+    #expect(options.isIsolated == true)
+    #expect(options.fixture == nil)
+}
+
+@Test func dataDirFlagNamingTheDefaultDirectoryIsNotIsolated() throws {
+    // A trailing slash and a ".." must not make the real directory look isolated.
+    for path in [
+        "/Users/tester/Library/Application Support/Scratch",
+        "/Users/tester/Library/Application Support/Scratch/",
+        "/Users/tester/Library/Application Support/../Application Support/Scratch",
+    ] {
+        let options = try parse(["-ScratchDataDir", path])
+        #expect(options.isIsolated == false, "\(path)")
+    }
+}
+
+@Test func fixtureWithoutDataDirUsesFreshTemporaryDirectory() throws {
+    let first = try parse(["-ScratchFixture", "typical"])
+    let second = try parse(["-ScratchFixture", "typical"])
+    #expect(first.fixture == .typical)
+    #expect(first.isIsolated == true)
+    #expect(first.dataDirectory.path.hasPrefix(temporaryDirectory.path + "/Scratch-"))
+    #expect(first.dataDirectory != second.dataDirectory)
+}
+
+@Test func fixtureWithDataDirKeepsTheGivenDirectory() throws {
+    let options = try parse(["-ScratchFixture", "huge-note", "-ScratchDataDir", "/tmp/keep"])
+    #expect(options.fixture == .hugeNote)
+    #expect(options.dataDirectory == URL(fileURLWithPath: "/tmp/keep"))
+    #expect(options.isIsolated == true)
+}
+
+@Test func parsesEveryFixtureName() throws {
+    for fixture in Fixture.allCases {
+        #expect(try parse(["-ScratchFixture", fixture.rawValue]).fixture == fixture)
+    }
+    #expect(Fixture.allCases.map(\.rawValue) == ["empty", "typical", "huge-note", "many-notes"])
+}
+
+@Test func parsesTextKitAndAppearance() throws {
+    let one = try parse(["-ScratchTextKit", "1", "-ScratchAppearance", "dark"])
+    #expect(one.textKit == .one && one.appearance == .dark)
+    let two = try parse(["-ScratchAppearance", "light", "-ScratchTextKit", "2"])
+    #expect(two.textKit == .two && two.appearance == .light)
+}
+
+@Test func lastOccurrenceOfAFlagWins() throws {
+    let options = try parse(["-ScratchAppearance", "dark", "-ScratchAppearance", "light"])
+    #expect(options.appearance == .light)
+}
+
+@Test func unknownFixtureThrows() {
+    #expect(throws: LaunchOptionsError.unknownFixture("nope")) { try parse(["-ScratchFixture", "nope"]) }
+}
+
+@Test func unknownTextKitThrows() {
+    #expect(throws: LaunchOptionsError.unknownTextKit("3")) { try parse(["-ScratchTextKit", "3"]) }
+}
+
+@Test func unknownAppearanceThrows() {
+    #expect(throws: LaunchOptionsError.unknownAppearance("sepia")) { try parse(["-ScratchAppearance", "sepia"]) }
+}
+
+@Test func missingValueThrows() {
+    #expect(throws: LaunchOptionsError.missingValue("-ScratchDataDir")) { try parse(["-ScratchDataDir"]) }
+    #expect(throws: LaunchOptionsError.missingValue("-ScratchFixture")) { try parse(["-ScratchFixture"]) }
+}
+
+@Test func aFlagFollowedByAnotherFlagHasNoValue() {
+    #expect(throws: LaunchOptionsError.missingValue("-ScratchDataDir")) {
+        try parse(["-ScratchDataDir", "-ScratchFixture", "typical"])
+    }
+}
+
+@Test func ignoresUnrelatedArguments() throws {
+    let options = try parse([
+        "/Applications/Scratch.app/Contents/MacOS/Scratch", "-NSDocumentRevisionsDebugMode", "YES",
+    ])
+    #expect(options == (try parse([])))
+}
+
+@Test func unrelatedArgumentsDoNotHideScratchFlags() throws {
+    let options = try parse([
+        "-NSDocumentRevisionsDebugMode", "YES", "-ScratchAppearance", "dark", "-AppleLanguages", "(en)",
+    ])
+    #expect(options.appearance == .dark)
+}
