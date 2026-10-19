@@ -263,6 +263,42 @@ jobs:
           mv build/results/perf.xcresult build/results/perf-tk2-b.xcresult
           exit $status
 
+      - id: tk1c
+        name: Performance, TextKit 1, run C
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 25
+        run: |
+          set +e
+          make perf TEXTKIT=1 2>&1 | tee build/ci/perf-spike/perf-tk1-c.log
+          status=${PIPESTATUS[0]}
+          mv build/results/perf.xcresult build/results/perf-tk1-c.xcresult
+          exit $status
+
+      - id: bd1
+        name: Keystroke breakdown, TextKit 1
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          set +e
+          make spike-breakdown TEXTKIT=1 2>&1 | tee build/ci/perf-spike/breakdown-tk1.log
+          status=${PIPESTATUS[0]}
+          mv build/results/spike-breakdown.xcresult build/results/breakdown-tk1.xcresult
+          exit $status
+
+      - id: bd2
+        name: Keystroke breakdown, TextKit 2
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          set +e
+          make spike-breakdown TEXTKIT=2 2>&1 | tee build/ci/perf-spike/breakdown-tk2.log
+          status=${PIPESTATUS[0]}
+          mv build/results/spike-breakdown.xcresult build/results/breakdown-tk2.xcresult
+          exit $status
+
       - id: hiding
         name: Marker hiding screenshots
         if: ${{ !cancelled() && steps.project.outcome == 'success' }}
@@ -284,8 +320,9 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           mkdir -p build/ci/perf-spike
-          for label in tk1-a tk2-a tk1-b tk2-b; do
+          for label in tk1-a tk2-a tk1-b tk2-b tk1-c breakdown-tk1 breakdown-tk2; do
             bundle=build/results/perf-$label.xcresult
+            case $label in breakdown-*) bundle=build/results/$label.xcresult ;; esac
             [ -d "$bundle" ] || continue
             out=build/ci/perf-spike/$label
             mkdir -p "$out"
@@ -324,6 +361,9 @@ jobs:
             --step "tk2a=${{ steps.tk2a.outcome }}" \
             --step "tk1b=${{ steps.tk1b.outcome }}" \
             --step "tk2b=${{ steps.tk2b.outcome }}" \
+            --step "tk1c=${{ steps.tk1c.outcome }}" \
+            --step "bd1=${{ steps.bd1.outcome }}" \
+            --step "bd2=${{ steps.bd2.outcome }}" \
             --step "hiding=${{ steps.hiding.outcome }}" \
             --step "diagnostics=${{ steps.diagnostics.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" perf-spike build/ci/perf-spike

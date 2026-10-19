@@ -92,7 +92,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
 
     func textDidChange(_ notification: Notification) {
         guard !isLoadingNote else { return }
+        let state = Signposts.editor.beginInterval("t-didChange", id: Signposts.editor.makeSignpostID())
         onTextChange?(textView.string)
+        Signposts.editor.endInterval("t-didChange", state)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {

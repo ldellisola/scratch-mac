@@ -46,7 +46,7 @@ final class MarkerHidingGeometryTests: XCTestCase {
         var report = "text: \(Self.text)\n"
         for (mode, technique) in [
             (TextKitMode.one, nil), (.one, .glyphs), (.one, .tiny),
-            (.two, nil), (.two, .paragraph), (.two, .tiny),
+            (.two, nil), (.two, .paragraph), (.two, .zerowidth), (.two, .tiny),
         ] as [(TextKitMode, MarkerHidingSpike.Technique?)] {
             report += caretReport(mode: mode, technique: technique) + "\n"
         }

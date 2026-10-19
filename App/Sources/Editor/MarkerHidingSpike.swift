@@ -5,6 +5,8 @@ import AppKit
 ///
 /// - `glyphs`, TextKit 1 only: an `NSLayoutManagerDelegate` gives the marker glyphs the `.null` glyph property.
 /// - `paragraph`, TextKit 2 only: an `NSTextContentStorageDelegate` hands out paragraphs that lack the markers.
+/// - `zerowidth`, TextKit 2 only: like `paragraph`, but each marker character becomes a zero-width space, so that the
+///   paragraph keeps its length and the offsets of the text stay right.
 /// - `tiny`, either: the markers get a 0.1 pt font and the clear colour.
 ///
 /// The text between the markers is set in bold, whatever the technique.
@@ -15,6 +17,7 @@ final class MarkerHidingSpike: NSObject, @preconcurrency NSLayoutManagerDelegate
     enum Technique: String {
         case glyphs
         case paragraph
+        case zerowidth
         case tiny
     }
 
@@ -58,7 +61,7 @@ final class MarkerHidingSpike: NSObject, @preconcurrency NSLayoutManagerDelegate
         case .glyphs:
             // Only on a TextKit 1 view: `layoutManager` would turn a TextKit 2 view into a TextKit 1 view.
             if textView.textLayoutManager == nil { textView.layoutManager?.delegate = spike }
-        case .paragraph:
+        case .paragraph, .zerowidth:
             textView.textContentStorage?.delegate = spike
         case .tiny:
             break
@@ -126,13 +129,20 @@ final class MarkerHidingSpike: NSObject, @preconcurrency NSLayoutManagerDelegate
     func textContentStorage(_ textContentStorage: NSTextContentStorage, textParagraphWith range: NSRange)
         -> NSTextParagraph?
     {
-        guard technique == .paragraph, let storage = textContentStorage.textStorage else { return nil }
+        guard technique == .paragraph || technique == .zerowidth, let storage = textContentStorage.textStorage else {
+            return nil
+        }
         let paragraph = NSMutableAttributedString(attributedString: storage.attributedSubstring(from: range))
         let runs = Self.runs(in: paragraph.string)
         guard !runs.isEmpty else { return nil }
         for run in runs.reversed() {
-            paragraph.deleteCharacters(in: run.close)
-            paragraph.deleteCharacters(in: run.open)
+            if technique == .zerowidth {
+                paragraph.replaceCharacters(in: run.close, with: "\u{200B}\u{200B}")
+                paragraph.replaceCharacters(in: run.open, with: "\u{200B}\u{200B}")
+            } else {
+                paragraph.deleteCharacters(in: run.close)
+                paragraph.deleteCharacters(in: run.open)
+            }
         }
         return NSTextParagraph(attributedString: paragraph)
     }

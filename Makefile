@@ -97,7 +97,8 @@ perf: project
 	$(if $(TEXTKIT),TEST_RUNNER_SCRATCH_TEXTKIT=$(TEXTKIT)) xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf \
 	  -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/perf.xcresult \
 	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
-	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600
+	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
+	  -skip-testing:ScratchPerfTests/MarkerHidingSpikeTests -skip-testing:ScratchPerfTests/KeystrokeBreakdownSpikeTests
 
 # [macOS] Record this machine's numbers as the new baseline (perf/baseline.json). CI compares every run with that file,
 # and a result more than 20% slower fails the job, so record it from a CI run (ci-results/<sha>/macos/perf/results.json)
@@ -107,7 +108,7 @@ perf-baseline: perf
 
 # THROWAWAY (branch spike/textkit only, plan 1 task 10).
 # [macOS] The marker hiding screenshots (MarkerHidingSpikeTests) into build/screenshots-spike/<name>.png.
-SPIKE_NAMES := tk1-plain tk1-glyphs tk1-tiny tk2-plain tk2-paragraph tk2-tiny
+SPIKE_NAMES := tk1-plain tk1-glyphs tk1-tiny tk2-plain tk2-paragraph tk2-zerowidth tk2-tiny
 .PHONY: spike-screenshots spike-diagnostics
 spike-screenshots: project
 	rm -rf build/results/spike-screenshots.xcresult build/screenshots-spike
@@ -130,3 +131,14 @@ spike-diagnostics: project
 	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
 	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
 	  -only-testing:ScratchAppTests/MarkerHidingGeometryTests -only-testing:ScratchAppTests/ConversionCostTests
+
+# [macOS] The keystroke breakdown (KeystrokeBreakdownSpikeTests): make spike-breakdown TEXTKIT=1|2.
+.PHONY: spike-breakdown
+spike-breakdown: project
+	rm -rf build/results/spike-breakdown.xcresult
+	mkdir -p build/results
+	$(if $(TEXTKIT),TEST_RUNNER_SCRATCH_TEXTKIT=$(TEXTKIT)) xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf \
+	  -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/spike-breakdown.xcresult \
+	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
+	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
+	  -only-testing:ScratchPerfTests/KeystrokeBreakdownSpikeTests

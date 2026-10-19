@@ -9,6 +9,7 @@ final class MarkerHidingSpikeTests: XCTestCase {
     func testTinyTextKit1() { capture("tk1-tiny", textKit: "1", technique: "tiny") }
     func testPlainTextKit2() { capture("tk2-plain", textKit: "2", technique: nil) }
     func testParagraphTextKit2() { capture("tk2-paragraph", textKit: "2", technique: "paragraph") }
+    func testZeroWidthTextKit2() { capture("tk2-zerowidth", textKit: "2", technique: "zerowidth") }
     func testTinyTextKit2() { capture("tk2-tiny", textKit: "2", technique: "tiny") }
 
     private func capture(_ name: String, textKit: String, technique: String?) {

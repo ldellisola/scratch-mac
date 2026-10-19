@@ -47,6 +47,25 @@ final class NoteTextView: NSTextView {
         super.keyDown(with: event)
     }
 
+    // THROWAWAY (spike/textkit): where does a keystroke's time go? Signpost intervals around the main steps.
+    override func insertText(_ string: Any, replacementRange: NSRange) {
+        let state = Signposts.editor.beginInterval("t-insertText", id: Signposts.editor.makeSignpostID())
+        super.insertText(string, replacementRange: replacementRange)
+        Signposts.editor.endInterval("t-insertText", state)
+    }
+
+    override func layout() {
+        let state = Signposts.editor.beginInterval("t-layout", id: Signposts.editor.makeSignpostID())
+        super.layout()
+        Signposts.editor.endInterval("t-layout", state)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let state = Signposts.editor.beginInterval("t-draw", id: Signposts.editor.makeSignpostID())
+        super.draw(dirtyRect)
+        Signposts.editor.endInterval("t-draw", state)
+    }
+
     /// Makes the view a plain-text editor: the note font and colours, undo, the find bar, and every automatic
     /// substitution off, so the characters a note holds are exactly the ones typed or pasted (spec §4 "Mangled code").
     func applyScratchConfiguration() {
