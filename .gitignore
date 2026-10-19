@@ -1,0 +1,5 @@
+.build/
+build/
+App/Scratch.xcodeproj/
+*.xcresult
+.DS_Store
