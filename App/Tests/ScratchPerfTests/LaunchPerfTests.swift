@@ -22,9 +22,10 @@ final class LaunchPerfTests: XCTestCase {
 
         let options = XCTMeasureOptions()
         options.iterationCount = 8
+        // Like Xcode's own launch test: `launch()` ends the instance that runs from the last iteration, and an explicit
+        // `terminate()` in the block made XCTest lose the launch of some iterations ("Received unexpected number of
+        // metrics: 0").
         measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)], options: options) {
-            // A launch of an app that still runs from the last iteration would not be a launch from nothing.
-            if app.state != .notRunning { app.terminate() }
             app.launch()
         }
     }

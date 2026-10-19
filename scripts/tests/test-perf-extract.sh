@@ -60,7 +60,9 @@ if [[ -f $SCRIPT ]]; then pass "scripts/perf-extract.py exists"; else
     exit 1
 fi
 
-# A metrics file in the shape of `xcresulttool get test-results metrics`: tests, their runs, their metrics.
+# A metrics file in the shape of `xcresulttool get test-results metrics` (the signpost metrics are as a real run on
+# macos-26 wrote them; the launch metric's name is a guess, because the first runs lost it): tests, their runs, their
+# metrics.
 cat >"$TMP/metrics.json" <<'JSON'
 [
   {
@@ -74,21 +76,21 @@ cat >"$TMP/metrics.json" <<'JSON'
     "testRuns": [{"metrics": [
       {"displayName": "Duration", "identifier": "com.apple.dt.XCTMetric_Clock.time.monotonic",
        "unitOfMeasurement": "s", "measurements": [9.0, 9.0]},
-      {"displayName": "keystroke (io.github.ldellisola.Scratch editor)",
-       "identifier": "com.apple.dt.XCTMetric_OSSignpost-keystroke",
-       "unitOfMeasurement": "ms", "measurements": [2.0, 4.0]}]}]
+      {"displayName": "Duration (keystroke)",
+       "identifier": "com.apple.dt.XCTMetric_OSSignpost-keystroke.duration",
+       "unitOfMeasurement": "ms", "measurements": [2.0, 4.0, 300.0]}]}]
   },
   {
     "testIdentifier": "EditorPerfTests/testSwitchToSmallNote()",
     "testRuns": [{"metrics": [{
-      "displayName": "switch-note", "identifier": "com.apple.dt.XCTMetric_OSSignpost-switch-note",
-      "unitOfMeasurement": "s", "measurements": [0.003, 0.005]}]}]
+      "displayName": "Duration (switch-note)",
+      "identifier": "com.apple.dt.XCTMetric_OSSignpost-switch-note.duration", "unitOfMeasurement": "s", "measurements": [0.003, 0.005]}]}]
   },
   {
     "testIdentifier": "EditorPerfTests/testSwitchToHugeNote()",
     "testRuns": [{"metrics": [{
-      "displayName": "switch-note", "identifier": "com.apple.dt.XCTMetric_OSSignpost-switch-note",
-      "unitOfMeasurement": "µs", "measurements": [40000, 60000]}]}]
+      "displayName": "Duration (switch-note)",
+      "identifier": "com.apple.dt.XCTMetric_OSSignpost-switch-note.duration", "unitOfMeasurement": "µs", "measurements": [40000, 60000]}]}]
   },
   {"testIdentifier": "EditorPerfTests/testScrollHugeNote()", "testRuns": [{"metrics": []}]}
 ]
@@ -119,8 +121,8 @@ extract() { # extract <out json> [extra args]
 
 echo "== extracting"
 expect_exit "extracts a run" 0 extract "$TMP/out/results.json"
-value_is "launch_ms is the mean of the launches, in milliseconds" "$TMP/out/results.json" launch_ms 250.000
-value_is "keystroke_ms picks the signpost metric, not the clock" "$TMP/out/results.json" keystroke_ms 3.000
+value_is "launch_ms is the median of the launches, in milliseconds" "$TMP/out/results.json" launch_ms 250.000
+value_is "keystroke_ms picks the signpost metric, not the clock, and ignores an outlier" "$TMP/out/results.json" keystroke_ms 4.000
 value_is "switch_small_ms converts seconds" "$TMP/out/results.json" switch_small_ms 4.000
 value_is "switch_huge_ms converts microseconds" "$TMP/out/results.json" switch_huge_ms 50.000
 value_is "scroll_frame_ms comes from the scroll_frame_ms attachment" "$TMP/out/results.json" scroll_frame_ms 12.500

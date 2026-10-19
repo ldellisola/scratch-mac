@@ -11,7 +11,10 @@ Two sources, both read from <xcresult> with `xcrun xcresulttool`:
 
 - `get test-results metrics`: the XCTest metrics. launch_ms is LaunchPerfTests/testLaunch (XCTApplicationLaunchMetric),
   keystroke_ms, switch_small_ms and switch_huge_ms are the signpost intervals `keystroke` and `switch-note` of the
-  EditorPerfTests tests. A value is the mean of that test's measurements, converted to milliseconds.
+  EditorPerfTests tests. A value is the median of that test's measurements, in milliseconds. The median, because
+  a run on a shared virtual Mac now and then has one iteration that takes ten times as long (an outlier of 228 ms
+  among keystrokes of 3 ms moved the mean by 6 ms), and a metric that such an iteration moves cannot be compared
+  with a baseline.
 - `export attachments`: EditorPerfTests/testScrollHugeNote attaches the app's FrameMonitor report under the name
   `scroll_frame_ms` (XCTest has no metric for the most expensive frame). scroll_frame_ms is its `max_frame_ms`.
 
@@ -122,7 +125,7 @@ def extract_xctest_metrics(metrics_json: object) -> dict[str, float]:
         test_metrics = [metric for test, metric in found if test_fragment in test]
         values = pick_metric_milliseconds(test_metrics, hint) if test_metrics else None
         if values:
-            results[key] = statistics.fmean(values)
+            results[key] = statistics.median(values)
         else:
             print(f"perf-extract.py: warning: no measurement for {key} (test {test_fragment})", file=sys.stderr)
     return results

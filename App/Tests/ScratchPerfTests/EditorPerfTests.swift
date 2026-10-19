@@ -24,24 +24,34 @@ final class EditorPerfTests: XCTestCase {
 
     /// `keystroke_ms`: the `keystroke` signpost interval, from `NoteTextView.keyDown` until the character is on screen.
     /// One character per iteration, so that every iteration holds one interval, typed about a third of the way into
-    /// the huge note.
+    /// the huge note. A few characters are typed first, outside the measurement, to warm up the text system; the
+    /// screenshots before and after show where the characters went.
     func testKeystroke() throws {
         continueAfterFailure = false
         let app = launchHugeNote()
         defer { app.terminate() }
         let editor = UITestSupport.editor(in: app)
         for _ in 0..<Self.pageDownPresses { app.typeKey(.pageDown, modifierFlags: []) }
-        PerfSupport.attachScreenshot(of: app, named: "keystroke-position", to: self)
+        editor.typeText("warm up ")
+        PerfSupport.attachScreenshot(of: app, named: "keystroke-before", to: self)
 
         let options = XCTMeasureOptions()
         options.iterationCount = 100
         measure(metrics: [PerfSupport.signpostMetric(named: "keystroke")], options: options) {
             editor.typeText("x")
         }
+        PerfSupport.attachScreenshot(of: app, named: "keystroke-after", to: self)
     }
 
-    /// `scroll_frame_ms`: the longest frame the app's `FrameMonitor` saw while the test paged through the huge note.
-    /// The monitor writes its report to a file, and the test attaches it as `scroll_frame_ms` for perf-extract.py.
+    /// Down arrow presses of the scroll test. The cursor starts at the top and moves down one line per press. The
+    /// first presses (about 36) stay inside the window, and every press after that scrolls the note by one line.
+    private static let scrollPresses = 250
+
+    /// `scroll_frame_ms`: the longest frame the app's `FrameMonitor` saw while the test scrolled through the huge note
+    /// one line at a time, like a slow scroll, where each frame lays out and draws one new line. (Page Down jumps a
+    /// whole window of new text per press: the first runs measured that, and a frame of 16 to 33 ms is the cost of a
+    /// full-window redraw, not of scrolling.) The monitor writes its report to a file, and the test attaches it as
+    /// `scroll_frame_ms` for perf-extract.py.
     func testScrollHugeNote() throws {
         continueAfterFailure = false
         let dataDirectory = UITestSupport.makeDataDirectory()
@@ -51,8 +61,7 @@ final class EditorPerfTests: XCTestCase {
 
         // The monitor ignores the first seconds after launch.
         Thread.sleep(forTimeInterval: 4)
-        for _ in 0..<60 { app.typeKey(.pageDown, modifierFlags: []) }
-        for _ in 0..<60 { app.typeKey(.pageUp, modifierFlags: []) }
+        for _ in 0..<Self.scrollPresses { app.typeKey(.downArrow, modifierFlags: []) }
 
         let written = UITestSupport.wait(timeout: 20) { FileManager.default.fileExists(atPath: report.path) }
         XCTAssertTrue(written, "the frame monitor wrote nothing to \(report.path)")
@@ -60,7 +69,7 @@ final class EditorPerfTests: XCTestCase {
         Thread.sleep(forTimeInterval: 2)
         let data = try Data(contentsOf: report)
         let numbers = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Double])
-        XCTAssertGreaterThan(numbers["frames"] ?? 0, 30, "the frame report: \(numbers)")
+        XCTAssertGreaterThan(numbers["frames"] ?? 0, 100, "the frame report: \(numbers)")
 
         let attachment = XCTAttachment(string: String(decoding: data, as: UTF8.self))
         attachment.name = "scroll_frame_ms"
@@ -77,6 +86,12 @@ final class EditorPerfTests: XCTestCase {
         let small = UITestSupport.sidebarRow(titled: "Small", in: app)
         let huge = UITestSupport.sidebarRow(titled: "Huge", in: app)
         XCTAssertTrue(small.waitForExistence(timeout: 10) && huge.waitForExistence(timeout: 10), "no sidebar rows")
+
+        // Switch back and forth twice first, outside the measurement, to warm up the text system.
+        for _ in 0..<2 {
+            small.click()
+            huge.click()
+        }
 
         let options = XCTMeasureOptions()
         options.iterationCount = 15
@@ -100,6 +115,11 @@ final class EditorPerfTests: XCTestCase {
         let small = UITestSupport.sidebarRow(titled: "Small", in: app)
         let huge = UITestSupport.sidebarRow(titled: "Huge", in: app)
         XCTAssertTrue(small.waitForExistence(timeout: 10) && huge.waitForExistence(timeout: 10), "no sidebar rows")
+
+        for _ in 0..<2 {
+            small.click()
+            huge.click()
+        }
 
         let options = XCTMeasureOptions()
         options.iterationCount = 15
