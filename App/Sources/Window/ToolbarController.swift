@@ -56,6 +56,9 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
         button.setAccessibilityLabel(description)
 
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        // A custom view gets no glass background unless the item is bordered. The button's own border stays off, so
+        // the system's glass capsule is the only one.
+        item.isBordered = true
         item.label = description
         item.paletteLabel = description
         item.toolTip = description
