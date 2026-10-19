@@ -69,18 +69,22 @@ final class NoteTextViewTests: XCTestCase {
 
     func testCopyWritesOnlyPlainText() {
         let view = makeConfiguredView()
-        view.string = "- [ ] copy **me**"
-        view.selectAll(nil)
+        let text = "- [ ] copy **me**"
+        view.string = text
+        view.setSelectedRange(NSRange(location: 0, length: text.utf16.count))
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 0, length: text.utf16.count))
         let pasteboard = makePasteboard()
         defer { pasteboard.releaseGlobally() }
 
-        XCTAssertTrue(view.writeSelection(to: pasteboard, types: view.writablePasteboardTypes))
+        let written = view.writeSelection(to: pasteboard, types: view.writablePasteboardTypes)
+
+        XCTAssertTrue(written, "writable types: \(view.writablePasteboardTypes), selection: \(view.selectedRange())")
 
         let types = pasteboard.types ?? []
         XCTAssertTrue(types.contains(.string), "pasteboard types: \(types)")
         XCTAssertFalse(types.contains(.rtf), "pasteboard types: \(types)")
         XCTAssertFalse(types.contains(.rtfd), "pasteboard types: \(types)")
         XCTAssertFalse(types.contains(.html), "pasteboard types: \(types)")
-        XCTAssertEqual(pasteboard.string(forType: .string), "- [ ] copy **me**")
+        XCTAssertEqual(pasteboard.string(forType: .string), text)
     }
 }
