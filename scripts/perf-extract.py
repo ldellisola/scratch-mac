@@ -17,10 +17,11 @@ Two sources, both read from <xcresult> with `xcrun xcresulttool`:
   with a baseline.
 - `export attachments`: EditorPerfTests/testScrollHugeNote attaches the app's FrameMonitor report under the name
   `scroll_frame_ms` (XCTest has no metric for the main thread's work per frame). scroll_frame_ms is its
-  `median_frame_ms`: the median of 300 frames. scroll_frame_p95_ms and scroll_frame_max_ms, which no budget checks, are
-  its 95th percentile and its longest frame. Of the three the median is the one that can be compared from run to run on
-  a shared virtual Mac: the 95th percentile of the same build was 3.7 to 15.4 ms in six runs, and the longest frame 5.5
-  to 42 ms, because a frame in twenty, or one in 300, now and then takes several times as long.
+  `median_cpu_ms`: the median, over 300 frames, of the CPU time the main thread used for a frame. scroll_frame_wall_ms
+  (the median of the frames by the clock), scroll_frame_p95_ms and scroll_frame_max_ms (the 95th percentile and the
+  longest frame by CPU time) are for a person: no budget checks them. CPU time, because the clock time of a frame on
+  a shared virtual Mac is the main thread's work and its waiting for the window server and for other tenants, and that
+  varied between runs of the same build by a factor of five (a median of 1.5 to 9 ms).
 
 A metric that is not found is left out of <out.json> with a warning on stderr, and perf-check.py fails the run for it.
 Nothing found at all is an error.
@@ -53,9 +54,10 @@ XCTEST_METRICS = {
 SCROLL_KEY = "scroll_frame_ms"
 SCROLL_ATTACHMENT = "scroll_frame_ms"
 SCROLL_FIELDS = {
-    "scroll_frame_ms": "median_frame_ms",
-    "scroll_frame_p95_ms": "p95_frame_ms",
-    "scroll_frame_max_ms": "max_frame_ms",
+    "scroll_frame_ms": "median_cpu_ms",
+    "scroll_frame_wall_ms": "median_frame_ms",
+    "scroll_frame_p95_ms": "p95_cpu_ms",
+    "scroll_frame_max_ms": "max_cpu_ms",
 }
 
 TO_MILLISECONDS = {
@@ -140,7 +142,7 @@ def extract_xctest_metrics(metrics_json: object) -> dict[str, float]:
 
 
 def extract_scroll(attachments_dir: Path, raw_dir: Path | None) -> dict[str, float]:
-    """The numbers of the last attachment named scroll_frame_ms that has the median frame (SCROLL_FIELDS), or {}."""
+    """The numbers of the last attachment named scroll_frame_ms that has the median CPU time (SCROLL_FIELDS), or {}."""
     try:
         manifest = json.loads((attachments_dir / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
