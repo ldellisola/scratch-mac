@@ -53,13 +53,14 @@ App/Resources/                    Assets.xcassets (placeholder app icon)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
-                                  SidebarUITests
+                                  SidebarUITests, ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       placeholder until plan 1, Task 10
 scripts/                          install-swift-linux.sh (toolchain), session-setup.sh (SessionStart hook),
                                   ci-summary.py, publish-ci-results.sh, ci-wait.sh, ci-fetch.sh (the ci-results loop,
-                                  section 4), lib-ci-results.sh (shared by those), tests/ (their tests)
+                                  section 4), lib-ci-results.sh (shared by those), name-screenshots.py (names the
+                                  exported screenshots), tests/ (their tests)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests. Job `macos`: XcodeGen, core tests on
-                                  macOS, app build and app tests. Both publish to `ci-results`.
+                                  macOS, app build and app tests, screenshots. Both publish to `ci-results`.
 docs/architecture.md              module boundaries, data flow, threading
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md (more as
                                   features land)
@@ -92,9 +93,13 @@ macOS and runs on GitHub's Macs.
 - `make app-build` `[macOS]`: build the Debug app into `build/DerivedData`.
 - `make app-test` `[macOS]`: build, then run the hosted unit tests and the UI tests. Result bundle:
   `build/results/app.xcresult`. Each test has a 2 minute limit.
+- `make screenshots` `[macOS]`: run `ScreenshotTests` only and write `build/screenshots/<name>.png` for `typical-light`,
+  `typical-dark`, `empty-light` and `huge-note-light` (the names in the Makefile's `SCREENSHOT_NAMES`). The result
+  bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
+  app-test` skips these tests.
 - `make run FIXTURE=<name>` `[macOS]`: build the app and open it on a fixture in a throwaway data directory.
 
-Commands for performance, screenshots and releases are added by the tasks that create them.
+Commands for performance and releases are added by the tasks that create them.
 
 ### Launch arguments
 
@@ -127,8 +132,10 @@ screenshots. The branch keeps the newest 30 shas.
 
 The `macos` job adds to its folder: `test-summary.json` (from `xcresulttool`: passed and failed counts, and each
 failure's test name and message in `testFailures`), `app-test-diagnostics.txt` (every compiler warning and error of the
-whole build log, which the 300-line tail would cut), and `failure-attachments/` (screenshots that failed UI tests
-attached). A hosted test's failure message is also in `app-test.log`: search it for `error:`.
+whole build log, which the 300-line tail would cut), `failure-attachments/` (screenshots that failed UI tests
+attached) and `screenshots/<name>.png` (the key screens, `make screenshots`). A hosted test's failure message is also
+in `app-test.log`: search it for `error:`. To look at a screen, fetch the commit's results and open the PNG with the
+Read tool: `scripts/ci-fetch.sh <sha> build/ci-fetch/<sha>`, then `build/ci-fetch/<sha>/macos/screenshots/typical-light.png`.
 
 1. Commit and `git push -u origin <branch>`. CI runs on every push except to `ci-results`.
 2. `make ci-wait SHA=$(git rev-parse HEAD)` polls the branch and prints each job's `summary.json`. Use

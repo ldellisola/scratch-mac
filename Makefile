@@ -8,7 +8,7 @@ APP_PROJECT := App/Scratch.xcodeproj
 DERIVED_DATA := build/DerivedData
 DESTINATION := platform=macOS,arch=arm64
 
-.PHONY: core-test lint format script-test ci-wait project app-build app-test run
+.PHONY: core-test lint format script-test ci-wait project app-build app-test screenshots run
 
 # [linux] Run the ScratchCore tests.
 core-test:
@@ -44,14 +44,35 @@ app-build: project
 	  -derivedDataPath $(DERIVED_DATA)
 
 # [macOS] Build the app and run its hosted unit tests and UI tests. The result bundle is build/results/app.xcresult.
-# Tests get a time limit each, so that a stuck UI test fails instead of hanging the job.
+# Tests get a time limit each, so that a stuck UI test fails instead of hanging the job. The screenshot tests are
+# skipped: `make screenshots` runs them, once per CI job.
 app-test: project
 	rm -rf build/results/app.xcresult
 	mkdir -p build/results
 	xcodebuild test -project $(APP_PROJECT) -scheme Scratch -destination '$(DESTINATION)' \
 	  -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/app.xcresult \
 	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
-	  -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 300
+	  -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 300 \
+	  -skip-testing:ScratchUITests/ScreenshotTests
+
+# The screenshots `make screenshots` writes, one PNG each into build/screenshots/. These names are the ones in
+# ScreenshotTests (a test attaches its screenshot under its name) and CI publishes them to ci-results.
+SCREENSHOT_NAMES := typical-light typical-dark empty-light huge-note-light
+
+# [macOS] Render the key screens to PNG files in build/screenshots/<name>.png (SCREENSHOT_NAMES): run ScreenshotTests
+# only, export the attachments from the result bundle (build/results/screenshots.xcresult) into build/screenshots/raw,
+# then name each file from the exported manifest.json. Look at the PNGs to check a visual change.
+screenshots: project
+	rm -rf build/results/screenshots.xcresult build/screenshots
+	mkdir -p build/results build/screenshots
+	xcodebuild test -project $(APP_PROJECT) -scheme Scratch -destination '$(DESTINATION)' \
+	  -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/screenshots.xcresult \
+	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
+	  -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 300 \
+	  -only-testing:ScratchUITests/ScreenshotTests
+	xcrun xcresulttool export attachments --path build/results/screenshots.xcresult \
+	  --output-path build/screenshots/raw
+	python3 scripts/name-screenshots.py build/screenshots/raw build/screenshots $(SCREENSHOT_NAMES)
 
 # [macOS] Build the app and open it on a named fixture in a throwaway data directory:
 # make run FIXTURE=<empty|typical|huge-note|many-notes>. It never touches real data.

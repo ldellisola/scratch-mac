@@ -7,14 +7,15 @@ enum UITestSupport {
     static let bundleIdentifier = "io.github.ldellisola.Scratch"
 
     /// Launches the app with a new, empty data directory seeded with `fixture` (a `Fixture` raw value such as
-    /// `typical`), in light appearance. Returns the running app.
+    /// `typical`), in the given appearance (`light` or `dark`, the `-ScratchAppearance` values). Returns the running
+    /// app.
     @MainActor
-    static func launch(fixture: String) -> XCUIApplication {
+    static func launch(fixture: String, appearance: String = "light") -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ScratchDataDir", makeDataDirectory().path,
             "-ScratchFixture", fixture,
-            "-ScratchAppearance", "light",
+            "-ScratchAppearance", appearance,
         ]
         app.launch()
         return app

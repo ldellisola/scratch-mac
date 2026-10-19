@@ -122,6 +122,14 @@ jobs:
         timeout-minutes: 30
         run: make app-test 2>&1 | tee build/ci/macos/app-test.log
 
+      # The key screens as PNG files (ScreenshotTests, `make screenshots`). Runs even when a test failed, because a
+      # picture of the failing app helps. Skipped only when the project could not be generated, or on cancel.
+      - id: screenshots
+        name: Screenshots
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        timeout-minutes: 15
+        run: make screenshots 2>&1 | tee build/ci/macos/screenshots.log
+
       - id: publish
         name: Publish results to ci-results
         if: always()
@@ -137,6 +145,21 @@ jobs:
             xcrun xcresulttool export attachments --path build/results/app.xcresult \
               --output-path build/ci/macos/failure-attachments --only-failures \
               > build/ci/macos/failure-attachments.log 2>&1 || true
+          fi
+          # The screenshots (make screenshots): the named PNGs go to screenshots/. The manifest that names them is kept
+          # too, and, if naming failed, the files as exported, so that a failed naming can be diagnosed from here.
+          mkdir -p build/ci/macos/screenshots
+          if ls build/screenshots/*.png > /dev/null 2>&1; then
+            cp build/screenshots/*.png build/ci/macos/screenshots/
+          elif [ -d build/screenshots/raw ]; then
+            cp -R build/screenshots/raw build/ci/macos/screenshots-raw
+          fi
+          if [ -f build/screenshots/raw/manifest.json ]; then
+            cp build/screenshots/raw/manifest.json build/ci/macos/screenshots-manifest.json
+          fi
+          if [ -d build/results/screenshots.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path build/results/screenshots.xcresult \
+              > build/ci/macos/screenshots-test-summary.json 2> build/ci/macos/screenshots-test-summary.err || true
           fi
           # Every compiler warning and error, from the whole log, before the logs are cut to their last 300 lines.
           if [ -f build/ci/macos/app-test.log ]; then
@@ -154,5 +177,6 @@ jobs:
             --step "xcodegen=${{ steps.xcodegen.outcome }}" \
             --step "project=${{ steps.project.outcome }}" \
             --step "core-test=${{ steps.core-test.outcome }}" \
-            --step "app-test=${{ steps.app-test.outcome }}"
+            --step "app-test=${{ steps.app-test.outcome }}" \
+            --step "screenshots=${{ steps.screenshots.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" macos build/ci/macos

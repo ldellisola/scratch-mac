@@ -293,6 +293,48 @@ if [[ "$folders" == "$expected" ]]; then pass "33 shas: exactly the newest 30 re
 fi
 
 # ---------------------------------------------------------------------------------------------------------------------
+echo "== name-screenshots.py"
+SHOTS="$TMP/shots"
+mkdir -p "$SHOTS/exported"
+for id in AAAA BBBB CCCC DDDD EEEE; do printf 'png-%s' "$id" >"$SHOTS/exported/$id.png"; done
+UUID_A=11111111-2222-3333-4444-555555555555
+# A manifest as xcresulttool writes it. typical-light and typical-dark are named by their attachment, empty-light only
+# by its test, huge-note-light has an unrelated extra attachment first, and EEEE belongs to no expected name.
+cat >"$SHOTS/exported/manifest.json" <<JSON
+[
+  {"testIdentifier": "ScreenshotTests/testTypicalLight()",
+   "attachments": [{"exportedFileName": "AAAA.png", "isAssociatedWithFailure": false,
+                    "suggestedHumanReadableName": "typical-light_0_$UUID_A.png"}]},
+  {"testIdentifier": "ScreenshotTests/testTypicalDark()",
+   "attachments": [{"exportedFileName": "BBBB.png", "suggestedHumanReadableName": "typical-dark_1_$UUID_A.png"}]},
+  {"testIdentifier": "ScreenshotTests/testEmptyLight()",
+   "attachments": [{"exportedFileName": "CCCC.png", "suggestedHumanReadableName": "Screenshot_$UUID_A.png"}]},
+  {"testIdentifier": "ScreenshotTests/testHugeNoteLight()",
+   "attachments": [{"exportedFileName": "EEEE.png", "suggestedHumanReadableName": "Screen Recording.png"},
+                   {"exportedFileName": "DDDD.png", "suggestedHumanReadableName": "huge-note-light.png"}]}
+]
+JSON
+NAMES=(typical-light typical-dark empty-light huge-note-light)
+expect_exit "name-screenshots names every expected screenshot" 0 \
+    python3 "$SCRIPTS/name-screenshots.py" "$SHOTS/exported" "$SHOTS/named" "${NAMES[@]}"
+check "typical-light.png is its own attachment" grep -qx png-AAAA "$SHOTS/named/typical-light.png"
+check "typical-dark.png is its own attachment" grep -qx png-BBBB "$SHOTS/named/typical-dark.png"
+check "empty-light.png is found by its test name" grep -qx png-CCCC "$SHOTS/named/empty-light.png"
+check "huge-note-light.png is the attachment with the name" grep -qx png-DDDD "$SHOTS/named/huge-note-light.png"
+[[ "$(find "$SHOTS/named" -type f | wc -l)" -eq 4 ]] && pass "name-screenshots writes only the expected files" ||
+    fail "name-screenshots writes only the expected files"
+
+expect_exit "name-screenshots fails when a screenshot is missing" 1 \
+    python3 "$SCRIPTS/name-screenshots.py" "$SHOTS/exported" "$SHOTS/named2" typical-light many-notes-light
+output_has "name-screenshots names the missing screenshot" "many-notes-light"
+output_has "name-screenshots prints the manifest to help" "ScreenshotTests/testTypicalLight()"
+
+mkdir -p "$SHOTS/no-manifest"
+expect_exit "name-screenshots fails without a manifest" 1 \
+    python3 "$SCRIPTS/name-screenshots.py" "$SHOTS/no-manifest" "$SHOTS/named3" typical-light
+expect_exit "name-screenshots needs at least one name" 64 python3 "$SCRIPTS/name-screenshots.py" "$SHOTS/exported" "$SHOTS/named4"
+
+# ---------------------------------------------------------------------------------------------------------------------
 if [[ $failures -ne 0 ]]; then
     echo "$failures ci script test(s) failed" >&2
     exit 1
