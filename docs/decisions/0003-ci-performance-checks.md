@@ -1,18 +1,20 @@
 # 0003: What the CI performance check compares
 
-Status: accepted, 2026-10-19 (plan 1, task 10). Records the numbers CI enforces for the spec §7 budgets: a changed
-budget (`launch_ms`) and the choices that make CI's measurements comparable from one run to the next. The spec's two
-rules stay: CI fails a result that is more than 20% slower than the stored baseline or more than twice its budget, and
-warns when a result is over its budget but inside those limits.
+Status: accepted, 2026-10-19 (plan 1, task 10). Records the numbers CI enforces for the spec §7 budgets: two changed
+budgets (`launch_ms` and `switch_small_ms`) and the choices that make CI's measurements comparable from one run to the
+next. The spec's two rules stay: CI fails a result that is more than 20% slower than the stored baseline or more than
+twice its budget, and warns when a result is over its budget but inside those limits.
 
 ## Context
 
-CI measures on GitHub's virtual Macs (`macos-26`, macOS 26.6.2), and the budgets are the owner's M4's. In the runs of
-ADR 0001 (three of TextKit 1 and two of TextKit 2, the same suite each time) two things stood out:
+CI measures on GitHub's virtual Macs (`macos-26`, macOS 26.6.2), and the budgets are the owner's M4's. Two things stood
+out in the many runs of the performance suite made for ADR 0001 and for this record:
 
-- **Runs of the same build differ by a factor of 1.5 to 2.** The keystroke median of the same code was 3.6 to 4.5 ms in
-  one round of runs and 6.7 ms in another, and the first run of a job is slower than the later ones. A single
-  keystroke now and then takes 20 to 60 times the median (228 ms in one run).
+- **Runs of the same build differ by a factor of two, and now and then by five.** Medians of the same code, in
+  milliseconds, over fifteen runs of TextKit 1 with the final tests: `launch_ms` 331 to 776, `switch_small_ms` 6.8 to
+  17.6, `switch_huge_ms` 39 to 66, and, in the ten of them that typed in the middle of the note, the keystroke 3.5 to 6.3. A run is sometimes slow
+  in several metrics at once (the first run of a job most often), so it is not the code. A single keystroke now and
+  then takes 20 to 60 times the median (228 ms in one run).
 - **A launch takes much longer than 200 ms on this runner whatever the app is.** The same launch measurement on
   Calculator, in the same jobs (medians of 10 launches, after 3 unmeasured ones):
 
@@ -29,16 +31,26 @@ ADR 0001 (three of TextKit 1 and two of TextKit 2, the same suite each time) two
 
 ## Decisions
 
-1. **`launch_ms` is budgeted at 400 ms on CI** (`perf/budgets.json`), against the spec's 200 ms: a warning above
-   400 ms, a failure above 800 ms or 20% above the baseline. The 200 ms is still the target on the owner's M4 and is
-   checked by hand there, like the cold-boot number (§7). The other four budgets are the spec's.
+1. **Two budgets are looser on CI than in the spec** (`perf/budgets.json`). The spec's figures are the owner's M4's, and
+   they stay the targets there, checked by hand like the cold-boot number (§7). The other three budgets are the spec's.
+   - `launch_ms`: **400 ms** instead of 200. A warning above 400 ms, a failure above 800 ms. The calibration against
+     Calculator above is the reason.
+   - `switch_small_ms`: **12 ms** instead of 8. A warning above 12 ms, a failure above 24 ms. The median of fifteen
+     runs is 9.8 ms and the slowest is 17.6 ms, so with the spec's budget the 2x rule (16 ms) fails an ordinary slow
+     run. The switch includes a synchronous wait for the storage queue (`persistNow`), which on a virtual disk costs
+     several milliseconds that an M4's SSD does not.
 2. **A metric is the median of its measurements**, not the mean: one slow iteration in a hundred moves the mean by
    several milliseconds and cannot be compared with a baseline. The median is `keystroke_ms`, `switch_small_ms`,
    `switch_huge_ms` and `launch_ms` (`scripts/perf-extract.py`).
-3. **`scroll_frame_ms` is the 95th percentile of 300 scripted frames**, not the longest. The spec says "no frame over
-   8 ms". On this runner the longest of 300 frames of the same build was 5.5, 12.0 and 34.3 ms in three runs, and the
-   95th percentile 3.7, 5.3 and 7.2 ms. The longest frame is still reported (`scroll_frame_max_ms` in `results.json`,
-   not checked), and a person looking at a regression reads both.
+3. **`scroll_frame_ms` is the median CPU time of the main thread per frame**, over 300 scripted frames, not the longest
+   frame the spec asks about ("no frame over 8 ms"). On this runner the longest of 300 frames of the same build was
+   5.5 to 56 ms and the 95th percentile 2.3 to 29 ms (by the clock), so neither can be compared with a baseline. The
+   clock time of the median frame varied from 0.7 to 11.6 ms in six runs, because a frame's clock time includes the
+   main thread's waiting. By CPU time the median was 0.7, 1.1, 3.5, 4.0 and 5.8 ms in five runs of the final tests: two modes, a fast
+   one and a slow one, and nothing in between to compare with a 20% rule, so the baseline is the slow mode. The
+   median frame, the 95th percentile and the longest frame are all in `results.json` for a person
+   (`scroll_frame_wall_ms`, `scroll_frame_p95_ms`, `scroll_frame_max_ms`), and the report of the frame monitor (the
+   attachment `scroll_frame_ms`) keeps every frame.
 4. **The app scrolls itself** (`FrameMonitor`, `-ScratchFrameMonitor <path>`): 20 points every 1/60 s for 5 seconds,
    starting 3.5 seconds after launch, measuring the main thread's work per frame as the time from the run loop waking
    up to its going idle again. Not `XCTOSSignpostMetric.scrollingAndDecelerationMetric`, which I could not check for
@@ -47,30 +59,32 @@ ADR 0001 (three of TextKit 1 and two of TextKit 2, the same suite each time) two
    events a second, and the first runs scrolled 11 frames out of 250 key presses (an arrow key scrolls a third of a
    window). The plan names the in-app monitor as the fallback, which is this.
 5. **The launch test uses `XCTApplicationLaunchMetric()`**, not `waitUntilResponsive: true`, which reported a launch for
-   the first iteration only ("Received unexpected number of metrics: 0 in iteration with index N") in every one of
-   the five runs of ADR 0001. The test launches three times before it measures, because the first launches were the
-   slowest (0.53 s, then 0.37 s).
+   the first iteration only ("Received unexpected number of metrics: 0 in iteration with index N") in eight of the nine
+   runs of the first two rounds, and nothing in the ninth. The test launches three times before it measures, because the first launches
+   were the slowest (0.53 s, then 0.37 s).
 6. **Signposts end when the main run loop is idle** (`RunLoopIdle`), not when the code returns, so that TextKit's lazy
    layout and drawing are inside the `keystroke` and `switch-note` intervals (ADR 0001 has the evidence: TextKit 2
    never calls `draw(_:)`).
-7. **The baseline is the slowest run, not an average** (`perf/baseline.json`). Per metric, the largest median of the
-   runs of TextKit 1 of the decision, and of the first full CI run of the `macos` job with the check in it (that run is
-   where the scroll's 11.1 ms and the keystroke's 6.8 ms come from: the performance tests run after the app tests and the
-   screenshots, and the job's first minutes are the slowest, so a baseline taken from the spike's later runs failed it):
+7. **The baseline is the slowest run, not an average** (`perf/baseline.json`): per metric, the largest median of all
+   the runs of the final tests on TextKit 1 (fifteen runs of the suite in the spike's fresh jobs and in the `macos` job).
+   Each of the slowest came from a different run:
 
    | | `launch_ms` | `keystroke_ms` | `scroll_frame_ms` | `switch_small_ms` | `switch_huge_ms` |
    |---|---|---|---|---|---|
-   | baseline | 581.5 | 6.8 | 11.1 | 13.5 | 64.1 |
-   | allowed (1.2 x) | 697.8 | 8.2 | 13.3 | 16.2 | 76.9 |
+   | baseline | 776.1 | 6.3 | 5.8 | 17.6 | 65.9 |
+   | fails above 1.2 x baseline | 931.3 | 7.6 | 7.0 | 21.1 | 79.1 |
+   | fails above 2 x budget | 800 | 16 | 16 | 24 | 100 |
 
-   With the first run of a job 1.5 to 2 times slower than the later ones, a baseline taken from a fast run would fail
-   a good build, as the first one did. This baseline still fails a TextKit 2 build (keystroke 19.8 to 28.0 ms, scroll
-   15.1 and 16.2 ms), which is the kind of regression the check is for. It does not catch a regression of 50% in a
-   metric that is usually far below its baseline: the check is only as sharp as the runner is repeatable.
+   A baseline taken from a fast run fails good builds: the first version of this check, with the baseline of the
+   spike's later runs, failed the `macos` job's first run (the job's performance tests run after the app tests and the
+   screenshots, and are slower than in a fresh job). This baseline still fails a TextKit 2 build (keystroke 12.9 to 16.3
+   ms in the middle of the note), which is the kind of regression the check is for. It does not catch a regression of
+   50% in a metric that is usually far below its baseline: the check is only as sharp as the runner is repeatable.
 
 ## How to change them
 
 A budget changes only with a record like this one. A baseline is recorded after an intended change, from at least three
 runs of the macOS job: take the largest median of each metric from `ci-results/<sha>/macos/perf/results.json` (`make
 perf-baseline` writes one run's numbers, which on a laptop are not CI's). If CI fails a metric that no change of the
-code explains, look at the run's `perf/report.md` and `perf/metrics.json` before touching the baseline.
+code explains, look at the run's `perf/report.md` and `perf/metrics.json` before touching the baseline, and run the job
+again: a slow run is a fact about the runner.

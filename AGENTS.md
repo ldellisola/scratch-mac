@@ -62,7 +62,7 @@ App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release
                                   EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
                                   UITestSupport and AccessibilityID with the UI tests
 perf/                             budgets.json (the budgets CI enforces, in milliseconds) and baseline.json (CI's own
-                                  numbers, the slowest decision run: docs/decisions/0003)
+                                  numbers, the slowest of many runs: docs/decisions/0003)
 scripts/                          install-swift-linux.sh (toolchain), session-setup.sh (SessionStart hook),
                                   ci-summary.py, publish-ci-results.sh, ci-wait.sh, ci-fetch.sh (the ci-results loop,
                                   section 4), lib-ci-results.sh (shared by those), name-screenshots.py (names the
@@ -153,16 +153,18 @@ docs/decisions/0001 and 0003. What to know when one fails or changes:
 - **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 10 launches. `keystroke_ms`: the
   `keystroke` signpost, `NoteTextView.keyDown` until the main run loop is idle, one character per iteration typed about
   a third into the huge note. `switch_small_ms` and `switch_huge_ms`: the `switch-note` signpost, from
-  `SessionCoordinator.open` until the note is on screen. `scroll_frame_ms`: the 95th percentile of the main thread's
-  work per frame while the app scrolls the huge note by itself (`FrameMonitor`, `-ScratchFrameMonitor`). Scrolling is
-  measured with this in-app monitor, not with XCTest's scroll metrics. All in milliseconds, medians but the last.
+  `SessionCoordinator.open` until the note is on screen. `scroll_frame_ms`: the median CPU time of the main thread per
+  frame while the app scrolls the huge note by itself (`FrameMonitor`, `-ScratchFrameMonitor`). Scrolling is measured
+  with this in-app monitor, not with XCTest's scroll metrics. All in milliseconds and all medians.
 - **The CI runner is slow and noisy.** Runs of the same build differ by up to a factor of two (the first run of a job is
   the slowest), and a launch takes about 400 ms there (Calculator takes 1 s). The baseline is therefore the slowest of
-  several runs, and `launch_ms` is budgeted at 400 instead of the spec's 200 (docs/decisions/0003). A failure that no
+  many runs, and `launch_ms` and `switch_small_ms` are budgeted at 400 and 12 instead of the spec's 200 and 8
+  (docs/decisions/0003). A failure that no
   change explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline.
 - **A signpost interval ends when the run loop is idle** (`RunLoopIdle`, `Signposts.beginEditorInterval`), not when the
   code returns, so that TextKit's lazy layout and drawing count. A new interval for the tests belongs there too.
-- **`XCTApplicationLaunchMetric(waitUntilResponsive: true)` reports one launch** of ten on macos-26. Use the plain one.
+- **`XCTApplicationLaunchMetric(waitUntilResponsive: true)` reports one launch of ten, or none,** on macos-26. Use the
+  plain one.
 - **XCTest cannot report a custom number.** `scroll_frame_ms` reaches the result bundle as an attachment named
   `scroll_frame_ms` (JSON), which `perf-extract.py` reads with `xcresulttool export attachments`.
 - **Perf tests type and scroll through a 10,000-line note, so `make perf` takes about 5 minutes** and its tests have wide

@@ -10,64 +10,71 @@ by `TextViewFactory`. TextKit 2 is not used, and the switch that chose between t
 `-ScratchTextKit` launch argument, `make perf TEXTKIT=`) is removed.
 
 The reason is the keystroke budget (§7: at most 8 ms of main-thread work per keystroke in a note of up to 10,000
-lines). In a note of 10,000 lines TextKit 1 needs 3.6 to 4.5 ms per keystroke on the CI runner and TextKit 2 needs 19.8
-to 28.0 ms, 2.5 to 3.5 times the budget. Both stacks can hide the `**` markers of a bold run cleanly (below), so the
-spec's tie-breaker, "if both can, choose TextKit 2", does not apply: TextKit 2 does not meet the budget.
+lines). In a note of 10,000 lines TextKit 1 needs 3.5 to 4.9 ms per keystroke in the middle of the note, and 3.2 to 6.7
+ms at the start of it. TextKit 2 needs 12.9 to 16.3 ms in the middle and 19.5 to 38.5 ms at the start: more than the
+budget at every position tried, up to 4.8 times as much. Both stacks can hide the `**` markers of a bold run cleanly
+(below), so the spec's tie-breaker, "if both can, choose TextKit 2", does not apply: TextKit 2 does not meet the budget.
 
 ## How it was measured
 
-On a throwaway branch (`spike/textkit`, deleted after this record was written) the performance tests of this task ran
-on each stack, on the GitHub-hosted runner the rest of CI uses: `macos-26`, an Apple virtual machine, macOS 26.6.2,
-Xcode 26.6, the Release build, arm64. Runner and tests are described in `AGENTS.md`; the numbers are the median of
-each test's measurements (15 to 100 iterations), in milliseconds, one column per run of the whole suite:
+On a throwaway branch (`spike/textkit`) the performance tests of this task ran on each stack, on the GitHub-hosted
+runner the rest of CI uses: `macos-26`, an Apple virtual machine, macOS 26.6.2, Xcode 26.6, the Release build, arm64.
+The tests and metrics are described in `AGENTS.md`. Four rounds of runs of both stacks (the first of two runs each,
+the others of three runs of TextKit 1 and two of TextKit 2), the tests improving between rounds, and a fifth round of
+four runs of the final suite on TextKit 1 only, for the baseline. The numbers below are the median of each test's
+measurements (10 to 100 iterations), in milliseconds, one column per run of the whole suite, from the fourth round (the
+first with the keystroke typed in the middle of the note):
 
 | Metric | CI budget | TextKit 1, run 1 | run 2 | run 3 | TextKit 2, run 1 | run 2 |
 |---|---|---|---|---|---|---|
-| `launch_ms` | 400 (spec: 200) | 581.5 | 441.7 | 372.4 | 491.2 | 620.1 |
-| `keystroke_ms` | 8 | 4.5 | 3.6 | 3.7 | **28.0** | **19.8** |
-| `scroll_frame_ms` (95th percentile of 300 frames) | 8 | 7.2 | 3.7 | 5.3 | **15.1** | **16.2** |
-| longest of the 300 frames (not checked) | | 34.3 | 5.5 | 12.0 | 31.1 | 50.7 |
-| `switch_small_ms` | 8 | 13.5 | 11.0 | 7.6 | 16.6 | 12.1 |
-| `switch_huge_ms` | 50 | 45.4 | 64.1 | 40.3 | 20.6 | 18.6 |
+| `keystroke_ms`, in the middle of the note | 8 | 3.5 | 3.7 | 4.9 | **12.9** | **16.3** |
+| `switch_small_ms` | 12 (spec: 8) | 7.8 | 11.4 | 11.3 | 17.5 | 20.8 |
+| `switch_huge_ms` | 50 | 60.4 | 42.3 | 45.7 | 22.6 | 22.4 |
+| `launch_ms` | 400 (spec: 200) | 444.9 | 600.2 | 776.1 | 670.0 | 590.2 |
+| scroll, 95th percentile of 300 frames, by the clock | | 2.3 | 2.8 | 21.4 | 24.2 | 11.8 |
+| scroll, longest frame | | 19.9 | 26.2 | 30.7 | 59.6 | 99.6 |
 
-Two earlier rounds of the suite, with earlier versions of the same tests, gave the same picture: keystroke medians of
-3.2 to 6.7 ms for TextKit 1 (five runs) against 19.5 to 38.5 ms for TextKit 2 (four runs). Runs on this runner differ a
-lot (the first run of a job is the slowest in both stacks), which is why the CI check compares medians with a baseline
-that is the slowest run (`docs/decisions/0003-ci-performance-checks.md`). The gap between the stacks in keystroke time
-and in scroll frames is not noise: every TextKit 2 run is slower than every TextKit 1 run in both.
+The keystroke is the metric that decides, and it is the one with a gap that is not noise: in the three rounds before
+the keystroke was typed in the middle of the note (the cursor stayed at the start, because Page Down only scrolls),
+TextKit 1 had medians of 3.2 to 6.7 ms in eight runs and TextKit 2 of 19.5 to 38.5 ms in six. TextKit 1 is the faster
+for a keystroke at every position and in every run. The other rows say less: runs of the same build on this runner
+differ by a factor of two or more (a run is now and then slow in several metrics at once, as TextKit 1's third run is,
+with a launch of 776 ms and scroll frames of 21 ms), and the scroll frames of the two stacks overlap, except that TextKit
+2's longest frames are the longest. TextKit 2 is better at
+one thing: switching to the 10,000-line note (22 ms against 42 to 60 ms), which is the one metric where TextKit 1 is
+over its budget. See `docs/decisions/0003-ci-performance-checks.md` for what CI does with the noise.
 
 What the metrics are, in short: `keystroke_ms` runs from `NoteTextView.keyDown` to the moment the main run loop is next
-about to wait, which is after AppKit has laid out, drawn and committed the character (a character typed about a third of
-the way into the 10,000-line note, 100 times). `switch_*_ms` is the same for a click on a sidebar row, until the note is
-on screen. `scroll_frame_ms` is the main thread's work per frame while the app scrolls the huge note by itself. The
-intervals end when the main run loop is idle, and not when the work returns, so that TextKit's lazy layout and drawing
-are inside them.
+about to wait, which is after AppKit has laid out, drawn and committed the character (a character typed 100 times, in
+the middle of the 10,000-line note). `switch_*_ms` is the same for a click on a sidebar row, until the note is on
+screen. The intervals end when the main run loop is idle, and not when the work returns, so that TextKit's lazy layout
+and drawing are inside them.
 
 ### Where TextKit 2's time goes
 
 A second set of signposts around the steps of a keystroke (`NoteTextView.insertText`, `layout`, `draw`, the
-`textDidChange` callback), in the 10,000-line note and in a small one (6 lines). Medians in milliseconds:
+`textDidChange` callback), in the 10,000-line note and in a small one (6 lines). Medians in milliseconds, typed in the
+middle of the large note (round four), and, in the last two rows, typed at the start of it (round three; the cursor was
+at the start then):
 
 | | whole keystroke | `insertText` | `layout` | `draw` | `textDidChange` callback |
 |---|---|---|---|---|---|
-| TextKit 1, 10,000 lines | 5.0 | 1.6 | 0.00 | 0.12 | 0.03 |
-| TextKit 1, 6 lines | 4.6 | 1.5 | 0.01 | 0.10 | 0.03 |
-| TextKit 2, 10,000 lines | **29.5** | **20.2** | 2.6 | never called | 0.03 |
-| TextKit 2, 6 lines | 5.3 | 1.8 | 0.9 | never called | 0.02 |
+| TextKit 1, 10,000 lines, middle | 6.4 | 2.3 | 0.01 | 0.19 | 0.03 |
+| TextKit 1, 6 lines | 5.0 | 1.6 | 0.00 | 0.11 | 0.02 |
+| TextKit 2, 10,000 lines, middle | **10.1** | 3.1 | 1.7 | never called | 0.02 |
+| TextKit 2, 6 lines | 7.1 | 1.6 | 0.8 | never called | 0.02 |
+| TextKit 1, 10,000 lines, start | 5.0 | 1.6 | 0.00 | 0.12 | 0.03 |
+| TextKit 2, 10,000 lines, start | **29.5** | **20.2** | 2.6 | never called | 0.03 |
 
-(These runs have more signposts than the ones in the table above, which is why the totals differ a little. In TextKit 2
-`draw(_:)` of the text view was not called once in 60 keystrokes: it draws in layers, which is why the keystroke
-interval ends when the run loop is idle and not when `draw(_:)` returns.) TextKit 1
-costs the same for any note size. TextKit 2 pays for the size of the note inside `insertText` itself: 1.8 ms for 6
-lines, 20 ms for 10,000. A hosted test that inserts into a text view in a window that is never shown (3.5 ms for
-TextKit 1, 3.0 ms for TextKit 2 with 10,000 lines) does not show it, so the cost appears only when the view is on
-screen. The CI has no profiler, and I did not find out which step inside `insertText` it is. I tried no tuning of the
-TextKit 2 view (for example not resizing it to the height of the text): the decision rests on the stack as the editor
-needs it.
-
-TextKit 2 is better at one thing: switching to the 10,000-line note (19 to 21 ms against 40 to 64 ms, because it lays
-out lazily), which is the one metric where TextKit 1 is over its budget in some runs. That is a warning, not a failure,
-and `NoteTextView.load` sets the text, the font and the colour in three passes, which is a known place to save time.
+(These runs have more signposts than the runs above, and the first one was slow, which is why the totals differ from
+the table. In TextKit 2 `draw(_:)` of the text view was not called once in 60 keystrokes: it draws in layers, which is
+why the keystroke interval ends when the run loop is idle and not when `draw(_:)` returns.) TextKit 1 costs about the
+same for any note size and any position (5.0 to 6.4 ms with these signposts). TextKit 2 pays for the size of the note and for where the edit is: 20 ms inside
+`insertText` for an edit at the start of the note, 3 ms in the middle, 1.6 ms for a small note. A hosted test that
+inserts into a text view in a window that is never shown (3.5 ms for TextKit 1, 3.0 ms for TextKit 2 with 10,000
+lines) does not show it, so the cost appears only when the view is on screen. The CI has no profiler, and I did not
+find out which step inside `insertText` it is. I tried no tuning of the TextKit 2 view (for example not resizing it
+to the height of the text): the decision rests on the stack as the editor needs it.
 
 ### The string conversion is not the cost
 
@@ -155,9 +162,11 @@ run (light mode, 1024 x 674 px):
 
 TextKit 2 is the newer API and the one Apple develops, which is a reason to prefer it. It is not enough here:
 
-- It misses the keystroke budget by 2.5 to 3.5 times, in a note that §7 says must stay inside it, and its cost grows
-  with the length of the note. The spec's rule is "choose the mode that meets the budgets".
-- It is worse on every other metric measured but switching to the huge note.
+- It misses the keystroke budget at every position tried (1.6 to 2 times in the middle of a 10,000-line note, up to 4.8
+  times at its start), in a note that §7 says must stay inside it, and its cost grows with the length of the note. The
+  spec's rule is "choose the mode that meets the budgets".
+- It is slower at switching to a small note and no better at scrolling, and better at one thing only: switching to the
+  huge note.
 - TextKit 1 can do everything the editor needs, including marker hiding, with the techniques above.
 
 ## Consequences
