@@ -13,7 +13,11 @@ final class KeystrokeBreakdownSpikeTests: XCTestCase {
         let editor = UITestSupport.editor(in: app)
         XCTAssertTrue(editor.waitForExistence(timeout: 30), "the editor did not appear")
         for _ in 0..<pageDowns { app.typeKey(.pageDown, modifierFlags: []) }
+        if pageDowns > 0 {
+            app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).click()
+        }
         editor.typeText("warm up ")
+        PerfSupport.attachScreenshot(of: app, named: "breakdown-before-\(fixture)", to: self)
 
         let options = XCTMeasureOptions()
         options.iterationCount = 60
@@ -21,6 +25,7 @@ final class KeystrokeBreakdownSpikeTests: XCTestCase {
         measure(metrics: names.map { PerfSupport.signpostMetric(named: $0) }, options: options) {
             editor.typeText("x")
         }
+        PerfSupport.attachScreenshot(of: app, named: "breakdown-after-\(fixture)", to: self)
     }
 
     func testKeystrokeBreakdownHugeNote() {
