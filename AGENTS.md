@@ -41,13 +41,19 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
                                   sequence: storage, session, window, menu bar), AppEnvironment (parses the launch
                                   arguments, opens storage; isolates a hosted test run)
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
-                                  sidebar item + editor item), MainMenu (menu bar, built in code: there is no storyboard)
+                                  sidebar item + editor item), MainMenu (menu bar, built in code: there is no storyboard),
+                                  ToolbarController (sidebar button, new note button)
+App/Sources/Sidebar/              SidebarViewController (the note list: an NSTableView in the glass sidebar)
+App/Sources/Session/              SessionCoordinator (which note is open, autosave, restore, new note, the sidebar list;
+                                  the one place that writes to storage)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy), TextViewFactory (TextKit 1
-                                  or 2 stack), EditorViewController (shows a note, reports edits)
+                                  or 2 stack), EditorViewController (shows a note, reports edits, cursor and scroll)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts
 App/Resources/                    Assets.xcassets (placeholder app icon)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app
-App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory
+App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
+                                  it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
+                                  SidebarUITests
 App/Tests/ScratchPerfTests/       placeholder until plan 1, Task 10
 scripts/                          install-swift-linux.sh (toolchain), session-setup.sh (SessionStart hook),
                                   ci-summary.py, publish-ci-results.sh, ci-wait.sh, ci-fetch.sh (the ci-results loop,
@@ -55,7 +61,8 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests. Job `macos`: XcodeGen, core tests on
                                   macOS, app build and app tests. Both publish to `ci-results`.
 docs/architecture.md              module boundaries, data flow, threading
-docs/features/                    one short behaviour spec per feature: paste-and-copy.md (more as features land)
+docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md (more as
+                                  features land)
 docs/decisions/                   numbered decision records
 docs/superpowers/                 design spec and plans
 ```
@@ -202,6 +209,19 @@ A change is done when:
   overlaps the scroll view, and the top of a note is at `y = -contentInsets.top`, not 0 (`EditorViewController.show`).
 - **There is no storyboard, so there is no menu bar until `MainMenu.install` runs.** ⌘Q, ⌘C, ⌘V and ⌘Z only work
   because that menu exists. A new shortcut needs a menu item.
+- **The coordinator must outlive the autosaver's timers.** `Autosaver` does not keep itself alive: a dirty autosaver
+  that is released skips its pending save. `SessionCoordinator` owns it and `AppDelegate` owns the coordinator, so keep
+  both. The save closure holds the coordinator weakly. Never replace the autosaver while it is dirty.
+- **`SessionCoordinator.persistNow()` waits for the storage queue** (`storageQueue.sync {}`). Call it, `flush()` and
+  `open(_:)` on the main thread only, and never from a block that runs on the storage queue.
+- **A new note that nobody has used is not in the sidebar** and is discarded when left empty. It is "untouched" while it
+  was created in this session (or restored empty) and has no text. Test changes that look at the sidebar must type first.
+- **`NSToolbar` holds its delegate weakly.** `AppDelegate` keeps the `ToolbarController`. The new note button is an
+  `NSButton` as the item's view, because that is how UI tests get an accessibility identifier on it.
+- **UI tests type without clicking the editor first** (`editor.typeText`): the editor is first responder at launch, and a
+  click would move the cursor that `testCursorRestoredAfterRelaunch` checks. `typeText` and `typeKey` need keyboard focus.
+  Kill the app with `NSRunningApplication.forceTerminate()`, never `XCUIApplication.terminate()`, which may quit
+  gracefully.
 - **UI tests find elements by `AccessibilityID`.** The file is compiled into the app and into each UI test target
   (`App/project.yml`), so add an identifier once and use it on both sides. UI tests launch through
   `UITestSupport.launch(fixture:)`, which always passes a unique `-ScratchDataDir`.

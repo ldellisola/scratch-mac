@@ -2,14 +2,22 @@ import AppKit
 import ScratchCore
 
 /// Shows one note in the plain-text editor and reports what the user types. It knows nothing about storage: the
-/// session coordinator (plan 1, task 8) decides which note to show and when to save it.
+/// session coordinator decides which note to show and when to save it.
 final class EditorViewController: NSViewController, NSTextViewDelegate {
     /// Called with the whole text after each edit by the user. Not called when `show` loads a note.
     var onTextChange: ((String) -> Void)?
 
+    /// Called when the cursor or the scroll position changed, by the user or because of typing. Not called when `show`
+    /// loads a note. The new values are in `currentSelection` and `currentScrollY`. The session coordinator saves them
+    /// with the session (spec §6.6: cursor and scroll position are persisted like text).
+    var onViewStateChange: (() -> Void)?
+
     private let scrollView: NSScrollView
     private let textView: NoteTextView
     private var isLoadingNote = false
+    /// The scroll offset last reported through `onViewStateChange` or set by `show`, so that a resize of the window,
+    /// which also changes the clip view's bounds, does not count as scrolling.
+    private var lastScrollY: Double = 0
 
     init(textKit: TextKitMode) {
         let editor = TextViewFactory.makeEditor(mode: textKit)
@@ -19,6 +27,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         textView.delegate = self
         textView.setAccessibilityIdentifier(AccessibilityID.editorTextView)
         textView.setAccessibilityLabel("Note")
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(clipViewBoundsDidChange(_:)), name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView)
     }
 
     @available(*, unavailable)
@@ -55,6 +66,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         let clipView = scrollView.contentView
         clipView.scroll(to: NSPoint(x: 0, y: scrollY == 0 ? topY : max(scrollY, topY)))
         scrollView.reflectScrolledClipView(clipView)
+        lastScrollY = currentScrollY
     }
 
     /// Makes the text view the first responder, so typing goes into the note.
@@ -76,5 +88,20 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
     func textDidChange(_ notification: Notification) {
         guard !isLoadingNote else { return }
         onTextChange?(textView.string)
+    }
+
+    func textViewDidChangeSelection(_ notification: Notification) {
+        guard !isLoadingNote else { return }
+        onViewStateChange?()
+    }
+
+    // MARK: Scrolling
+
+    @objc private func clipViewBoundsDidChange(_ notification: Notification) {
+        guard !isLoadingNote else { return }
+        let scrollY = currentScrollY
+        guard scrollY != lastScrollY else { return }
+        lastScrollY = scrollY
+        onViewStateChange?()
     }
 }

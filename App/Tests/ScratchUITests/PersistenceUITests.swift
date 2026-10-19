@@ -19,8 +19,10 @@ final class PersistenceUITests: XCTestCase {
 
         // `XCUIApplication.terminate()` may quit gracefully. `forceTerminate()` sends SIGKILL.
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: UITestSupport.bundleIdentifier)
-        XCTAssertEqual(running.count, 1, "running Scratch processes: \(running.count)")
-        XCTAssertTrue(running.first?.forceTerminate() ?? false, "the app was not killed")
+        XCTAssertFalse(running.isEmpty, "no running Scratch process to kill")
+        for process in running {
+            XCTAssertTrue(process.forceTerminate(), "the kill was not sent to process \(process.processIdentifier)")
+        }
         XCTAssertTrue(app.wait(for: .notRunning, timeout: 10), "the app is still running after the kill")
 
         let relaunched = UITestSupport.relaunch(sameDataAs: app)

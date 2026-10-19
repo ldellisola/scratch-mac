@@ -4,6 +4,10 @@ import ScratchCore
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var environment: AppEnvironment?
     private var windowController: MainWindowController?
+    /// The coordinator owns the autosaver, which does not keep itself alive: it stays here for the app's lifetime.
+    private var coordinator: SessionCoordinator?
+    /// The window's toolbar keeps its delegate weakly.
+    private var toolbarController: ToolbarController?
 
     // MARK: Launch
 
@@ -27,6 +31,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
+    /// Quitting writes everything that is unsaved before the process ends (spec §6.6).
+    func applicationWillTerminate(_ notification: Notification) {
+        coordinator?.persistNow()
+    }
+
+    /// So does switching to another app: whatever happens to Scratch next, the notes are on disk.
+    func applicationDidResignActive(_ notification: Notification) {
+        coordinator?.persistNow()
+    }
+
     private func launch() throws {
         let environment = try AppEnvironment.bootstrap(arguments: CommandLine.arguments)
         self.environment = environment
@@ -35,38 +49,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.appearance = NSAppearance(named: appearance == .dark ? .darkAqua : .aqua)
         }
 
-        let (note, tab) = try Self.activeTab(in: environment.storage, now: Date())
         let editor = EditorViewController(textKit: environment.options.textKit ?? .two)
-        // Plan 1, task 8 replaces this placeholder with the note list.
-        let sidebar = NSViewController()
-        sidebar.view = NSView()
+        let sidebar = SidebarViewController()
         let content = MainSplitViewController(sidebar: sidebar, editor: editor)
         let windowController = MainWindowController(environment: environment, content: content)
         self.windowController = windowController
 
-        editor.show(note, selection: tab.selection, scrollY: tab.scrollY)
+        let coordinator = SessionCoordinator(storage: environment.storage, editor: editor, sidebar: sidebar)
+        self.coordinator = coordinator
+        let toolbarController = ToolbarController()
+        toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNote() }
+        self.toolbarController = toolbarController
+        windowController.window?.toolbar = toolbarController.makeToolbar()
+
+        coordinator.restore()
         windowController.showWindow(nil)
         editor.focus()
-    }
-
-    /// The tab to show and its note, from the saved session (spec §6.6): the active tab, or else the first tab that
-    /// still has a note. A tab whose note is missing or deleted is dropped. Without a usable session it starts a new
-    /// empty note and saves a one-tab session for it. Plan 1, task 8 moves this into the session coordinator.
-    private static func activeTab(in storage: ScratchStorage, now: Date) throws -> (note: Note, tab: TabState) {
-        if let state = try storage.session.load() {
-            let others = state.tabs.indices.filter { $0 != state.activeTabIndex }
-            let active = state.tabs.indices.filter { $0 == state.activeTabIndex }
-            for index in active + others {
-                let tab = state.tabs[index]
-                if let note = try storage.notes.note(tab.noteID), note.deletedAt == nil {
-                    return (note, tab)
-                }
-            }
-        }
-        let note = try storage.notes.create(now: now)
-        let tab = TabState(noteID: note.id, selection: 0, scrollY: 0)
-        try storage.session.save(SessionState(tabs: [tab], activeTabIndex: 0))
-        return (note, tab)
     }
 
     /// The app cannot work without its storage. Say why, then quit.
