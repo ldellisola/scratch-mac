@@ -138,6 +138,12 @@ jobs:
               --output-path build/ci/macos/failure-attachments --only-failures \
               > build/ci/macos/failure-attachments.log 2>&1 || true
           fi
+          # Every compiler warning and error, from the whole log, before the logs are cut to their last 300 lines.
+          if [ -f build/ci/macos/app-test.log ]; then
+            grep -E '(warning|error):' build/ci/macos/app-test.log \
+              | grep -v -e appintentsmetadataprocessor -e linkd.autoShortcut | sort -u | head -n 200 \
+              > build/ci/macos/app-test-diagnostics.txt || true
+          fi
           for log in build/ci/macos/*.log; do
             [ -e "$log" ] || continue
             tail -n 300 "$log" > "$log.tail" && mv "$log.tail" "$log"

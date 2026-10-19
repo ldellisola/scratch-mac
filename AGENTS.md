@@ -118,6 +118,11 @@ job pushes its results to the orphan `ci-results` branch, in a folder `<sha>/<jo
 (`sha`, `job`, `status`, `steps`, `run_url`, `finished_at`), the last 300 lines of each step's log, and for macOS the
 screenshots. The branch keeps the newest 30 shas.
 
+The `macos` job adds to its folder: `test-summary.json` (from `xcresulttool`: passed and failed counts, and each
+failure's test name and message in `testFailures`), `app-test-diagnostics.txt` (every compiler warning and error of the
+whole build log, which the 300-line tail would cut), and `failure-attachments/` (screenshots that failed UI tests
+attached). A hosted test's failure message is also in `app-test.log`: search it for `error:`.
+
 1. Commit and `git push -u origin <branch>`. CI runs on every push except to `ci-results`.
 2. `make ci-wait SHA=$(git rev-parse HEAD)` polls the branch and prints each job's `summary.json`. Use
    `JOBS=linux` to wait for the Linux job only.
@@ -200,3 +205,10 @@ A change is done when:
 - **`project.yml` can be checked on Linux.** XcodeGen builds there: clone `yonaskolb/XcodeGen` at tag `2.44.1`,
   `swift build -c release --product xcodegen`, then run `USER=root SCRATCH_VERSION=0.1.0 xcodegen generate --spec
   App/project.yml` and read the generated `project.pbxproj`. It checks structure only: it cannot compile Swift.
+- **UI tests run on the hosted macOS runner with no extra permission.** The `macos` job runs the whole `Scratch` scheme,
+  UI tests included (verified on `macos-26`, macOS 26.6 and the 26.5 SDK). If a runner image ever withholds
+  accessibility permission, run only `ScratchAppTests` (`-only-testing:ScratchAppTests` in `make app-test`), write that
+  down here, and tell the owner.
+- **`NSTextView.writeSelection(to:types:)` wrote nothing for `.string` on the macOS 26.5 SDK** (it returned false, with
+  a valid selection). `NoteTextView` overrides it and writes the selected text itself. Do not remove the override
+  without running `testCopyWritesOnlyPlainText` on CI.
