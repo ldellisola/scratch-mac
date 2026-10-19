@@ -1,7 +1,7 @@
 # Scratch: a native macOS scratchpad (design)
 
 - **Date:** 2026-10-19
-- **Status:** Draft, awaiting owner approval
+- **Status:** Approved by the owner on 2026-10-19. Build order: [roadmap](../plans/2026-10-19-roadmap.md)
 - **Layout mockup:** [`2026-10-19-scratchpad-mockup.html`](2026-10-19-scratchpad-mockup.html), variant **B** (sidebar + tabs) is the chosen one. The mockup predates some decisions. Where they disagree, this document wins. In particular, the yellow-marker highlight in the mockup is **not** a feature: the owner wants bold only.
 
 How to read this document. Each decision is tagged:
