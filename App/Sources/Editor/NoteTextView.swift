@@ -12,9 +12,22 @@ final class NoteTextView: NSTextView {
     }
 
     /// Plain text is the only thing that leaves the editor, so nothing from the note's font or colours reaches Slack,
-    /// mail or a terminal (spec §6.5). Copy, Cut and drags all ask here. Keep copy-out in this one place: rich
-    /// copy-out would be added here.
+    /// mail or a terminal (spec §6.5). Copy, Cut, drags and Services all ask here, and write through
+    /// `writeSelection(to:types:)` below. Keep copy-out in these two places: rich copy-out would be added here.
     override var writablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string] }
+
+    /// Writes the selected text, exactly as it is stored, as the only thing on the pasteboard. Several selections
+    /// (a rectangular selection) are joined by line breaks. Returns false, and writes nothing, when no text is
+    /// selected or `types` does not ask for plain text. AppKit's own implementation is not used: it writes the types
+    /// it prefers, which are not the same on every SDK.
+    override func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
+        guard types.contains(.string), let storage = textStorage else { return false }
+        let ranges = selectedRanges.map(\.rangeValue).filter { $0.length > 0 }
+        guard !ranges.isEmpty else { return false }
+        let text = ranges.map { storage.attributedSubstring(from: $0).string }.joined(separator: "\n")
+        _ = pboard.declareTypes([.string], owner: nil)
+        return pboard.setString(text, forType: .string)
+    }
 
     /// Plain text is the only thing that enters the editor. A paste takes the text of whatever was copied and drops
     /// its font, size and colours, so pasted text always looks like the note (spec §6.5, "Paste and Match Style" is
