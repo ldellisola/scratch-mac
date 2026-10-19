@@ -1,38 +1,19 @@
 import XCTest
 
-/// THROWAWAY, branch spike/textkit only (plan 1 task 10). The first spike run lost the launch metric of some
-/// iterations of `LaunchPerfTests.testLaunch`. Two other ways to ask for it, to see which one XCTest keeps.
+/// THROWAWAY, branch spike/textkit only (plan 1 task 10). How slow is a launch on this runner for an app that is not
+/// ours? Calculator, the same measurement as `LaunchPerfTests`, tells whether the 200 ms launch budget (the owner's M4)
+/// can be reached on a GitHub virtual Mac at all.
 @MainActor
 final class LaunchSpikeVariantTests: XCTestCase {
-    private func seededDataDirectory() -> URL {
-        let dataDirectory = UITestSupport.makeDataDirectory()
-        let seeding = PerfSupport.launch(fixture: "typical", dataDirectory: dataDirectory)
-        XCTAssertTrue(UITestSupport.editor(in: seeding).waitForExistence(timeout: 30), "the seeding launch failed")
-        seeding.terminate()
-        return dataDirectory
-    }
-
-    func testAlternateLaunchTerminatingAfter() {
-        let app = XCUIApplication()
-        app.launchArguments =
-            ["-ScratchDataDir", seededDataDirectory().path, "-ScratchAppearance", "light"]
-            + PerfSupport.textKitArguments
-        let options = XCTMeasureOptions()
-        options.iterationCount = 8
-        measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)], options: options) {
+    func testCalibrateLaunchOfCalculator() {
+        let app = XCUIApplication(bundleIdentifier: "com.apple.calculator")
+        defer { app.terminate() }
+        for _ in 0..<3 {
             app.launch()
             app.terminate()
         }
-    }
-
-    func testAlternateLaunchNotWaiting() {
-        let app = XCUIApplication()
-        app.launchArguments =
-            ["-ScratchDataDir", seededDataDirectory().path, "-ScratchAppearance", "light"]
-            + PerfSupport.textKitArguments
-        defer { app.terminate() }
         let options = XCTMeasureOptions()
-        options.iterationCount = 8
+        options.iterationCount = 10
         measure(metrics: [XCTApplicationLaunchMetric()], options: options) {
             app.launch()
         }
