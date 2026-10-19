@@ -25,6 +25,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         textView = editor.1
         super.init(nibName: nil, bundle: nil)
         textView.delegate = self
+        MarkerHidingSpike.installIfRequested(on: textView)
         textView.setAccessibilityIdentifier(AccessibilityID.editorTextView)
         textView.setAccessibilityLabel("Note")
         NotificationCenter.default.addObserver(
@@ -57,6 +58,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate {
         defer { isLoadingNote = false }
 
         textView.load(note.body)
+        MarkerHidingSpike.applyIfRequested(to: textView)
         let offset = TextOffset.clamp(selection, in: note.body)
         textView.setSelectedRange(NSRange(location: offset, length: 0))
         textView.undoManager?.removeAllActions()

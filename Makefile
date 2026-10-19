@@ -104,3 +104,29 @@ perf: project
 # and not from a laptop. See AGENTS.md.
 perf-baseline: perf
 	python3 scripts/perf-extract.py build/results/perf.xcresult perf/baseline.json
+
+# THROWAWAY (branch spike/textkit only, plan 1 task 10).
+# [macOS] The marker hiding screenshots (MarkerHidingSpikeTests) into build/screenshots-spike/<name>.png.
+SPIKE_NAMES := tk1-plain tk1-glyphs tk1-tiny tk2-plain tk2-paragraph tk2-tiny
+.PHONY: spike-screenshots spike-diagnostics
+spike-screenshots: project
+	rm -rf build/results/spike-screenshots.xcresult build/screenshots-spike
+	mkdir -p build/results build/screenshots-spike
+	xcodebuild test -project $(APP_PROJECT) -scheme ScratchPerf -destination '$(DESTINATION)' \
+	  -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/spike-screenshots.xcresult \
+	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
+	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
+	  -only-testing:ScratchPerfTests/MarkerHidingSpikeTests
+	xcrun xcresulttool export attachments --path build/results/spike-screenshots.xcresult \
+	  --output-path build/screenshots-spike/raw
+	python3 scripts/name-screenshots.py build/screenshots-spike/raw build/screenshots-spike $(SPIKE_NAMES)
+
+# [macOS] The hosted diagnostics (caret geometry and conversion cost) into build/results/spike-diagnostics.xcresult.
+spike-diagnostics: project
+	rm -rf build/results/spike-diagnostics.xcresult
+	mkdir -p build/results
+	xcodebuild test -project $(APP_PROJECT) -scheme Scratch -destination '$(DESTINATION)' \
+	  -derivedDataPath $(DERIVED_DATA) -resultBundlePath build/results/spike-diagnostics.xcresult \
+	  -parallel-testing-enabled NO -test-timeouts-enabled YES \
+	  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 600 \
+	  -only-testing:ScratchAppTests/MarkerHidingGeometryTests -only-testing:ScratchAppTests/ConversionCostTests
