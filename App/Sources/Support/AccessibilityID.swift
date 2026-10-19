@@ -7,4 +7,8 @@ enum AccessibilityID {
     static let sidebarTable = "sidebar.table"
     /// The toolbar's "new note" button (plan 1, task 8).
     static let newNoteButton = "toolbar.newNote"
+    /// The title text of a sidebar row. Its value is the row's title.
+    static let sidebarRowTitle = "sidebar.row.title"
+    /// The preview text of a sidebar row. Its value is the row's preview line.
+    static let sidebarRowPreview = "sidebar.row.preview"
 }
