@@ -18,8 +18,8 @@ final class EditorPerfTests: XCTestCase {
         return app
     }
 
-    /// Page Down presses that move the cursor and the view about a third of the way into the huge note (about 36
-    /// lines each, so line 4,000 or so).
+    /// Page Down presses that move the view about a third of the way into the huge note (about 36 lines each, so line
+    /// 4,000 or so).
     private static let pageDownPresses = 120
 
     /// `keystroke_ms`: the `keystroke` signpost interval, from `NoteTextView.keyDown` until the character is on screen.
@@ -32,6 +32,9 @@ final class EditorPerfTests: XCTestCase {
         defer { app.terminate() }
         let editor = UITestSupport.editor(in: app)
         for _ in 0..<Self.pageDownPresses { app.typeKey(.pageDown, modifierFlags: []) }
+        // Page Down scrolls and leaves the cursor at the top of the note (the first runs typed 100 characters there), so
+        // a click in the text that is on screen puts the cursor into the middle of the note.
+        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).click()
         editor.typeText("warm up ")
         PerfSupport.attachScreenshot(of: app, named: "keystroke-before", to: self)
 
