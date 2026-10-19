@@ -44,10 +44,16 @@ enum UITestSupport {
         app.textViews.matching(identifier: AccessibilityID.editorTextView).firstMatch
     }
 
-    /// The toolbar's "new note" button.
+    /// The toolbar's "new note" button. A toolbar item without a view has no accessibility identifier of its own: AppKit
+    /// reports its item identifier (`AccessibilityID.newNoteButton`) as the identifier, and its label as the title or
+    /// label, so any of the three finds it.
     @MainActor
     static func newNoteButton(in app: XCUIApplication) -> XCUIElement {
-        app.buttons.matching(identifier: AccessibilityID.newNoteButton).firstMatch
+        app.buttons.matching(
+            NSPredicate(
+                format: "identifier == %@ OR label == %@ OR title == %@", AccessibilityID.newNoteButton, "New Note",
+                "New Note")
+        ).firstMatch
     }
 
     /// The title texts of the sidebar rows, in the order the accessibility tree lists them.

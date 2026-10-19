@@ -9,7 +9,7 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
     /// Called when the user presses the "new note" button.
     var onNewNote: (() -> Void)?
 
-    private static let newNoteItem = NSToolbarItem.Identifier("io.github.ldellisola.Scratch.newNote")
+    private static let newNoteItem = NSToolbarItem.Identifier(AccessibilityID.newNoteButton)
 
     /// The items from left to right. The tracking separator makes the items after it line up with the editor, and the
     /// flexible space pushes the "new note" button to the right edge.
@@ -37,32 +37,25 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
     }
 
     /// Only the "new note" item is made here. AppKit makes the standard ones (sidebar button, separator, space).
+    ///
+    /// It is a plain item with an image, not a custom view, so that the system draws it on a Liquid Glass capsule like
+    /// every other toolbar item (a custom NSButton got no capsule). Its item identifier is the accessibility
+    /// identifier, because a view-less item has no view to carry one: UI tests find the button by it.
     func toolbar(
         _ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
         guard itemIdentifier == Self.newNoteItem else { return nil }
 
-        // A button as the item's view, so that UI tests find it by its accessibility identifier.
         let description = "New Note"
-        let button = NSButton(
-            image: NSImage(systemSymbolName: "square.and.pencil", accessibilityDescription: description)
-                ?? NSImage(),
-            target: self, action: #selector(newNote(_:)))
-        button.imagePosition = .imageOnly
-        button.isBordered = false
-        button.toolTip = description
-        button.setAccessibilityIdentifier(AccessibilityID.newNoteButton)
-        button.setAccessibilityLabel(description)
-
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-        // A custom view gets no glass background unless the item is bordered. The button's own border stays off, so
-        // the system's glass capsule is the only one.
-        item.isBordered = true
+        item.image = NSImage(systemSymbolName: "square.and.pencil", accessibilityDescription: description)
         item.label = description
         item.paletteLabel = description
         item.toolTip = description
-        item.view = button
+        item.isBordered = true
+        item.target = self
+        item.action = #selector(newNote(_:))
         return item
     }
 
