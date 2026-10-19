@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-19
 - **Status:** Draft, awaiting owner approval
-- **Layout mockup:** [`2026-10-19-scratchpad-mockup.html`](2026-10-19-scratchpad-mockup.html), variant **B** (sidebar + tabs) is the chosen one.
+- **Layout mockup:** [`2026-10-19-scratchpad-mockup.html`](2026-10-19-scratchpad-mockup.html), variant **B** (sidebar + tabs) is the chosen one. The mockup predates some decisions. Where they disagree, this document wins. In particular, the yellow-marker highlight in the mockup is **not** a feature: the owner wants bold only.
 
 How to read this document. Each decision is tagged:
 
@@ -162,9 +162,11 @@ Marker rules:
 
 **Paste in** [owner]. Pasted content always takes the note's font and colours. Any font, size, colour or style from the source is dropped. A paste is handled in this order of preference [call]:
 
-1. Files or images → attachments.
-2. Code → code block.
-3. Plain text, as is.
+1. File references, e.g. copied in Finder → attachments.
+2. If the pasteboard has text, the text wins, even when an image is also present. Excel, Word and browsers put both text and an image of the selection on the pasteboard.
+   - Text that looks like code → code block.
+   - Otherwise → plain text, as is.
+3. An image with no text, such as a screenshot → image attachment.
 
 "Paste and Match Style" is the same as Paste.
 
