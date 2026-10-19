@@ -19,7 +19,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 ```
 Packages/ScratchCore/             Foundation-only Swift package. Builds and tests on Linux and macOS.
   Sources/CSQLite/                module map for the system SQLite library (no pkgConfig, on purpose)
-  Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview
+  Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview. NoteSummary: a sidebar
+                                  row. NoteStore: reads and writes the notes table (pinned first, newest edit first)
+  Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores), SessionStore (JSON under key
+                                  "state"), TextOffset (clamps a saved cursor offset to a Character boundary)
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
                                   SQLValue and Row, Schema (version 1 and the migration rule)
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
