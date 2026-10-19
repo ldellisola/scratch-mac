@@ -63,8 +63,9 @@ final class EditorPerfTests: XCTestCase {
         XCTAssertTrue(written, "the frame monitor wrote nothing to \(report.path)")
         Thread.sleep(forTimeInterval: 2)
         let data = try Data(contentsOf: report)
-        let numbers = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Double])
-        XCTAssertGreaterThan(numbers["frames"] ?? 0, 100, "the frame report: \(numbers)")
+        let numbers = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let summary = numbers.filter { $0.key != "frame_ms" }
+        XCTAssertGreaterThan(numbers["frames"] as? Int ?? 0, 100, "the frame report: \(summary)")
 
         let attachment = XCTAttachment(string: String(decoding: data, as: UTF8.self))
         attachment.name = "scroll_frame_ms"
