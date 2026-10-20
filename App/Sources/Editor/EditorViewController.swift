@@ -45,6 +45,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     /// the scroll position for the user's.
     private var anchorWasApplied = false
     private var debugStateElement: DebugStateElement?
+    /// TEMPORARY (Plan 3 task 7): the first changes of the clip view's origin, with the stack that made them, for the UI
+    /// test of the top inset to print. Only in an isolated launch (`installDebugStateElement`).
+    private var scrollLog: [String] = []
+    private var scrollLogY = Double.nan
+    private var scrollLogObserver: (any NSObjectProtocol)?
 
     init() {
         let editor = TextViewFactory.makeEditor()
@@ -228,10 +233,32 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
                 // How far the clip view is scrolled and the scroll view's top inset, so a test can tell that a note at
                 // its top has the text view's own top inset on screen: `scrollY` is `-topInset` there.
                 "scrollY": self.currentScrollY, "topInset": Double(self.scrollView.contentInsets.top),
+                "scrollLog": self.scrollLog,
             ]
         }
         view.addSubview(element)
         debugStateElement = element
+        scrollLogObserver = NotificationCenter.default.addObserver(
+            forName: NSView.boundsDidChangeNotification, object: scrollView.contentView, queue: nil
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.recordScrollForDebugging() }
+        }
+    }
+
+    /// TEMPORARY (Plan 3 task 7): see `scrollLog`.
+    private func recordScrollForDebugging() {
+        let y = Double(scrollView.contentView.bounds.origin.y)
+        guard scrollLog.count < 10, y != scrollLogY else { return }
+        scrollLogY = y
+        let frames = Thread.callStackSymbols.dropFirst(2).prefix(16).map { frame in
+            frame.split(separator: " ", omittingEmptySubsequences: true).dropFirst(3).joined(separator: " ")
+        }
+        let event = NSApp.currentEvent.map { String($0.type.rawValue) } ?? "none"
+        let window = view.window
+        let state =
+            "y=\(y) event=\(event) visible=\(window?.isVisible ?? false) key=\(window?.isKeyWindow ?? false) "
+            + "applying=\(isApplyingScroll) loading=\(isLoadingNote) laidOut=\(isLaidOut)"
+        scrollLog.append(state + " | " + frames.joined(separator: " <- "))
     }
 
     // MARK: NSTextViewDelegate
