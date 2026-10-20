@@ -16,9 +16,9 @@ import AppKit
 ///
 /// **Isolation.** AppKit does not annotate `NSLayoutManager` or its delegate for the main actor, and the app's default
 /// isolation is the main actor, which would make a subclass main-actor and its inherited `init()` mismatch the
-/// superclass's. So the class is `nonisolated` (and `@unchecked Sendable`, which lets the drawing below go through
-/// `MainActor.assumeIsolated`: AppKit lays out and draws on the main thread, and nothing here is shared).
-nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDelegate, @unchecked Sendable {
+/// superclass's. So the class is `nonisolated`, and so is everything in it: AppKit lays out and draws on the main
+/// thread, and the text storage, layout manager and drawing calls used here are not main-actor types either.
+nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
     // MARK: Glyphs
 
     func layoutManager(
@@ -57,12 +57,9 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
     /// AppKit calls this on the main thread.
     override func drawGlyphs(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
         super.drawGlyphs(forGlyphRange: glyphsToShow, at: origin)
-        MainActor.assumeIsolated {
-            drawBullets(forGlyphRange: glyphsToShow, at: origin)
-        }
+        drawBullets(forGlyphRange: glyphsToShow, at: origin)
     }
 
-    @MainActor
     private func drawBullets(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
         guard let storage = textStorage, storage.length > 0 else { return }
         let characters = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
@@ -74,7 +71,6 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
 
     /// Draws a `•` in the accent colour in the place of the `-` at `characterRange`: centred in its advance, on the
     /// baseline the `-` is on. `origin` is where the text container's origin is in the text view's coordinates.
-    @MainActor
     private func drawBullet(over characterRange: NSRange, in storage: NSTextStorage, at origin: NSPoint) {
         let glyphRange = self.glyphRange(forCharacterRange: characterRange, actualCharacterRange: nil)
         guard glyphRange.length > 0 else { return }
@@ -83,7 +79,7 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         let location = self.location(forGlyphAt: glyph)
         let font =
             storage.attribute(.font, at: characterRange.location, effectiveRange: nil) as? NSFont
-            ?? NoteTextView.noteFont
+            ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.controlAccentColor]
         let advance = ("-" as NSString).size(withAttributes: attributes).width
         let bullet = "\u{2022}" as NSString
