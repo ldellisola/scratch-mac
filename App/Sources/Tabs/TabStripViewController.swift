@@ -281,6 +281,8 @@ final class TabItemView: NSView {
     static let closeTrailing: CGFloat = 8
     /// The room that the close button and the space around it take at the right end.
     private static let trailing: CGFloat = 30
+    /// Added to the measured width of a title, so that the label does not cut it off.
+    private static let labelPadding: CGFloat = 8
     /// A title is cut to this many characters before it is laid out, so that the first line of a huge note, which can
     /// be megabytes long, never reaches the text system.
     private static let titleLimit = 120
@@ -291,7 +293,8 @@ final class TabItemView: NSView {
     /// How wide the tab wants to be: its title and the space around it, within `minimumWidth` and `maximumWidth`.
     private(set) var idealWidth: CGFloat = TabItemView.minimumWidth
 
-    private let titleField = NSTextField(labelWithString: "")
+    /// The title, internal for the tests.
+    let titleField = NSTextField(labelWithString: "")
     private var item: TabStripItem?
     private var isActive = false
 
@@ -329,10 +332,12 @@ final class TabItemView: NSView {
         titleField.font = font
         titleField.stringValue = title
         titleField.textColor = item.isDeleted ? .tertiaryLabelColor : (isActive ? .labelColor : .secondaryLabelColor)
-        // The label's own width, which includes the space that a text field keeps around its text. The width of the
-        // string alone cut the last letters off ("Deploy check...") in the first screenshot.
+        // The label needs more than its text measures: the first two screenshots had "Deploy check..." in a tab sized to
+        // the text, by the width of the string and then by the label's own intrinsic width. `labelPadding` is the
+        // slack that a text field keeps around its text, with a little to spare.
         let textWidth = titleField.intrinsicContentSize.width.rounded(.up)
-        idealWidth = min(max(textWidth + Self.leading + Self.trailing, Self.minimumWidth), Self.maximumWidth)
+        idealWidth = min(
+            max(textWidth + Self.labelPadding + Self.leading + Self.trailing, Self.minimumWidth), Self.maximumWidth)
 
         toolTip = title
         setAccessibilityLabel(title)

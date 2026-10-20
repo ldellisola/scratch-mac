@@ -118,6 +118,21 @@ final class TabStripViewControllerTests: XCTestCase {
         XCTAssertEqual(widths, [120, 200])
     }
 
+    /// A tab is sized to its title with room to spare: the label is wider than the text it draws plus the 2 pt that a
+    /// text field keeps free at each side (the first screenshots showed "Deploy check..." in a tab with room).
+    func testTitleFitsItsTab() {
+        for (title, hasTitle) in [("Deploy checklist", true), ("curl -X POST", false)] {
+            let tab = TabItemView(frame: .zero)
+            tab.configure(item(title, hasTitle: hasTitle), isActive: true)
+            tab.frame = NSRect(x: 0, y: 0, width: tab.idealWidth, height: 26)
+            tab.layoutSubtreeIfNeeded()
+
+            let font = tab.titleField.font ?? NSFont.systemFont(ofSize: 12)
+            let needed = NSAttributedString(string: title, attributes: [.font: font]).size().width
+            XCTAssertGreaterThanOrEqual(tab.titleField.frame.width, needed + 4, "the label of \(title)")
+        }
+    }
+
     // MARK: The widths of crowded tabs
 
     func testTabsKeepTheirWidthWhenTheyFit() {
