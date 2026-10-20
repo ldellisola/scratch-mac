@@ -239,4 +239,7 @@ final class NoteTextView: NSTextView {
             ListEditing.toggleChecklist(
                 paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))
     }
+
+    /// ⌘B (Format > Bold). Not implemented yet.
+    @objc func toggleBoldMarkers(_ sender: Any?) {}
 }

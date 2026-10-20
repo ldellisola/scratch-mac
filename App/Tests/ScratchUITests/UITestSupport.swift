@@ -190,6 +190,20 @@ enum UITestSupport {
         return condition()
     }
 
+    /// Waits up to five seconds until the editor's text is `expected`, then asserts that it is, so that a failure says
+    /// what the text was. Typing and the editing commands are applied by the app a moment after the test sends the key.
+    @MainActor
+    static func expectText(
+        _ expected: String, in editor: XCUIElement, _ message: String, file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let deadline = Date().addingTimeInterval(5)
+        while (editor.value as? String) != expected, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertEqual(editor.value as? String, expected, message, file: file, line: line)
+    }
+
     /// A new directory under the temporary directory (not created yet: the app creates it). A sandboxed test runner's
     /// own temporary directory lives inside its container, which the app is not allowed to write to, so that case uses
     /// /tmp instead. The performance tests use it too.
