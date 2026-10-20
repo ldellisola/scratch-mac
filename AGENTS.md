@@ -603,9 +603,11 @@ new kind of release file, with no change to the app, ships.
   paragraphs that moved in or out of a block (`changedRanges`). The scan reads the text with `getCharacters` and looks
   for "```" first: most notes have none.
 - **`MarkupLayoutManager` is `nonisolated` on purpose.** AppKit does not annotate `NSLayoutManager`, and a main-actor
-  subclass would have a main-actor `init()` that does not match the superclass's. Its delegate methods run on the
-  main thread during layout, and the drawing goes through `MainActor.assumeIsolated`. The manager is its own delegate
-  and `TextViewFactory` sets that after the text view exists, which sets the delegate itself when it is made.
+  subclass would have a main-actor `init()` that does not match the superclass's. Its delegate methods and
+  `drawGlyphs` run on the main thread during layout and drawing, and use no main-actor API (no
+  `MainActor.assumeIsolated`: capturing the manager in a main-actor closure failed to compile, "sending self"). The
+  manager is its own delegate and `TextViewFactory` sets that after the text view exists, which sets the delegate
+  itself when it is made.
 - **A bold run's markers show while the caret touches the run, and a selection of more than 20,000 characters shows
   none.** "Touches" counts the positions at both ends of the run. Walking the caret into a run therefore shows its
   stars before it can step onto one, so Backspace never deletes a character the owner cannot see.

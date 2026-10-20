@@ -529,8 +529,11 @@ final class MarkupStylerTests: XCTestCase {
 
         XCTAssertLessThan(took, .milliseconds(100), "the synchronous part of styling a note (Debug build)")
         XCTAssertFalse(textView.styler.isFullyStyled, "the rest is styled in chunks")
-        spin(until: { textView.styler.isFullyStyled }, seconds: 2)
-        XCTAssertTrue(textView.styler.isFullyStyled, "the whole note is styled within two seconds of run loop time")
+        let spinStart = clock.now
+        spin(until: { textView.styler.isFullyStyled }, seconds: 1)
+        let spun = clock.now - spinStart
+        XCTAssertTrue(
+            textView.styler.isFullyStyled, "the whole note is styled within a second of run loop time (took \(spun))")
 
         // The last paragraphs, which only a chunk reaches, are styled; the blocks' lines are not.
         let storage = textView.textStorage!
