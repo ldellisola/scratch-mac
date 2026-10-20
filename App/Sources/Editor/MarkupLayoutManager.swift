@@ -10,8 +10,8 @@ import AppKit
 /// - **Bullets are drawn over their `-`.** The `-` of a bullet is transparent and a `•` in the accent colour is drawn
 ///   where it is.
 /// - **Checkboxes are drawn over their `[?]`.** The three characters of a checklist item's box are transparent, and the
-///   SF Symbol `square` (open) or `checkmark.square.fill` (ticked) in the accent colour is drawn in their rectangle,
-///   which `NoteTextView` uses to find out whether a click is on the box.
+///   SF Symbol `square` (open) or `checkmark.square.fill` (ticked: a white checkmark on a square filled with the accent
+///   colour) is drawn in their rectangle, which `NoteTextView` uses to find out whether a click is on the box.
 ///
 /// `TextViewFactory` makes it the layout manager of the editor and sets it as its own delegate once the text view is
 /// made, because the text view sets its own delegate when it is created. The delegate of a layout manager is weak, so
@@ -124,9 +124,12 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         let rect = boundingRect(forGlyphRange: glyphRange, in: container)
         guard rect.width > 0, rect.height > 0 else { return }
 
+        // The open box is one layer. The ticked one has two: the checkmark (first palette colour) on the filled square
+        // (second), so that the tick shows against the fill and not as one more patch of the accent colour.
+        let colors = isChecked ? [NSColor.white, NSColor.controlAccentColor] : [NSColor.controlAccentColor]
         let configuration = NSImage.SymbolConfiguration(
-            pointSize: rect.height * Self.checkboxScale, weight: .regular, scale: .medium
-        ).applying(NSImage.SymbolConfiguration(paletteColors: [NSColor.controlAccentColor]))
+            pointSize: rect.height * Self.checkboxScale, weight: .medium, scale: .medium
+        ).applying(NSImage.SymbolConfiguration(paletteColors: colors))
         let name = isChecked ? "checkmark.square.fill" : "square"
         guard
             let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(

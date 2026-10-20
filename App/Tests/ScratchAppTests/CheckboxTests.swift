@@ -169,14 +169,19 @@ final class CheckboxTests: XCTestCase {
         let undo = UndoManager()
         show("[ ] a", caret: 5, undoManager: undo, in: host)
         host.editor.textView.insertText("b", replacementRange: NSRange(location: NSNotFound, length: 0))
-        // The typing and the click are different events: the undo manager closes its group at the end of each.
-        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        // The typing and the click are different events, and the undo manager closes its group at the end of each. Here
+        // they are one turn of the run loop, so close the group of the typing by hand, unless it is the text view's own
+        // (typing coalescing), which the click must end itself.
+        if !host.editor.textView.isCoalescingUndo, undo.groupingLevel > 0 { undo.endUndoGrouping() }
+        let state = "grouping level \(undo.groupingLevel), coalescing \(host.editor.textView.isCoalescingUndo)"
         clickBox(at: NSRange(location: 0, length: 3), in: host)
         XCTAssertEqual(host.editor.currentText, "[x] ab")
 
         undo.undo()
 
-        XCTAssertEqual(host.editor.currentText, "[ ] ab", "the first undo is the click only")
+        XCTAssertEqual(
+            host.editor.currentText, "[ ] ab", "the first undo is the click only (\(state) before the click)")
+        XCTAssertTrue(undo.canUndo, "the typing is still there to undo")
     }
 
     func testClickRightOfBoxIsNotAToggle() {
