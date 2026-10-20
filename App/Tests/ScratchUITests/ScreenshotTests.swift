@@ -30,8 +30,8 @@ final class ScreenshotTests: XCTestCase {
     }
 
     /// The typical fixture with "kube" typed in the sidebar's search field: the list narrows to "Deploy checklist",
-    /// whose body has `kubectl` in it (every word matches as a prefix, spec §6.2). The field shows its text and has the
-    /// keyboard.
+    /// whose body has `kubectl` in it (every word matches as a prefix, spec §6.2). The field shows its text and has
+    /// the keyboard.
     func testSearchLight() {
         capture("search-light", fixture: "typical", appearance: "light", sidebarRows: 6) { app in
             let field = UITestSupport.searchField(in: app)
@@ -44,8 +44,8 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    /// The recently-deleted fixture with the Recently Deleted section expanded. The purge has removed "Ancient" (deleted
-    /// 31 days ago), so the header reads "Recently Deleted (1)", and "Old meeting notes" is listed under it.
+    /// The recently-deleted fixture with the Recently Deleted section expanded. The purge has removed "Ancient"
+    /// (deleted 31 days ago), so the header reads "Recently Deleted (1)", and "Old meeting notes" is listed under it.
     func testRecentlyDeletedLight() {
         capture("recently-deleted-light", fixture: "recently-deleted", appearance: "light", sidebarRows: 1) { app in
             let header = UITestSupport.recentlyDeletedHeader(in: app)
@@ -81,6 +81,9 @@ final class ScreenshotTests: XCTestCase {
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 10), "the app has no window")
         prepare(app)
+        // Park the pointer over the empty part of the editor. Where the last click left it, it can rest on the sidebar
+        // or the toolbar, and its tooltip ("Hide Sidebar") then shows in the picture.
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9)).hover()
 
         // Let the first layout, the glass material and the selection highlight settle before the picture is taken.
         Thread.sleep(forTimeInterval: 1.0)
