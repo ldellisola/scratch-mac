@@ -118,13 +118,21 @@ enum UITestSupport {
         app.descendants(matching: .any).matching(identifier: AccessibilityID.sidebarSearch).firstMatch
     }
 
-    /// The titles of the sidebar's groups from top to bottom: "Pinned", "Today", "Yesterday", "Earlier" and "Recently
-    /// Deleted", as far as they are shown.
+    /// The titles of the sidebar's groups from top to bottom: "Pinned", "Today", "Yesterday" and "Earlier", as far as
+    /// they are shown. The header of Recently Deleted is not among them: it has its own identifier, see
+    /// `recentlyDeletedHeader(in:)`.
     @MainActor
     static func sidebarGroupTitles(in app: XCUIApplication) -> [String] {
         app.staticTexts.matching(identifier: AccessibilityID.sidebarGroup).allElementsBoundByIndex
             .sorted { $0.frame.minY < $1.frame.minY }
             .map { text(of: $0) }
+    }
+
+    /// The header of Recently Deleted at the bottom of the sidebar, which exists only while a note is deleted. Its text
+    /// reads "Recently Deleted (N)" (`text(of:)`), and a click on it shows or hides the deleted notes.
+    @MainActor
+    static func recentlyDeletedHeader(in app: XCUIApplication) -> XCUIElement {
+        app.staticTexts.matching(identifier: AccessibilityID.recentlyDeletedHeader).firstMatch
     }
 
     /// The edit time that the sidebar shows on the row of `title`, a title element from `sidebarRow(titled:in:)`: the

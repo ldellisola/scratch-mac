@@ -13,9 +13,14 @@ enum AccessibilityID {
     static let sidebarRowPreview = "sidebar.row.preview"
     /// The edit time on the right of a sidebar row (plan 2, task 8). Its value is the label, such as "10:42" or "Oct 14".
     static let sidebarRowTime = "sidebar.row.time"
-    /// The title of a group of sidebar rows (plan 2, task 8): "Pinned", "Today", "Yesterday", "Earlier" or "Recently
-    /// Deleted". Its value is the title. A group title is not a row, so it does not have `sidebarRowTitle`.
+    /// The title of a group of sidebar rows (plan 2, task 8): "Pinned", "Today", "Yesterday" or "Earlier". Its value is
+    /// the title. A group title is not a row, so it does not have `sidebarRowTitle`. The header of Recently Deleted has
+    /// `recentlyDeletedHeader` instead.
     static let sidebarGroup = "sidebar.group"
+    /// The header of Recently Deleted at the bottom of the sidebar (plan 2, task 9). Its value reads "Recently Deleted
+    /// (N)" with the number of deleted notes, and a click on it shows or hides them. It is a group header like the
+    /// others, but it has this identifier and not `sidebarGroup`, because it is the only one that does something.
+    static let recentlyDeletedHeader = "sidebar.recentlyDeleted"
     /// The search field above the sidebar's note list (plan 2, task 8). Its value is the text typed in it.
     static let sidebarSearch = "sidebar.search"
     /// The toolbar's pin button (plan 2, task 8). Like the new note button it is a view-less toolbar item, so this is
