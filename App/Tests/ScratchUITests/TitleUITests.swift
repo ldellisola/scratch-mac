@@ -89,8 +89,13 @@ final class TitleUITests: XCTestCase {
         XCTAssertEqual(UITestSupport.debugState(in: app)["scrollAnchor"] as? Int, 0, "the state at launch")
 
         editor.scroll(byDeltaX: 0, deltaY: -20_000)
-        // The sign of a scroll event is the system's to decide: from the top, the wrong one moves nothing.
-        if UITestSupport.debugState(in: app)["scrollAnchor"] as? Int == 0 {
+        // The sign of a scroll event is the system's to decide: from the top, the wrong one moves nothing. The app
+        // takes a moment to handle the event, so give this one time to show before deciding that it was the wrong sign
+        // (a second event that came in while the first was still being handled once undid it).
+        let scrolled = UITestSupport.wait(timeout: 3) {
+            (UITestSupport.debugState(in: app)["scrollAnchor"] as? Int ?? 0) > 0
+        }
+        if !scrolled {
             editor.scroll(byDeltaX: 0, deltaY: 20_000)
         }
         Thread.sleep(forTimeInterval: 1.5)
