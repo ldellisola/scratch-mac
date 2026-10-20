@@ -270,7 +270,11 @@ docs/decisions/0001 and 0003. What to know when one fails or changes:
   the slowest), and a launch takes about 400 ms there (Calculator takes 1 s). The baseline is therefore the slowest of
   many runs, and `launch_ms` and `switch_small_ms` are budgeted at 400 and 12 instead of the spec's 200 and 8
   (docs/decisions/0003). A failure that no
-  change explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline.
+  change explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline. `launch_ms` is
+  the usual one: it fails above 800 ms (2 x its budget), and a slow runner gets there with no change to the app. The
+  commits `a698055` and `4faafbe` changed only docs and measured 800 and 1,027 ms, with all ten launches slow in
+  `perf/metrics.json`, where the same app took 677 ms on another runner (`f72e30f`). Push a new commit for another
+  runner.
 - **A signpost interval ends when the run loop is idle** (`RunLoopIdle`, `Signposts.beginEditorInterval`), not when the
   code returns, so that TextKit's lazy layout and drawing count. A new interval for the tests belongs there too.
 - **`XCTApplicationLaunchMetric(waitUntilResponsive: true)` reports one launch of ten, or none,** on macos-26. Use the
