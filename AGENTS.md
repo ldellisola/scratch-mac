@@ -12,9 +12,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
-- Latest plan: [`docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md),
-  done and released as 0.2.0 (Plan 1, released as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md)).
-  Plan 3 (formatting) is written once Plan 2 has merged (the roadmap).
+- Latest plan: [`docs/superpowers/plans/2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md),
+  in progress on the branch `plan-3-formatting` (release 0.3.0). Plan 2, released as 0.2.0:
+  [`2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md). Plan 1, released
+  as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md).
 
 ## 2. Module map
 
@@ -42,8 +43,13 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   rule, and SchemaError for a database from a newer Scratch), ScratchStorage (opens
                                   the data directory and its stores; refuses a fixture on the real directory)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
-  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted) and FixtureContent,
-                                  their notes and session
+  Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold,
+                                  inline code and links, as UTF-16 `NSRange`s), MarkupSpan and MarkupKind, LinkScanner
+                                  (the `http(s)://` URLs of a line), FenceScanner (the fenced code blocks, inside which
+                                  nothing is formatting), TextLines (internal: line splitting and white space over UTF-16
+                                  units)
+  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting) and
+                                  FixtureContent, their notes and session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
 App/project.yml                   XcodeGen spec: targets Scratch (app), ScratchAppTests (hosted unit tests),
                                   ScratchUITests, ScratchPerfTests; schemes Scratch and ScratchPerf. The generated
@@ -199,7 +205,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 | Flag | Value | Effect |
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
-| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted` | delete the database in the data directory and seed that fixture |
+| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting` | delete the database in the data directory and seed that fixture |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 

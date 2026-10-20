@@ -81,9 +81,9 @@ screenshots: project
 	python3 scripts/name-screenshots.py build/screenshots/raw build/screenshots $(SCREENSHOT_NAMES)
 
 # [macOS] Build the app and open it on a named fixture in a throwaway data directory:
-# make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted>. It never touches real data.
+# make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted|formatting>. It never touches real data.
 run:
-	@test -n "$(FIXTURE)" || { echo 'usage: make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted>' >&2; exit 64; }
+	@test -n "$(FIXTURE)" || { echo 'usage: make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted|formatting>' >&2; exit 64; }
 	$(MAKE) app-build
 	open -n $(DERIVED_DATA)/Build/Products/Debug/Scratch.app --args -ScratchFixture $(FIXTURE)
 

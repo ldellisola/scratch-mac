@@ -11,9 +11,10 @@ App (AppKit shell)  ──depends on──▶  ScratchCore (Foundation + CSQLite
 
 - **`Packages/ScratchCore`** is a Swift package with no AppKit or SwiftUI imports. It holds everything rule-based:
   the note model, storage and full-text search (`NoteStore`, `SearchQuery`, the FTS5 index), the tab rules (`TabList`),
-  the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures. Later plans add
-  the marker parser, list editing rules, paste classification, copy-out and code detection. It builds and tests with
-  plain `swift test` on macOS and on Linux.
+  the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures, and the marker
+  parser (`Markup/`: the spans of a line and the fenced code blocks of a note, as UTF-16 ranges the editor applies
+  directly). Later plans add list editing rules, paste classification, copy-out and code detection. It builds and
+  tests with plain `swift test` on macOS and on Linux.
 - **`App/`** is the thin AppKit shell: window, sidebar, editor view. It maps core values to UI and UI events to core
   calls. Logic found in the shell that could live in the core is a refactoring target. The app project is generated
   by XcodeGen from `App/project.yml`, and the generated project is not committed.
