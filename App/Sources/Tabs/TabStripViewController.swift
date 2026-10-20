@@ -15,8 +15,8 @@ struct TabStripItem: Equatable {
 /// (spec §6.3, mockup B). It only shows what it is given and reports what the user did. `SessionCoordinator` owns the
 /// tab rules.
 ///
-/// The view is an `NSGlassEffectView` (`TabStripGlassView`), 32 pt tall with a corner radius of 14. Its contents are laid
-/// out by `TabStripContentView`, by hand, so that the strip's width is known without asking Auto Layout how wide a
+/// The view (`TabStripView`) is 32 pt tall and has an `NSGlassEffectView` with a corner radius of 14 in it. The tabs are
+/// laid out by `TabStripContentView`, by hand, so that the strip's width is known without asking Auto Layout how wide a
 /// glass view wants to be: the strip is as wide as its tabs, and at most as wide as the editor area lets it be
 /// (`EditorAreaViewController`).
 final class TabStripViewController: NSViewController {
@@ -32,7 +32,7 @@ final class TabStripViewController: NSViewController {
     /// The corner radius of the strip's glass in points.
     static let cornerRadius: CGFloat = 14
 
-    private let glassView = TabStripGlassView()
+    private let stripView = TabStripView()
     private let strip = TabStripContentView()
 
     init() {
@@ -48,11 +48,11 @@ final class TabStripViewController: NSViewController {
     }
 
     override func loadView() {
-        glassView.cornerRadius = Self.cornerRadius
-        glassView.contentView = strip
-        glassView.translatesAutoresizingMaskIntoConstraints = false
-        glassView.heightAnchor.constraint(equalToConstant: Self.height).isActive = true
-        view = glassView
+        stripView.glassView.cornerRadius = Self.cornerRadius
+        stripView.glassView.contentView = strip
+        stripView.translatesAutoresizingMaskIntoConstraints = false
+        stripView.heightAnchor.constraint(equalToConstant: Self.height).isActive = true
+        view = stripView
     }
 
     /// Shows one tab for each of `items`, left to right, with the one at `activeIndex` raised and selected for
@@ -60,12 +60,14 @@ final class TabStripViewController: NSViewController {
     func show(_ items: [TabStripItem], activeIndex: Int) {
         loadViewIfNeeded()
         strip.show(items, activeIndex: activeIndex)
-        glassView.preferredWidth = strip.preferredWidth
+        stripView.preferredWidth = strip.preferredWidth
     }
 }
 
-/// The glass of the strip. Its width is the one that its tabs want (`preferredWidth`), as the intrinsic width of the
-/// view, so that the strip hugs its tabs and Auto Layout needs no constraint of ours for it.
+/// The strip's view: a plain view that has the width its tabs want (`preferredWidth`) as its intrinsic width, and the
+/// glass (`NSGlassEffectView`) pinned to all its edges. The glass gets its size from the pins, and not from the
+/// content: on the first CI run a glass view that was asked for its width by its intrinsic content size came out 10 pt
+/// wide, whatever it was told.
 ///
 /// A view that is as wide as its tabs may not push the window wider than the user made it, and may not stop the window
 /// from becoming narrower: a split view item takes its minimum width from the constraints in its view. The strip
@@ -73,7 +75,10 @@ final class TabStripViewController: NSViewController {
 /// (`NSLayoutConstraint.Priority.fittingSizeCompression`, 50), and the editor area limits the strip to its own width
 /// with a required constraint (`EditorAreaViewController`). Many tabs then share a narrower strip
 /// (`TabStripLayout.widths`).
-final class TabStripGlassView: NSGlassEffectView {
+final class TabStripView: NSView {
+    /// The glass behind the tabs. Its `contentView` is the tabs.
+    let glassView = NSGlassEffectView()
+
     /// The width that shows every tab at its natural width.
     var preferredWidth: CGFloat = 0 {
         didSet {
@@ -86,11 +91,20 @@ final class TabStripGlassView: NSGlassEffectView {
         super.init(frame: frameRect)
         setContentHuggingPriority(NSLayoutConstraint.Priority(750), for: .horizontal)
         setContentCompressionResistancePriority(NSLayoutConstraint.Priority(40), for: .horizontal)
+
+        glassView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(glassView)
+        NSLayoutConstraint.activate([
+            glassView.topAnchor.constraint(equalTo: topAnchor),
+            glassView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            glassView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            glassView.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("TabStripGlassView is created in code")
+        fatalError("TabStripView is created in code")
     }
 
     override var intrinsicContentSize: NSSize {

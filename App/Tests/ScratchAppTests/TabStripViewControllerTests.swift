@@ -146,6 +146,16 @@ final class TabStripViewControllerTests: XCTestCase {
         XCTAssertEqual(editor.maxY, strip.minY - 4, accuracy: 0.5, "the editor starts below the strip")
         XCTAssertEqual(editor.minY, 0, accuracy: 0.5)
         XCTAssertEqual(editor.width, container.width, accuracy: 0.5)
+
+        // The tabs fill the strip's height but for 3 pt above and below them, and start 3 pt from its left edge: the glass
+        // gives its content the whole strip.
+        let tabs = tabViews(in: host.strip.view)
+        XCTAssertEqual(tabs.count, 2)
+        let tab = tabs[0]
+        let inStrip = tab.superview?.convert(tab.frame, to: host.strip.view) ?? .zero
+        XCTAssertEqual(inStrip.minX, 3, accuracy: 0.5, "the first tab's left edge in the strip")
+        XCTAssertEqual(inStrip.minY, 3, accuracy: 0.5, "the first tab's bottom edge in the strip")
+        XCTAssertEqual(inStrip.height, 26, accuracy: 0.5, "the first tab's height")
     }
 
     /// Twelve tabs do not fit in 800 pt: the strip stops 12 pt short of the right edge and the tabs share it.

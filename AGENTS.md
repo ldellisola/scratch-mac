@@ -56,7 +56,7 @@ App/Sources/Window/               MainWindowController (one window, closing it q
                                   target of the app's own menu items: the tabs and the font size), ToolbarController
                                   (sidebar button, new note button), TitlebarPocket (hides the line macOS 26 draws under
                                   the toolbar, section 7)
-App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripGlassView`,
+App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
                                   `TabStripLayout`, `TabStripContentView`, `TabItemView`)
 App/Sources/Sidebar/              SidebarViewController (the note list: an NSTableView in the glass sidebar; a click or
                                   Return opens a note, `onOpen`)
@@ -415,11 +415,13 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   highlight without opening anything, so the highlight and the open note can differ until the coordinator renders the
   list again (`SidebarList` turns Return into `onReturn`). ⌘-click on the highlighted row deselects it, which
   `open(_:inNewTab:)` undoes by rendering the sidebar even when it has nothing to show.
-- **The tab strip is `NSGlassEffectView` with a frame-based content view.** `TabStripGlassView` gives the strip its
-  width as the intrinsic content size, with a compression resistance (40) below the fitting size priority (50), and
-  `EditorAreaViewController` caps it with a required `trailing <=` constraint. A width constraint on the strip, at any
-  priority above 50, would make the split view item's minimum width grow with the number of tabs. Do not use
-  `NSStackView` with required widths in the strip for the same reason.
+- **The tab strip is an `NSGlassEffectView` pinned inside a plain view, with a frame-based content view.**
+  `TabStripView` (the strip's own view) gets its width from the tabs as its intrinsic content size, with a compression
+  resistance (40) below the fitting size priority (50), and `EditorAreaViewController` caps it with a required
+  `trailing <=` constraint. The glass is pinned to the edges of `TabStripView`: a glass view that was given an
+  intrinsic content size of its own came out 10 pt wide on CI, and the strip was a sliver. A width constraint on the
+  strip, at any priority above 50, would make the split view item's minimum width grow with the number of tabs. Do not
+  use `NSStackView` with required widths in the strip for the same reason.
 - **A tab is one accessibility element and its close button is not inside it.** `TabItemView` is a button
   (`tab.item`) with a label, a title and a selected state, and the close button (`tab.close`) is a sibling placed over
   its right end, so UI tests read `UITestSupport.tabs(in:)` and `activeTabTitle(in:)` and click a tab at its centre.
