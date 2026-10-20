@@ -87,6 +87,7 @@ To update, do the same with the new release and choose Replace. Your notes live 
 | Tab, ⇧Tab | In a list, indent or outdent the item (every list line of the selection) |
 | ⌘B | Bold: put `**` around the selection, or take the stars off a bold run |
 | ⇧⌘L | Turn the selected lines into a checklist, or back into plain lines |
+| ⌘-click a link | Open the `http://` or `https://` link in your browser. A plain click only places the caret |
 
 ## How it is built
 

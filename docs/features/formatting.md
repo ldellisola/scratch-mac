@@ -5,8 +5,7 @@ Spec: [§6.4 Editor and formatting](../superpowers/specs/2026-10-19-scratchpad-d
 behaviour, marker rules) and §6.5 (copy-out keeps the markers), guarding the anti-goals "Mangled code" and "Lost text"
 (§4). Plan: [Plan 3](../superpowers/plans/2026-10-20-plan-3-formatting.md).
 
-Status: plan 3, task 5 (styling, checkboxes, ⇧⌘L, and the keyboard: Return, Tab, ⇧Tab and ⌘B). ⌘-click on links comes
-in task 6, and adds its section here.
+Status: plan 3, task 6 (styling, checkboxes, ⇧⌘L, the keyboard: Return, Tab, ⇧Tab and ⌘B, and ⌘-click on links).
 
 ## Behaviour: what renders
 
@@ -85,6 +84,27 @@ spaces.
   a rectangular selection (several selections, which no key rule handles either).
 - **Copy still keeps the stars:** after ⌘B and a select-all, ⌘C puts `**word**` on the pasteboard.
 
+## Behaviour: links open with ⌘-click
+
+A link is the `http://` or `https://` text that the table above colours and underlines. Clicking it is a click in the
+text like any other, so that placing the caret in a link never opens a browser.
+
+- **A ⌘-click on a link opens it** in the default browser (`NSWorkspace`), and does nothing else: the caret and the
+  selection stay where they were. It works in a note that cannot be edited (a note in Recently Deleted) too, since opening
+  a link changes nothing. The URL is the link as the parser found it, so the period or the unmatched `)` after a link
+  at the end of a sentence is not part of it.
+- **A plain click on a link only places the caret.** So does a click with ⇧ or ⌥ and no ⌘. A ⌘-click anywhere that is
+  not on a link is the text view's own click.
+- **The click has to be on a character of the link.** The space to the right of a link that ends its line, the margin and
+  the space below the last line are not the link.
+- **Inline code and fenced blocks have no links.** A URL in `` `inline code` `` or in a block is literal text, so a
+  ⌘-click there opens nothing (the styler gives such a URL no link attribute).
+- **The cursor shows it.** While ⌘ is held over a link the cursor is the pointing hand, and it is the I-beam again when
+  the mouse moves off the link or ⌘ is let go. The view hears the moves of the mouse through a tracking area
+  (`mouseMoved`) and the keys through `flagsChanged`, which only the view that has the keyboard receives: with the
+  keyboard somewhere else (in the title field, say) the pointing hand shows with the next move of the mouse. The view
+  puts the I-beam back only after it has set the pointing hand itself, and never changes the cursor otherwise.
+
 ## Behaviour: when it is styled
 
 - A keystroke, a paste or an undo restyles only the paragraphs it edited.
@@ -104,12 +124,15 @@ spaces.
 - `MarkupLayoutManager.swift`: null glyphs for `hidden` markers, the bullets and the boxes. `MarkupAppearance.swift`: the fonts,
   colours and paragraph styles. `MarkupAttributes.swift`: the `scratchMarker` and `scratchLink` attributes, `MarkerRole`
   and `MarkupColors`. `ParagraphBatch.swift`: whole paragraphs read in one call.
-- `NoteTextView`: `mouseDown` (a click on a box), `checkboxMarker(atViewPoint:)`, `toggleCheckbox(atViewPoint:)`,
-  `toggleChecklist(_:)` (⇧⌘L) and `apply(_:)`, which makes the core's `TextEdit` one undo step; `insertNewline(_:)`,
-  `insertTab(_:)` and `insertBacktab(_:)` (Return, Tab, ⇧Tab, through `listEdit`, which asks the core's rule unless a
-  block is under the selection) and `toggleBoldMarkers(_:)` (⌘B). `MainMenu.formatMenu` is the Format menu. The core
-  rules are `ListEditing` (`newline`, `indent`, `outdent`, `toggleChecklist`, `toggleCheckmark`) and
-  `InlineEditing.toggleBold`.
+- `NoteTextView`: `mouseDown` (a click on a box, a ⌘-click on a link), `checkboxMarker(atViewPoint:)`,
+  `toggleCheckbox(atViewPoint:)`, `toggleChecklist(_:)` (⇧⌘L) and `apply(_:)`, which makes the core's `TextEdit` one undo
+  step; `insertNewline(_:)`, `insertTab(_:)` and `insertBacktab(_:)` (Return, Tab, ⇧Tab, through `listEdit`, which asks
+  the core's rule unless a block is under the selection) and `toggleBoldMarkers(_:)` (⌘B); `openURL` (what a ⌘-click on
+  a link does: it opens the browser, and tests replace it), `link(atViewPoint:)` (the URL under a point, only on a
+  character of the link) and `updateLinkCursor(atViewPoint:modifiers:)`, which `mouseMoved(with:)` and
+  `flagsChanged(with:)` call, with the tracking area of `updateTrackingAreas()` (the pointing hand).
+  `MainMenu.formatMenu` is the Format menu. The core rules are `ListEditing` (`newline`, `indent`, `outdent`,
+  `toggleChecklist`, `toggleCheckmark`) and `InlineEditing.toggleBold`.
 - `NoteTextView.load` and `applyFontSize` go through the styler. `TextViewFactory` builds the stack with the styler
   and the layout manager.
 
@@ -124,6 +147,10 @@ spaces.
 | The font size changes bold runs too | `testFontSizeChangeKeepsBold` |
 | Inline code has the asset colours, and the colours are the specified ones | `testInlineCodeColours`, `testTheCodeColoursComeFromTheAssets` |
 | A link is coloured and underlined and keeps its URL | `testLinkIsColouredAndUnderlined` |
+| A ⌘-click on a link opens its URL (without the period after it), the link under the click, at its edges, on a wrapped line and in a read-only note, and places no caret | `LinkTests.testCommandClickOpensLink`, `testCommandClickOpensTheLinkUnderTheClick`, `testCommandClickOnTheEdgesOfALinkOpensIt`, `testCommandClickOnTheWrappedPartOfALinkOpensIt`, `testCommandClickOpensLinkInAReadOnlyNote` |
+| A plain click, or a click with ⇧ or ⌥, opens nothing; nor does a ⌘-click off a link, in inline code or in a fenced block | `testPlainClickDoesNotOpen`, `testClickWithOtherModifiersDoesNotOpen`, `testCommandClickOutsideLinkDoesNothing`, `testLinkInsideInlineCodeIsNotOpened`, `testLinkInsideAFencedBlockIsNotOpened` |
+| A link is found only over its own characters | `testLinkIsFoundOnlyOverItsOwnText` |
+| The pointing hand shows only while ⌘ is held over a link, and the view asks for the mouse moves | `testPointingHandShowsOnlyWhileCommandIsHeldOverALink`, `testTheViewTracksMouseMoves` |
 | A bullet or checkbox line hangs its wrapped lines under the text | `testBulletParagraphHasHangingIndent` |
 | A ticked item is struck through and dimmed, and the box is the `[?]` only | `testCheckedLineIsStruckThrough` |
 | A click on a box ticks or unticks it, keeps the caret and the keyboard, and changes only that box | `CheckboxTests.testClickingCheckboxTogglesWithoutMovingCaret`, `testClickingATickedUppercaseBoxUnticksIt`, `testClickingOneBoxChangesOnlyThatBox`, `testClickingABoxMovesTheKeyboardToTheEditor` |

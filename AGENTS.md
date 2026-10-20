@@ -111,7 +111,7 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
                                   reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
                                   click ticks a box, ⇧⌘L, the drawn symbol, the Format menu, ListKeyTests: Return, Tab,
-                                  ⇧Tab and ⌘B)
+                                  ⇧Tab and ⌘B, LinkTests: ⌘-click opens a link, the pointing hand)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -624,10 +624,26 @@ new kind of release file, with no change to the app, ships.
   whose point is inside the rectangle of the three `[?]` glyphs (`checkboxMarker(atViewPoint:)`, which asks the layout
   manager for the character under the point, not the nearest insertion point) ticks or unticks the item through
   `apply(_:)` and leaves the caret where it was; the view takes the keyboard. Any other click, one with ⇧, ⌘, ⌥ or ⌃
-  held, and every click in a read-only note is AppKit's. **A hosted test must not send a click that ends in
+  held (except a ⌘-click on a link, below), and every click in a read-only note is AppKit's. **A hosted test must not send a click that ends in
   `super.mouseDown`:** it runs a tracking loop until the mouse button is released, and the test hangs for its two
   minutes. `CheckboxTests.clickBox` checks that the point is on a box first, and the cases that are not a toggle call
   `checkboxMarker(atViewPoint:)` and `toggleCheckbox(atViewPoint:)` directly.
+- **A link opens with ⌘-click only, through `NoteTextView.openURL`, and a hosted test must never open a browser.**
+  `mouseDown` with ⌘ held over a character of a link (`link(atViewPoint:)`: the layout manager's character under the
+  point, accepted only when the point is inside that one glyph's rectangle, so the empty space after a link that ends its
+  line is not the link) calls `openURL` and returns without `super`: no caret is placed, and a read-only note opens links
+  too. Every other click, a plain click on a link included, is AppKit's. `openURL` defaults to
+  `NSWorkspace.shared.open`, and every `LinkTests` test replaces it. A link is `.scratchLink` and never AppKit's `.link`,
+  which opens with a plain click (`MarkupAttributes`). **The hosted tests that send a click to `super.mouseDown` queue
+  the matching `leftMouseUp` first** (`NSApp.postEvent(_:atStart: false)`), so that AppKit's tracking loop ends at once,
+  and take what is left in the queue out afterwards (`LinkTests.click`).
+- **The pointing hand follows ⌘, and only after the view set it itself.** `updateTrackingAreas` makes one
+  `NSTrackingArea` (`mouseMoved`, `activeInKeyWindow`, `inVisibleRect`, `linkTrackingArea`) and `mouseMoved(with:)`
+  and `flagsChanged(with:)` call `updateLinkCursor(atViewPoint:modifiers:)`, which sets `NSCursor.pointingHand` over a
+  link while ⌘ is held and puts `NSCursor.iBeam` back only when it had set the hand (`showsLinkCursor`): the cursor
+  over the scroll bar is not the view's. `flagsChanged` reaches the first responder only, so with the keyboard in the
+  title field the hand shows with the next mouse move. Nothing reads the cursor in a test: `updateLinkCursor` returns
+  what it set.
 - **A rule's `TextEdit` enters the note through `NoteTextView.apply(_:)` only.** It breaks the undo coalescing, changes
   the text with `shouldChangeText`, `replaceCharacters` and `didChangeText` (one undo step, registered on the note's own
   undo manager, and the styler restyles the paragraph as for typing), then sets the selection. It never touches a

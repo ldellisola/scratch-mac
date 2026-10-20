@@ -216,14 +216,18 @@ final class NoteTextView: NSTextView {
     // MARK: Checkboxes
 
     /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
-    /// it was, so the box can be clicked while typing somewhere else. Any other click, also one on a box with a
-    /// modifier key held (⇧ extends the selection, ⌘ will open a link) or in a note that cannot be edited, is the text
-    /// view's own.
+    /// it was, so the box can be clicked while typing somewhere else. A ⌘-click on a link opens it (`openURL`) and goes
+    /// no further either: it places no caret, and it also works in a note that cannot be edited. Any other click, also
+    /// one on a box with a modifier key held (⇧ extends the selection) or in a note that cannot be edited, is the text
+    /// view's own: a plain click on a link places the caret and never opens anything.
     override func mouseDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]),
-            toggleCheckbox(atViewPoint: convert(event.locationInWindow, from: nil))
-        {
+        let point = convert(event.locationInWindow, from: nil)
+        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]), toggleCheckbox(atViewPoint: point) {
+            return
+        }
+        if modifiers.contains(.command), let url = link(atViewPoint: point) {
+            openURL(url)
             return
         }
         super.mouseDown(with: event)
@@ -269,19 +273,76 @@ final class NoteTextView: NSTextView {
 
     // MARK: Links
 
-    /// What a ⌘-click on a link does with its URL. It opens it in the default browser. Tests replace it: they must never
-    /// open one.
+    /// What a ⌘-click on a link does with its URL: it opens it in the default browser. Tests replace it, so that none of
+    /// them opens a browser.
     var openURL: (URL) -> Void = { _ = NSWorkspace.shared.open($0) }
 
-    /// The URL of the link under `point`, in the coordinates of this view, or nil. (Stub: Task 6.)
-    func link(atViewPoint point: NSPoint) -> URL? { nil }
-
-    /// The tracking area that delivers the mouse moves over the view. (Stub: Task 6.)
+    /// The area that has the view told when the mouse moves, which is how the pointing hand follows the mouse while ⌘ is
+    /// held. `updateTrackingAreas()` makes it once. It follows the visible part of the view by itself.
     private(set) var linkTrackingArea: NSTrackingArea?
 
-    /// Shows the pointing hand while ⌘ is held over a link. (Stub: Task 6.)
+    /// True while this view has set the pointing hand. The view puts the I-beam back only then and leaves the cursor
+    /// alone otherwise: it is not the view's to set over the scroll bar, say.
+    private var showsLinkCursor = false
+
+    /// The URL of the link under `point`, in the coordinates of this view, or nil. The point must be on a character of
+    /// the link itself: the empty space to the right of a link that ends its line is not, although the character nearest
+    /// to it is the link's last. Nothing in inline code or in a fenced block is a link (`MarkupStyler.link(at:)`).
+    func link(atViewPoint point: NSPoint) -> URL? {
+        guard let layoutManager, let container = textContainer, let styler else { return nil }
+        let origin = textContainerOrigin
+        let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+        let index = layoutManager.characterIndex(
+            for: local, in: container, fractionOfDistanceBetweenInsertionPoints: nil)
+        guard let url = styler.link(at: index) else { return nil }
+        let glyph = layoutManager.glyphIndexForCharacter(at: index)
+        let box = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
+        return box.contains(local) ? url : nil
+    }
+
+    /// Shows the pointing hand while ⌘ is held over a link (`modifiers` are the keys held, `point` is where the mouse is,
+    /// in the coordinates of this view), and puts the I-beam back when the mouse leaves the link or ⌘ is let go. Returns
+    /// the cursor it set, or nil when it left the cursor alone, which is every time the view has not set the pointing
+    /// hand and does not set it now.
     @discardableResult
-    func updateLinkCursor(atViewPoint point: NSPoint, modifiers: NSEvent.ModifierFlags) -> NSCursor? { nil }
+    func updateLinkCursor(atViewPoint point: NSPoint, modifiers: NSEvent.ModifierFlags) -> NSCursor? {
+        let overLink = modifiers.contains(.command) && link(atViewPoint: point) != nil
+        guard overLink || showsLinkCursor else { return nil }
+        showsLinkCursor = overLink
+        let cursor: NSCursor = overLink ? .pointingHand : .iBeam
+        cursor.set()
+        return cursor
+    }
+
+    /// Asks for the mouse moves over the visible part of the view, which AppKit does not send to a text view otherwise.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = linkTrackingArea, trackingAreas.contains(area) { return }
+        let area = NSTrackingArea(
+            rect: .zero, options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        linkTrackingArea = area
+    }
+
+    /// The mouse moved over the view: the pointing hand shows over a link while ⌘ is held, whichever way ⌘ and the mouse
+    /// came there.
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        updateLinkCursor(atViewPoint: convert(event.locationInWindow, from: nil), modifiers: event.modifierFlags)
+    }
+
+    /// ⌘ was pressed or let go while the mouse is still: the cursor changes without a mouse move. Only the view that has
+    /// the keyboard hears it. A mouse that is somewhere else than over this view leaves the cursor to whatever is there.
+    override func flagsChanged(with event: NSEvent) {
+        super.flagsChanged(with: event)
+        guard let window else { return }
+        let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        guard visibleRect.contains(point) else {
+            showsLinkCursor = false
+            return
+        }
+        updateLinkCursor(atViewPoint: point, modifiers: event.modifierFlags)
+    }
 
     // MARK: The Format menu
 
