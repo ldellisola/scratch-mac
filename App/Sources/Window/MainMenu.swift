@@ -2,7 +2,7 @@ import AppKit
 
 /// The menu bar. The app has no storyboard, so without this there would be no ⌘Q and no ⌘C, ⌘V or ⌘Z for the editor.
 /// Most items send their action to the first responder, so the editor and the window handle them. The items that
-/// belong to the app (the tabs and the font size) have `commands` as their target.
+/// belong to the app (the tabs, pinning, searching the notes and the font size) have `commands` as their target.
 enum MainMenu {
     /// Makes this the application's menu bar. The Window menu is registered as the application's windows menu, so the
     /// system lists the open windows in it. `commands` is the target of the app's own items and must outlive the menu:
@@ -10,7 +10,10 @@ enum MainMenu {
     static func install(in application: NSApplication, commands: AppCommands) {
         let menuBar = NSMenu()
         let windowMenu = windowMenu(commands: commands)
-        for menu in [appMenu(), fileMenu(commands: commands), editMenu(), viewMenu(commands: commands), windowMenu] {
+        for menu in [
+            appMenu(), fileMenu(commands: commands), editMenu(commands: commands), viewMenu(commands: commands),
+            windowMenu,
+        ] {
             let item = NSMenuItem()
             item.submenu = menu
             menuBar.addItem(item)
@@ -79,12 +82,16 @@ enum MainMenu {
         return menu
     }
 
-    /// New Note and New Tab both open a new empty note in a new tab. ⌘W closes the tab, and ⇧⌘W the window (which
-    /// quits, spec §6.6).
+    /// New Note and New Tab both open a new empty note in a new tab. ⇧⌘P pins the note of the active tab, or unpins it
+    /// (`AppCommands.validateMenuItem` sets the title). ⌘W closes the tab, and ⇧⌘W the window (which quits, spec §6.6).
     private static func fileMenu(commands: AppCommands) -> NSMenu {
         let menu = NSMenu(title: "File")
         menu.addItem(commandItem("New Note", #selector(AppCommands.newNote(_:)), key: "n", target: commands))
         menu.addItem(commandItem("New Tab", #selector(AppCommands.newNote(_:)), key: "t", target: commands))
+        menu.addItem(.separator())
+        let pin = commandItem("Pin Note", #selector(AppCommands.togglePin(_:)), key: "p", target: commands)
+        pin.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(pin)
         menu.addItem(.separator())
         menu.addItem(commandItem("Close Tab", #selector(AppCommands.closeTab(_:)), key: "w", target: commands))
         let closeWindow = menu.addItem(
@@ -93,7 +100,7 @@ enum MainMenu {
         return menu
     }
 
-    private static func editMenu() -> NSMenu {
+    private static func editMenu(commands: AppCommands) -> NSMenu {
         let menu = NSMenu(title: "Edit")
         menu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
         let redo = menu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
@@ -123,6 +130,11 @@ enum MainMenu {
         }
         find.submenu = findMenu
         menu.addItem(find)
+
+        // ⌘F finds in the note. This one searches all the notes, in the sidebar.
+        let search = commandItem("Search Notes", #selector(AppCommands.focusSearch(_:)), key: "f", target: commands)
+        search.keyEquivalentModifierMask = [.command, .option]
+        menu.addItem(search)
         return menu
     }
 

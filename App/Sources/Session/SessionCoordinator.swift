@@ -2,8 +2,9 @@ import AppKit
 import ScratchCore
 
 /// Connects the editor, the tab strip, the sidebar and the storage: it decides which notes are open in which tabs and
-/// which tab is active, keeps the active note's text and the session saved, and keeps the sidebar list and the tab
-/// titles current. The editor, the tab strip and the sidebar only report what the user did.
+/// which tab is active, keeps the active note's text and the session saved, pins notes, and keeps the sidebar list and
+/// the tab titles current. The editor, the tab strip and the sidebar only report what the user did. The sidebar's data
+/// (the reads, the search, the groups) is `NoteListModel`'s.
 ///
 /// **Threading.** Everything here runs on the main thread (the class is `@MainActor`). Writes go to one private serial
 /// queue, so typing never waits for the disk. The exceptions wait for that queue on purpose: `persistNow()`, which
@@ -25,9 +26,10 @@ import ScratchCore
 final class SessionCoordinator {
     private let storage: ScratchStorage
     private let editor: EditorViewController
-    private let sidebar: SidebarViewController
     private let tabStrip: TabStripViewController
-    private let storageQueue = DispatchQueue(label: "io.github.ldellisola.Scratch.storage", qos: .utility)
+    private let storageQueue: DispatchQueue
+    /// The sidebar's data: it reads the note list on `storageQueue` and shows it.
+    private let noteList: NoteListModel
     /// Calls `saveNow()` 300 ms after the last change and at most 1 s after the first one. Set at the end of `init`.
     private var autosaver: Autosaver!
 
@@ -48,20 +50,24 @@ final class SessionCoordinator {
     /// list after each save, so a tab title follows an edit about as fast as the sidebar row does.
     private var tabItems: [NoteID: TabStripItem] = [:]
 
-    /// The note list as last read from the storage, without the filtering `renderSidebar()` does.
-    private var latestSummaries: [NoteSummary] = []
-    /// Numbers the reads of the note list. A result is shown only when no newer read was asked for since, so a slow,
-    /// stale list never overwrites a newer one.
-    private var summariesRequest = 0
+    /// Every live note as of the last read of the note list, whatever the search field says. The pin button and the
+    /// menu item read the pin of the active note from it.
+    private var latestLive: [NoteSummary] = []
+
+    /// Called with whether the note of the active tab is pinned, and whether it may be pinned, after the tabs or the
+    /// note list changed. `AppDelegate` shows it on the toolbar's pin button and the Pin Note menu item.
+    var onActiveNotePinChange: ((_ pinned: Bool, _ enabled: Bool) -> Void)?
 
     init(
         storage: ScratchStorage, editor: EditorViewController, sidebar: SidebarViewController,
         tabStrip: TabStripViewController
     ) {
+        let queue = DispatchQueue(label: "io.github.ldellisola.Scratch.storage", qos: .utility)
         self.storage = storage
         self.editor = editor
-        self.sidebar = sidebar
         self.tabStrip = tabStrip
+        self.storageQueue = queue
+        self.noteList = NoteListModel(storage: storage, storageQueue: queue, sidebar: sidebar)
 
         // The autosaver fires on the main queue, where `assumeIsolated` is valid. It calls `flush` from the main
         // thread too (`persistNow`).
@@ -72,6 +78,9 @@ final class SessionCoordinator {
         editor.onTitleChange = { [weak self] title in self?.titleDidChange(title) }
         editor.onViewStateChange = { [weak self] in self?.viewStateDidChange() }
         sidebar.onOpen = { [weak self] id, inNewTab in self?.open(id, inNewTab: inNewTab) }
+        sidebar.onSearch = { [weak self] text in self?.noteList.setSearchText(text) }
+        sidebar.onTogglePin = { [weak self] id in self?.togglePin(id) }
+        noteList.onLiveSummaries = { [weak self] summaries in self?.didReadLiveSummaries(summaries) }
         tabStrip.onSelect = { [weak self] index in self?.selectTab(at: index) }
         tabStrip.onClose = { [weak self] index in self?.closeTab(at: index) }
         tabStrip.onNewTab = { [weak self] in self?.newNoteInNewTab() }
@@ -93,7 +102,8 @@ final class SessionCoordinator {
         show(note, tab: list.active)
         renderTabs()
         renderSidebar()
-        requestSummaries()
+        updatePinState()
+        noteList.refresh()
     }
 
     /// The tabs to show and the note of the active one, from the saved session (spec §6.6). A tab whose note is missing
@@ -198,7 +208,7 @@ final class SessionCoordinator {
         tabs = updated
         showActive(note)
         tabsDidChange()
-        requestSummaries()
+        noteList.refresh()
     }
 
     // MARK: Switching tabs
@@ -278,7 +288,7 @@ final class SessionCoordinator {
         tabItems[closedID] = nil
         showActive(next)
         tabsDidChange()
-        requestSummaries()
+        noteList.refresh()
         editor.focus()
     }
 
@@ -290,7 +300,7 @@ final class SessionCoordinator {
         tabItems[closedID] = nil
         discardIfUnused(closedID)
         tabsDidChange()
-        requestSummaries()
+        noteList.refresh()
     }
 
     /// Closes the only tab: there is always one, so it gets a new empty note. When its note is such a note already,
@@ -317,7 +327,7 @@ final class SessionCoordinator {
         tabItems[list.active.noteID] = nil
         showActive(note)
         tabsDidChange()
-        requestSummaries()
+        noteList.refresh()
         editor.focus()
     }
 
@@ -328,7 +338,7 @@ final class SessionCoordinator {
     private func loadNote(_ id: NoteID) -> Note? {
         do {
             guard let note = try storage.notes.note(id), note.deletedAt == nil else {
-                requestSummaries()
+                noteList.refresh()
                 return nil
             }
             return note
@@ -372,6 +382,7 @@ final class SessionCoordinator {
     private func tabsDidChange() {
         renderTabs()
         renderSidebar()
+        updatePinState()
         writeSessionNow()
     }
 
@@ -404,7 +415,8 @@ final class SessionCoordinator {
         untouchedNoteIDs.remove(note.id)
         undoManagers[note.id] = nil
         tabItems[note.id] = nil
-        latestSummaries.removeAll { $0.id == note.id }
+        latestLive.removeAll { $0.id == note.id }
+        noteList.forget(note.id)
         do {
             try storage.notes.discard(note.id)
         } catch {
@@ -469,20 +481,13 @@ final class SessionCoordinator {
     }
 
     /// The autosaver's save: captures what is unsaved on the main thread, then writes it on the storage queue. A
-    /// changed note is followed by a read of the list, because its title, preview and place in the list changed.
+    /// changed note is followed by a read of the note list (`NoteListModel.refresh`).
     private func saveNow() {
         guard tabs != nil, let note = current else { return }
         let unsavedNote = currentIsDirty ? note : nil
         currentIsDirty = false
         recordViewState()
         guard let session = tabs?.session(fontSize: fontSize) else { return }
-        let request: Int
-        if unsavedNote != nil {
-            summariesRequest += 1
-            request = summariesRequest
-        } else {
-            request = 0
-        }
 
         let storage = self.storage
         storageQueue.async { [weak self, storage] in
@@ -494,14 +499,11 @@ final class SessionCoordinator {
                 DispatchQueue.main.async {
                     MainActor.assumeIsolated { self?.saveFailed(unsavedNote) }
                 }
-                return
-            }
-            guard unsavedNote != nil else { return }
-            let summaries = try? storage.notes.summaries()
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated { self?.didReadSummaries(summaries, request: request) }
             }
         }
+        // A changed note is followed by a read of the list, which the storage queue runs after the write above: its
+        // title, preview and place in the list changed.
+        if unsavedNote != nil { noteList.refresh() }
     }
 
     /// Hands the session to the storage queue at once, after a change of the tabs, instead of waiting for the
@@ -525,24 +527,50 @@ final class SessionCoordinator {
         autosaver.markDirty()
     }
 
-    // MARK: The note list and the tab titles
+    // MARK: Pinning
 
-    /// Reads the note list on the storage queue, after every write that is already queued, and shows it.
-    private func requestSummaries() {
-        summariesRequest += 1
-        let request = summariesRequest
+    /// Pins the note `id`, or unpins it when it is pinned (a row's context menu). The pin is stored as it is in the
+    /// storage and not as the list shows it, and only the pin changes: the text, the edit time and any typing that is
+    /// not saved yet are left alone (`NoteStore.save` never writes the pin, Plan 2 "Review Focus" 1).
+    func togglePin(_ id: NoteID) {
         let storage = self.storage
-        storageQueue.async { [weak self, storage] in
-            let summaries = try? storage.notes.summaries()
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated { self?.didReadSummaries(summaries, request: request) }
+        storageQueue.async { [storage] in
+            do {
+                let isPinned = try storage.notes.note(id)?.pinnedAt != nil
+                try storage.notes.setPinned(id, !isPinned, now: Date())
+            } catch {
+                report("cannot pin note \(id.rawValue): \(error)")
             }
         }
+        // The read goes to the storage queue after the write above.
+        noteList.refresh()
     }
 
-    private func didReadSummaries(_ summaries: [NoteSummary]?, request: Int) {
-        guard request == summariesRequest, let summaries else { return }
-        latestSummaries = summaries
+    /// ⇧⌘P and the toolbar's pin button: pins the note of the active tab, or unpins it.
+    func togglePinOfActiveNote() {
+        guard let note = current else { return }
+        togglePin(note.id)
+    }
+
+    /// Whether the note of the active tab is pinned, as the note list last read it, and whether it can be pinned.
+    private func updatePinState() {
+        guard let note = current else { return }
+        let isPinned = latestLive.first { $0.id == note.id }?.pinnedAt != nil
+        onActiveNotePinChange?(isPinned, note.deletedAt == nil)
+    }
+
+    // MARK: The note list and the tab titles
+
+    /// Reads the note list again, for example when the app becomes active, so that the day groups and the time labels
+    /// are those of today.
+    func refreshNoteList() {
+        noteList.refresh()
+    }
+
+    /// The note list was read. The tab titles of the open notes follow it, and so does the pin of the active note, and
+    /// the list is told which notes it must not show before it shows what was read.
+    private func didReadLiveSummaries(_ summaries: [NoteSummary]) {
+        latestLive = summaries
         if let list = tabs {
             let open = Set(list.tabs.map(\.noteID))
             for summary in summaries where open.contains(summary.id) {
@@ -550,19 +578,24 @@ final class SessionCoordinator {
             }
             renderTabs()
         }
-        renderSidebar()
+        updateNoteListState()
+        updatePinState()
     }
 
     /// Shows the note list with the current note highlighted. A new note that nobody has used yet is not listed (spec
     /// §6.3: it never appears in the list unless it gets text). The note in the editor counts as empty when its text
     /// is, and a note in another tab when its saved row is.
     private func renderSidebar() {
-        let visible = latestSummaries.filter { summary in
-            guard untouchedNoteIDs.contains(summary.id) else { return true }
-            if let note = current, note.id == summary.id { return !note.isEmpty }
-            return summary.hasTitle || !summary.displayTitle.isEmpty
-        }
-        sidebar.reload(visible, selecting: current?.id)
+        updateNoteListState()
+        noteList.render()
+    }
+
+    /// Tells the note list which note is open and which notes are not to be listed, without showing it.
+    private func updateNoteListState() {
+        let currentID = current?.id
+        noteList.selectedNoteID = currentID
+        noteList.hiddenNoteID = current.flatMap { isUntouched($0) ? $0.id : nil }
+        noteList.hiddenWhileEmptyNoteIDs = untouchedNoteIDs.filter { $0 != currentID }
     }
 
     /// Shows the open tabs in the tab strip.

@@ -47,6 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         coordinator?.persistNow()
     }
 
+    /// Coming back reads the note list again, so that "Today" and the time labels are those of today when the app was
+    /// left open over midnight (spec §6.2).
+    func applicationDidBecomeActive(_ notification: Notification) {
+        coordinator?.refreshNoteList()
+    }
+
     private func launch() throws {
         let environment = try AppEnvironment.bootstrap(arguments: CommandLine.arguments)
         self.environment = environment
@@ -60,7 +66,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let sidebar = SidebarViewController()
         let tabStrip = TabStripViewController()
         let editorArea = EditorAreaViewController(tabStrip: tabStrip, editor: editor)
-        let content = MainSplitViewController(sidebar: sidebar, editorArea: editorArea)
+        let content = MainSplitViewController(
+            sidebar: sidebar, editorArea: editorArea, remembersLayout: !environment.options.isIsolated)
         let windowController = MainWindowController(environment: environment, content: content)
         self.windowController = windowController
         // The Edit menu's Undo asks the window for its undo manager, and the window asks this delegate.
@@ -71,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.coordinator = coordinator
         let toolbarController = ToolbarController()
         toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
+        toolbarController.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
         self.toolbarController = toolbarController
         windowController.window?.toolbar = toolbarController.makeToolbar()
 
@@ -80,6 +88,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         commands.onNextTab = { [weak coordinator] in coordinator?.selectNextTab() }
         commands.onPreviousTab = { [weak coordinator] in coordinator?.selectPreviousTab() }
         commands.onSelectTabNumber = { [weak coordinator] number in coordinator?.selectTab(number: number) }
+        // File > Pin Note and Edit > Search Notes (spec §6.2), and the toolbar's pin button, which shows the pin of the
+        // note in the active tab.
+        commands.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
+        commands.onFocusSearch = { [weak sidebar] in sidebar?.focusSearch() }
+        let appCommands = commands
+        coordinator.onActiveNotePinChange = { [weak toolbarController, weak appCommands] pinned, enabled in
+            toolbarController?.setPinned(pinned, enabled: enabled)
+            appCommands?.setActiveNotePin(pinned: pinned, enabled: enabled)
+        }
         // View > Bigger, Smaller and Actual Size (spec §6.4).
         commands.onBigger = { [weak coordinator] in coordinator?.changeFontSize(FontSize.larger) }
         commands.onSmaller = { [weak coordinator] in coordinator?.changeFontSize(FontSize.smaller) }

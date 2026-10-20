@@ -66,6 +66,7 @@ final class SidebarUITests: XCTestCase {
             UITestSupport.wait { UITestSupport.sidebarTitleTexts(in: app).count == 6 },
             "the sidebar rows: \(UITestSupport.sidebarTitleTexts(in: app))")
 
+        // The group headers are not rows and have no row title, so `sidebarTitleTexts` lists the notes only.
         let titles = UITestSupport.sidebarTitleTexts(in: app)
         XCTAssertEqual(titles.first, "Snippets I keep reusing", "the sidebar rows: \(titles)")
         XCTAssertEqual(titles.dropFirst().first, "Deploy checklist", "the sidebar rows: \(titles)")

@@ -5,8 +5,8 @@ The tab strip above the editor, and the rules for opening, closing and switching
 the sidebar, ⌘-click) and §6.6 (a relaunch restores the tabs), guarding the anti-goals "Lost text" and "Fake glass"
 (§4). The rules themselves live in ScratchCore (`TabList`, plan 2 task 4).
 
-Status: plan 2, task 7. Sidebar groups, search and pinning follow in task 8, and deleting a note, which closes its tab,
-in task 9.
+Status: plan 2, task 7. The sidebar's groups, search and pinning are in [sidebar.md](sidebar.md) (task 8). Deleting a
+note, which closes its tab, follows in task 9.
 
 ## Behaviour
 
@@ -56,6 +56,7 @@ in task 9.
 - `App/Sources/Session/SessionCoordinator.swift`: the tab list (`TabList`), `newNoteInNewTab`, `open(_:inNewTab:)`,
   `selectTab`, `closeTab`, the restore, and the session write after each change.
 - `App/Sources/Sidebar/SidebarViewController.swift`: `onOpen(id, inNewTab)`, from the table's click action and Return.
+  A click on a group header opens nothing.
 - `App/Sources/Window/AppCommands.swift` and `MainMenu.swift`: the File and Window menu items.
   `App/Sources/Window/ToolbarController.swift`'s new note button calls the same `newNoteInNewTab`.
 - ScratchCore: `TabList`, `TabOpening`, `TabClosing` and `TabState` (the rules and the saved form).

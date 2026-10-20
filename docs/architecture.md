@@ -32,8 +32,11 @@ key press
   -> SessionCoordinator: updates the current Note (body, modifiedAt) and calls Autosaver.markDirty()
   -> Autosaver (ScratchCore): one one-shot timer, 300 ms after the last change and at most 1 s after the first
   -> SessionCoordinator.saveNow() on the main thread: copies the changed Note and the SessionState
-  -> storage queue: NoteStore.save, SessionStore.save, then NoteStore.summaries()
-  -> main thread: SessionCoordinator.didReadSummaries -> SidebarViewController.reload
+  -> storage queue: NoteStore.save, SessionStore.save
+  -> SessionCoordinator then asks NoteListModel.refresh(), which queues a read on the same storage queue:
+     NoteStore.summaries() (and search, and deletedSummaries(), as needed)
+  -> main thread: NoteListModel.didRead -> SessionCoordinator.didReadLiveSummaries (tab titles, pin state)
+     -> SidebarSections.make -> SidebarViewController.reload
 ```
 
 - A cursor or scroll change takes the same path through `EditorViewController.onViewStateChange`, but writes only the
@@ -70,7 +73,9 @@ key press
 - **The coordinator owns its `Autosaver`**, and the autosaver does not keep itself alive: a dirty one that is released
   skips its pending save. `AppDelegate` keeps the coordinator for the app's lifetime, and the save closure holds the
   coordinator weakly.
-- A note list read carries a number, and only the newest read is shown, so a slow, stale list never replaces a newer one.
+- A note list read (`NoteListModel.refresh`) carries a number, and only the newest read is shown, so a slow, stale list
+  never replaces a newer one. A read goes to the storage queue after every write that is already queued, so it sees
+  that write: `togglePin` queues `setPinned` and then asks for a read.
 
 ## The text system and the performance instrumentation
 

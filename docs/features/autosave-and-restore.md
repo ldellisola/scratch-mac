@@ -39,8 +39,9 @@ deleting.
   moment in a very long note.
 - **The first launch opens one empty note**, ready to type in.
 - **The sidebar lists the notes**, pinned first and then the most recently edited first, with the open note
-  highlighted. A row shows the title (bold) or else the first line (in the note font), and a preview line below it.
-  Clicking a row shows that note in the current tab (⌘-click: in a new tab).
+  highlighted. A row shows the title (bold) or else the first line (in the note font), a preview line below it and
+  the edit time. Clicking a row shows that note in the current tab (⌘-click: in a new tab). The groups, pinning and
+  search are in [sidebar.md](sidebar.md).
 - **The toolbar's new note button** (and ⌘N, ⌘T) starts an empty note in a new tab and puts the cursor in it. The note
   is not listed until it has text. It shows up in the sidebar about 300 ms after the first character.
 - **Write errors are not silent.** A failed save is written to the standard error stream, the text stays in the editor,
@@ -54,10 +55,12 @@ not necessarily a loss of power.
 ## Where it lives
 
 - `App/Sources/Session/SessionCoordinator.swift`: the one place that decides which note is open and when anything is
-  written. It owns the `Autosaver` (ScratchCore), keeps the current `Note` and reads the note list.
+  written. It owns the `Autosaver` (ScratchCore) and keeps the current `Note`. After each save it asks
+  `NoteListModel` (`App/Sources/Session/NoteListModel.swift`) to read the note list again.
 - `App/Sources/Editor/EditorViewController.swift` reports edits (`onTextChange`, `onTitleChange`) and cursor or scroll
   changes (`onViewStateChange`), and gives the scroll position as `currentScrollAnchor`.
-- `App/Sources/Sidebar/SidebarViewController.swift` shows the rows and reports the one that was opened (`onOpen`).
+- `App/Sources/Sidebar/SidebarViewController.swift` shows the sections and rows it is given and reports the one that
+  was opened (`onOpen`).
 - `App/Sources/Tabs/TabStripViewController.swift` shows the tabs and reports a click, a close and the "+" button.
 - `App/Sources/Window/ToolbarController.swift` has the new note button (`onNewNote`).
 - `App/Sources/AppDelegate.swift` creates all of them, keeps the coordinator and the toolbar controller alive, and calls

@@ -53,15 +53,19 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
                                   sidebar item + editor area item), EditorAreaViewController (the tab strip above the
                                   editor), MainMenu (menu bar, built in code: there is no storyboard), AppCommands (the
-                                  target of the app's own menu items: the tabs and the font size), ToolbarController
-                                  (sidebar button, new note button), TitlebarPocket (hides the line macOS 26 draws under
-                                  the toolbar, section 7)
+                                  target of the app's own menu items: the tabs, pinning, searching and the font size),
+                                  ToolbarController (sidebar button, pin button, new note button), TitlebarPocket (hides
+                                  the line macOS 26 draws under the toolbar, section 7)
 App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
                                   `TabStripLayout`, `TabStripContentView`, `TabItemView`)
-App/Sources/Sidebar/              SidebarViewController (the note list: an NSTableView in the glass sidebar; a click or
-                                  Return opens a note, `onOpen`)
+App/Sources/Sidebar/              SidebarViewController (the search field and the note list in the glass sidebar: an
+                                  NSTableView with group headers; a click or Return opens a note, `onOpen`; `onSearch`,
+                                  `onTogglePin`), SidebarRowViews (`NoteRowCellView`, `GroupRowCellView`),
+                                  SidebarTableView (Return, the row's context menu)
 App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore, new note, close,
-                                  the sidebar list and the tab titles; the one place that writes to storage)
+                                  pinning, the tab titles; the one place that writes to storage), NoteListModel (the
+                                  sidebar's data: reads the note list, the search results and Recently Deleted on the
+                                  storage queue, builds the sections)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
                                   TitleField (the optional title above the text), EditorViewController (the title field
@@ -410,10 +414,34 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
 - **A new note opens at the end of the strip, a note opened from the sidebar next to the active tab.** `TabList.open`
   inserts after the active tab, which is what ⌘-click wants. `newNoteInNewTab` selects the last tab first, so the new
   tab is at the end, as in a browser, and `testCommandTOpensNewEmptyTab` expects the new tab to be the third.
+- **A sidebar header is a group row, and it is not a note.** `SidebarViewController` flattens the sections into
+  `Line`s, a `.header` or a `.note`. `isGroupRow` makes a header, `shouldSelectRow` refuses it (so the arrow keys step
+  over it), and `rowClicked` ignores it. Row heights differ (44 and 28), so the delegate answers `heightOfRow`. The
+  header's label has the identifier `sidebar.group` and the title of a row `sidebar.row.title`, so a UI test that counts
+  rows counts titles only. A header is a `NSTableCellView` made for `tableColumn == nil`.
+- **`NoteListModel` owns the sidebar's reads, and the coordinator tells it what to hide.** Every `refresh()` reads on the
+  storage queue and is numbered (`request`), so only the newest result is shown. The model hides `hiddenNoteID` (the
+  active note while it is new and empty) and, while their saved row is empty, `hiddenWhileEmptyNoteIDs` (new notes in
+  other tabs). Both are set by `SessionCoordinator.updateNoteListState()`, which `didReadLiveSummaries` calls before the
+  model shows what it read: a note that gets its first text is listed by the read that follows its save. A note that
+  the coordinator discards goes through `NoteListModel.forget`. The sections are built with `Date()` and
+  `Calendar.current` on every `render()`, and `applicationDidBecomeActive` asks for a read.
+- **Pinning writes only the pin.** `SessionCoordinator.togglePin` reads the stored pin on the storage queue and flips it
+  with `setPinned`, then asks for a read, which the queue runs after the write. The pin button, ⇧⌘P and the row's menu
+  all end there. The button's state comes from `onActiveNotePinChange`, which the coordinator calls after every read and
+  every change of the tabs. The toolbar item has `autovalidates = false`, or AppKit would enable it again by itself,
+  and `AppCommands.validateMenuItem` sets the title of the Pin Note menu item ("Pin Note" or "Unpin Note").
+- **The search field sends its text twice.** A keystroke triggers both the field's action (`sendsSearchStringImmediately`)
+  and `controlTextDidChange`, and Escape is handled in `control(_:textView:doCommandBy:)`. `searchTextMayHaveChanged`
+  reports a text only when it differs from the last one, so the list is read once. ⌥⌘F is a menu item (Edit > Search
+  Notes) that calls `SidebarViewController.focusSearch`, which also shows a collapsed sidebar.
+- **The sidebar's layout is remembered, except in an isolated launch.** `MainSplitViewController` sets
+  `splitView.autosaveName = "MainSplit"` in `viewDidLoad` only when `remembersLayout` (`!options.isIsolated`), so tests
+  and screenshots never write the defaults and always start with the same width.
 - **The sidebar opens a note from the table's click action, not from the selection.** `NSTableView.action` also fires
   for the row that is highlighted already, and `tableView.clickedRow` is valid in it. The arrow keys move the
   highlight without opening anything, so the highlight and the open note can differ until the coordinator renders the
-  list again (`SidebarList` turns Return into `onReturn`). ⌘-click on the highlighted row deselects it, which
+  list again (`SidebarTableView` turns Return into `onReturn`). ⌘-click on the highlighted row deselects it, which
   `open(_:inNewTab:)` undoes by rendering the sidebar even when it has nothing to show.
 - **The tab strip is an `NSGlassEffectView` that Auto Layout does not size, with a frame-based content view.**
   `TabStripView` (the strip's own view) gets its width from the tabs as its intrinsic content size, with a compression
