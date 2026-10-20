@@ -39,7 +39,9 @@ final class NoteRowCellView: NSTableCellView {
         previewField.setAccessibilityIdentifier(AccessibilityID.sidebarRowPreview)
         timeField.font = NSFont.systemFont(ofSize: 11)
         timeField.textColor = .secondaryLabelColor
-        previewField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        // The preview is in the system font, like the time (mockup B). Only a title that is a first line is in the
+        // note font.
+        previewField.font = NSFont.systemFont(ofSize: 12)
         previewField.textColor = .secondaryLabelColor
         for field in [titleField, previewField] {
             field.lineBreakMode = .byTruncatingTail
@@ -133,6 +135,9 @@ final class GroupRowCellView: NSTableCellView {
     private var labelLeading: NSLayoutConstraint!
 
     private static let chevronSize: CGFloat = 10
+    /// A header's title starts where a note's title does (mockup B): a group row sits 8 points further left in the
+    /// table than the row of a note, whose cell has a side margin of 8.
+    private static let sideMargin: CGFloat = 16
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -155,7 +160,7 @@ final class GroupRowCellView: NSTableCellView {
         chevronWidth = chevronView.widthAnchor.constraint(equalToConstant: 0)
         labelLeading = label.leadingAnchor.constraint(equalTo: chevronView.trailingAnchor)
         NSLayoutConstraint.activate([
-            chevronView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            chevronView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.sideMargin),
             chevronView.centerYAnchor.constraint(equalTo: label.centerYAnchor),
             chevronView.heightAnchor.constraint(equalToConstant: Self.chevronSize),
             chevronWidth,

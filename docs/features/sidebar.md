@@ -23,7 +23,8 @@ Status: plan 2, tasks 8 and 9. Deleting, restoring and the Recently Deleted sect
     becomes active, so Today rolls over at midnight.
   - Pinned notes and the notes of each day are in order of the last edit, newest first.
 - **A row** has the title (bold) or else the first line (in the note font), the edit time on the right
-  (`sidebar.row.time`) and a preview line below. A pinned note has a small orange pin before its title.
+  (`sidebar.row.time`) and a preview line below, in the system font. A pinned note has a small orange pin before its
+  title, and a group's header starts at the same left edge as the titles under it (mockup B).
   - The time is the time of day for Today and Yesterday (`10:42`, or `10:42 AM` in a 12-hour locale), the month and the
     day for earlier this year (`Oct 14`) and the year too before that (`Oct 14, 2025`): the locale's own formats
     (`NoteTimeLabel`).
