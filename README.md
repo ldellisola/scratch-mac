@@ -83,6 +83,10 @@ To update, do the same with the new release and choose Replace. Your notes live 
 | ⌘⌫ | Delete the highlighted note, while the sidebar has the keyboard |
 | ⌃⌘S | Show or hide the sidebar |
 | ⌘+, ⌘−, ⌘0 | Bigger, smaller, actual text size |
+| Return | In a list, a new item below (a new checkbox is open). On an empty item it ends the list, or outdents the item |
+| Tab, ⇧Tab | In a list, indent or outdent the item (every list line of the selection) |
+| ⌘B | Bold: put `**` around the selection, or take the stars off a bold run |
+| ⇧⌘L | Turn the selected lines into a checklist, or back into plain lines |
 
 ## How it is built
 

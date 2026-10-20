@@ -5,8 +5,8 @@ Spec: [§6.4 Editor and formatting](../superpowers/specs/2026-10-19-scratchpad-d
 behaviour, marker rules) and §6.5 (copy-out keeps the markers), guarding the anti-goals "Mangled code" and "Lost text"
 (§4). Plan: [Plan 3](../superpowers/plans/2026-10-20-plan-3-formatting.md).
 
-Status: plan 3, task 4 (styling, checkboxes and ⇧⌘L). The keyboard (Return, Tab, ⇧Tab, ⌘B) comes in task 5 and ⌘-click
-on links in task 6, and each adds its section here.
+Status: plan 3, task 5 (styling, checkboxes, ⇧⌘L, and the keyboard: Return, Tab, ⇧Tab and ⌘B). ⌘-click on links comes
+in task 6, and adds its section here.
 
 ## Behaviour: what renders
 
@@ -51,8 +51,39 @@ that then renders like typed text.
   step.
 - **It does nothing, with a beep,** in a read-only note and when a fenced block is among the lines (the selection holds
   one, or starts or ends in it): no marker is put into code. A line next to a block is fine.
-- The commands that change the text (this one, and the keyboard rules of task 5) are in the **Format** menu, after Edit.
-  Its items go to whoever has the keyboard: only the editor answers them.
+- The commands that change the text (this one, and ⌘B below) are in the **Format** menu, after Edit. Its items go to
+  whoever has the keyboard: only the editor answers them.
+
+## Behaviour: Return, Tab, ⇧Tab and ⌘B
+
+The rules are the core's (`ListEditing.newline`, `indent` and `outdent`, `InlineEditing.toggleBold`). The editor gives
+them the paragraphs under the selection, applies what they answer as one undo step (⌘Z takes back one Return, one Tab or
+one ⌘B), leaves the caret where the rule puts it and scrolls to it. A list is a bullet or checkbox line; an indent is two
+spaces.
+
+- **Return on a list item with text** starts the next item below the caret, with the same indentation and an open
+  marker: `- ` for a bullet, `[ ] ` for a checkbox, also after a ticked one. The text after the caret moves to the new
+  item, so Return in the middle of an item splits it.
+- **Return on an empty item** ends the list, or steps out of a level: an item that is indented loses one indent (it
+  moves to the level of its parent), and one at the first level loses its marker and leaves an empty line.
+- **Return is a plain line break** when the caret is in the indentation or inside the marker (before the item's text, so
+  Return above an item inserts a plain line above it), when text is selected (it is replaced, as in any text view), on a
+  line that is not a list item, anywhere in a fenced block, and in a note that cannot be edited.
+- **Tab indents the list lines of the selection** (the caret's line when there is none) by one unit, and ⇧Tab takes up to
+  one unit away. Lines of the selection that are not list lines stay as they are, and the selection moves with its
+  text. A selection of several lines is one undo step.
+- **Tab elsewhere inserts a tab,** the same as in any text view: on a line that is not a list line, with no list line in
+  the selection, and anywhere a fenced block is under the selection. A selection that holds a fenced block is not
+  indented, because a block is code: Tab then replaces the selection with a tab, as it does in any text view.
+- **⇧Tab on a list line that is not indented does nothing.** On a line that is not a list line it is AppKit's own.
+- **⌘B (Format > Bold)** puts `**` around the selection, and the selection then covers the text between the stars. A
+  selection that is exactly the text of a bold run, or the whole run with its stars, loses the stars instead. White space
+  at the ends of the selection (a triple click takes the line break) stays outside the stars, because a run that starts
+  or ends with white space is not bold. With no selection `****` goes in and the caret between the pairs, so what is
+  typed next is bold. The stored text is the only thing that changes: bold is not a font setting.
+- **⌘B does nothing, with a beep,** in a note that cannot be edited, when a fenced block is under the selection, and for
+  a rectangular selection (several selections, which no key rule handles either).
+- **Copy still keeps the stars:** after ⌘B and a select-all, ⌘C puts `**word**` on the pasteboard.
 
 ## Behaviour: when it is styled
 
@@ -74,8 +105,11 @@ that then renders like typed text.
   colours and paragraph styles. `MarkupAttributes.swift`: the `scratchMarker` and `scratchLink` attributes, `MarkerRole`
   and `MarkupColors`. `ParagraphBatch.swift`: whole paragraphs read in one call.
 - `NoteTextView`: `mouseDown` (a click on a box), `checkboxMarker(atViewPoint:)`, `toggleCheckbox(atViewPoint:)`,
-  `toggleChecklist(_:)` (⇧⌘L) and `apply(_:)`, which makes the core's `TextEdit` one undo step. `MainMenu.formatMenu`
-  is the Format menu. The core rules are `ListEditing.toggleCheckmark` and `ListEditing.toggleChecklist`.
+  `toggleChecklist(_:)` (⇧⌘L) and `apply(_:)`, which makes the core's `TextEdit` one undo step; `insertNewline(_:)`,
+  `insertTab(_:)` and `insertBacktab(_:)` (Return, Tab, ⇧Tab, through `listEdit`, which asks the core's rule unless a
+  block is under the selection) and `toggleBoldMarkers(_:)` (⌘B). `MainMenu.formatMenu` is the Format menu. The core
+  rules are `ListEditing` (`newline`, `indent`, `outdent`, `toggleChecklist`, `toggleCheckmark`) and
+  `InlineEditing.toggleBold`.
 - `NoteTextView.load` and `applyFontSize` go through the styler. `TextViewFactory` builds the stack with the styler
   and the layout manager.
 
@@ -100,6 +134,15 @@ that then renders like typed text.
 | ⇧⌘L does nothing in a code block or a read-only note | `testToggleChecklistInACodeBlockDoesNothing`, `testToggleChecklistInAReadOnlyNoteDoesNothing`, ScratchCore `CodeBlockIndexTests.intersects…` |
 | The box is drawn, open as an outline and ticked filled | `testCheckboxSymbolIsDrawn` |
 | The Format menu follows Edit and has Checklist on ⇧⌘L | `testFormatMenuHasTheChecklistShortcut` |
+| Return continues a bullet or a checkbox (an open box after a ticked one), keeps the indentation and splits an item | `ListKeyTests.testReturnContinuesBullet`, `testReturnSplitsTheItemAtTheCaret`, `testReturnOnATickedItemAddsAnOpenBox`, `testReturnKeepsTheIndentation`, `FormattingUITests.testTypingAListByKeyboard`, `testChecklistShortcutThenReturn` |
+| Return on an empty item ends the list, or outdents a nested item | `testReturnOnEmptyItemEndsList`, `testReturnOnEmptyNestedItemOutdentsIt` |
+| Return is a plain line break before the marker, on a plain line, with a selection, in a block and in a read-only note | `testReturnBeforeTheMarkerInsertsAPlainLine`, `testReturnOnAPlainLineIsPlain`, `testReturnWithASelectionReplacesIt`, `testReturnInsideCodeBlockIsPlain`, `testReturnOnAListLineBesideABlockStillContinuesTheList`, `testReturnInAReadOnlyNoteChangesNothing` |
+| Tab indents the list lines of the selection and ⇧Tab outdents them | `testTabIndentsListLine`, `testTabIndentsEveryListLineOfTheSelection`, `testShiftTabOutdents`, `testShiftTabOnATopLevelListLineChangesNothing`, `FormattingUITests.testTabIndentsNestedBullet` |
+| Tab is a tab on a plain line and in a block, and nothing in a read-only note | `testTabOnAPlainLineInsertsATab`, `testTabInsideCodeBlockInsertsATab`, `testTabInAReadOnlyNoteChangesNothing`, `testShiftTabOnAPlainLineChangesNoText` |
+| ⌘B wraps the selection, takes the stars off a bold run, or puts the caret between a pair | `testCommandBWrapsSelection`, `testCommandBOnABoldRunTakesTheStarsAway`, `testCommandBWithoutSelectionPutsTheCaretBetweenTheStars` |
+| ⌘B does nothing in a block or a read-only note | `testCommandBInsideCodeBlockDoesNothing`, `testCommandBInAReadOnlyNoteDoesNothing` |
+| ⌘B is Format > Bold, and copy after it keeps the stars | `testFormatMenuHasBoldOnCommandB`, `FormattingUITests.testCommandBThenCopyKeepsMarkers` |
+| Each of these edits is one undo step | `testEachEditIsOneUndoStep` |
 | Markers in a fenced block and in inline code are literal | `testFencedBlockIsNotStyled`, `testMarkersInsideInlineCodeAreLiteral` |
 | Unclosed markers are plain | `testUnclosedMarkersArePlain` |
 | A closing fence turns the lines between into code, and removing it turns them back | `testTypingAClosingFenceTurnsTheLinesBetweenIntoCode`, `testTypingInsideABlockKeepsTheBlock` |

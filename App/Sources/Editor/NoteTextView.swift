@@ -171,6 +171,48 @@ final class NoteTextView: NSTextView {
         return (whole.substring(with: range), range, selection)
     }
 
+    /// `apply(_:)` for an edit that a key or ⌘B asked for: the caret is where the edit left it, and the view scrolls to
+    /// show it, as it does for typing. (A click on a checkbox does not: the caret is somewhere else, and the click must
+    /// not scroll to it.)
+    private func applyAndReveal(_ edit: TextEdit) {
+        apply(edit)
+        if frame.width > 0 { scrollRangeToVisible(selectedRange()) }
+    }
+
+    // MARK: Return, Tab and ⇧Tab
+
+    /// The edit that `rule`, one of the list rules of the core, makes of the paragraphs under the selection, or nil when
+    /// the key is not a list action and the text view keeps its default: the view cannot be edited, text is being
+    /// composed, there is more than one selection (a rectangular one), a fenced block is under the selection (nothing in
+    /// a block is a list, and a selection can hold a block that it starts and ends outside of), or the rule says so.
+    private func listEdit(_ rule: (String, Int, NSRange) -> TextEdit?) -> TextEdit? {
+        guard isEditable, !hasMarkedText(), selectedRanges.count == 1 else { return nil }
+        let paragraphs = coveringParagraphs()
+        guard !styler.intersectsCodeBlock(paragraphs.range) else { return nil }
+        return rule(paragraphs.text, paragraphs.range.location, paragraphs.selection)
+    }
+
+    /// Return on a bullet or checkbox line continues the list, and on an empty item it ends the list, or outdents the
+    /// item (`ListEditing.newline`). Anywhere else, in a code block too, it is a plain line break.
+    override func insertNewline(_ sender: Any?) {
+        guard let edit = listEdit(ListEditing.newline) else { return super.insertNewline(sender) }
+        applyAndReveal(edit)
+    }
+
+    /// Tab on a list line indents it, and every list line of the selection (`ListEditing.indent`). On any other line it
+    /// inserts a tab, as AppKit does.
+    override func insertTab(_ sender: Any?) {
+        guard let edit = listEdit(ListEditing.indent) else { return super.insertTab(sender) }
+        applyAndReveal(edit)
+    }
+
+    /// ⇧Tab on a list line outdents it, and every list line of the selection (`ListEditing.outdent`). A list line that
+    /// is not indented has nothing to give back, and the key does nothing there. On any other line it is AppKit's own.
+    override func insertBacktab(_ sender: Any?) {
+        guard let edit = listEdit(ListEditing.outdent) else { return super.insertBacktab(sender) }
+        applyAndReveal(edit)
+    }
+
     // MARK: Checkboxes
 
     /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
@@ -240,6 +282,17 @@ final class NoteTextView: NSTextView {
                 paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))
     }
 
-    /// ⌘B (Format > Bold). Not implemented yet.
-    @objc func toggleBoldMarkers(_ sender: Any?) {}
+    /// ⌘B (Format > Bold): the selection becomes `**selection**`, or loses its stars when it is a bold run, or, with no
+    /// selection, `****` goes in with the caret between the pairs (`InlineEditing.toggleBold`). One undo step. It does
+    /// nothing but beep when the note cannot be edited, when a fenced block is under the selection (inside a block
+    /// every character is literal) and for a rectangular selection. The name is not `toggleBold`: that is AppKit's
+    /// action for the font panel, which a plain-text view must not answer.
+    @objc func toggleBoldMarkers(_ sender: Any?) {
+        guard isEditable, selectedRanges.count == 1 else { return NSSound.beep() }
+        let paragraphs = coveringParagraphs()
+        guard !styler.intersectsCodeBlock(paragraphs.range) else { return NSSound.beep() }
+        applyAndReveal(
+            InlineEditing.toggleBold(
+                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))
+    }
 }

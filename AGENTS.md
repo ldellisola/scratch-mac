@@ -88,7 +88,8 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   TitleField (the optional title above the text), EditorViewController (the title field
                                   and the editor: shows a note, reports edits, cursor and scroll anchor). NoteTextView
                                   also applies the editing rules' `TextEdit`s (`apply`, one undo step), ticks a checkbox
-                                  on a click (`mouseDown`) and answers ⇧⌘L (`toggleChecklist`). The markers
+                                  on a click (`mouseDown`), answers ⇧⌘L (`toggleChecklist`) and ⌘B (`toggleBoldMarkers`),
+                                  and handles Return, Tab and ⇧Tab on list lines (`insertNewline` and the like). The markers
                                   are rendered by MarkupStyler (the text storage's delegate: styles paragraphs from the
                                   core's parser, hides and reveals markers, styles a shown note in chunks),
                                   MarkupLayoutManager (null glyphs for hidden markers, draws bullets and checkboxes),
@@ -109,12 +110,14 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
                                   reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
-                                  click ticks a box, ⇧⌘L, the drawn symbol, the Format menu)
+                                  click ticks a box, ⇧⌘L, the drawn symbol, the Format menu, ListKeyTests: Return, Tab,
+                                  ⇧Tab and ⌘B)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
                                   tab strip, opening, closing and switching tabs), DeleteUITests (delete, Recently
                                   Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
+                                  FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
                                   ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
@@ -641,6 +644,18 @@ new kind of release file, with no change to the app, ships.
 - **A command that edits whole paragraphs asks `styler.intersectsCodeBlock` for the paragraphs it will change**, not
   `isInCodeBlock` for the caret: a selection can start and end outside a block and hold it. ⇧⌘L beeps there, and in a
   read-only note.
+- **Return, Tab and ⇧Tab are `NoteTextView` overrides that ask the core and fall back to `super`.** `listEdit(_:)` gives
+  the rule (`ListEditing.newline`, `indent`, `outdent`) the paragraphs under the selection and answers nil, so that
+  `super` runs, when the view is read-only, text is being composed, there is more than one selection, or
+  `styler.intersectsCodeBlock` says a block is under the selection (the paragraphs, not the caret: see the pitfall
+  above). A rule's nil is the same. `applyAndReveal` applies the edit and scrolls to the caret, which `apply(_:)` does
+  not (a click on a box must not scroll). ⇧Tab on an unindented list line is a list action that changes nothing, so it
+  does not reach AppKit's `insertBacktab:`; ⇧Tab on any other line does.
+- **⌘B is `toggleBoldMarkers(_:)`, not `toggleBold(_:)`.** `toggleBold:` is AppKit's font-panel action, which a
+  plain-text view must not answer. The Format > Bold item has no target, like Checklist, so the first responder gets it.
+  The hosted `ListKeyTests` call `insertNewline(nil)`, `insertTab(nil)`, `insertBacktab(nil)` and `toggleBoldMarkers(nil)`
+  directly, with one editor and one `UndoManager` for each edit that is undone (see the undo pitfall above), and
+  `FormattingUITests` presses the keys, so that the menu bar and the responder chain are in the path.
 - **The Format menu is not auto-enabled** (`menu.autoenablesItems = false`, `MainMenu.formatMenu`): AppKit would ask the
   first responder, and the way `NSTextView` validates an action it does not know is not documented. A Format item has
   no target, so the first responder gets it, and a command that cannot work beeps (`NSSound.beep()`).

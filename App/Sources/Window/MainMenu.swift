@@ -138,13 +138,16 @@ enum MainMenu {
         return menu
     }
 
-    /// The commands that change the text of the note (spec §6.4): Checklist, ⇧⌘L. They go to the first responder, so
-    /// only the editor answers them (`NoteTextView`). The items are not validated by AppKit: it would ask the first
-    /// responder, which is a text view whose own validation of an action it does not know is not documented, and a
-    /// command that cannot work (a read-only note, a code block) beeps instead of being greyed out.
+    /// The commands that change the text of the note (spec §6.4): Bold, ⌘B, and Checklist, ⇧⌘L. They go to the first
+    /// responder, so only the editor answers them (`NoteTextView`). The items are not validated by AppKit: it would ask
+    /// the first responder, which is a text view whose own validation of an action it does not know is not documented,
+    /// and a command that cannot work (a read-only note, a code block) beeps instead of being greyed out. The action of
+    /// Bold is `toggleBoldMarkers:` and not AppKit's `toggleBold:`, which is the font panel's.
     static func formatMenu() -> NSMenu {
         let menu = NSMenu(title: "Format")
         menu.autoenablesItems = false
+        menu.addItem(
+            withTitle: "Bold", action: #selector(NoteTextView.toggleBoldMarkers(_:)), keyEquivalent: "b")
         let checklist = menu.addItem(
             withTitle: "Checklist", action: #selector(NoteTextView.toggleChecklist(_:)), keyEquivalent: "l")
         checklist.keyEquivalentModifierMask = [.command, .shift]
