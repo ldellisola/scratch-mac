@@ -33,14 +33,19 @@ key press
   -> NoteTextView (NSTextView) -> EditorViewController.textDidChange -> onTextChange(text)
   -> SessionCoordinator: updates the current Note (body, modifiedAt) and calls Autosaver.markDirty()
   -> Autosaver (ScratchCore): one one-shot timer, 300 ms after the last change and at most 1 s after the first
-  -> SessionCoordinator.saveNow() on the main thread: copies the changed Note and the SessionState
-  -> storage queue: NoteStore.save, SessionStore.save
+  -> SessionCoordinator.saveNow() on the main thread: copies the notes to write (the ones whose last write failed, then
+     the changed Note) and the SessionState
+  -> storage queue: NoteStore.save for each note, SessionStore.save; a note whose write fails is recorded in
+     UnsavedNotes, so the next save writes it again
   -> SessionCoordinator then asks NoteListModel.refresh(), which queues a read on the same storage queue:
      NoteStore.summaries() (and search, and deletedSummaries(), as needed)
   -> main thread: NoteListModel.didRead -> SessionCoordinator.didReadLiveSummaries (tab titles, pin state)
      -> SidebarSections.make -> SidebarViewController.reload
 ```
 
+- A write that fails never costs text: `UnsavedNotes` (ScratchCore) keeps the note with the owner's text until a write of
+  it succeeds, `persistNow()` and every save write those notes again, and `SessionCoordinator.loadNote` shows a note
+  from there when it is opened again (`docs/features/autosave-and-restore.md`, "Write errors are not silent").
 - A cursor or scroll change takes the same path through `EditorViewController.onViewStateChange`, but writes only the
   session (the open note's id, selection and scroll position), and does not re-read the note list.
 - Quitting and deactivating skip the timer: `AppDelegate` calls `SessionCoordinator.persistNow()`, which runs the same
@@ -72,7 +77,10 @@ key press
   queue. The autosaver's save closure therefore runs on the main thread, where it may touch the editor.
 - **One serial storage queue**, `io.github.ldellisola.Scratch.storage` (QoS utility), does every autosave write and the
   note list reads that follow. Writes go in one order, and typing never waits for the disk. The coordinator hands it
-  copies (`Note` and `SessionState` are values), never the editor.
+  copies (`Note` and `SessionState` are values), never the editor. The one thing that the queue writes and the main
+  thread reads without a hop is `UnsavedNotes`, a mutex-guarded record of the notes whose write failed: the queue
+  records an outcome as the write ends, so the record is right when `persistNow()` returns, which a callback on the main
+  queue would not be.
 - **`Database`** serialises every SQLite call with a mutex, so the main thread may also call the stores directly. It does
   so for the rare, small calls: restoring the session, creating a note, loading the note that is opened,
   discarding an untouched one, and deleting, restoring or deleting for good a note the owner chose. They wait for a write
