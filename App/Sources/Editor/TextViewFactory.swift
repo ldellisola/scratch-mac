@@ -32,7 +32,7 @@ enum TextViewFactory {
     /// The TextKit 1 stack, built by hand: storage, then layout manager, then container, then the view.
     private static func makeTextView() -> NoteTextView {
         let storage = NSTextStorage()
-        let layoutManager = NSLayoutManager()
+        let layoutManager = MarkupLayoutManager()
         layoutManager.allowsNonContiguousLayout = true
         storage.addLayoutManager(layoutManager)
         let container = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
@@ -41,6 +41,13 @@ enum TextViewFactory {
         let textView = NoteTextView(frame: .zero, textContainer: container)
         // The view does not own the storage, and the storage is what keeps the layout manager alive.
         textView.ownedTextStorage = storage
+        // The layout manager hides markers through its own delegate methods. It is set after the text view is made,
+        // which sets the delegate itself, and the delegate is weak: a manager that is its own is not kept alive twice.
+        layoutManager.delegate = layoutManager
+        // The text storage does not keep its delegate alive either: the view does.
+        let styler = MarkupStyler(textView: textView)
+        storage.delegate = styler
+        textView.styler = styler
         return textView
     }
 }

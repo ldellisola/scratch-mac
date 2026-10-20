@@ -234,3 +234,41 @@ private func note(titled title: String, in notes: NoteStore) throws -> Note {
         #expect(stored.title == summary.displayTitle)
     }
 }
+
+// Spec §6.4 (the marker table): the `formatting` fixture holds one of every marker, and a fenced block that must stay
+// literal. Plan 3 shows it in the formatting UI tests and the screenshots.
+
+@Test func formattingFixtureHasOneNote() throws {
+    let (notes, session) = try stores()
+    try Fixture.formatting.seed(notes: notes, session: session, now: now)
+    let summaries = try notes.summaries()
+    #expect(summaries.map(\.displayTitle) == ["Formatting"])
+    #expect(try notes.deletedSummaries().isEmpty)
+    let formatting = try note(titled: "Formatting", in: notes)
+    #expect(formatting.title == "Formatting")
+    #expect(formatting.pinnedAt == nil && formatting.deletedAt == nil)
+    #expect(formatting.modifiedAt == now)
+    let state = try #require(try session.load())
+    #expect(state.tabs.map(\.noteID) == [formatting.id])
+    #expect(state.activeTabIndex == 0)
+    #expect(state.tabs.allSatisfy { $0.selection == 0 && $0.scrollY == 0 })
+}
+
+@Test func formattingFixtureBodyIsTheOneInThePlan() throws {
+    let (notes, session) = try stores()
+    try Fixture.formatting.seed(notes: notes, session: session, now: now)
+    let body = try note(titled: "Formatting", in: notes).body
+    #expect(
+        lines(of: body) == [
+            "- first bullet",
+            "  - nested bullet",
+            "[ ] open task",
+            "[x] done task",
+            "Some **bold** text, `inline **code**` and https://example.com/a_(b)?q=1.",
+            "Unclosed **star and a lone ` tick stay plain.",
+            "```sh",
+            "- not a bullet",
+            "**not bold**",
+            "```",
+        ])
+}

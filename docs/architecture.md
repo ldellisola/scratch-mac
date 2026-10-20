@@ -11,9 +11,11 @@ App (AppKit shell)  ──depends on──▶  ScratchCore (Foundation + CSQLite
 
 - **`Packages/ScratchCore`** is a Swift package with no AppKit or SwiftUI imports. It holds everything rule-based:
   the note model, storage and full-text search (`NoteStore`, `SearchQuery`, the FTS5 index), the tab rules (`TabList`),
-  the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures. Later plans add
-  the marker parser, list editing rules, paste classification, copy-out and code detection. It builds and tests with
-  plain `swift test` on macOS and on Linux.
+  the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures, and the marker
+  parser (`Markup/`: the spans of a line and the fenced code blocks of a note, as UTF-16 ranges the editor applies
+  directly) and the rules for the keys that edit it (`ListEditing`, `InlineEditing`: what Return, Tab, ⇧Tab, ⇧⌘L, ⌘B
+  and a click on a checkbox change, as a `TextEdit`). Later plans add paste classification, copy-out and code
+  detection. It builds and tests with plain `swift test` on macOS and on Linux.
 - **`App/`** is the thin AppKit shell: window, sidebar, editor view. It maps core values to UI and UI events to core
   calls. Logic found in the shell that could live in the core is a refactoring target. The app project is generated
   by XcodeGen from `App/project.yml`, and the generated project is not committed.
@@ -32,14 +34,32 @@ key press
   -> NoteTextView (NSTextView) -> EditorViewController.textDidChange -> onTextChange(text)
   -> SessionCoordinator: updates the current Note (body, modifiedAt) and calls Autosaver.markDirty()
   -> Autosaver (ScratchCore): one one-shot timer, 300 ms after the last change and at most 1 s after the first
-  -> SessionCoordinator.saveNow() on the main thread: copies the changed Note and the SessionState
-  -> storage queue: NoteStore.save, SessionStore.save
+  -> SessionCoordinator.saveNow() on the main thread: copies the notes to write (the ones whose last write failed, then
+     the changed Note) and the SessionState
+  -> storage queue: NoteStore.save for each note, SessionStore.save; a note whose write fails is recorded in
+     UnsavedNotes, so the next save writes it again
   -> SessionCoordinator then asks NoteListModel.refresh(), which queues a read on the same storage queue:
      NoteStore.summaries() (and search, and deletedSummaries(), as needed)
   -> main thread: NoteListModel.didRead -> SessionCoordinator.didReadLiveSummaries (tab titles, pin state)
      -> SidebarSections.make -> SidebarViewController.reload
 ```
 
+- **Formatting is attributes, never text** (`docs/features/formatting.md`). `MarkupStyler` is the text storage's
+  delegate, so it runs inside every edit, before `textDidChange`: it restyles the paragraphs the edit touched, from the
+  core's `MarkupParser` and `CodeBlockIndex` (the fenced blocks, carried over the edit). It sets fonts, colours,
+  paragraph styles and a `scratchMarker` role on each marker character, and the stored characters stay exactly what was
+  typed, so the data flow above, copy and search never see the formatting. `MarkupLayoutManager` turns the `hidden`
+  roles into null glyphs and draws the bullets and boxes. A change of the selection goes through
+  `EditorViewController` to `MarkupStyler.selectionDidChange`, which shows the markers of the bold and code runs the
+  caret touches.
+- **The keys that edit text go through the core.** Return, Tab, ⇧Tab, ⌘B, ⇧⌘L and a click on a box in `NoteTextView`
+  hand the paragraphs under the selection to `ListEditing` or `InlineEditing`, and apply the `TextEdit` they answer
+  with `NoteTextView.apply` (`shouldChangeText`, `replaceCharacters`, `didChangeText`, one undo step). From
+  `didChangeText` on it is the path of a typed character, and the styler restyles what changed. A ⌘-click on a link
+  asks `MarkupStyler.link(at:)` and opens it with `NSWorkspace`.
+- A write that fails never costs text: `UnsavedNotes` (ScratchCore) keeps the note with the owner's text until a write of
+  it succeeds, `persistNow()` and every save write those notes again, and `SessionCoordinator.loadNote` shows a note
+  from there when it is opened again (`docs/features/autosave-and-restore.md`, "Write errors are not silent").
 - A cursor or scroll change takes the same path through `EditorViewController.onViewStateChange`, but writes only the
   session (the open note's id, selection and scroll position), and does not re-read the note list.
 - Quitting and deactivating skip the timer: `AppDelegate` calls `SessionCoordinator.persistNow()`, which runs the same
@@ -71,7 +91,10 @@ key press
   queue. The autosaver's save closure therefore runs on the main thread, where it may touch the editor.
 - **One serial storage queue**, `io.github.ldellisola.Scratch.storage` (QoS utility), does every autosave write and the
   note list reads that follow. Writes go in one order, and typing never waits for the disk. The coordinator hands it
-  copies (`Note` and `SessionState` are values), never the editor.
+  copies (`Note` and `SessionState` are values), never the editor. The one thing that the queue writes and the main
+  thread reads without a hop is `UnsavedNotes`, a mutex-guarded record of the notes whose write failed: the queue
+  records an outcome as the write ends, so the record is right when `persistNow()` returns, which a callback on the main
+  queue would not be.
 - **`Database`** serialises every SQLite call with a mutex, so the main thread may also call the stores directly. It does
   so for the rare, small calls: restoring the session, creating a note, loading the note that is opened,
   discarding an untouched one, and deleting, restoring or deleting for good a note the owner chose. They wait for a write
@@ -97,6 +120,12 @@ key press
   The factory builds the stack by hand (storage, layout manager with non-contiguous layout, container, view), and
   `NoteTextView.ownedTextStorage` keeps the storage alive. A text view made any other way is TextKit 2 and slower in
   a long note.
+- **Styling is bounded work on the main thread.** A keystroke restyles its paragraphs. A note that is shown is styled
+  around the visible lines first (±200 paragraphs, before the first frame) and the rest in chunks of 1,000 paragraphs
+  with a time budget, one per main run loop turn (`RunLoopIdle`), so a note of 10,000 lines switches within budget and
+  is fully styled a few turns later (`MarkupStyler.isFullyStyled`). A paste of more than 20,000 characters is styled in
+  the same chunks. Showing another note cancels the job. `MarkupLayoutManager` is `nonisolated` (AppKit does not
+  annotate `NSLayoutManager` for the main actor), the styler is `@MainActor`.
 - **Signposts** (`Signposts.editor`, subsystem `io.github.ldellisola.Scratch`, category `editor`) mark two intervals that
   the performance tests read: `keystroke` (`NoteTextView.keyDown`) and `switch-note` (`SessionCoordinator.open`). Both
   end when the main run loop is next about to wait (`RunLoopIdle`), so they include the layout and drawing that

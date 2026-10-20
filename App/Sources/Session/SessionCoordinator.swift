@@ -23,6 +23,11 @@ import ScratchCore
 /// **Undo.** Every note has an undo manager of its own for as long as the app runs (spec §6.6). The coordinator keeps
 /// them and gives the editor the one of the note it shows, so leaving a note and coming back finds its history.
 ///
+/// **Failed writes.** A write that fails never costs text. The note that was being written goes into `unsavedNotes`
+/// (the storage queue reports it there, so it is known when `persistNow()` returns, and not a turn of the main queue
+/// later), every save writes those notes again before the note of the active tab, and a note that is shown again is
+/// shown from there and not from the storage, whose copy is older.
+///
 /// **Deleted notes.** Deleting a note moves it to Recently Deleted (`NoteStore.delete`) and closes its tab (spec §6.7).
 /// A note in Recently Deleted opens like any other, in the active tab, and the editor shows it read-only: that is the
 /// only way a tab holds a deleted note, so the tab list never does after a launch (`restoredTabs` drops such tabs).
@@ -51,9 +56,12 @@ final class SessionCoordinator {
     private var undoManagers: [NoteID: UndoManager] = [:]
     /// The note font size, the same for every note (spec §6.4). Restored with the session and saved with it.
     private var fontSize = FontSize.standard
-    /// Notes that nobody has used yet: created in this session, or restored empty. Leaving one of them while it is
-    /// still empty discards it (spec §6.3).
+    /// Notes that nobody has used yet: created in this session, or restored empty with the edit time they were created
+    /// with. Leaving one of them while it is still empty discards it (spec §6.3). The first edit of a note takes it out
+    /// for good, also when the owner empties it again (docs/decisions/0004).
     private var untouchedNoteIDs: Set<NoteID> = []
+    /// The notes whose last write failed, with the owner's text: written again by every save, shown again from here.
+    private let unsavedNotes = UnsavedNotes()
     /// What the tab strip shows for each open tab. It comes from the note when the note is shown, and from the note
     /// list after each save, so a tab title follows an edit about as fast as the sidebar row does.
     private var tabItems: [NoteID: TabStripItem] = [:]
@@ -113,7 +121,7 @@ final class SessionCoordinator {
         let (list, note) = restoredTabs()
         tabs = list
         current = note
-        if note.isEmpty { untouchedNoteIDs.insert(note.id) }
+        if Self.isNeverUsed(note) { untouchedNoteIDs.insert(note.id) }
         tabItems[note.id] = Self.item(for: note)
         editor.setFontSize(fontSize)
         show(note, tab: list.active)
@@ -146,7 +154,7 @@ final class SessionCoordinator {
                     let list = TabList(tabs: kept, activeIndex: activeKept ?? 0)
                     for note in notes.values {
                         tabItems[note.id] = Self.item(for: note)
-                        if note.isEmpty { untouchedNoteIDs.insert(note.id) }
+                        if Self.isNeverUsed(note) { untouchedNoteIDs.insert(note.id) }
                     }
                     if let active = notes[list.active.noteID] { return (list, active) }
                 }
@@ -357,11 +365,20 @@ final class SessionCoordinator {
 
     /// Reads the note `id` from the storage for showing, also when it is in Recently Deleted (the editor shows it
     /// read-only). Nil, and a new read of the note list, when it is gone: the list was stale.
+    ///
+    /// A note whose last write failed is shown as the owner left it: its title, text and edit time come from
+    /// `unsavedNotes`, and the rest (the pin, the deletion) from the storage, which a save never writes. The undo
+    /// history of the note holds ranges of the text it was left with, so showing the older stored text would break it.
     private func loadNote(_ id: NoteID) -> Note? {
         do {
-            guard let note = try storage.notes.note(id) else {
+            guard var note = try storage.notes.note(id) else {
                 noteList.refresh()
                 return nil
+            }
+            if let unsaved = unsavedNotes.note(id) {
+                note.title = unsaved.title
+                note.body = unsaved.body
+                note.modifiedAt = unsaved.modifiedAt
             }
             return note
         } catch {
@@ -422,6 +439,13 @@ final class SessionCoordinator {
         note.isEmpty && untouchedNoteIDs.contains(note.id)
     }
 
+    /// True for a stored note that nobody ever typed in: it is empty, and its edit time is still its creation time
+    /// (`NoteStore.create` sets both to one date, and every save of typed text changes the edit time). A note that
+    /// the owner emptied is empty too, and is not this: it is theirs, and it is kept (docs/decisions/0004).
+    private static func isNeverUsed(_ note: Note) -> Bool {
+        note.isEmpty && note.modifiedAt == note.createdAt
+    }
+
     /// Discards the note `id` of a tab that was closed, when it is an empty note that nobody used. The note was saved
     /// when its tab was left, so the storage has its text.
     private func discardIfUnused(_ id: NoteID) {
@@ -436,6 +460,7 @@ final class SessionCoordinator {
     /// Deletes the row of a note that was never used. Needs an idle storage queue, so call it after `persistNow()`.
     private func discard(_ note: Note) {
         untouchedNoteIDs.remove(note.id)
+        unsavedNotes.forget(note.id)
         undoManagers[note.id] = nil
         tabItems[note.id] = nil
         latestLive.removeAll { $0.id == note.id }
@@ -465,6 +490,7 @@ final class SessionCoordinator {
         note.body = text
         note.modifiedAt = Date()
         current = note
+        noteWasEdited(note.id)
         currentIsDirty = true
         autosaver.markDirty()
     }
@@ -476,8 +502,16 @@ final class SessionCoordinator {
         note.title = title
         note.modifiedAt = Date()
         current = note
+        noteWasEdited(note.id)
         currentIsDirty = true
         autosaver.markDirty()
+    }
+
+    /// The owner edited the note `id`, in its text or its title. From the first edit on it is theirs, even if they empty
+    /// it again: it is no longer an untouched note, so closing its tab or replacing it in its tab keeps it, and a
+    /// relaunch finds it with an edit time that is not its creation time (docs/decisions/0004).
+    private func noteWasEdited(_ id: NoteID) {
+        untouchedNoteIDs.remove(id)
     }
 
     /// The font size changes to what `transform` makes of the current one, within the limits of `FontSize`: the editor
@@ -503,30 +537,51 @@ final class SessionCoordinator {
         tabs = list
     }
 
-    /// The autosaver's save: captures what is unsaved on the main thread, then writes it on the storage queue. A
-    /// changed note is followed by a read of the note list (`NoteListModel.refresh`).
+    /// The autosaver's save: captures what is unsaved on the main thread, then writes it on the storage queue. The notes
+    /// whose last write failed go first, then the note of the active tab when it has edits, and the session after them.
+    /// Each note is a write of its own: one that fails is reported to `unsavedNotes` and does not keep the others from
+    /// being written. A changed note is followed by a read of the note list (`NoteListModel.refresh`).
     private func saveNow() {
         guard tabs != nil, let note = current else { return }
-        let unsavedNote = currentIsDirty ? note : nil
+        var writes = unsavedNotes.all
+        if currentIsDirty {
+            // The text in the editor is newer than any copy of this note that failed, and replaces it.
+            writes.removeAll { $0.id == note.id }
+            writes.append(note)
+        }
         currentIsDirty = false
         recordViewState()
         guard let session = tabs?.session(fontSize: fontSize) else { return }
 
         let storage = self.storage
-        storageQueue.async { [weak self, storage] in
+        let unsavedNotes = self.unsavedNotes
+        storageQueue.async { [weak self, storage, unsavedNotes, writes] in
+            var failed = false
+            for toSave in writes {
+                do {
+                    try storage.notes.save(toSave)
+                    unsavedNotes.writeSucceeded(toSave)
+                } catch {
+                    report("cannot save note \(toSave.id.rawValue): \(error)")
+                    unsavedNotes.writeFailed(toSave)
+                    failed = true
+                }
+            }
             do {
-                if let unsavedNote { try storage.notes.save(unsavedNote) }
                 try storage.session.save(session)
             } catch {
-                report("cannot save: \(error)")
+                report("cannot save the session: \(error)")
+                failed = true
+            }
+            if failed {
                 DispatchQueue.main.async {
-                    MainActor.assumeIsolated { self?.saveFailed(unsavedNote) }
+                    MainActor.assumeIsolated { self?.saveFailed() }
                 }
             }
         }
-        // A changed note is followed by a read of the list, which the storage queue runs after the write above: its
+        // A changed note is followed by a read of the list, which the storage queue runs after the writes above: its
         // title, preview and place in the list changed.
-        if unsavedNote != nil { noteList.refresh() }
+        if !writes.isEmpty { noteList.refresh() }
     }
 
     /// Hands the session to the storage queue at once, after a change of the tabs, instead of waiting for the
@@ -544,9 +599,8 @@ final class SessionCoordinator {
         }
     }
 
-    /// A write failed. The text is still in the editor, so keep it marked as unsaved and try again.
-    private func saveFailed(_ note: Note?) {
-        if let note, note.id == current?.id { currentIsDirty = true }
+    /// A write failed. The notes that failed are in `unsavedNotes` already, so this only asks for another save.
+    private func saveFailed() {
         autosaver.markDirty()
     }
 
@@ -683,6 +737,7 @@ final class SessionCoordinator {
         let activeID = current?.id
         for id in ids.filter({ $0 != activeID }) + ids.filter({ $0 == activeID }) {
             untouchedNoteIDs.remove(id)
+            unsavedNotes.forget(id)
             undoManagers[id] = nil
             noteList.forget(id)
             // The indexes change with every close, so each tab is looked up again.

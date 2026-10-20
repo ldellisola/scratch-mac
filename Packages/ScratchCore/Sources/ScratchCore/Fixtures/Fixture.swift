@@ -16,6 +16,9 @@ public enum Fixture: String, CaseIterable, Sendable {
     /// "Groceries" and two deleted notes: "Old meeting notes" (deleted 2 days ago) and "Ancient" (31 days ago, past the
     /// 30-day retention, so the purge removes it).
     case recentlyDeleted = "recently-deleted"
+    /// "Formatting": one note with a bullet, a nested bullet, two checkboxes, bold, inline code, a link, unclosed
+    /// markers and a fenced block whose markers must stay literal (spec §6.4).
+    case formatting
 
     /// Writes this fixture's notes and session through the stores. All dates are relative to `now`.
     ///

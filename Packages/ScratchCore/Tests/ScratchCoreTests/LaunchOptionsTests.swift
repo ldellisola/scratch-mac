@@ -63,7 +63,9 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
         #expect(try parse(["-ScratchFixture", fixture.rawValue]).fixture == fixture)
     }
     #expect(
-        Fixture.allCases.map(\.rawValue) == ["empty", "typical", "huge-note", "many-notes", "recently-deleted"])
+        Fixture.allCases.map(\.rawValue) == [
+            "empty", "typical", "huge-note", "many-notes", "recently-deleted", "formatting",
+        ])
 }
 
 @Test func parsesAppearance() throws {

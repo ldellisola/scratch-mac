@@ -12,6 +12,7 @@ struct FixtureContent {
         case .hugeNote: hugeNote(now: now)
         case .manyNotes: manyNotes(now: now)
         case .recentlyDeleted: recentlyDeleted(now: now)
+        case .formatting: formatting(now: now)
         }
     }
 
@@ -164,6 +165,28 @@ struct FixtureContent {
             editedAt: now.addingTimeInterval(-40 * day), deletedAt: now.addingTimeInterval(-31 * day))
         return FixtureContent(
             notes: [groceries, meeting, ancient], session: SessionState(tabs: [tab(on: groceries)], activeTabIndex: 0))
+    }
+
+    // MARK: Formatting
+
+    /// The note "Formatting", edited at `now` and open in the only tab. Each line is one case of the marker table, and
+    /// the fenced block at the end holds markers that must not render.
+    private static func formatting(now: Date) -> FixtureContent {
+        let body = [
+            "- first bullet",
+            "  - nested bullet",
+            "[ ] open task",
+            "[x] done task",
+            "Some **bold** text, `inline **code**` and https://example.com/a_(b)?q=1.",
+            "Unclosed **star and a lone ` tick stay plain.",
+            "```sh",
+            "- not a bullet",
+            "**not bold**",
+            "```",
+        ].joined(separator: "\n")
+        let formatting = note("Formatting", body, editedAt: now)
+        return FixtureContent(
+            notes: [formatting], session: SessionState(tabs: [tab(on: formatting)], activeTabIndex: 0))
     }
 
     // MARK: Building blocks

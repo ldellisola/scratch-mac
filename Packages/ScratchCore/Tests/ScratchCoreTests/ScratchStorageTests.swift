@@ -142,3 +142,22 @@ private func fileNames(in directory: URL) throws -> [String] {
     #expect(try Database(path: path).userVersion() == 3)
     #expect(try Database(path: path).query("SELECT COUNT(*) AS n FROM notes").first?.int("n") == 1)
 }
+
+/// `database` is the one the stores use, so a test can change how it behaves (`PRAGMA query_only` makes every write
+/// fail, which is how the app's tests simulate a failing disk: a read-only file does not work, SQLite keeps it open).
+@Test func databaseIsTheOneTheStoresUse() throws {
+    let directory = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let storage = try ScratchStorage.open(options(directory: directory))
+    let note = try storage.notes.create(now: Date(timeIntervalSinceReferenceDate: 1000))
+
+    try storage.database.execute("PRAGMA query_only = 1")
+    var edited = note
+    edited.body = "typed while the disk is failing"
+    #expect(throws: DatabaseError.self) { try storage.notes.save(edited) }
+    #expect(try storage.notes.note(note.id)?.body == "")
+
+    try storage.database.execute("PRAGMA query_only = 0")
+    try storage.notes.save(edited)
+    #expect(try storage.notes.note(note.id)?.body == "typed while the disk is failing")
+}

@@ -2,7 +2,7 @@ import AppKit
 
 /// A 1 x 1 point view that publishes the editor's state to UI tests, which cannot see the font size or how far a note
 /// is scrolled. It is an accessibility element with the identifier `AccessibilityID.debugState` and a JSON string as
-/// its value, for example `{"fontSize":13,"readOnly":false,"scrollAnchor":0}`.
+/// its value, for example `{"fontSize":13,"readOnly":false,"scrollAnchor":0,"scrollY":0,"topInset":0}`.
 ///
 /// It draws nothing, takes no clicks and exists only in an isolated data directory (`AppDelegate` asks the editor to
 /// install it), so a normal launch has no such view and a screenshot shows nothing of it. The value is computed when

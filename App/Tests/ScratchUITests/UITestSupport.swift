@@ -51,8 +51,10 @@ enum UITestSupport {
     }
 
     /// What the app publishes about its editor in the `debug.state` element (`DebugStateElement`, only in an isolated
-    /// data directory): `fontSize` (points), `scrollAnchor` (the UTF-16 offset of the first visible character) and
-    /// `readOnly`. The app computes it when asked, so it is as current as the app. Empty when the element is missing.
+    /// data directory): `fontSize` (points), `scrollAnchor` (the UTF-16 offset of the first visible character),
+    /// `readOnly`, `scrollY` (the clip view's origin y, in points) and `topInset` (the scroll view's top content
+    /// inset: a note at its top has `scrollY == -topInset`). The app computes it when asked, so it is as current as the
+    /// app. Empty when the element is missing.
     @MainActor
     static func debugState(in app: XCUIApplication) -> [String: Any] {
         let element = app.descendants(matching: .any).matching(identifier: AccessibilityID.debugState).firstMatch
@@ -188,6 +190,20 @@ enum UITestSupport {
             Thread.sleep(forTimeInterval: 0.1)
         }
         return condition()
+    }
+
+    /// Waits up to five seconds until the editor's text is `expected`, then asserts that it is, so that a failure says
+    /// what the text was. Typing and the editing commands are applied by the app a moment after the test sends the key.
+    @MainActor
+    static func expectText(
+        _ expected: String, in editor: XCUIElement, _ message: String, file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let deadline = Date().addingTimeInterval(5)
+        while (editor.value as? String) != expected, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertEqual(editor.value as? String, expected, message, file: file, line: line)
     }
 
     /// A new directory under the temporary directory (not created yet: the app creates it). A sandboxed test runner's

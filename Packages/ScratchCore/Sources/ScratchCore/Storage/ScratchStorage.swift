@@ -11,6 +11,10 @@ public enum StorageError: Error, Equatable {
 /// real data: a fixture only ever runs in a directory that is not `~/Library/Application Support/Scratch`.
 public struct ScratchStorage: Sendable {
     public let directory: URL
+    /// The open database that `notes` and `session` use. Public so that tests can change how it behaves: `PRAGMA
+    /// query_only = 1` makes every write fail with `SQLITE_READONLY`, which simulates a failing disk (a read-only file
+    /// would not do, because SQLite keeps it open). The app never reads or writes it directly.
+    public let database: Database
     public let notes: NoteStore
     public let session: SessionStore
 
@@ -36,7 +40,7 @@ public struct ScratchStorage: Sendable {
 
         let database = try Database(path: directory.appendingPathComponent(databaseFileName).path)
         let storage = ScratchStorage(
-            directory: directory, notes: try NoteStore(database: database),
+            directory: directory, database: database, notes: try NoteStore(database: database),
             session: try SessionStore(database: database))
         if let fixture = options.fixture {
             try fixture.seed(notes: storage.notes, session: storage.session, now: now)

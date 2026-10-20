@@ -63,7 +63,8 @@ app-test: project
 
 # The screenshots `make screenshots` writes, one PNG each into build/screenshots/. These names are the ones in
 # ScreenshotTests (a test attaches its screenshot under its name) and CI publishes them to ci-results.
-SCREENSHOT_NAMES := typical-light typical-dark empty-light huge-note-light search-light recently-deleted-light
+SCREENSHOT_NAMES := typical-light typical-dark empty-light huge-note-light search-light recently-deleted-light \
+  formatting-light formatting-dark
 
 # [macOS] Render the key screens to PNG files in build/screenshots/<name>.png (SCREENSHOT_NAMES): run ScreenshotTests
 # only, export the attachments from the result bundle (build/results/screenshots.xcresult) into build/screenshots/raw,
@@ -81,9 +82,9 @@ screenshots: project
 	python3 scripts/name-screenshots.py build/screenshots/raw build/screenshots $(SCREENSHOT_NAMES)
 
 # [macOS] Build the app and open it on a named fixture in a throwaway data directory:
-# make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted>. It never touches real data.
+# make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted|formatting>. It never touches real data.
 run:
-	@test -n "$(FIXTURE)" || { echo 'usage: make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted>' >&2; exit 64; }
+	@test -n "$(FIXTURE)" || { echo 'usage: make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted|formatting>' >&2; exit 64; }
 	$(MAKE) app-build
 	open -n $(DERIVED_DATA)/Build/Products/Debug/Scratch.app --args -ScratchFixture $(FIXTURE)
 

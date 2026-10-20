@@ -7,7 +7,7 @@ the sidebar, ⌘-click) and §6.6 (a relaunch restores the tabs), guarding the a
 [docs/decisions/0004](../decisions/0004-new-tabs-and-emptied-notes.md), which amends §6.3. The rules themselves live in
 ScratchCore (`TabList`, plan 2 task 4).
 
-Status: plan 2, task 7. The sidebar's groups, search and pinning are in [sidebar.md](sidebar.md) (task 8). Deleting a
+Status: plan 2, task 7, and plan 3, task 7 (emptied notes). The sidebar's groups, search and pinning are in [sidebar.md](sidebar.md) (task 8). Deleting a
 note, which closes its tab, and a deleted note that is shown read-only in a tab are in
 [recently-deleted.md](recently-deleted.md) (task 9).
 
@@ -24,9 +24,11 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
   not litter the list (spec §6.3, as amended by docs/decisions/0004). A note is untouched while it was created in this
   session (or was empty when the app restored it) and is still empty. Switching to another tab keeps it. A note that
   has any text or title stays, tab or no tab. **A note that already existed and that the owner empties is kept**, listed
-  as "Untitled", until the owner deletes it: emptying a note is not deleting it. (Two kinds of emptied note are still
-  discarded like an untouched one: a note created and typed in this session, and a note that was emptied and still open
-  in a tab at quit. docs/decisions/0004 says what closing that gap takes.)
+  as "Untitled" (dimmed), until the owner deletes it: emptying a note is not deleting it. This holds for every emptied
+  note: the first edit of a note's text or title takes it out of the untouched ones for good, also one created in this
+  session, and a note that is empty when the session is restored counts as untouched only when its edit time is still
+  its creation time, so a note that was emptied and still open in a tab at quit is kept too (docs/decisions/0004,
+  closed in 0.3.0).
 - **Close.** ⌘W (File > Close Tab) closes the active tab, and the close button inside a tab closes that tab. When the
   active tab closes, the tab that takes its place is shown (the one on its right, or else the new last tab). Closing the
   only tab leaves one tab with a new empty note, which is not listed. Closing the tab of a note that is still an empty,
@@ -90,7 +92,9 @@ it is selected when it is the active tab.
 | ⌘9 selects the last tab, ⌘1 to ⌘8 that tab, a number past the last does nothing | `TabsUITests.testCommandNineSelectsLastTab` |
 | The tabs and the active tab survive a relaunch | `TabsUITests.testTabsAndActiveTabSurviveRelaunch` |
 | Undo history survives a switch to another tab and back | `TabsUITests.testUndoSurvivesTabSwitch` |
-| An untouched new tab is discarded when it closes, also from the database | `TabsUITests.testUntypedNewTabIsDiscardedOnClose` |
+| An untouched new tab is discarded when it closes, also from the database | `TabsUITests.testUntypedNewTabIsDiscardedOnClose`, `SaveFailureTests.testUntouchedNewNoteIsStillDiscardedWhenItsTabCloses` |
+| A note typed in and then emptied is kept when its tab closes, and listed as "Untitled" | `TabsUITests.testTypedThenEmptiedNoteIsKeptWhenItsTabCloses`, `SaveFailureTests.testTypedThenEmptiedNoteIsKeptWhenItsTabCloses` |
+| A note emptied and open at quit is kept after the relaunch, and when its tab closes | `TabsUITests.testEmptiedNoteSurvivesRelaunch`, `SaveFailureTests.testRestoredEmptiedNoteIsKeptAndRestoredUntouchedNoteIsDiscarded` |
 | The sidebar's new note button opens a tab, and a replaced untouched note is discarded | `SidebarUITests.testNewNoteButtonCreatesListedNote`, `testUntouchedNewNoteIsDiscarded` |
 
 The rules under these (where a tab opens, which tab is active after a close, wrapping, ⌘9) have unit tests in
