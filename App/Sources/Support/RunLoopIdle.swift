@@ -10,8 +10,13 @@ enum RunLoopIdle {
     /// The observers' order: after AppKit's display cycle and Core Animation's commit, which run before the loop waits.
     static let order: CFIndex = 3_000_000
 
+    /// The order of work that must not be part of a measured interval: it runs after every observer of `order` that is
+    /// waiting at the same moment, so a signpost interval ends before the work begins (`MarkupStyler` styles the rest
+    /// of a long note this way).
+    static let afterMeasurementsOrder: CFIndex = 3_100_000
+
     /// Calls `work` once, the next time the main run loop is about to wait. Call it on the main thread.
-    static func onNext(_ work: @escaping @MainActor () -> Void) {
+    static func onNext(order: CFIndex = RunLoopIdle.order, _ work: @escaping @MainActor () -> Void) {
         let observer = CFRunLoopObserverCreateWithHandler(
             kCFAllocatorDefault, CFRunLoopActivity.beforeWaiting.rawValue, false, order
         ) { _, _ in

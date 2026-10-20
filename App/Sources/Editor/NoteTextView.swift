@@ -13,6 +13,12 @@ final class NoteTextView: NSTextView {
     /// The note font at the default size: SF Mono, 13 pt.
     static let noteFont: NSFont = noteFont(size: FontSize.standard)
 
+    /// The font of a bold run (`**bold**`) at `size` points: the note font in bold weight. Bold is the only thing that
+    /// changes the font of a note's text (spec §6.4: emphasis comes from weight and colour only).
+    static func boldNoteFont(size: Double) -> NSFont {
+        NSFont.monospacedSystemFont(ofSize: CGFloat(size), weight: .bold)
+    }
+
     /// The space between the text and the left and right edges of the view, in points. The title field above the
     /// editor lines up with the text by using it.
     static let horizontalInset: CGFloat = 24
@@ -40,6 +46,11 @@ final class NoteTextView: NSTextView {
     /// unowned and the view does not own the storage. Without this reference the whole stack is freed when
     /// `TextViewFactory.makeEditor()` returns.
     var ownedTextStorage: NSTextStorage?
+
+    /// Styles the markers of the text: bullets, checkboxes, bold, inline code and links. It is the text storage's
+    /// delegate, which does not keep it alive, so the view does. `TextViewFactory` sets it before the view is
+    /// configured. Everything that loads or sizes the text goes through it (`load(_:)`, `applyFontSize(_:)`).
+    var styler: MarkupStyler!
 
     /// How every character of a note looks at `size` points: the note font in the standard text colour.
     static func noteAttributes(size: Double) -> [NSAttributedString.Key: Any] {
@@ -108,18 +119,26 @@ final class NoteTextView: NSTextView {
     }
 
     /// Gives all the text, and what is typed or pasted next, the note font at `size` points (limited to what
-    /// `FontSize` allows). Pasted text takes the typing attributes, so it takes the size too (spec §6.5).
+    /// `FontSize` allows). Pasted text takes the typing attributes, so it takes the size too (spec §6.5). The text
+    /// that is there is styled again by the styler, so that its bold runs keep their weight at the new size: setting
+    /// `font` on a plain-text view would reset every run to the regular weight.
     func applyFontSize(_ size: Double) {
         fontSize = FontSize.clamped(size)
-        font = Self.noteFont(size: fontSize)
-        textColor = .textColor
+        if (textStorage?.length ?? 0) == 0 {
+            font = Self.noteFont(size: fontSize)
+            textColor = .textColor
+        }
         typingAttributes = Self.noteAttributes(size: fontSize)
+        styler?.fontSize = fontSize
     }
 
     /// Replaces the whole text. All of it takes the note font and colour at the current size, and so does what is
-    /// typed next.
+    /// typed next. The markers in it are not styled until the styler is told the note is shown
+    /// (`MarkupStyler.noteDidLoad(visibleRange:)`, which `EditorViewController.show` calls).
     func load(_ text: String) {
+        styler.beginLoad()
         string = text
-        applyFontSize(fontSize)
+        styler.endLoad()
+        typingAttributes = Self.noteAttributes(size: fontSize)
     }
 }

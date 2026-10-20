@@ -51,7 +51,11 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   replacement and the selection afterwards): ListEditing (Return, Tab, ⇧Tab, ⇧⌘L and a
                                   click on a checkbox) and InlineEditing (⌘B). They read only the paragraphs that cover
                                   the selection (`ParagraphLines`, internal: those lines with document offsets, and how
-                                  a selection moves when they change)
+                                  a selection moves when they change). The editor's styling reads CodeBlockIndex (the
+                                  fenced blocks of a note, carried over each edit and scanned again only when an edit
+                                  touches a fence line), EditMapping (where positions go when text is replaced) and
+                                  `MarkupParser.mayHaveSpans` (a cheap test that skips the parse of a line with no
+                                  marker)
   Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting) and
                                   FixtureContent, their notes and session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
@@ -82,17 +86,27 @@ App/Sources/Session/              SessionCoordinator (the tabs and which is acti
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
                                   TitleField (the optional title above the text), EditorViewController (the title field
-                                  and the editor: shows a note, reports edits, cursor and scroll anchor)
+                                  and the editor: shows a note, reports edits, cursor and scroll anchor). The markers
+                                  are rendered by MarkupStyler (the text storage's delegate: styles paragraphs from the
+                                  core's parser, hides and reveals markers, styles a shown note in chunks),
+                                  MarkupLayoutManager (null glyphs for hidden markers, draws bullets),
+                                  MarkupAppearance (fonts, colours and paragraph styles per font size), MarkupAttributes
+                                  (the `scratchMarker` and `scratchLink` attributes, `MarkerRole`, `MarkupColors`) and
+                                  ParagraphBatch (whole paragraphs read in one call)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke` and
                                   `switch-note` intervals the performance tests read), RunLoopIdle (runs work when the
-                                  main run loop is next about to wait: after the frame is drawn), FrameMonitor
+                                  main run loop is next about to wait: after the frame is drawn, and with `order:
+                                  afterMeasurementsOrder` after the signposts end), FrameMonitor
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
                                   size and scroll anchor from, in isolated launches only)
-App/Resources/                    Assets.xcassets (placeholder app icon)
+App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
+                                  inline code, each with a light and a dark variant)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, FrameMonitorTests, EditorViewControllerTests:
-                                  the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests)
+                                  the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
+                                  MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
+                                  reveal, fenced blocks are literal, a long note is styled in chunks)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -130,8 +144,8 @@ docs/release-notes-footer.md      the install and update steps (the DMG first, t
                                   top of every release's notes (`scripts/release-notes.sh` replaces its `<version>`
                                   placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
-                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md (more as features
-                                  land)
+                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md (more
+                                  as features land)
 docs/images/                      the README's screenshots (window-light, window-dark, search, recently-deleted): copies
                                   of the `screenshots/` that CI published for a release commit (`scripts/ci-fetch.sh`,
                                   section 4: typical-light, typical-dark, search-light, recently-deleted-light). They
@@ -557,3 +571,44 @@ new kind of release file, with no change to the app, ships.
 - **`NSTextView.writeSelection(to:types:)` wrote nothing for `.string` on the macOS 26.5 SDK** (it returned false, with
   a valid selection). `NoteTextView` overrides it and writes the selected text itself. Do not remove the override
   without running `testCopyWritesOnlyPlainText` on CI.
+- **Markers are rendered by attributes and glyphs, never by editing text.** `MarkupStyler` (the text storage's delegate,
+  kept alive by `NoteTextView.styler`) gives each paragraph the base attributes and then what the core's `MarkupSpan`s
+  ask for. A marker character carries `.scratchMarker` with a `MarkerRole` (`hidden`, `revealed`, `bullet`,
+  `checkboxOpen`, `checkboxChecked`): `MarkupLayoutManager` makes the `hidden` ones null glyphs (docs/decisions/0001) and
+  draws a `•` over a `bullet`. A link keeps its URL in `.scratchLink`, not `.link`: AppKit opens `.link` with a plain
+  click. Nothing but the styler writes these attributes, and the stored text is only changed by the owner's own actions.
+- **The styler's own attribute edits are not edits.** It styles inside `textStorage(_:didProcessEditing:…)` and only for
+  `.editedCharacters`; its own `setAttributes` calls come back as `.editedAttributes` and are ignored (`isApplying` as
+  well). Never call `invalidateGlyphs` or `invalidateLayout` inside that callback, where the layout manager may not know
+  the edit yet: the attribute edit invalidates what it touches, and `invalidate(_:)` is only for the styler's changes
+  made from a run loop turn (the chunks, a change of the selection). A keystroke restyles only the paragraphs it edited
+  (the storage may widen `editedRange` to whole paragraphs, which `EditMapping` accepts).
+- **A shown note is styled in two steps, and `load` styles nothing.** `NoteTextView.load` gives the text the base
+  attributes (`beginLoad` and `endLoad`, which also scans the fences), and `EditorViewController.show` then calls
+  `styler.noteDidLoad(visibleRange:)` with the saved scroll anchor, before anything lays the text out. That styles the
+  paragraphs ±200 of it at once and the rest in chunks of 1,000 paragraphs (at most 12 ms each), one per main run loop
+  turn at `RunLoopIdle.afterMeasurementsOrder`, so a signpost interval has ended before a chunk begins. The chunks
+  schedule themselves with a wake-up of the run loop: `RunLoopIdle.onNext` called from an idle callback would otherwise
+  wait for the next event. An edit while chunks are pending carries the pending ranges over it (`EditMapping`), and an
+  edit of more than 20,000 characters (a big paste) is styled in chunks too, after the fences are scanned again.
+- **Never set `font` or `textColor` on the editor to resize it.** On a plain-text view that resets every run of the text,
+  bold included. `NoteTextView.applyFontSize` leaves the text to `styler.fontSize`, which styles it again (and still sets
+  `font` and `textColor` while the text is empty, where `NoteTextView.font` reads them).
+- **The line prefilter must know every marker the parser knows.** `MarkupParser.mayHaveSpans` (ScratchCore) lets the
+  styler skip a line without parsing it. A new kind of marker needs its first character there, and
+  `MarkupPrefilterTests` holds the parser to it with a few thousand random lines.
+- **Fenced blocks are carried over edits, not scanned for again.** `CodeBlockIndex` shifts its blocks with each edit
+  (`apply`) and the styler scans the whole text again only when the edit touched a fence line of a block
+  (`touchesFenceLine`, ends of the lines included) or the paragraphs it edited now hold a fence line, then restyles the
+  paragraphs that moved in or out of a block (`changedRanges`). The scan reads the text with `getCharacters` and looks
+  for "```" first: most notes have none.
+- **`MarkupLayoutManager` is `nonisolated` on purpose.** AppKit does not annotate `NSLayoutManager`, and a main-actor
+  subclass would have a main-actor `init()` that does not match the superclass's. Its delegate methods run on the
+  main thread during layout, and the drawing goes through `MainActor.assumeIsolated`. The manager is its own delegate
+  and `TextViewFactory` sets that after the text view exists, which sets the delegate itself when it is made.
+- **A bold run's markers show while the caret touches the run, and a selection of more than 20,000 characters shows
+  none.** "Touches" counts the positions at both ends of the run. Walking the caret into a run therefore shows its
+  stars before it can step onto one, so Backspace never deletes a character the owner cannot see.
+- **Paragraphs are `NSString.paragraphRange(for:)`'s, lines are the core's.** The styler splits the text at line feed,
+  carriage return, CR LF, U+2029 and U+0085, and the core at the first three only, so a line with a paragraph
+  separator in it can be styled differently by `MarkupParser.parse`. Nothing in Scratch makes one.

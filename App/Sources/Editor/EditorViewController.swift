@@ -120,12 +120,20 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         undoManager.disableUndoRegistration()
         textView.load(note.body)
         undoManager.enableUndoRegistration()
+        // Style the text before anything lays it out or scrolls to it: around the line that will be on top first, so
+        // that the first frame is right, and the rest of a long note in the turns after it. The saved anchor says
+        // where the note will be; a tab without one shows its top.
+        let anchor = tab.scrollAnchor.map { TextOffset.clamp($0, in: note.body) } ?? 0
+        textView.styler.noteDidLoad(visibleRange: NSRange(location: anchor, length: 0))
 
         titleField.stringValue = note.title
         setReadOnly(isReadOnly)
 
         let offset = TextOffset.clamp(tab.selection, in: note.body)
         textView.setSelectedRange(NSRange(location: offset, length: 0))
+        // The delegate ignores the selection change above (the note is loading), so the markers at the cursor are
+        // shown here.
+        textView.styler.selectionDidChange(textView.selectedRange())
         showScrollPosition(of: tab, in: note)
     }
 
@@ -231,6 +239,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
 
     func textViewDidChangeSelection(_ notification: Notification) {
         guard !isLoadingNote else { return }
+        // The markers of the bold run or inline code the cursor is at are shown, and the others are hidden.
+        textView.styler.selectionDidChange(textView.selectedRange())
         userDidMoveView()
         onViewStateChange?()
     }
