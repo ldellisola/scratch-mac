@@ -206,7 +206,7 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     }
 
     /// The note that a row shows, or nil for a header and for an index that is not a row.
-    private func summary(atRow row: Int) -> NoteSummary? {
+    private func noteSummary(atRow row: Int) -> NoteSummary? {
         guard rows.indices.contains(row), case .note(let summary) = rows[row] else { return nil }
         return summary
     }
