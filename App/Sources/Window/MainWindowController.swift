@@ -18,6 +18,11 @@ final class MainWindowController: NSWindowController {
         window.title = "Scratch"
         window.titleVisibility = .hidden
         window.contentViewController = content
+        // The editor starts below the toolbar and nothing scrolls under the titlebar, so the automatic titlebar
+        // separator would draw a hard line across the editor. The toolbar floats over the note, with no other chrome
+        // (spec 6.1). The split view item's own `titlebarSeparatorStyle = .none` did not remove it on macOS 26: this
+        // window setting overrides any preference of the split view items.
+        window.titlebarSeparatorStyle = .none
         // Assigning the content view controller resizes the window to the controller's view, so size it afterwards.
         window.setContentSize(NSSize(width: 1100, height: 700))
         window.contentMinSize = NSSize(width: 520, height: 320)

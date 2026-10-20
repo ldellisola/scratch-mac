@@ -11,13 +11,7 @@ final class MainSplitViewController: NSSplitViewController {
         sidebarItem.maximumThickness = 420
         sidebarItem.canCollapse = true
         addSplitViewItem(sidebarItem)
-
-        // The editor starts below the toolbar and nothing scrolls under the titlebar, so AppKit's automatic titlebar
-        // separator would draw a hard line across the editor. The toolbar floats over the note, with no other chrome
-        // (spec 6.1).
-        let editorItem = NSSplitViewItem(viewController: editor)
-        editorItem.titlebarSeparatorStyle = .none
-        addSplitViewItem(editorItem)
+        addSplitViewItem(NSSplitViewItem(viewController: editor))
     }
 
     @available(*, unavailable)
