@@ -65,8 +65,8 @@ final class TabStripViewController: NSViewController {
 }
 
 /// The strip's view: a plain view that has the width its tabs want (`preferredWidth`) as its intrinsic width, and the
-/// glass (`NSGlassEffectView`) filling it. The glass gets its size from this view, by its autoresizing mask, and not
-/// from its own content or its own intrinsic size (see `init`).
+/// glass (`NSGlassEffectView`) filling it. This view sets the glass's frame itself, and the glass takes no part in the
+/// constraints that decide this view's width (see `init`).
 ///
 /// A view that is as wide as its tabs may not push the window wider than the user made it, and may not stop the window
 /// from becoming narrower: a split view item takes its minimum width from the constraints in its view. The strip
@@ -91,11 +91,12 @@ final class TabStripView: NSView {
         setContentHuggingPriority(NSLayoutConstraint.Priority(750), for: .horizontal)
         setContentCompressionResistancePriority(NSLayoutConstraint.Priority(40), for: .horizontal)
 
-        // The glass is not part of Auto Layout here: it keeps the frame of this view through its autoresizing mask. A
-        // glass view that took part came out 10 pt wide on CI, whatever width the tabs wanted, and the same with its
-        // hugging and compression resistance lowered: it has an intrinsic width of its own that it holds on to. The
-        // strip's width is the tabs' business.
-        glassView.autoresizingMask = [.width, .height]
+        // The glass is outside the strip's constraints: it has no autoresizing mask, so its frame is a fixed one, which
+        // `syncGlassFrame()` keeps equal to this view's bounds. Inside, the glass hosts its content in a SwiftUI hosting
+        // view that is pinned to the glass and has an intrinsic width of 10 pt, hugged at priority 250. Tied to this
+        // view by constraints, even by its autoresizing mask, the glass passes that on and wins over this view's
+        // resistance to compression (40): the strip came out 10 pt wide on CI. The strip's width is the tabs' business.
+        glassView.autoresizingMask = []
         glassView.frame = bounds
         addSubview(glassView)
     }
@@ -107,6 +108,21 @@ final class TabStripView: NSView {
 
     override var intrinsicContentSize: NSSize {
         NSSize(width: preferredWidth, height: TabStripViewController.height)
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        syncGlassFrame()
+    }
+
+    override func layout() {
+        super.layout()
+        syncGlassFrame()
+    }
+
+    /// Makes the glass as large as this view. A frame that is the same already is left alone.
+    private func syncGlassFrame() {
+        if glassView.frame != bounds { glassView.frame = bounds }
     }
 }
 
