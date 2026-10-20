@@ -14,6 +14,11 @@ final class TitleUITests: XCTestCase {
         app.typeKey(.return, modifierFlags: [])
     }
 
+    /// The 1-based number of the line that holds the UTF-16 offset `offset` of `text`.
+    private func lineNumber(ofOffset offset: Int, in text: String) -> Int {
+        text.utf16.prefix(offset).filter { $0 == 0x0A }.count + 1
+    }
+
     /// Quits with ⌘Q, which writes everything that is unsaved, and waits until the app is gone.
     private func quit(_ app: XCUIApplication) {
         app.typeKey("q", modifierFlags: .command)
@@ -103,7 +108,15 @@ final class TitleUITests: XCTestCase {
             },
             "the state after relaunch: \(UITestSupport.debugState(in: relaunched))")
         let after = UITestSupport.debugState(in: relaunched)["scrollAnchor"] as? Int ?? 0
-        // The anchor is the first character of a line on screen. The longest line of the note is about 130 characters.
-        XCTAssertLessThanOrEqual(abs(after - before), 150, "the anchor was \(before) and is now \(after)")
+        // The anchor is the first character of a line on screen. Lines of the note are 30 to 130 characters long, so a
+        // distance in characters says little: compare the line numbers of the two anchors instead.
+        let text = UITestSupport.editor(in: relaunched).value as? String ?? ""
+        XCTAssertFalse(text.isEmpty, "the editor text of the relaunched app could not be read")
+        let lineBefore = lineNumber(ofOffset: before, in: text)
+        let lineAfter = lineNumber(ofOffset: after, in: text)
+        XCTAssertGreaterThan(after, 0)
+        XCTAssertLessThanOrEqual(
+            abs(lineAfter - lineBefore), 1,
+            "the anchor was \(before) (line \(lineBefore)) and is now \(after) (line \(lineAfter))")
     }
 }
