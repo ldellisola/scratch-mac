@@ -106,6 +106,7 @@ Scratch is that Notepad habit, rebuilt as a proper Mac app. It's a window that i
 - ⌘N and ⌘T both create a new empty note and open it in a new tab [call]. ⌘W closes the tab. ⌃Tab / ⌃⇧Tab and ⌘1…⌘9 switch tabs [call].
 - There is always at least one tab. Closing the last tab replaces it with a new empty note [call].
 - A note that is still completely empty (no title, no text, no attachments) when its tab is closed is discarded. It never appears in the list [call]. This keeps ⌘N from littering the list.
+  - **Amended by [ADR 0004](../../decisions/0004-new-tabs-and-emptied-notes.md):** only a note nobody has used is discarded, and a note the owner empties is kept until the owner deletes it. The same record puts a new note at the end of the tab strip.
 - Tab titles follow the same rule as sidebar rows: the title, or else the first line in monospace.
 - The tab strip is a glass control inside the content area, as in mockup B. Tabs are not native macOS window tabs [call]. Window tabs would give each tab its own sidebar, but the sidebar should be one shared list.
 
@@ -345,6 +346,7 @@ A change is done when:
 - **Issues** [call]. Feature requests and bugs are tracked as GitHub issues.
 - **Releases** [owner: publish a new version on GitHub when a feature request is finished]:
   - Every merge to `main` that changes the app publishes a GitHub Release, with a zipped `Scratch.app` and short release notes [call].
+  - **Extended by [ADR 0005](../../decisions/0005-release-dmg.md):** the release also has a DMG with the app in it, and the release notes lead with it.
   - Version numbers get a minor bump for features and a patch bump for fixes [call].
 - **Signing** [owner: no Apple Developer account, unsigned is fine, the owner will click through macOS prompts]:
   - Every release is signed with the **same self-signed code-signing certificate**, so the app's identity never changes between versions and macOS keeps treating it as the same app [call].

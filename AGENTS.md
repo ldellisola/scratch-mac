@@ -104,21 +104,33 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   perf-check.py (numbers against baseline and budgets), check-version-bump.sh (a change
                                   to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
                                   release notes footer with the version filled in), check-release-zip.sh (unpacks a
-                                  release zip and checks the app in it), tests/ (their tests)
+                                  release zip and checks the app in it), check-release-dmg.sh (attaches a release DMG
+                                  read-only and checks the window and the app in it), tests/ (their tests, the DMG
+                                  check's against stubs of hdiutil, codesign and lipo)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests, version bump check. Job `macos`:
                                   XcodeGen, core tests on macOS, app build and app tests, screenshots, performance tests
-                                  and their check, the release zip. Both publish to `ci-results`.
+                                  and their check, the release zip and the release DMG. Both publish to `ci-results`.
 .github/workflows/release.yml     the release: a merge to main that changes App/, Packages/ or VERSION builds
-                                  `make release-zip` and publishes a GitHub Release `v<VERSION>` (section 6, Releases)
+                                  `make release-zip release-dmg` and publishes a GitHub Release `v<VERSION>` with the
+                                  zip and the DMG (section 6, Releases)
+README.md                         what Scratch is, how to install it, the shortcuts, and the screenshots. Keep its
+                                  feature list and release table current (section 6)
 docs/architecture.md              module boundaries, data flow, threading
-docs/release-notes-footer.md      the install and update steps, put at the top of every release's notes
-                                  (`scripts/release-notes.sh` replaces its `<version>` placeholders)
+docs/release-notes-footer.md      the install and update steps (the DMG first, the zip as the alternative), put at the
+                                  top of every release's notes (`scripts/release-notes.sh` replaces its `<version>`
+                                  placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
                                   title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md (more as features
                                   land)
+docs/images/                      the README's screenshots (window-light, window-dark, search, recently-deleted): copies
+                                  of the `screenshots/` that CI published for a release commit (`scripts/ci-fetch.sh`,
+                                  section 4: typical-light, typical-dark, search-light, recently-deleted-light). They
+                                  change only when someone replaces them, so refresh them when a plan visibly changes
+                                  the UI
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
-                                  performance check compares)
+                                  performance check compares), 0004 (a new note opens at the end of the tab strip, and
+                                  a note the owner empties is kept), 0005 (every release carries a DMG next to the zip)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -135,7 +147,8 @@ macOS and runs on GitHub's Macs.
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
 - `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py`,
-  `perf-extract.py`, `check-version-bump.sh` and `release-notes.sh`). Each test file ends with an `all ... passed` line.
+  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh` and `check-release-dmg.sh`). Each test file ends with an
+  `all ... passed` line.
 - `scripts/check-version-bump.sh <base-ref>` `[linux]`: exit 1 when the branch changed App/ or Packages/ since
   `<base-ref>` without a `VERSION` that is greater than `<base-ref>`'s (compared number by number: 0.10.0 is greater than
   0.9.0), or when `VERSION` is not MAJOR.MINOR.PATCH. CI runs it with `origin/main`.
@@ -169,6 +182,14 @@ macOS and runs on GitHub's Macs.
   `build/release/Scratch-<VERSION>.zip`, and check what is in the zip (`scripts/check-release-zip.sh`: version and build
   version, bundle identifier, arm64 only, valid ad-hoc signature). CI runs it on every push, and the release workflow runs it to make
   the file it publishes.
+- `make release-dmg` `[macOS]`: after `make release-zip` (it runs that first when `build/release/Scratch.app` is not
+  there), copy that app with `ditto` into a staging folder with an `Applications` symlink, and make
+  `build/release/Scratch-<VERSION>.dmg` from it (`hdiutil create`, UDZO, volume "Scratch <VERSION>", tried up to three
+  times, because `hdiutil` fails now and then with "Resource busy" on GitHub's Macs). `scripts/check-release-dmg.sh`
+  then attaches it read-only and checks it: the window holds `Scratch.app` and `Applications` only, the versions, the
+  bundle identifier, arm64 only, a signature that verifies and is ad hoc. It always detaches again. CI runs it as its
+  own step after `release-zip`, and the release workflow runs both to make the two files it publishes
+  (docs/decisions/0005).
 
 ### Launch arguments
 
@@ -270,6 +291,8 @@ A change is done when:
 - no performance budget regressed
 - screenshots of any affected screen have been looked at
 - the feature doc and AGENTS.md are updated if behaviour or commands changed
+- the README's feature list, release table and screenshots (`docs/images/`) are current when a release changes what
+  Scratch does or looks like
 - a decision record exists for any new dependency or any changed [call]
 - the pull request is merged, and a release is published if the app changed (§9.6)
 
@@ -289,19 +312,22 @@ A release is published for every merge to `main` that changes the app, with no h
    If the tag `v<VERSION>` exists and `App/` and `Packages/` are the same as at that tag, it stops, successfully (a
    re-run). If the tag exists but `App/` or `Packages/` changed since, it **fails** with `v<VERSION> is already released
    but App/ or Packages/ changed since; bump VERSION`: that change would ship in no release, so bump `VERSION` in a new
-   pull request. Otherwise it runs `make project release-zip` on `macos-26` (Xcode 26.6) and creates the GitHub Release
-   `v<VERSION>`, titled `Scratch <VERSION>`, with `Scratch-<VERSION>.zip` attached, the notes GitHub generates (what
+   pull request. Otherwise it runs `make project release-zip release-dmg` on `macos-26` (Xcode 26.6) and creates the
+   GitHub Release `v<VERSION>`, titled `Scratch <VERSION>`, with `Scratch-<VERSION>.dmg` and `Scratch-<VERSION>.zip`
+   attached, the notes GitHub generates (what
    changed since the last release) and the install and update steps (`scripts/release-notes.sh`, from
    `docs/release-notes-footer.md`, with the version filled in) at the top.
 3. **Check it.** `git ls-remote --tags origin v<VERSION>` shows the tag once the release is published, and the release
-   page lists the zip. If the workflow fails after the merge, the run's log says where. A failure of the workflow's own
+   page lists the DMG and the zip. If the workflow fails after the merge, the run's log says where. A failure of the workflow's own
    steps (a network error, say) is re-run from the Actions tab. A broken build needs a fix to `App/` or `Packages/`,
    with its own bump: the failed version was never tagged, and skipping a number does no harm.
 
 The app is **ad-hoc signed and not notarised** (docs/decisions/0002-ad-hoc-signing.md, which amends spec §9.6): there is
 no certificate and no secret to configure. The owner approves each downloaded version once in System Settings → Privacy &
 Security → Open Anyway, and the release notes say so. The workflow itself can only run on `main`, so CI exercises
-everything but its last step: the `macos` job runs `make release-zip`, which builds and checks the same zip.
+everything but its last step: the `macos` job runs `make release-zip` and `make release-dmg`, which build and check the
+same zip and DMG. A change of `VERSION` alone also publishes a release (`release.yml` watches the file), which is how a
+new kind of release file, with no change to the app, ships.
 
 ## 7. Pitfalls
 
@@ -406,12 +432,16 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   that is released skips its pending save. `SessionCoordinator` owns it and `AppDelegate` owns the coordinator, so keep
   both. The save closure holds the coordinator weakly. Never replace the autosaver while it is dirty.
 - **`SessionCoordinator.persistNow()` waits for the storage queue** (`storageQueue.sync {}`), and so does every change
-  of the active tab (`open`, `selectTab`, `closeTab`, `newNoteInNewTab`, `deleteNote`), which calls it first. Call all of them and
-  `flush()` on the main thread only, and never from a block that runs on the storage queue.
+  that leaves the note in the editor, which calls it first: `open` of another note, `selectTab` of another tab,
+  `newNoteInNewTab`, closing the active tab, closing the only tab (when its note has been used), `deleteNote` and
+  `deleteNotePermanently`. Closing a tab that is not active does not (`closeOtherTab`). Call all of them and `flush()`
+  on the main thread only, and never from a block that runs on the storage queue.
 - **A new note that nobody has used is not in the sidebar** and is discarded when its tab closes or another note
   replaces it in the tab, while it is still empty. It is "untouched" while it was created in this session (or restored
   empty) and has no text. Test changes that look at the sidebar must type first. Switching to another tab keeps an
-  untouched note and its tab: only closing or replacing discards it.
+  untouched note and its tab: only closing or replacing discards it. An existing note that the owner empties is kept
+  (docs/decisions/0004), except in two cases the code cannot tell apart yet (a note created and typed in this session,
+  and one still open in a tab at quit): the record says what closing them takes.
 - **A tab is the unit of `TabList`, and `SessionCoordinator.tabs` is the only copy.** The coordinator holds the note of
   the active tab (`current`) and nothing else of any note: another tab's note is read from the storage when its tab is
   shown, after the note being left was written (`leaveCurrentNote`). `saveNow` records the cursor and scroll anchor of
