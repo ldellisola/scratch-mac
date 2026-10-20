@@ -4,10 +4,10 @@
 # v<VERSION> already exists and App/ and Packages/ are the same as at that tag, that version is released and the run
 # stops successfully (a re-run, or a change to VERSION alone). When the tag exists but App/ or Packages/ changed since,
 # the run FAILS: the change would ship in no release. Otherwise it builds the Release app, zips it
-# (`make release-zip`) and creates the release with the zip attached, and the install steps from
-# docs/release-notes-footer.md (scripts/release-notes.sh) at the top of the notes. The builds are ad-hoc signed and not
-# notarised (docs/decisions/0002-ad-hoc-signing.md), so there is no secret to configure: the workflow only needs the
-# repository token, with write access to contents.
+# (`make release-zip`), puts the same app in a disk image (`make release-dmg`, docs/decisions/0005) and creates the
+# release with both files attached, and the install steps from docs/release-notes-footer.md (scripts/release-notes.sh)
+# at the top of the notes. The builds are ad-hoc signed and not notarised (docs/decisions/0002-ad-hoc-signing.md), so
+# there is no secret to configure: the workflow only needs the repository token, with write access to contents.
 #
 # CI refuses a change to App/ or Packages/ that keeps the old VERSION on the branch (scripts/check-version-bump.sh, the
 # linux job), so the failure above should not happen. It is here for the day it does, so that it is not silent.
@@ -104,16 +104,19 @@ jobs:
         if: steps.version.outputs.exists == 'false'
         run: brew install xcodegen
 
-      # Builds build/release/Scratch-<VERSION>.zip and checks it (scripts/check-release-zip.sh).
+      # Builds build/release/Scratch-<VERSION>.zip and checks it (scripts/check-release-zip.sh), then makes
+      # build/release/Scratch-<VERSION>.dmg from the same app and checks that too (scripts/check-release-dmg.sh). Make
+      # runs the goals in this order, and release-dmg uses the app that release-zip built.
       - id: build
-        name: Build the release zip
+        name: Build the release zip and DMG
         if: steps.version.outputs.exists == 'false'
-        run: make project release-zip
+        run: make project release-zip release-dmg
 
       # --generate-notes lists what changed since the previous release. gh puts the text of --notes-file before that
       # list, so the install steps come first: scripts/release-notes.sh writes them with the version filled in, so that
-      # they name Scratch-<VERSION>.zip. --target pins the tag to the commit that was built, not to whatever main is by
-      # the time this step runs.
+      # they name Scratch-<VERSION>.dmg and Scratch-<VERSION>.zip. --target pins the tag to the commit that was built,
+      # not to whatever main is by the time this step runs. Both files are attached: the DMG is what the notes tell the
+      # owner to download, and the zip stays for anyone who wants it.
       - id: publish
         name: Create the release
         if: steps.version.outputs.exists == 'false'
@@ -122,6 +125,6 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           scripts/release-notes.sh "$VERSION" > "$RUNNER_TEMP/release-notes.md"
-          gh release create "v$VERSION" "build/release/Scratch-$VERSION.zip" \
+          gh release create "v$VERSION" "build/release/Scratch-$VERSION.dmg" "build/release/Scratch-$VERSION.zip" \
             --title "Scratch $VERSION" --target "$GITHUB_SHA" \
             --generate-notes --notes-file "$RUNNER_TEMP/release-notes.md"

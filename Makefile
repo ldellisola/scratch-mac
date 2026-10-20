@@ -8,7 +8,7 @@ APP_PROJECT := App/Scratch.xcodeproj
 DERIVED_DATA := build/DerivedData
 DESTINATION := platform=macOS,arch=arm64
 
-.PHONY: core-test lint format script-test ci-wait project app-build app-test screenshots run perf perf-baseline release-zip
+.PHONY: core-test lint format script-test ci-wait project app-build app-test screenshots run perf perf-baseline release-zip release-dmg
 
 # [linux] Run the ScratchCore tests.
 core-test:
@@ -22,14 +22,15 @@ lint:
 format:
 	swift format format --in-place --recursive Packages App
 
-# [linux] Run the tests for the scripts in scripts/ (the ci-results loop, the performance scripts and the version bump
-# check). Needs bash, git and python3.
+# [linux] Run the tests for the scripts in scripts/ (the ci-results loop, the performance scripts, the version bump
+# check, the release notes and the release DMG check). Needs bash, git and python3.
 script-test:
 	bash scripts/tests/test-ci-scripts.sh
 	bash scripts/tests/test-perf-check.sh
 	bash scripts/tests/test-perf-extract.sh
 	bash scripts/tests/test-version-bump.sh
 	bash scripts/tests/test-release-notes.sh
+	bash scripts/tests/test-release-dmg.sh
 
 # [linux] Wait for CI results on the ci-results branch: make ci-wait SHA=<sha> [JOBS="linux macos"].
 # CI_WAIT_TIMEOUT (seconds) bounds one wait. make exits 2 on any failure, so read the last line of output to tell a
@@ -122,3 +123,24 @@ release-zip: project
 	ditto $(DERIVED_DATA)/Build/Products/Release/Scratch.app $(RELEASE_DIR)/Scratch.app
 	ditto -c -k --keepParent $(RELEASE_DIR)/Scratch.app $(RELEASE_DIR)/Scratch-$(RELEASE_VERSION).zip
 	bash scripts/check-release-zip.sh $(RELEASE_DIR)/Scratch-$(RELEASE_VERSION).zip $(RELEASE_VERSION)
+
+# [macOS] Make build/release/Scratch-<VERSION>.dmg from the app that `make release-zip` left in build/release: a disk
+# image whose window shows Scratch.app and an Applications link to drag it onto (docs/decisions/0005). The app is copied
+# with ditto, which keeps its ad-hoc signature. When build/release/Scratch.app is not there yet, release-zip runs first.
+# scripts/check-release-dmg.sh then attaches the image read-only and checks what a user would get. The release workflow
+# attaches this file next to the zip, and CI runs this after release-zip. hdiutil create fails now and then on GitHub's
+# Macs ("Resource busy"), so it is tried up to three times.
+release-dmg:
+	@test -d $(RELEASE_DIR)/Scratch.app || $(MAKE) release-zip
+	rm -rf $(RELEASE_DIR)/dmg-staging $(RELEASE_DIR)/Scratch-$(RELEASE_VERSION).dmg
+	mkdir -p $(RELEASE_DIR)/dmg-staging
+	ditto $(RELEASE_DIR)/Scratch.app $(RELEASE_DIR)/dmg-staging/Scratch.app
+	ln -s /Applications $(RELEASE_DIR)/dmg-staging/Applications
+	attempt=1; \
+	until hdiutil create -volname "Scratch $(RELEASE_VERSION)" -srcfolder $(RELEASE_DIR)/dmg-staging -ov -format UDZO \
+	  $(RELEASE_DIR)/Scratch-$(RELEASE_VERSION).dmg; do \
+	  test $$attempt -lt 3 || exit 1; \
+	  attempt=$$((attempt + 1)); echo "hdiutil create failed, trying again ($$attempt of 3)" >&2; sleep 5; \
+	done
+	rm -rf $(RELEASE_DIR)/dmg-staging
+	bash scripts/check-release-dmg.sh $(RELEASE_DIR)/Scratch-$(RELEASE_VERSION).dmg $(RELEASE_VERSION)
