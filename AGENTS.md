@@ -47,7 +47,11 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   inline code and links, as UTF-16 `NSRange`s), MarkupSpan and MarkupKind, LinkScanner
                                   (the `http(s)://` URLs of a line), FenceScanner (the fenced code blocks, inside which
                                   nothing is formatting), TextLines (internal: line splitting and white space over UTF-16
-                                  units)
+                                  units). The editing rules answer an action with a `TextEdit` (a range, its
+                                  replacement and the selection afterwards): ListEditing (Return, Tab, ⇧Tab, ⇧⌘L and a
+                                  click on a checkbox) and InlineEditing (⌘B). They read only the paragraphs that cover
+                                  the selection (`ParagraphLines`, internal: those lines with document offsets, and how
+                                  a selection moves when they change)
   Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting) and
                                   FixtureContent, their notes and session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
