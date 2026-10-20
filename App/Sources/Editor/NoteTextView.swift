@@ -267,6 +267,22 @@ final class NoteTextView: NSTextView {
         return true
     }
 
+    // MARK: Links
+
+    /// What a ⌘-click on a link does with its URL. It opens it in the default browser. Tests replace it: they must never
+    /// open one.
+    var openURL: (URL) -> Void = { _ = NSWorkspace.shared.open($0) }
+
+    /// The URL of the link under `point`, in the coordinates of this view, or nil. (Stub: Task 6.)
+    func link(atViewPoint point: NSPoint) -> URL? { nil }
+
+    /// The tracking area that delivers the mouse moves over the view. (Stub: Task 6.)
+    private(set) var linkTrackingArea: NSTrackingArea?
+
+    /// Shows the pointing hand while ⌘ is held over a link. (Stub: Task 6.)
+    @discardableResult
+    func updateLinkCursor(atViewPoint point: NSPoint, modifiers: NSEvent.ModifierFlags) -> NSCursor? { nil }
+
     // MARK: The Format menu
 
     /// ⇧⌘L (Format > Checklist): the lines of the selection (the caret's line when there is none) become a checklist,
