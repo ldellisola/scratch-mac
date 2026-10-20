@@ -65,9 +65,8 @@ final class TabStripViewController: NSViewController {
 }
 
 /// The strip's view: a plain view that has the width its tabs want (`preferredWidth`) as its intrinsic width, and the
-/// glass (`NSGlassEffectView`) pinned to all its edges. The glass gets its size from the pins, and not from the
-/// content: on the first CI run a glass view that was asked for its width by its intrinsic content size came out 10 pt
-/// wide, whatever it was told.
+/// glass (`NSGlassEffectView`) pinned to all its edges. The glass gets its size from the pins, and not from its own
+/// content or its own intrinsic size (see `init`).
 ///
 /// A view that is as wide as its tabs may not push the window wider than the user made it, and may not stop the window
 /// from becoming narrower: a split view item takes its minimum width from the constraints in its view. The strip
@@ -92,6 +91,14 @@ final class TabStripView: NSView {
         setContentHuggingPriority(NSLayoutConstraint.Priority(750), for: .horizontal)
         setContentCompressionResistancePriority(NSLayoutConstraint.Priority(40), for: .horizontal)
 
+        // The glass has an intrinsic width of its own: a strip that left it alone came out 10 pt wide on CI, whatever
+        // width the tabs wanted. It hugs that width at the default priority (250), which is stronger than this view's
+        // resistance to compression (40), and the glass is pinned to this view. The strip's width is the tabs'
+        // business, so the glass neither hugs nor resists.
+        for axis in [NSLayoutConstraint.Orientation.horizontal, .vertical] {
+            glassView.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: axis)
+            glassView.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(1), for: axis)
+        }
         glassView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(glassView)
         NSLayoutConstraint.activate([

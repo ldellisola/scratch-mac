@@ -418,10 +418,11 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
 - **The tab strip is an `NSGlassEffectView` pinned inside a plain view, with a frame-based content view.**
   `TabStripView` (the strip's own view) gets its width from the tabs as its intrinsic content size, with a compression
   resistance (40) below the fitting size priority (50), and `EditorAreaViewController` caps it with a required
-  `trailing <=` constraint. The glass is pinned to the edges of `TabStripView`: a glass view that was given an
-  intrinsic content size of its own came out 10 pt wide on CI, and the strip was a sliver. A width constraint on the
-  strip, at any priority above 50, would make the split view item's minimum width grow with the number of tabs. Do not
-  use `NSStackView` with required widths in the strip for the same reason.
+  `trailing <=` constraint. The glass is pinned to the edges of `TabStripView`, and its own content hugging and
+  compression resistance are set to 1: left at the default, the glass hugged an intrinsic width of its own and the strip
+  came out 10 pt wide on CI, a sliver that a click on the second tab missed (`TabStripViewControllerTests` measure the
+  strip). A width constraint on the strip, at any priority above 50, would make the split view item's minimum width grow
+  with the number of tabs. Do not use `NSStackView` with required widths in the strip for the same reason.
 - **A tab is one accessibility element and its close button is not inside it.** `TabItemView` is a button
   (`tab.item`) with a label, a title and a selected state, and the close button (`tab.close`) is a sibling placed over
   its right end, so UI tests read `UITestSupport.tabs(in:)` and `activeTabTitle(in:)` and click a tab at its centre.
