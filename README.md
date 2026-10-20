@@ -5,7 +5,7 @@ everything back when you open it again. It is made for one person on one Apple S
 notes and todo lists.
 
 <p align="center">
-  <img src="docs/images/window-light.png" alt="Scratch in light mode: a sidebar of notes grouped by day, a tab strip, and a note with a checklist and a shell snippet" width="49%">
+  <img src="docs/images/window-light.png" alt="Scratch in light mode: a sidebar of notes grouped by day, a tab strip, and a note with a checklist, bullets, bold text and a shell snippet" width="49%">
   <img src="docs/images/window-dark.png" alt="The same window in dark mode" width="49%">
 </p>
 
@@ -18,7 +18,7 @@ from, and text you copy always comes out as plain text.
 
 ## What it does
 
-Scratch is at version 0.2, which does these things:
+Scratch is at version 0.3, which does these things:
 
 - **Always ready.** It opens to a note you can type in at once. There is no Save and no file to name: everything you
   type is written within about a second, and a crash or a force-quit loses at most that second. Quitting and opening
@@ -34,20 +34,28 @@ Scratch is at version 0.2, which does these things:
   text.
 - **Deleting is undoable.** Delete a note from its right-click menu, or with ⌘⌫ in the sidebar. It moves to Recently
   Deleted, where you can restore it, and is removed for good after 30 days.
+- **Just enough formatting, from what you type.** `- ` is a bullet, `[ ] ` and `[x] ` are checkboxes you can click
+  (ticked ones are struck through), `**bold**` is bold, `` `code` `` is tinted, and `http(s)://` links open with
+  ⌘-click. Return continues a list, Tab and ⇧Tab indent it, ⌘B makes text bold and ⇧⌘L makes a checklist. The `**` and
+  the backticks hide, except where the caret is. What is stored never changes, so copying a note out gives the
+  characters you typed, `- ` and `**` included. Inside a fenced block (three backticks), and inside inline code, every
+  character stays exactly as typed.
 - **Made for macOS 26.** The sidebar, the tab strip and the toolbar buttons are native Liquid Glass, and the app is
   built only for Apple Silicon.
+
+<p align="center">
+  <img src="docs/images/formatting.png" alt="One note with a bullet and a nested bullet, an open and a ticked checkbox, bold text, inline code, a link, and a fenced block whose lines show exactly as typed" width="70%">
+</p>
 
 <p align="center">
   <img src="docs/images/search.png" alt="Typing kube in the search field leaves only the notes that contain it" width="49%">
   <img src="docs/images/recently-deleted.png" alt="The Recently Deleted section open under the note list" width="49%">
 </p>
 
-The screenshots show checkboxes, bold text and a code block as the plain text you type for them. Scratch will draw
-those markers as bullets, checkboxes, bold and highlighted code in the next releases:
+Fenced code shows as typed for now. Scratch will highlight it, and detect code on paste, in the next releases:
 
 | Release | Adds |
 |---|---|
-| 0.3 | Bullets, checkboxes, bold, inline code and links, drawn from the markers you type |
 | 0.4 | Code detection on paste, syntax highlighting, code blocks with a language label |
 | 0.5 | Attachments: images and files, pasted or dragged in |
 | 1.0 | Performance and accessibility polish |

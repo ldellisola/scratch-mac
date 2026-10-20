@@ -5,7 +5,8 @@ Spec: [§6.4 Editor and formatting](../superpowers/specs/2026-10-19-scratchpad-d
 behaviour, marker rules) and §6.5 (copy-out keeps the markers), guarding the anti-goals "Mangled code" and "Lost text"
 (§4). Plan: [Plan 3](../superpowers/plans/2026-10-20-plan-3-formatting.md).
 
-Status: plan 3, task 6 (styling, checkboxes, ⇧⌘L, the keyboard: Return, Tab, ⇧Tab and ⌘B, and ⌘-click on links).
+Status: released in 0.3.0 (plan 3): styling, checkboxes, ⇧⌘L, the keyboard (Return, Tab, ⇧Tab and ⌘B) and ⌘-click on
+links.
 
 ## Behaviour: what renders
 
@@ -176,4 +177,5 @@ text like any other, so that placing the caret in a link never opens a browser.
 | Styling registers no undo | `testStylingDoesNotRegisterUndo`, `testTypingInStyledTextIsOneUndoStepThatStylesTheTextAgain` |
 | Copy keeps the markers, and pasted text renders like typed text | `testCopyKeepsMarkers`, `testPastedTextRendersLikeTypedText` |
 | A note of 10,000 lines is styled in chunks, an edit while it is pending is carried over, a big paste too | `testHugeNoteIsFullyStyledSoon`, `testAnEditWhileTheRestOfANoteIsStyledKeepsTheRestRight`, `testABigPasteIsStyledAfterwards` |
+| The whole table renders in light and dark: hanging bullets, boxes, a struck-through ticked item, hidden stars, tinted code, a coloured link and a fenced block as typed (the `formatting` fixture; a person looks at the PNGs in `ci-results`) | `ScreenshotTests.testFormattingLight`, `testFormattingDark` |
 | ScratchCore: the blocks of a note, carried over edits; the position mapping; the prefilter | `CodeBlockIndexTests`, `EditMappingTests`, `MarkupPrefilterTests` |

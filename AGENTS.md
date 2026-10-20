@@ -13,7 +13,7 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md),
-  in progress on the branch `plan-3-formatting` (release 0.3.0). Plan 2, released as 0.2.0:
+  done and released as 0.3.0 (the formatting). Plan 2, released as 0.2.0:
   [`2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md). Plan 1, released
   as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md).
 
@@ -157,9 +157,10 @@ docs/release-notes-footer.md      the install and update steps (the DMG first, t
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
                                   title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md (more
                                   as features land)
-docs/images/                      the README's screenshots (window-light, window-dark, search, recently-deleted): copies
-                                  of the `screenshots/` that CI published for a release commit (`scripts/ci-fetch.sh`,
-                                  section 4: typical-light, typical-dark, search-light, recently-deleted-light). They
+docs/images/                      the README's screenshots (window-light, window-dark, formatting, search,
+                                  recently-deleted): copies of the `screenshots/` that CI published for a release commit
+                                  (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
+                                  search-light, recently-deleted-light). They
                                   change only when someone replaces them, so refresh them when a plan visibly changes
                                   the UI
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
