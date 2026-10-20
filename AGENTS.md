@@ -200,9 +200,10 @@ macOS and runs on GitHub's Macs.
 - `make app-test` `[macOS]`: build, then run the hosted unit tests and the UI tests. Result bundle:
   `build/results/app.xcresult`. Each test has a 2 minute limit.
 - `make screenshots` `[macOS]`: run `ScreenshotTests` only and write `build/screenshots/<name>.png` for `typical-light`,
-  `typical-dark`, `empty-light`, `huge-note-light`, `search-light` (typical, with "kube" typed in the search field) and
-  `recently-deleted-light` (the `recently-deleted` fixture, the section expanded). These are the names in the
-  Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
+  `typical-dark`, `empty-light`, `huge-note-light`, `search-light` (typical, with "kube" typed in the search field),
+  `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), and `formatting-light` and
+  `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note). These are the
+  names in the Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
 - `make perf` `[macOS]`: run the performance tests (the `ScratchPerf` scheme, Release build) into

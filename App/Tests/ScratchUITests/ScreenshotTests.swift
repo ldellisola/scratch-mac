@@ -9,8 +9,9 @@ import XCTest
 /// how the window looks: a person (or an agent that opens the PNG) judges that. `make app-test` skips this class, so
 /// that the screenshots are taken once per CI job.
 ///
-/// The names are `typical-light`, `typical-dark`, `empty-light`, `huge-note-light`, `search-light` and
-/// `recently-deleted-light`. The Makefile's `SCREENSHOT_NAMES` lists them and must stay in step with this class.
+/// The names are `typical-light`, `typical-dark`, `empty-light`, `huge-note-light`, `search-light`,
+/// `recently-deleted-light`, `formatting-light` and `formatting-dark`. The Makefile's `SCREENSHOT_NAMES` lists them and
+/// must stay in step with this class.
 @MainActor
 final class ScreenshotTests: XCTestCase {
     func testTypicalLight() {
@@ -61,6 +62,20 @@ final class ScreenshotTests: XCTestCase {
                 },
                 "the sidebar rows with Recently Deleted expanded: \(UITestSupport.sidebarTitleTexts(in: app))")
         }
+    }
+
+    /// The formatting fixture: one note with a bullet and a nested bullet, an open and a ticked box, bold, inline code
+    /// and a link, a line of unclosed markers, and a fenced block whose markers must show as typed (plan 3, task 8).
+    /// The caret is at the top of the note, so every bold and inline code marker is hidden. A person (or an agent that
+    /// opens the PNG) checks: hanging indents, the boxes, the struck-through ticked item, no stars next to the bold
+    /// text, the tinted inline code, the coloured link and the block's lines exactly as typed.
+    func testFormattingLight() {
+        capture("formatting-light", fixture: "formatting", appearance: "light", sidebarRows: 1)
+    }
+
+    /// The same note in dark mode: the colours of the boxes, the code and the link must all read on a dark background.
+    func testFormattingDark() {
+        capture("formatting-dark", fixture: "formatting", appearance: "dark", sidebarRows: 1)
     }
 
     /// Launches `fixture`, waits for the editor and for `sidebarRows` sidebar rows (the fixture's notes that the
