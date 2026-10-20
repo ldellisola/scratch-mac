@@ -137,6 +137,53 @@ new_repo
 commit_file VERSION 0.1.1
 expect_exit "a VERSION bump on its own exits 0" 0 check
 
+echo "== the version must go up, compared number by number"
+new_repo 0.1.1
+commit_file App/Sources/main.swift 'print("changed")'
+commit_file VERSION 0.1.0
+expect_exit "a change under App/ with a lower VERSION than the base exits 1" 1 check
+output_has "it says what has to be greater than what" "VERSION 0.1.0 must be greater than 0.1.1 on main"
+
+new_repo 0.9.0
+commit_file App/Sources/main.swift 'print("changed")'
+commit_file VERSION 0.10.0
+expect_exit "VERSION 0.10.0 over 0.9.0 exits 0 (numeric, not lexical)" 0 check
+
+new_repo 0.9.9
+commit_file App/Sources/main.swift 'print("changed")'
+commit_file VERSION 1.0.0
+expect_exit "VERSION 1.0.0 over 0.9.9 exits 0" 0 check
+
+new_repo 1.0.0
+commit_file App/Sources/main.swift 'print("changed")'
+commit_file VERSION 0.9.9
+expect_exit "a lower major with a higher minor and patch exits 1" 1 check
+
+new_repo 0.1.10
+commit_file Packages/Core/Package.swift '// swift-tools-version: 6.1'
+commit_file VERSION 0.1.9
+expect_exit "a lower patch, 0.1.9 under 0.1.10, exits 1" 1 check
+
+new_repo 0.1.9
+commit_file Packages/Core/Package.swift '// swift-tools-version: 6.1'
+commit_file VERSION 0.1.10
+expect_exit "a higher patch, 0.1.10 over 0.1.9, exits 0" 0 check
+
+new_repo 0.1.1
+commit_file App/Sources/main.swift 'print("changed")'
+expect_exit "an equal VERSION still exits 1" 1 check
+output_has "an equal VERSION says it is still the base's" "VERSION is still 0.1.1"
+
+new_repo 99999999999999999999.0.0
+commit_file App/Sources/main.swift 'print("changed")'
+commit_file VERSION 99999999999999999998.0.0
+expect_exit "numbers too big for shell arithmetic still compare right" 1 check
+
+new_repo 0.1.0
+commit_file App/Sources/main.swift 'print("changed")'
+commit_file VERSION 99999999999999999999.0.0
+expect_exit "a huge major number over a small one exits 0" 0 check
+
 echo "== the whole branch counts, not the last commit"
 new_repo
 commit_file App/Sources/main.swift 'print("one")'

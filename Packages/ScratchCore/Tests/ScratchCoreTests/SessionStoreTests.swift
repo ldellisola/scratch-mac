@@ -4,7 +4,7 @@ import Testing
 @testable import ScratchCore
 
 // Spec §6.6: launching restores the previous session exactly, including open tabs, the active tab, and the
-// cursor and scroll position in each tab.
+// cursor and scroll position in each tab. Spec §6.4: the font size is remembered.
 
 private func sessionStore() throws -> (SessionStore, Database) {
     let db = try Database(path: ":memory:")
@@ -84,4 +84,48 @@ private func storeRawState(_ json: String, in db: Database) throws {
     let (store, db) = try sessionStore()
     try db.execute("INSERT INTO session (key, value) VALUES ('state', ?)", [.text(#"{"tabs": []}"#)])
     #expect(try store.load() == SessionState(tabs: [], activeTabIndex: 0))
+}
+
+@Test func decodesPlan1SessionWithDefaults() throws {
+    let (store, db) = try sessionStore()
+    let id = NoteID.make()
+    // What Scratch 0.1.0 wrote: no `fontSize` in the session and no `scrollAnchor` in the tab.
+    try storeRawState(
+        #"{"tabs": [{"noteID": "\#(id.rawValue)", "selection": 6, "scrollY": 48.5}], "activeTabIndex": 0}"#, in: db)
+    let state = try #require(try store.load())
+    #expect(state.fontSize == 13)
+    #expect(state.fontSize == FontSize.standard)
+    #expect(state.tabs.first?.scrollAnchor == nil)
+    #expect(state.tabs == [TabState(noteID: id, selection: 6, scrollY: 48.5)])
+}
+
+@Test func roundTripsFontSizeAndAnchor() throws {
+    let (store, _) = try sessionStore()
+    let state = SessionState(
+        tabs: [
+            TabState(noteID: NoteID.make(), selection: 12, scrollY: 0, scrollAnchor: 1_234),
+            TabState(noteID: NoteID.make(), selection: 0, scrollY: 0, scrollAnchor: 0),
+            TabState(noteID: NoteID.make(), selection: 3, scrollY: 8),
+        ],
+        activeTabIndex: 1,
+        fontSize: 17)
+    try store.save(state)
+    let loaded = try #require(try store.load())
+    #expect(loaded == state)
+    #expect(loaded.fontSize == 17)
+    #expect(loaded.tabs.map(\.scrollAnchor) == [1_234, 0, nil])
+}
+
+@Test func newFieldsHaveDefaultsInTheInitialisers() {
+    let tab = TabState(noteID: NoteID.make(), selection: 1, scrollY: 2)
+    #expect(tab.scrollAnchor == nil)
+    #expect(SessionState(tabs: [tab], activeTabIndex: 0).fontSize == FontSize.standard)
+}
+
+@Test func decodesAnOutOfRangeFontSizeIntoRange() throws {
+    let (store, db) = try sessionStore()
+    for (stored, expected) in [("500", 32.0), ("0", 9.0), ("-3", 9.0), ("16.5", 16.5)] {
+        try storeRawState(#"{"tabs": [], "fontSize": \#(stored)}"#, in: db)
+        #expect(try store.load()?.fontSize == expected, "\(stored)")
+    }
 }

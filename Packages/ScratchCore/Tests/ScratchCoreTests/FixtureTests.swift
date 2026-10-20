@@ -16,6 +16,11 @@ private func lines(of text: String) -> [Substring] {
     text.split(separator: "\n", omittingEmptySubsequences: false)
 }
 
+/// The text of every note, the live ones and then the deleted ones, in sidebar order.
+private func bodies(of notes: NoteStore) throws -> [String] {
+    try (notes.summaries() + notes.deletedSummaries()).map { try #require(try notes.note($0.id)).body }
+}
+
 private func note(titled title: String, in notes: NoteStore) throws -> Note {
     let summary = try #require(try notes.summaries().first { $0.displayTitle == title })
     return try #require(try notes.note(summary.id))
@@ -143,9 +148,7 @@ private func note(titled title: String, in notes: NoteStore) throws -> Note {
         let (notesB, sessionB) = try stores()
         try fixture.seed(notes: notesA, session: sessionA, now: now)
         try fixture.seed(notes: notesB, session: sessionB, now: now)
-        let bodiesA = try notesA.summaries().map { try #require(try notesA.note($0.id)).body }
-        let bodiesB = try notesB.summaries().map { try #require(try notesB.note($0.id)).body }
-        #expect(bodiesA == bodiesB, "\(fixture)")
+        #expect(try bodies(of: notesA) == bodies(of: notesB), "\(fixture)")
     }
 }
 
@@ -179,4 +182,55 @@ private func note(titled title: String, in notes: NoteStore) throws -> Note {
     try Fixture.empty.seed(notes: notes, session: session, now: now)
     #expect(try notes.summaries().isEmpty)
     #expect(try session.load() == nil)
+}
+
+@Test func recentlyDeletedFixture() throws {
+    let (notes, session) = try stores()
+    try Fixture.recentlyDeleted.seed(notes: notes, session: session, now: now)
+    let summaries = try notes.summaries()
+    #expect(summaries.count == 1)
+    #expect(summaries.map(\.displayTitle) == ["Groceries"])
+    let deleted = try notes.deletedSummaries()
+    #expect(deleted.count == 2)
+    #expect(deleted.map(\.displayTitle) == ["Old meeting notes", "Ancient"])
+}
+
+@Test func recentlyDeletedFixtureDatesAreRelativeToNow() throws {
+    let (notes, session) = try stores()
+    try Fixture.recentlyDeleted.seed(notes: notes, session: session, now: now)
+    let hour = 3600.0
+    let day = 24 * hour
+    let groceries = try #require(try notes.summaries().first)
+    #expect(groceries.modifiedAt == now.addingTimeInterval(-hour))
+    #expect(groceries.deletedAt == nil && groceries.pinnedAt == nil)
+    let deleted = try notes.deletedSummaries()
+    let (meeting, ancient) = (deleted[0], deleted[1])
+    #expect(meeting.deletedAt == now.addingTimeInterval(-2 * day))
+    #expect(meeting.modifiedAt == now.addingTimeInterval(-3 * day))
+    #expect(ancient.deletedAt == now.addingTimeInterval(-31 * day))
+    #expect(ancient.modifiedAt == now.addingTimeInterval(-40 * day))
+    // "Ancient" is past the retention and waits for the purge. "Old meeting notes" is not.
+    let cutoff = now.addingTimeInterval(-NoteStore.recentlyDeletedRetention)
+    #expect(deleted.filter { ($0.deletedAt ?? now) < cutoff }.map(\.displayTitle) == ["Ancient"])
+}
+
+@Test func recentlyDeletedFixtureSessionHasOneTabOnGroceries() throws {
+    let (notes, session) = try stores()
+    try Fixture.recentlyDeleted.seed(notes: notes, session: session, now: now)
+    let groceries = try note(titled: "Groceries", in: notes)
+    #expect(groceries.body == "milk, eggs, coffee beans")
+    let state = try #require(try session.load())
+    #expect(state.tabs.map(\.noteID) == [groceries.id])
+    #expect(state.activeTabIndex == 0)
+}
+
+@Test func recentlyDeletedFixtureNotesAreReadableAndKeepTheirText() throws {
+    let (notes, session) = try stores()
+    try Fixture.recentlyDeleted.seed(notes: notes, session: session, now: now)
+    for summary in try notes.deletedSummaries() {
+        let stored = try #require(try notes.note(summary.id))
+        #expect(stored.deletedAt == summary.deletedAt)
+        #expect(!stored.body.isEmpty, "\(summary.displayTitle)")
+        #expect(stored.title == summary.displayTitle)
+    }
 }

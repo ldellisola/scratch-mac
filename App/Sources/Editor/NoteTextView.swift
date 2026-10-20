@@ -1,10 +1,39 @@
 import AppKit
+import ScratchCore
 
 /// The editor's text view: plain text in one font, whatever is pasted, and plain text only on the pasteboard
 /// (spec §6.4, §6.5). `applyScratchConfiguration()` sets it up. `TextViewFactory` calls it.
 final class NoteTextView: NSTextView {
-    /// The one font of every note: SF Mono, 13 pt (spec §6.4).
-    static let noteFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    /// The one font of every note at `size` points: SF Mono, regular weight (spec §6.4). The size is the same for every
+    /// note and can be changed with ⌘+ and ⌘− (`FontSize`).
+    static func noteFont(size: Double) -> NSFont {
+        NSFont.monospacedSystemFont(ofSize: CGFloat(size), weight: .regular)
+    }
+
+    /// The note font at the default size: SF Mono, 13 pt.
+    static let noteFont: NSFont = noteFont(size: FontSize.standard)
+
+    /// The space between the text and the left and right edges of the view, in points. The title field above the
+    /// editor lines up with the text by using it.
+    static let horizontalInset: CGFloat = 24
+
+    /// The space between the text and the top and bottom edges of the view, in points.
+    static let verticalInset: CGFloat = 12
+
+    /// The size in points of the text this view shows and of what is typed or pasted next. `applyFontSize(_:)` sets it.
+    private(set) var fontSize: Double = FontSize.standard
+
+    /// The undo manager of the note being shown, which the editor sets for each note (`EditorViewController.show`).
+    /// Undo history is per note and lasts for the session (spec §6.6), so each note brings its own manager and the
+    /// history is not shared with the other notes or with the window. Nil falls back to AppKit's own.
+    var noteUndoManager: UndoManager?
+
+    /// The note's own manager. A view that is not editable (a note in Recently Deleted) has none: undo would still change
+    /// its text, which spec §6.2 says is read-only. The note keeps its manager for when it is editable again.
+    override var undoManager: UndoManager? {
+        guard isEditable else { return nil }
+        return noteUndoManager ?? super.undoManager
+    }
 
     /// Keeps the TextKit 1 text storage alive for as long as the view lives. In TextKit 1 the storage owns the layout
     /// manager, which owns the container, while `NSLayoutManager.textStorage` and `NSTextContainer.layoutManager` are
@@ -12,9 +41,9 @@ final class NoteTextView: NSTextView {
     /// `TextViewFactory.makeEditor()` returns.
     var ownedTextStorage: NSTextStorage?
 
-    /// How every character of a note looks: the note font in the standard text colour.
-    static var noteAttributes: [NSAttributedString.Key: Any] {
-        [.font: noteFont, .foregroundColor: NSColor.textColor]
+    /// How every character of a note looks at `size` points: the note font in the standard text colour.
+    static func noteAttributes(size: Double) -> [NSAttributedString.Key: Any] {
+        [.font: noteFont(size: size), .foregroundColor: NSColor.textColor]
     }
 
     /// Plain text is the only thing that leaves the editor, so nothing from the note's font or colours reaches Slack,
@@ -39,6 +68,13 @@ final class NoteTextView: NSTextView {
     /// its font, size and colours, so pasted text always looks like the note (spec §6.5, "Paste and Match Style" is
     /// the same as Paste). Attachments (plan 4) extend this.
     override var readablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string] }
+
+    /// A text view that is not editable (a note in Recently Deleted, spec §6.2) takes no text from anywhere. AppKit
+    /// already refuses it in most paths, and this makes sure of the rest.
+    override func insertText(_ string: Any, replacementRange: NSRange) {
+        guard isEditable else { return }
+        super.insertText(string, replacementRange: replacementRange)
+    }
 
     /// Starts the `keystroke` signpost interval that the performance tests measure: from the key press until what it
     /// typed is on screen (`Signposts.beginEditorInterval`).
@@ -67,17 +103,23 @@ final class NoteTextView: NSTextView {
         isAutomaticTextCompletionEnabled = false
         smartInsertDeleteEnabled = false
 
-        font = Self.noteFont
-        textColor = .textColor
-        typingAttributes = Self.noteAttributes
-        textContainerInset = NSSize(width: 24, height: 12)
+        applyFontSize(fontSize)
+        textContainerInset = NSSize(width: Self.horizontalInset, height: Self.verticalInset)
     }
 
-    /// Replaces the whole text. All of it takes the note font and colour, and so does what is typed next.
+    /// Gives all the text, and what is typed or pasted next, the note font at `size` points (limited to what
+    /// `FontSize` allows). Pasted text takes the typing attributes, so it takes the size too (spec §6.5).
+    func applyFontSize(_ size: Double) {
+        fontSize = FontSize.clamped(size)
+        font = Self.noteFont(size: fontSize)
+        textColor = .textColor
+        typingAttributes = Self.noteAttributes(size: fontSize)
+    }
+
+    /// Replaces the whole text. All of it takes the note font and colour at the current size, and so does what is
+    /// typed next.
     func load(_ text: String) {
         string = text
-        font = Self.noteFont
-        textColor = .textColor
-        typingAttributes = Self.noteAttributes
+        applyFontSize(fontSize)
     }
 }

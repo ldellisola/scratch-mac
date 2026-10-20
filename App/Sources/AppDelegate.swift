@@ -1,9 +1,13 @@
 import AppKit
 import ScratchCore
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var environment: AppEnvironment?
     private var windowController: MainWindowController?
+    /// The editor, which the window asks for the undo manager of the note it shows (`windowWillReturnUndoManager`).
+    private var editor: EditorViewController?
+    /// The target of the menu items that belong to the app. A menu item holds its target weakly, so it stays here.
+    private let commands = AppCommands()
     /// The coordinator owns the autosaver, which does not keep itself alive: it stays here for the app's lifetime.
     private var coordinator: SessionCoordinator?
     /// The window's toolbar keeps its delegate weakly.
@@ -16,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The launch sequence: open the storage, restore the session, show the window with the active note and put the
     /// cursor in it. It does as little as possible before the first frame (spec §7).
     func applicationWillFinishLaunching(_ notification: Notification) {
-        MainMenu.install(in: NSApp)
+        MainMenu.install(in: NSApp, commands: commands)
         do {
             try launch()
         } catch {
@@ -43,6 +47,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator?.persistNow()
     }
 
+    /// Coming back reads the note list again, so that "Today" and the time labels are those of today when the app was
+    /// left open over midnight (spec §6.2), and purges Recently Deleted when that was not done in the last hour.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        coordinator?.refreshNoteList()
+        coordinator?.purgeExpiredNotes(now: Date())
+    }
+
     private func launch() throws {
         let environment = try AppEnvironment.bootstrap(arguments: CommandLine.arguments)
         self.environment = environment
@@ -52,27 +63,70 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let editor = EditorViewController()
+        self.editor = editor
         let sidebar = SidebarViewController()
-        let content = MainSplitViewController(sidebar: sidebar, editor: editor)
+        let tabStrip = TabStripViewController()
+        let editorArea = EditorAreaViewController(tabStrip: tabStrip, editor: editor)
+        let content = MainSplitViewController(
+            sidebar: sidebar, editorArea: editorArea, remembersLayout: !environment.options.isIsolated)
         let windowController = MainWindowController(environment: environment, content: content)
         self.windowController = windowController
+        // The Edit menu's Undo asks the window for its undo manager, and the window asks this delegate.
+        windowController.window?.delegate = self
 
-        let coordinator = SessionCoordinator(storage: environment.storage, editor: editor, sidebar: sidebar)
+        let coordinator = SessionCoordinator(
+            storage: environment.storage, editor: editor, sidebar: sidebar, tabStrip: tabStrip)
         self.coordinator = coordinator
         let toolbarController = ToolbarController()
-        toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNote() }
+        toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
+        toolbarController.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
         self.toolbarController = toolbarController
         windowController.window?.toolbar = toolbarController.makeToolbar()
+
+        // File > New Note, New Tab and Close Tab, and Window > Show Next and Previous Tab and Select Tab (spec §6.3).
+        commands.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
+        commands.onCloseTab = { [weak coordinator] in coordinator?.closeActiveTab() }
+        commands.onNextTab = { [weak coordinator] in coordinator?.selectNextTab() }
+        commands.onPreviousTab = { [weak coordinator] in coordinator?.selectPreviousTab() }
+        commands.onSelectTabNumber = { [weak coordinator] number in coordinator?.selectTab(number: number) }
+        // File > Pin Note and Edit > Search Notes (spec §6.2), and the toolbar's pin button, which shows the pin of the
+        // note in the active tab.
+        commands.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
+        commands.onFocusSearch = { [weak sidebar] in sidebar?.focusSearch() }
+        let appCommands = commands
+        coordinator.onActiveNotePinChange = { [weak toolbarController, weak appCommands] pinned, enabled in
+            toolbarController?.setPinned(pinned, enabled: enabled)
+            appCommands?.setActiveNotePin(pinned: pinned, enabled: enabled)
+        }
+        // View > Bigger, Smaller and Actual Size (spec §6.4).
+        commands.onBigger = { [weak coordinator] in coordinator?.changeFontSize(FontSize.larger) }
+        commands.onSmaller = { [weak coordinator] in coordinator?.changeFontSize(FontSize.smaller) }
+        commands.onActualSize = { [weak coordinator] in coordinator?.changeFontSize { _ in FontSize.standard } }
+        // UI tests read the editor's state from an element that a normal launch does not have.
+        if environment.options.isIsolated { editor.installDebugStateElement() }
 
         coordinator.restore()
         windowController.showWindow(nil)
         editor.focus()
+        // Notes that were deleted more than 30 days ago are removed once the window is up (spec §6.2): one turn of the
+        // main queue after the restore, so that it is not part of what the first frame waits for.
+        DispatchQueue.main.async { [weak coordinator] in
+            MainActor.assumeIsolated { coordinator?.purgeExpiredNotes(now: Date()) }
+        }
 
         if let file = environment.options.frameMonitorFile {
             let monitor = FrameMonitor(file: file, clipView: editor.clipView)
             monitor.start()
             frameMonitor = monitor
         }
+    }
+
+    // MARK: NSWindowDelegate
+
+    /// Undo history is per note (spec §6.6): the window's undo manager is the one of the note in the editor. The text
+    /// view uses it too, so the Edit menu and typing agree whichever of them AppKit asks.
+    func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? {
+        editor?.activeUndoManager
     }
 
     /// The app cannot work without its storage. Say why, then quit.

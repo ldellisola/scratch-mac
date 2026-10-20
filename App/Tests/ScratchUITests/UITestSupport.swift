@@ -44,6 +44,50 @@ enum UITestSupport {
         app.textViews.matching(identifier: AccessibilityID.editorTextView).firstMatch
     }
 
+    /// The title field above the editor. Its `value` is the note's title.
+    @MainActor
+    static func titleField(in app: XCUIApplication) -> XCUIElement {
+        app.textFields.matching(identifier: AccessibilityID.titleField).firstMatch
+    }
+
+    /// What the app publishes about its editor in the `debug.state` element (`DebugStateElement`, only in an isolated
+    /// data directory): `fontSize` (points), `scrollAnchor` (the UTF-16 offset of the first visible character) and
+    /// `readOnly`. The app computes it when asked, so it is as current as the app. Empty when the element is missing.
+    @MainActor
+    static func debugState(in app: XCUIApplication) -> [String: Any] {
+        let element = app.descendants(matching: .any).matching(identifier: AccessibilityID.debugState).firstMatch
+        guard element.waitForExistence(timeout: 5), let json = element.value as? String,
+            let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
+        else { return [:] }
+        return object
+    }
+
+    /// The tabs of the tab strip, from left to right: the buttons with the identifier `AccessibilityID.tabItem`. Each
+    /// one's `label` is the tab's title, and `isSelected` is true for the active tab.
+    @MainActor
+    static func tabs(in app: XCUIApplication) -> [XCUIElement] {
+        app.buttons.matching(identifier: AccessibilityID.tabItem).allElementsBoundByIndex
+            .sorted { $0.frame.minX < $1.frame.minX }
+    }
+
+    /// The titles of the tabs from left to right.
+    @MainActor
+    static func tabTitles(in app: XCUIApplication) -> [String] {
+        tabs(in: app).map { $0.label.isEmpty ? $0.title : $0.label }
+    }
+
+    /// The title of the active tab, or nil when no tab is selected.
+    @MainActor
+    static func activeTabTitle(in app: XCUIApplication) -> String? {
+        tabs(in: app).first { $0.isSelected }.map { $0.label.isEmpty ? $0.title : $0.label }
+    }
+
+    /// The index of the active tab (0 is the leftmost), or nil when no tab is selected.
+    @MainActor
+    static func activeTabIndex(in app: XCUIApplication) -> Int? {
+        tabs(in: app).firstIndex { $0.isSelected }
+    }
+
     /// The toolbar's "new note" button. A toolbar item without a view has no accessibility identifier of its own: AppKit
     /// reports its item identifier (`AccessibilityID.newNoteButton`) as the identifier, and its label as the title or
     /// label, so any of the three finds it.
@@ -54,6 +98,51 @@ enum UITestSupport {
                 format: "identifier == %@ OR label == %@ OR title == %@", AccessibilityID.newNoteButton, "New Note",
                 "New Note")
         ).firstMatch
+    }
+
+    /// The toolbar's pin button, which pins the note of the active tab or unpins it. A toolbar item without a view has no
+    /// accessibility identifier of its own (see `newNoteButton(in:)`), so it is found by its item identifier or by its
+    /// label, which is "Pin" while the note is not pinned and "Unpin" while it is.
+    @MainActor
+    static func pinButton(in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(
+            NSPredicate(
+                format: "identifier == %@ OR label == %@ OR label == %@ OR title == %@ OR title == %@",
+                AccessibilityID.pinButton, "Pin", "Unpin", "Pin", "Unpin")
+        ).firstMatch
+    }
+
+    /// The search field at the top of the sidebar. Its `value` is the text typed in it.
+    @MainActor
+    static func searchField(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: AccessibilityID.sidebarSearch).firstMatch
+    }
+
+    /// The titles of the sidebar's groups from top to bottom: "Pinned", "Today", "Yesterday" and "Earlier", as far as
+    /// they are shown. The header of Recently Deleted is not among them: it has its own identifier, see
+    /// `recentlyDeletedHeader(in:)`.
+    @MainActor
+    static func sidebarGroupTitles(in app: XCUIApplication) -> [String] {
+        app.staticTexts.matching(identifier: AccessibilityID.sidebarGroup).allElementsBoundByIndex
+            .sorted { $0.frame.minY < $1.frame.minY }
+            .map { text(of: $0) }
+    }
+
+    /// The header of Recently Deleted at the bottom of the sidebar, which exists only while a note is deleted. Its text
+    /// reads "Recently Deleted (N)" (`text(of:)`), and a click on it shows or hides the deleted notes.
+    @MainActor
+    static func recentlyDeletedHeader(in app: XCUIApplication) -> XCUIElement {
+        app.staticTexts.matching(identifier: AccessibilityID.recentlyDeletedHeader).firstMatch
+    }
+
+    /// The edit time that the sidebar shows on the row of `title`, a title element from `sidebarRow(titled:in:)`: the
+    /// time label on the same line. Nil when no label is there.
+    @MainActor
+    static func sidebarRowTime(besides title: XCUIElement, in app: XCUIApplication) -> String? {
+        let line = title.frame.midY
+        return app.staticTexts.matching(identifier: AccessibilityID.sidebarRowTime).allElementsBoundByIndex
+            .first { abs($0.frame.midY - line) < 8 }
+            .map { text(of: $0) }
     }
 
     /// The title texts of the sidebar rows, in the order the accessibility tree lists them.

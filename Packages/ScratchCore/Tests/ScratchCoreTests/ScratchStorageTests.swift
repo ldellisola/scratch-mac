@@ -125,3 +125,20 @@ private func fileNames(in directory: URL) throws -> [String] {
     let storage = try ScratchStorage.open(parsed)
     #expect(try storage.notes.summaries().count == 6)
 }
+
+@Test func openRefusesDataFromANewerVersion() throws {
+    let directory = temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    do {
+        let storage = try ScratchStorage.open(options(directory: directory))
+        _ = try storage.notes.create(now: Date(timeIntervalSinceReferenceDate: 1000))
+    }
+    let path = directory.appendingPathComponent(ScratchStorage.databaseFileName).path
+    try Database(path: path).execute("PRAGMA user_version = 3")
+
+    #expect(throws: SchemaError.newerThanSupported(found: 3, supported: 2)) {
+        try ScratchStorage.open(options(directory: directory))
+    }
+    #expect(try Database(path: path).userVersion() == 3)
+    #expect(try Database(path: path).query("SELECT COUNT(*) AS n FROM notes").first?.int("n") == 1)
+}

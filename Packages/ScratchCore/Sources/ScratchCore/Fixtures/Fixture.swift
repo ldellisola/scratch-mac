@@ -13,6 +13,9 @@ public enum Fixture: String, CaseIterable, Sendable {
     case hugeNote = "huge-note"
     /// 2,000 notes, for the sidebar and for search.
     case manyNotes = "many-notes"
+    /// "Groceries" and two deleted notes: "Old meeting notes" (deleted 2 days ago) and "Ancient" (31 days ago, past the
+    /// 30-day retention, so the purge removes it).
+    case recentlyDeleted = "recently-deleted"
 
     /// Writes this fixture's notes and session through the stores. All dates are relative to `now`.
     ///
