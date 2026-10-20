@@ -3,7 +3,9 @@
 The tab strip above the editor, and the rules for opening, closing and switching tabs. Spec:
 [§6.3 Tabs](../superpowers/specs/2026-10-19-scratchpad-design.md) (tabs are views onto notes), §6.2 (clicking a note in
 the sidebar, ⌘-click) and §6.6 (a relaunch restores the tabs), guarding the anti-goals "Lost text" and "Fake glass"
-(§4). The rules themselves live in ScratchCore (`TabList`, plan 2 task 4).
+(§4). Where a new tab opens, and which empty notes are discarded, are settled by
+[docs/decisions/0004](../decisions/0004-new-tabs-and-emptied-notes.md), which amends §6.3. The rules themselves live in
+ScratchCore (`TabList`, plan 2 task 4).
 
 Status: plan 2, task 7. The sidebar's groups, search and pinning are in [sidebar.md](sidebar.md) (task 8). Deleting a
 note, which closes its tab, and a deleted note that is shown read-only in a tab are in
@@ -16,10 +18,15 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
 - **There is always one tab, and a note is open in at most one tab.** Opening a note that has a tab focuses that tab
   and does not make a second one.
 - **New note.** ⌘N, ⌘T (File > New Note and New Tab), the toolbar's new note button and the strip's "+" button all
-  create a new empty note in a new tab at the end of the strip, and put the cursor in it. The note is not listed in the
-  sidebar until it has text.
-- **A new empty note nobody typed in is discarded when its tab closes**, or when another note replaces it in its tab,
-  so that ⌘T does not litter the list (spec §6.3). A note that has any text or title stays, tab or no tab.
+  create a new empty note in a new tab at the **end of the strip**, wherever the active tab is, and put the cursor in
+  it (docs/decisions/0004). The note is not listed in the sidebar until it has text.
+- **An untouched note is discarded when its tab closes**, or when another note replaces it in its tab, so that ⌘T does
+  not litter the list (spec §6.3, as amended by docs/decisions/0004). A note is untouched while it was created in this
+  session (or was empty when the app restored it) and is still empty. Switching to another tab keeps it. A note that
+  has any text or title stays, tab or no tab. **A note that already existed and that the owner empties is kept**, listed
+  as "Untitled", until the owner deletes it: emptying a note is not deleting it. (Two kinds of emptied note are still
+  discarded like an untouched one: a note created and typed in this session, and a note that was emptied and still open
+  in a tab at quit. docs/decisions/0004 says what closing that gap takes.)
 - **Close.** ⌘W (File > Close Tab) closes the active tab, and the close button inside a tab closes that tab. When the
   active tab closes, the tab that takes its place is shown (the one on its right, or else the new last tab). Closing the
   only tab leaves one tab with a new empty note, which is not listed. Closing the tab of a note that is still an empty,
@@ -30,7 +37,8 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
 - **From the sidebar.**
   - A click on a row shows that note in the current tab. When the note is open in another tab, that tab is focused
     instead.
-  - ⌘-click opens it in a new tab right after the active one (or focuses its tab).
+  - ⌘-click opens it in a new tab right after the active one (or focuses its tab). Unlike a new note, which goes to the
+    end of the strip (docs/decisions/0004).
   - The arrow keys only move the sidebar's highlight. Return opens the highlighted row in the current tab.
   - The note that replaced an unused empty note discards it.
 - **Each tab keeps its cursor and its scroll position** while it is open, and an undo history that lasts for the

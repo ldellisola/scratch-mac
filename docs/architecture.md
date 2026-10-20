@@ -10,8 +10,9 @@ App (AppKit shell)  ──depends on──▶  ScratchCore (Foundation + CSQLite
 ```
 
 - **`Packages/ScratchCore`** is a Swift package with no AppKit or SwiftUI imports. It holds everything rule-based:
-  the note model, storage, session state, autosave policy, launch options and fixtures. Later plans add the marker
-  parser, list editing rules, paste classification, copy-out, code detection and search. It builds and tests with
+  the note model, storage and full-text search (`NoteStore`, `SearchQuery`, the FTS5 index), the tab rules (`TabList`),
+  the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures. Later plans add
+  the marker parser, list editing rules, paste classification, copy-out and code detection. It builds and tests with
   plain `swift test` on macOS and on Linux.
 - **`App/`** is the thin AppKit shell: window, sidebar, editor view. It maps core values to UI and UI events to core
   calls. Logic found in the shell that could live in the core is a refactoring target. The app project is generated
@@ -43,8 +44,9 @@ key press
   session (the open note's id, selection and scroll position), and does not re-read the note list.
 - Quitting and deactivating skip the timer: `AppDelegate` calls `SessionCoordinator.persistNow()`, which runs the same
   save at once and waits until the storage queue is empty. Opening another note does the same for the note it leaves.
-- Launching reads the session, then only the note of the active tab, before the window shows. The note list is read on
-  the storage queue after that (`SessionCoordinator.restore()`).
+- Launching reads the session, then the note of every saved tab (`SessionCoordinator.restoredTabs`: a few small reads
+  on the main thread, a tab whose note is gone or deleted is dropped), before the window shows. The note list is read
+  on the storage queue after that (`SessionCoordinator.restore()`).
 - A click on a sidebar row goes `SidebarViewController.onOpen` (the table's click action) ->
   `SessionCoordinator.open(_:inNewTab:)`. A click on a tab goes `TabStripViewController.onSelect` ->
   `SessionCoordinator.selectTab(at:)`. The toolbar's new note button, ⌘N and ⌘T go `ToolbarController.onNewNote` or
@@ -59,7 +61,8 @@ key press
   purge (`purgeExpiredNotes`) runs on the storage queue at launch and when the app becomes active
   (`docs/features/recently-deleted.md`).
 - The sidebar never shows a new note that nobody has used: the coordinator filters it out of the list, and deletes its
-  row when its tab closes or another note replaces it while it is untouched (`NoteStore.discard`).
+  row when its tab closes or another note replaces it while it is untouched (`NoteStore.discard`). A note the owner
+  empties is not untouched in this sense and is kept (`docs/decisions/0004-new-tabs-and-emptied-notes.md`).
 
 ## Threading
 
@@ -73,10 +76,14 @@ key press
   so for the rare, small calls: restoring the session, creating a note, loading the note that is opened,
   discarding an untouched one, and deleting, restoring or deleting for good a note the owner chose. They wait for a write
   that is running.
-- **`persistNow()` and every change of the active tab (`open`, `selectTab`, `closeTab`, `newNoteInNewTab`) wait for the
-  storage queue on purpose** (`storageQueue.sync {}`), so that they never leave a write behind that a later read could
-  miss. They run on the main thread only. Nothing the queue runs ever waits
-  for the main thread (it hands results over with `DispatchQueue.main.async`), so this cannot deadlock.
+- **`persistNow()` and every change that leaves the note in the editor wait for the storage queue on purpose**
+  (`storageQueue.sync {}`), so that they never leave a write behind that a later read could miss. Opening another note,
+  selecting another tab, `newNoteInNewTab`, closing the active tab and closing the only tab (when its note has been
+  used) reach it through `leaveCurrentNote`, and `deleteNote` and `deleteNotePermanently` call it themselves.
+  **Closing a tab that is not the active one does not wait** (`closeOtherTab`): the note in the editor does not
+  change, and the closed tab's note was written when it was left. Neither does a click that changes nothing (the
+  active tab, the note already shown). They run on the main thread only. Nothing the queue runs ever waits for the main
+  thread (it hands results over with `DispatchQueue.main.async`), so this cannot deadlock.
 - **The coordinator owns its `Autosaver`**, and the autosaver does not keep itself alive: a dirty one that is released
   skips its pending save. `AppDelegate` keeps the coordinator for the app's lifetime, and the save closure holds the
   coordinator weakly.

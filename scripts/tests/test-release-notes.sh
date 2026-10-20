@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests for scripts/release-notes.sh: the install-and-update footer of a release, with the version filled in (plan 2
-# task 1, spec §9.6). It reads docs/release-notes-footer.md and prints it, so these tests run against the real footer.
-# Run with `make script-test`.
+# task 1, spec §9.6; it leads with the DMG since docs/decisions/0005). It reads docs/release-notes-footer.md and prints
+# it, so these tests run against the real footer. Run with `make script-test`.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -58,12 +58,24 @@ fi
 
 echo "== the version is filled in"
 expect_exit "release-notes.sh 0.2.0 exits 0" 0 bash "$SCRIPT" 0.2.0
+out_has "it names the DMG of that version" "Scratch-0.2.0.dmg"
 out_has "it names the zip of that version" "Scratch-0.2.0.zip"
 out_lacks "no <version> is left" "<version>"
 out_has "it keeps the install steps" "Open Anyway"
+out_has "it keeps the quarantine alternative" "xattr -dr com.apple.quarantine /Applications/Scratch.app"
+out_has "it says the notes live outside the app" "~/Library/Application Support/Scratch"
 
 expect_exit "release-notes.sh 10.20.30 exits 0" 0 bash "$SCRIPT" 10.20.30
-out_has "a two-digit version is filled in" "Scratch-10.20.30.zip"
+out_has "a two-digit version is filled in, in the DMG" "Scratch-10.20.30.dmg"
+out_has "and in the zip" "Scratch-10.20.30.zip"
+
+echo "== the DMG comes first"
+bash "$SCRIPT" 0.2.0 >"$TMP/order.md"
+dmg_line=$(grep -nF 'Scratch-0.2.0.dmg' "$TMP/order.md" | head -n 1 | cut -d: -f1)
+zip_line=$(grep -nF 'Scratch-0.2.0.zip' "$TMP/order.md" | head -n 1 | cut -d: -f1)
+if [[ -n $dmg_line && -n $zip_line && $dmg_line -lt $zip_line ]]; then pass "the DMG is named before the zip"; else
+    fail "the DMG is named before the zip (DMG on line '$dmg_line', zip on line '$zip_line')"
+fi
 
 echo "== only the placeholder changes"
 bash "$SCRIPT" 0.2.0 >"$TMP/notes.md"

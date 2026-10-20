@@ -4,7 +4,7 @@
 #   release-notes.sh <version>        (.github/workflows/release.yml writes the output to a file for `gh release create`)
 #
 # docs/release-notes-footer.md is the text. Every `<version>` in it is replaced by <version>, so that the steps name the
-# zip the release really has (Scratch-<version>.zip) and not a placeholder.
+# files the release really has (Scratch-<version>.dmg and Scratch-<version>.zip) and not a placeholder.
 #
 # Exit: 0 printed, 64 usage error (no argument, more than one, or one that is not MAJOR.MINOR.PATCH), 70 cannot run
 # (the footer file is missing)

@@ -86,8 +86,8 @@ jobs:
           scripts/publish-ci-results.sh "${{ github.sha }}" linux build/ci/linux
 
   # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests, the
-  # screenshots, the performance tests and the release zip. Runs on GitHub's Macs, because cloud agents have none
-  # (AGENTS.md section 4).
+  # screenshots, the performance tests, and the release zip and DMG. Runs on GitHub's Macs, because cloud agents have
+  # none (AGENTS.md section 4).
   macos:
     name: macos
     runs-on: macos-26
@@ -167,6 +167,15 @@ jobs:
         timeout-minutes: 15
         run: make release-zip 2>&1 | tee build/ci/macos/release-zip.log
 
+      # The disk image the release workflow attaches next to the zip (`make release-dmg`: docs/decisions/0005). It
+      # uses the app that release-zip left in build/release and then attaches the image to check it
+      # (scripts/check-release-dmg.sh), so it is skipped when release-zip did not succeed: there is no app to put in it.
+      - id: release-dmg
+        name: Release DMG
+        if: ${{ !cancelled() && steps.release-zip.outcome == 'success' }}
+        timeout-minutes: 15
+        run: make release-dmg 2>&1 | tee build/ci/macos/release-dmg.log
+
       - id: publish
         name: Publish results to ci-results
         if: always()
@@ -235,5 +244,6 @@ jobs:
             --step "screenshots=${{ steps.screenshots.outcome }}" \
             --step "perf=${{ steps.perf.outcome }}" \
             --step "perf-check=${{ steps.perf-check.outcome }}" \
-            --step "release-zip=${{ steps.release-zip.outcome }}"
+            --step "release-zip=${{ steps.release-zip.outcome }}" \
+            --step "release-dmg=${{ steps.release-dmg.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" macos build/ci/macos
