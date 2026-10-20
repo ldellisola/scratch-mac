@@ -8,7 +8,7 @@ APP_PROJECT := App/Scratch.xcodeproj
 DERIVED_DATA := build/DerivedData
 DESTINATION := platform=macOS,arch=arm64
 
-.PHONY: core-test lint format script-test ci-wait project app-build app-test screenshots run perf perf-baseline
+.PHONY: core-test lint format script-test ci-wait project app-build app-test screenshots run perf perf-baseline release-zip
 
 # [linux] Run the ScratchCore tests.
 core-test:
@@ -103,3 +103,21 @@ perf: project
 # and not from a laptop. See AGENTS.md.
 perf-baseline: perf
 	python3 scripts/perf-extract.py build/results/perf.xcresult perf/baseline.json
+
+# The release zip is named after VERSION (spec section 9.6). It lands in build/release/.
+RELEASE_DIR := build/release
+RELEASE_VERSION := $(strip $(shell cat VERSION))
+
+# [macOS] Build the Release app into build/release/Scratch.app and zip it to build/release/Scratch-<VERSION>.zip, the
+# file the release workflow attaches to a GitHub Release (.github/workflows/release.yml). The build is ad-hoc signed
+# (CODE_SIGN_IDENTITY "-" in App/project.yml, docs/decisions/0002). scripts/check-release-zip.sh then unpacks the zip
+# and checks what a user would get: the version, the bundle identifier, arm64 only, and a valid ad-hoc signature. CI
+# runs this on every push, so that a broken release shows up on the branch and not on the first merge to main.
+release-zip: project
+	rm -rf $(RELEASE_DIR)
+	mkdir -p $(RELEASE_DIR)
+	xcodebuild build -project $(APP_PROJECT) -scheme Scratch -configuration Release -destination '$(DESTINATION)' \
+	  -derivedDataPath $(DERIVED_DATA)
+	ditto $(DERIVED_DATA)/Build/Products/Release/Scratch.app $(RELEASE_DIR)/Scratch.app
+	ditto -c -k --keepParent $(RELEASE_DIR)/Scratch.app $(RELEASE_DIR)/Scratch-$(RELEASE_VERSION).zip
+	bash scripts/check-release-zip.sh $(RELEASE_DIR)/Scratch-$(RELEASE_VERSION).zip $(RELEASE_VERSION)

@@ -349,6 +349,7 @@ A change is done when:
 - **Signing** [owner: no Apple Developer account, unsigned is fine, the owner will click through macOS prompts]:
   - Every release is signed with the **same self-signed code-signing certificate**, so the app's identity never changes between versions and macOS keeps treating it as the same app [call].
   - The certificate is stored as a GitHub Actions secret. The owner adds that secret once, and the plan says when.
+  - **Amended by [ADR 0002](../../decisions/0002-ad-hoc-signing.md):** releases are ad-hoc signed, with no certificate and no secret.
   - Builds aren't notarised. After downloading each new version, the owner approves it once in System Settings → Privacy & Security → Open Anyway. The release notes repeat these steps.
 
 ## 10. Success looks like
@@ -366,4 +367,4 @@ None. The builder review's questions were answered on 2026-10-19.
 Two one-time setup steps fall to the owner:
 
 1. Allow `download.swift.org` in the cloud environment's network settings, before work on `ScratchCore` starts.
-2. Add the signing-certificate secret to the repository, when the plan reaches the first release.
+2. Add the signing-certificate secret to the repository, when the plan reaches the first release. **Amended by [ADR 0002](../../decisions/0002-ad-hoc-signing.md): no longer applies, releases are ad-hoc signed and need no secret.**

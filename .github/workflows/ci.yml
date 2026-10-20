@@ -57,8 +57,8 @@ jobs:
         name: Script tests
         run: make script-test 2>&1 | tee build/ci/linux/script-test.log
 
-      # A change to App/ or Packages/ needs a new VERSION, or the release workflow has nothing to publish (AGENTS.md,
-      # section 'Releases'). Compares with main, which the full checkout has as origin/main. On main itself there is
+      # A change to App/ or Packages/ needs a new VERSION, or the release workflow has nothing to publish (AGENTS.md
+      # section 6, Releases). Compares with main, which the full checkout has as origin/main. On main itself there is
       # nothing to compare, and the check passes.
       - id: version-bump
         name: Version bump check
@@ -86,7 +86,8 @@ jobs:
           scripts/publish-ci-results.sh "${{ github.sha }}" linux build/ci/linux
 
   # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests, the
-  # screenshots and the performance tests. Runs on GitHub's Macs, because cloud agents have none (AGENTS.md section 4).
+  # screenshots, the performance tests and the release zip. Runs on GitHub's Macs, because cloud agents have none
+  # (AGENTS.md section 4).
   macos:
     name: macos
     runs-on: macos-26
@@ -156,6 +157,16 @@ jobs:
           python3 scripts/perf-check.py --results build/ci/macos/perf/results.json \
             --baseline perf/baseline.json --budgets perf/budgets.json | tee build/ci/macos/perf/report.md
 
+      # The release build and its zip, made the way the release workflow makes them (`make release-zip`, which also
+      # checks the zip: docs/decisions/0002). It runs on every push, so that a broken release shows up here and not on
+      # the first merge to main. After the performance tests, so that it cannot disturb them. Skipped only when the
+      # project could not be generated, or on cancel.
+      - id: release-zip
+        name: Release zip
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        timeout-minutes: 15
+        run: make release-zip 2>&1 | tee build/ci/macos/release-zip.log
+
       - id: publish
         name: Publish results to ci-results
         if: always()
@@ -223,5 +234,6 @@ jobs:
             --step "app-test=${{ steps.app-test.outcome }}" \
             --step "screenshots=${{ steps.screenshots.outcome }}" \
             --step "perf=${{ steps.perf.outcome }}" \
-            --step "perf-check=${{ steps.perf-check.outcome }}"
+            --step "perf-check=${{ steps.perf-check.outcome }}" \
+            --step "release-zip=${{ steps.release-zip.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" macos build/ci/macos

@@ -44,7 +44,8 @@ if ! head_version=$(git show "HEAD:VERSION" 2>/dev/null); then
 fi
 version_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 if ! [[ $head_version =~ $version_pattern ]]; then
-    echo "$script: VERSION must be MAJOR.MINOR.PATCH (digits only, no leading zeros), for example 0.1.1. It is: '$head_version'" >&2
+    echo "$script: VERSION must be MAJOR.MINOR.PATCH (digits only, no leading zeros), for example 0.1.1." >&2
+    echo "It is: '$head_version'" >&2
     exit 1
 fi
 
@@ -68,8 +69,8 @@ fi
 if [[ $head_version == "$base_version" ]]; then
     {
         echo "$script: App/ or Packages/ changed since $base, but VERSION is still $base_version."
-        echo "Bump VERSION in the same pull request (AGENTS.md, section 'Releases'): a patch bump for a fix, a minor bump"
-        echo "for a feature. Changed files under App/ and Packages/:"
+        echo "Bump VERSION in the same pull request (AGENTS.md section 6, Releases): a patch bump for a fix, a minor"
+        echo "bump for a feature. Changed files under App/ and Packages/:"
         grep -E '^(App|Packages)/' <<<"$changed" | sed -n 's/^/  /;1,10p'
     } >&2
     exit 1
