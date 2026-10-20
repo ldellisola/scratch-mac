@@ -53,7 +53,8 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
                                   sidebar item + editor item), MainMenu (menu bar, built in code: there is no storyboard),
                                   AppCommands (the target of the app's own menu items: the font size), ToolbarController
-                                  (sidebar button, new note button)
+                                  (sidebar button, new note button), TitlebarPocket (hides the line macOS 26 draws under
+                                  the toolbar, section 7)
 App/Sources/Sidebar/              SidebarViewController (the note list: an NSTableView in the glass sidebar)
 App/Sources/Session/              SessionCoordinator (which note is open, autosave, restore, new note, the sidebar list;
                                   the one place that writes to storage)
@@ -70,7 +71,7 @@ App/Sources/Support/              AccessibilityID (also compiled into the UI tes
 App/Resources/                    Assets.xcassets (placeholder app icon)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, FrameMonitorTests, EditorViewControllerTests:
-                                  the title, font size, per-note undo, read-only and scroll anchor)
+                                  the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position),
@@ -374,6 +375,14 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
 - **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
   `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
   equivalents needs two items.
+- **macOS 26 draws a one point line under the toolbar across the editor when the editor's scroll view starts below the
+  titlebar** (Plan 2 moved it below the title field; Plan 1's scroll view was under the toolbar and had no line at
+  rest). It is the hard `NSScrollPocket` in the split view's `NSTitlebarBackgroundView` (a `_NSLayerBasedFillColorView`
+  of height 1 in `separatorColor`), not a titlebar separator: `NSSplitViewItem.titlebarSeparatorStyle = .none` and
+  `NSWindow.titlebarSeparatorStyle = .none` were each tried on CI and left the line on the same pixels. There is no
+  public API for the pocket, so `TitlebarPocket` hides it by class name after each layout of `MainSplitViewController`,
+  and `TitlebarPocketTests` fail when it is visible or can no longer be found. When a screenshot shows a hard line at
+  y = 51 below the toolbar, look there first.
 - **There is no storyboard, so there is no menu bar until `MainMenu.install` runs.** ⌘Q, ⌘C, ⌘V and ⌘Z only work
   because that menu exists. A new shortcut needs a menu item.
 - **The coordinator must outlive the autosaver's timers.** `Autosaver` does not keep itself alive: a dirty autosaver

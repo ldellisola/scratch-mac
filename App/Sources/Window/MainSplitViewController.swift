@@ -18,4 +18,17 @@ final class MainSplitViewController: NSSplitViewController {
     required init?(coder: NSCoder) {
         fatalError("MainSplitViewController is created in code")
     }
+
+    // The titlebar's scroll pocket is made by AppKit, when the window shows and when the layout changes (a resize, the
+    // sidebar), so it is hidden after each of those (`TitlebarPocket`).
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        TitlebarPocket.hide(in: splitView)
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        TitlebarPocket.hide(in: splitView)
+    }
 }
