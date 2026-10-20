@@ -509,10 +509,11 @@ This covers Review Focus 3 on the app side.
 
 ---
 
-### Task 7: Plan 2 follow-ups: failed saves and the top inset
+### Task 7: Follow-ups: failed saves, emptied notes, the top inset
 
 **Files:**
-- Modify: `SessionCoordinator.swift`, `EditorViewController.swift`, `Packages/ScratchCore/Sources/ScratchCore/Storage/ScratchStorage.swift`, `docs/features/autosave-and-restore.md`
+- Modify: `SessionCoordinator.swift`, `EditorViewController.swift`, `Packages/ScratchCore/Sources/ScratchCore/Storage/ScratchStorage.swift`, `docs/features/autosave-and-restore.md`, `docs/decisions/0004-new-tabs-and-emptied-notes.md` (mark both gaps fixed in 0.3.0), `docs/features/tabs.md`
+- Test: `App/Tests/ScratchUITests/TabsUITests.swift`
 - Test: `App/Tests/ScratchAppTests/SaveFailureTests.swift` (+), `EditorViewControllerTests.swift`
 
 **Interfaces:**
@@ -523,6 +524,10 @@ This covers Review Focus 3 on the app side.
 **Behaviour:**
 - **Failed saves.** A failed write of a note that is no longer `current` is kept in `unsavedNotes` instead of being dropped (Plan 2 final review). It's retried on every save until it succeeds.
 - **Loading a note with unsaved changes.** `loadNote` prefers the `unsavedNotes` copy over the store, so switching back shows the owner's text, which the undo ranges also need.
+- **Emptied notes (owner decision 2026-10-20, docs/decisions/0004 "The code does not tell every emptied note from an untouched one yet").**
+  - The first edit of a note's title or text removes it from `untouchedNoteIDs` for good, even when the owner later empties it.
+  - At restore, a note counts as untouched only when it is empty **and** its `modifiedAt == createdAt`, which `NoteStore.create` sets and every save of typed text changes.
+  - An emptied note is therefore listed (as a dimmed "Untitled") and kept when its tab closes, and only a note nobody ever typed in is discarded.
 - **The top inset (Plan 2 final review, huge-note screenshot).** Showing a note without an anchor, or with anchor 0, scrolls to `y = -contentInsets.top`. The text view's `textContainerInset` top stays visible.
 
 - [ ] **Step 1: Write the failing hosted tests.**
@@ -532,6 +537,13 @@ This covers Review Focus 3 on the app side.
     3. Run `PRAGMA query_only = 0` and trigger `persistNow()`.
     4. The store has A's typed text.
   - `testSwitchingBackShowsUnsavedText`
+  - `testTypedThenEmptiedNoteIsKeptWhenItsTabCloses` (UI, fixture `typical`):
+    1. ⌘T, type `x`, wait 1.5 s, Backspace, wait 1.5 s.
+    2. ⌘W. There are 7 sidebar title rows, one of them "Untitled".
+  - `testEmptiedNoteSurvivesRelaunch` (UI, fixture `typical`):
+    1. Open "Groceries", ⌘A, Backspace, wait 1.5 s.
+    2. ⌘Q, relaunch. There are still 6 title rows.
+    3. ⌘W on its tab. Still 6.
   - `testNoteWithoutAnchorShowsItsTopInset`: after `show` with anchor 0, the clip view origin y equals `-contentInsets.top`, and `textView.visibleRect.minY <= 0`.
 
 - [ ] **Step 2: Push, then wait.** Expected: the new tests fail.
