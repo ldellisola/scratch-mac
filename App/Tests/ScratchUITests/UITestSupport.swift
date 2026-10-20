@@ -44,6 +44,24 @@ enum UITestSupport {
         app.textViews.matching(identifier: AccessibilityID.editorTextView).firstMatch
     }
 
+    /// The title field above the editor. Its `value` is the note's title.
+    @MainActor
+    static func titleField(in app: XCUIApplication) -> XCUIElement {
+        app.textFields.matching(identifier: AccessibilityID.titleField).firstMatch
+    }
+
+    /// What the app publishes about its editor in the `debug.state` element (`DebugStateElement`, only in an isolated
+    /// data directory): `fontSize` (points), `scrollAnchor` (the UTF-16 offset of the first visible character) and
+    /// `readOnly`. The app computes it when asked, so it is as current as the app. Empty when the element is missing.
+    @MainActor
+    static func debugState(in app: XCUIApplication) -> [String: Any] {
+        let element = app.descendants(matching: .any).matching(identifier: AccessibilityID.debugState).firstMatch
+        guard element.waitForExistence(timeout: 5), let json = element.value as? String,
+            let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
+        else { return [:] }
+        return object
+    }
+
     /// The toolbar's "new note" button. A toolbar item without a view has no accessibility identifier of its own: AppKit
     /// reports its item identifier (`AccessibilityID.newNoteButton`) as the identifier, and its label as the title or
     /// label, so any of the three finds it.
