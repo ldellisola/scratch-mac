@@ -329,7 +329,9 @@ final class TabItemView: NSView {
         titleField.font = font
         titleField.stringValue = title
         titleField.textColor = item.isDeleted ? .tertiaryLabelColor : (isActive ? .labelColor : .secondaryLabelColor)
-        let textWidth = NSAttributedString(string: title, attributes: [.font: font]).size().width.rounded(.up)
+        // The label's own width, which includes the space that a text field keeps around its text. The width of the
+        // string alone cut the last letters off ("Deploy check...") in the first screenshot.
+        let textWidth = titleField.intrinsicContentSize.width.rounded(.up)
         idealWidth = min(max(textWidth + Self.leading + Self.trailing, Self.minimumWidth), Self.maximumWidth)
 
         toolTip = title

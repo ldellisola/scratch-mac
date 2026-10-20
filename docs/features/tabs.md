@@ -50,8 +50,8 @@ in task 9.
 
 ## Where it lives
 
-- `App/Sources/Tabs/TabStripViewController.swift`: the strip (`TabStripViewController`), its glass view, the layout of
-  the tabs (`TabStripLayout`, `TabStripContentView`) and one tab (`TabItemView`).
+- `App/Sources/Tabs/TabStripViewController.swift`: the strip (`TabStripViewController`, and `TabStripView` with its
+  glass), the layout of the tabs (`TabStripLayout`, `TabStripContentView`) and one tab (`TabItemView`).
 - `App/Sources/Window/EditorAreaViewController.swift`: the strip above the editor, below the toolbar.
 - `App/Sources/Session/SessionCoordinator.swift`: the tab list (`TabList`), `newNoteInNewTab`, `open(_:inNewTab:)`,
   `selectTab`, `closeTab`, the restore, and the session write after each change.
