@@ -22,13 +22,15 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
   Sources/CSQLite/                module map for the system SQLite library (no pkgConfig, on purpose)
   Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview. NoteSummary: a sidebar
                                   row. NoteStore: reads and writes the notes table (pinned first, newest edit first)
+                                  and searches it (`search`). SearchQuery: typed text to an FTS5 MATCH expression
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores), SessionStore (JSON under key
                                   "state"), TextOffset (clamps a saved cursor offset to a Character boundary)
   Sources/ScratchCore/Autosave/   Autosaver (decides when unsaved changes are written: 300 ms after the last change,
                                   at most 1 s after the first, no repeating timers) and the AutosaveScheduler clocks it
                                   runs on: DispatchAutosaveScheduler (production), ManualAutosaveScheduler (tests)
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
-                                  SQLValue and Row, Schema (version 1 and the migration rule), ScratchStorage (opens
+                                  SQLValue and Row, Schema (version 2, with the FTS5 index `notes_fts`, the migration
+                                  rule, and SchemaError for a database from a newer Scratch), ScratchStorage (opens
                                   the data directory and its stores; refuses a fixture on the real directory)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
   Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes) and FixtureContent, their notes and
@@ -291,6 +293,15 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   `transaction` is a savepoint.
 - **Schema changes are new migration steps in `Schema.swift`.** Raise `Schema.currentVersion` and add a step. Never edit
   an old step, because it has already run on real databases. Dates are stored as REAL `timeIntervalSinceReferenceDate`.
+  `Schema.migrate` refuses a database whose `user_version` is newer than `currentVersion`
+  (`SchemaError.newerThanSupported`, whose message is the "cannot start" alert) and changes nothing in it.
+- **Never `VACUUM` the database.** The search index `notes_fts` is keyed on the `notes` table's implicit `rowid`, which
+  `VACUUM` may renumber, and every hit would then point at the wrong note. `notes_fts` is an external-content table: it
+  holds no text of its own, and three triggers keep it current, so never write to it by hand. `NoteStore.save` uses
+  `INSERT ... ON CONFLICT DO UPDATE`, which keeps the `rowid` and fires the update trigger. `INSERT OR REPLACE` would
+  give the note a new `rowid` and skip the delete trigger, which corrupts the index.
+- **Search text is never FTS5 syntax.** Pass what the owner typed through `SearchQuery.ftsExpression`, which quotes every
+  word, and never build a `MATCH` string yourself. A word without a letter or a digit is dropped.
 - **`swift test --sanitize=thread` reports false data races on `Synchronization.Mutex` on Linux.** TSAN does not see
   the futex that `Mutex` uses, so every `Mutex`-guarded access looks unsynchronised (`Database` and `Autosaver` both
   show it). A report whose two accesses are both inside `withLock` is noise.

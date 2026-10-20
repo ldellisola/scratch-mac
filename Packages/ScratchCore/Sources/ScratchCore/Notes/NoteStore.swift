@@ -48,12 +48,42 @@ public final class NoteStore: Sendable {
     /// The sidebar rows: every note that is not deleted, pinned notes first, and within each group the most
     /// recently edited first (spec §6.2).
     public func summaries() throws -> [NoteSummary] {
-        let rows = try database.query(
+        try summaries(
             """
-            SELECT id, display_title, has_title, preview, modified_at, pinned_at FROM notes
+            SELECT \(Self.summaryColumns) FROM notes
             WHERE deleted_at IS NULL
-            ORDER BY pinned_at IS NULL, modified_at DESC, created_at DESC, id
-            """)
+            \(Self.summaryOrder)
+            """, [])
+    }
+
+    /// The sidebar rows of the notes that match what the owner typed in the search field, in the order of
+    /// ``summaries()``. A note matches when its title and text together hold every word of `text`, each as the start
+    /// of a word, ignoring case and accents. A deleted note never matches. `text` is only ever words (see
+    /// ``SearchQuery``), so any input is safe. When it holds no word, nothing is filtered and this is ``summaries()``.
+    public func search(_ text: String) throws -> [NoteSummary] {
+        guard let expression = SearchQuery.ftsExpression(text) else { return try summaries() }
+        return try summaries(
+            """
+            SELECT \(Self.summaryColumns) FROM notes
+            WHERE deleted_at IS NULL
+              AND rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?)
+            \(Self.summaryOrder)
+            """, [.text(expression)])
+    }
+
+    /// Removes the row for good. Only for a note that was never used: its tab closed while still empty (spec §6.3).
+    /// A note the owner deletes goes to Recently Deleted instead, which is a later plan.
+    public func discard(_ id: NoteID) throws {
+        try database.execute("DELETE FROM notes WHERE id = ?", [.text(id.rawValue)])
+    }
+
+    // MARK: Rows
+
+    private static let summaryColumns = "id, display_title, has_title, preview, modified_at, pinned_at"
+    private static let summaryOrder = "ORDER BY pinned_at IS NULL, modified_at DESC, created_at DESC, id"
+
+    private func summaries(_ sql: String, _ arguments: [SQLValue]) throws -> [NoteSummary] {
+        let rows = try database.query(sql, arguments)
         return try rows.map { row in
             guard let id = row.string("id"), let displayTitle = row.string("display_title"),
                 let hasTitle = row.int("has_title"), let preview = row.string("preview"),
@@ -64,14 +94,6 @@ public final class NoteStore: Sendable {
                 modifiedAt: modifiedAt, pinnedAt: row.date("pinned_at"))
         }
     }
-
-    /// Removes the row for good. Only for a note that was never used: its tab closed while still empty (spec §6.3).
-    /// A note the owner deletes goes to Recently Deleted instead, which is a later plan.
-    public func discard(_ id: NoteID) throws {
-        try database.execute("DELETE FROM notes WHERE id = ?", [.text(id.rawValue)])
-    }
-
-    // MARK: Rows
 
     private static let upsertSQL = """
         INSERT INTO notes (id, title, body, display_title, has_title, preview,
