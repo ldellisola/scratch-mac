@@ -6,8 +6,8 @@ remembered), §6.7 (what Recently Deleted holds), guarding the anti-goal "Lost t
 note's text. The rules live in ScratchCore (`SidebarSections`, `NoteTimeLabel`, `SearchQuery`, `NoteStore`, plan 2
 tasks 2, 3 and 5). Opening a note, tabs and ⌘-click are in [tabs.md](tabs.md).
 
-Status: plan 2, task 8. Delete, restore and expanding Recently Deleted follow in task 9: until then the Recently
-Deleted header shows, when there are deleted notes, and its rows stay hidden.
+Status: plan 2, tasks 8 and 9. Deleting, restoring and the Recently Deleted section are in
+[recently-deleted.md](recently-deleted.md).
 
 ## Behaviour
 
@@ -15,7 +15,9 @@ Deleted header shows, when there are deleted notes, and its rows stay hidden.
   puts the cursor in it, and shows the sidebar first when it is hidden. ⌘F is still the find bar of the note.
 - **The list is in groups**, each under a small grey header (`sidebar.group`, not a row):
   - **Pinned** first, then **Today**, **Yesterday** and **Earlier**, then **Recently Deleted**.
-  - A group with no notes has no header. Recently Deleted is there only when a note is in it, and starts collapsed.
+  - A group with no notes has no header. Recently Deleted is there only when a note is in it, and starts collapsed:
+    its header reads "Recently Deleted (N)", and a click on it shows or hides the deleted notes
+    ([recently-deleted.md](recently-deleted.md)).
   - Today and Yesterday are calendar days in the Mac's time zone, not spans of 24 hours (`SidebarSections`). The groups
     are worked out again with the current time every time the list is shown, and the app reads the list when it
     becomes active, so Today rolls over at midnight.
@@ -27,7 +29,8 @@ Deleted header shows, when there are deleted notes, and its rows stay hidden.
     (`NoteTimeLabel`).
   - A group header cannot be highlighted or opened. The arrow keys step over it, and a click on it does nothing.
 - **Pinning.**
-  - The row's context menu (right-click) has Pin, or Unpin for a pinned note.
+  - The row's context menu (right-click) has Pin, or Unpin for a pinned note, and Delete (a note in Recently Deleted
+    has Restore and Delete Permanently… instead).
   - The toolbar's pin button (`toolbar.pin`), left of the new note button, and ⇧⌘P (File > Pin Note) pin or unpin the
     note of the active tab. The button shows a filled pin and the label "Unpin" while the note is pinned.
   - Pinning only sets the pin. The note's text and its edit time stay as they are, so it does not move to the top of its
@@ -49,10 +52,11 @@ Deleted header shows, when there are deleted notes, and its rows stay hidden.
 ## Where it lives
 
 - `App/Sources/Sidebar/SidebarViewController.swift`: the search field, the table and the rows' menu. It shows the
-  sections it is given (`reload`) and reports `onOpen`, `onSearch` and `onTogglePin`.
+  sections it is given (`reload`) and reports `onOpen`, `onSearch`, `onTogglePin` and, for deleting,
+  `onDelete`, `onRestore`, `onDeletePermanently` and `onToggleRecentlyDeleted`.
 - `App/Sources/Sidebar/SidebarRowViews.swift`: `NoteRowCellView` (a note's row) and `GroupRowCellView` (a header).
-- `App/Sources/Sidebar/SidebarTableView.swift`: the table: Return opens the highlighted row, and the context menu of a
-  row.
+- `App/Sources/Sidebar/SidebarTableView.swift`: the table: Return opens the highlighted row, ⌘⌫ deletes it, a click on
+  the Recently Deleted header is taken before the table sees it, and the context menu of a row.
 - `App/Sources/Session/NoteListModel.swift`: reads the live notes, the search results and Recently Deleted on the
   storage queue (stale reads are dropped by a request number), builds the sections (`SidebarSections.make`) with the
   current time, and hides the notes that nobody has used.

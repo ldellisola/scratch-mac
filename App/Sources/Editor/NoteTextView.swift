@@ -28,8 +28,11 @@ final class NoteTextView: NSTextView {
     /// history is not shared with the other notes or with the window. Nil falls back to AppKit's own.
     var noteUndoManager: UndoManager?
 
+    /// The note's own manager. A view that is not editable (a note in Recently Deleted) has none: undo would still change
+    /// its text, which spec §6.2 says is read-only. The note keeps its manager for when it is editable again.
     override var undoManager: UndoManager? {
-        noteUndoManager ?? super.undoManager
+        guard isEditable else { return nil }
+        return noteUndoManager ?? super.undoManager
     }
 
     /// Keeps the TextKit 1 text storage alive for as long as the view lives. In TextKit 1 the storage owns the layout

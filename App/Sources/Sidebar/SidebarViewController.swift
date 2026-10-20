@@ -4,10 +4,12 @@ import ScratchCore
 /// The note list in the window's glass sidebar (spec §6.2): a search field, and under it the notes in groups (Pinned,
 /// Today, Yesterday, Earlier and Recently Deleted), each row with its title, the edit time and a preview line. It knows
 /// nothing about storage. `NoteListModel` hands it the sections to show, and it reports what the owner did: opened a
-/// row, typed in the search field, or pinned a note.
+/// row, typed in the search field, pinned, deleted or restored a note, or clicked the header of Recently Deleted.
 ///
 /// A note is opened by a click on its row, or by Return on the highlighted row, and not by the highlight moving: the
 /// arrow keys only move the highlight, and skip the group headers. A click with ⌘ held asks for a new tab (spec §6.2).
+/// ⌘⌫ deletes the highlighted note while the table has the keyboard (spec §6.7, `SidebarTableView`). A note in Recently
+/// Deleted opens like any other, and the editor shows it read-only.
 final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
     /// Called with the note's id and whether it should open in a new tab, when the user opens a row: a click (in a new
     /// tab with ⌘ held), or Return. Not called when `reload` changes the highlight itself.
@@ -19,9 +21,26 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     /// Called when the owner chooses Pin or Unpin in a row's context menu.
     var onTogglePin: ((NoteID) -> Void)?
 
-    /// One line of the table: a group header, or the row of a note.
+    /// Called when the owner deletes a note that is not deleted yet: Delete in its row's context menu, or ⌘⌫ with the
+    /// note highlighted.
+    var onDelete: ((NoteID) -> Void)?
+
+    /// Called when the owner chooses Restore in the context menu of a row in Recently Deleted.
+    var onRestore: ((NoteID) -> Void)?
+
+    /// Called when the owner has answered "Delete" to the question that Delete Permanently… in the context menu of a row
+    /// in Recently Deleted asks.
+    var onDeletePermanently: ((NoteID) -> Void)?
+
+    /// Called when the owner clicks the header of Recently Deleted, which shows or hides the notes under it. The sidebar
+    /// does not keep that state: it shows what the next `reload` says (`recentlyDeletedExpanded`).
+    var onToggleRecentlyDeleted: (() -> Void)?
+
+    /// One line of the table: a group header, the header of Recently Deleted (which is clicked, and counts its notes),
+    /// or the row of a note.
     private enum Line: Equatable {
         case header(SidebarGroup)
+        case recentlyDeletedHeader(count: Int, expanded: Bool)
         case note(NoteSummary)
     }
 
@@ -64,6 +83,8 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         tableView.target = self
         tableView.action = #selector(rowClicked(_:))
         tableView.onReturn = { [weak self] in self?.openHighlightedRow() }
+        tableView.onCommandDelete = { [weak self] in self?.deleteHighlightedRow() ?? false }
+        tableView.takesClick = { [weak self] row in self?.takeClick(onRow: row) ?? false }
         tableView.menuForRow = { [weak self] row in self?.menu(forRow: row) }
         tableView.setAccessibilityIdentifier(AccessibilityID.sidebarTable)
         tableView.setAccessibilityLabel("Notes")
@@ -149,8 +170,11 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     private static func rows(for sections: [SidebarSection], recentlyDeletedExpanded: Bool) -> [Line] {
         var rows: [Line] = []
         for section in sections {
-            rows.append(.header(section.group))
-            if section.group != .recentlyDeleted || recentlyDeletedExpanded {
+            if section.group == .recentlyDeleted {
+                rows.append(.recentlyDeletedHeader(count: section.notes.count, expanded: recentlyDeletedExpanded))
+                if recentlyDeletedExpanded { rows.append(contentsOf: section.notes.map { Line.note($0) }) }
+            } else {
+                rows.append(.header(section.group))
                 rows.append(contentsOf: section.notes.map { Line.note($0) })
             }
         }
@@ -177,8 +201,14 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
     private func isHeader(_ row: Int) -> Bool {
         guard rows.indices.contains(row) else { return false }
-        if case .header = rows[row] { return true }
-        return false
+        if case .note = rows[row] { return false }
+        return true
+    }
+
+    /// The note that a row shows, or nil for a header and for an index that is not a row.
+    private func summary(atRow row: Int) -> NoteSummary? {
+        guard rows.indices.contains(row), case .note(let summary) = rows[row] else { return nil }
+        return summary
     }
 
     // MARK: NSTableViewDataSource
@@ -212,6 +242,13 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
             cell.identifier = Self.groupCellIdentifier
             cell.configure(title: Self.title(of: group))
             return cell
+        case .recentlyDeletedHeader(let count, let expanded):
+            let cell =
+                tableView.makeView(withIdentifier: Self.groupCellIdentifier, owner: nil) as? GroupRowCellView
+                ?? GroupRowCellView()
+            cell.identifier = Self.groupCellIdentifier
+            cell.configureRecentlyDeleted(count: count, expanded: expanded)
+            return cell
         case .note(let summary):
             let cell =
                 tableView.makeView(withIdentifier: Self.noteCellIdentifier, owner: nil) as? NoteRowCellView
@@ -227,39 +264,109 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     /// A click on a row. With ⌘ held the note opens in a new tab (or focuses its tab, when it has one). A click on a
     /// header does nothing.
     @objc private func rowClicked(_ sender: Any?) {
-        let row = tableView.clickedRow
-        guard rows.indices.contains(row), case .note(let summary) = rows[row] else { return }
+        guard let summary = noteSummary(atRow: tableView.clickedRow) else { return }
         let inNewTab = NSApp.currentEvent?.modifierFlags.contains(.command) ?? false
         onOpen?(summary.id, inNewTab)
     }
 
     /// Return on the highlighted row opens it in the current tab.
     private func openHighlightedRow() {
-        let row = tableView.selectedRow
-        guard rows.indices.contains(row), case .note(let summary) = rows[row] else { return }
+        guard let summary = noteSummary(atRow: tableView.selectedRow) else { return }
         onOpen?(summary.id, false)
+    }
+
+    // MARK: Recently Deleted
+
+    /// The table asks before it handles a click. The header of Recently Deleted takes it: the notes under it are shown
+    /// or hidden. A click on any other header is left to the table, which ignores it.
+    private func takeClick(onRow row: Int) -> Bool {
+        guard rows.indices.contains(row), case .recentlyDeletedHeader = rows[row] else { return false }
+        onToggleRecentlyDeleted?()
+        // The notes appear below the header, at the bottom of the list: bring them into view.
+        if let last = rows.indices.last, case .note = rows[last] { tableView.scrollRowToVisible(last) }
+        return true
+    }
+
+    /// ⌘⌫ on the highlighted row deletes its note, unless the note is deleted already. Returns whether it did.
+    private func deleteHighlightedRow() -> Bool {
+        guard let summary = noteSummary(atRow: tableView.selectedRow), summary.deletedAt == nil else { return false }
+        onDelete?(summary.id)
+        return true
     }
 
     // MARK: Context menu
 
-    /// The menu of a right click on a row: Pin, or Unpin when the note is pinned. A header has none.
+    /// The menu of a right click on a row. A note has Pin, or Unpin when it is pinned, and Delete. A note in Recently
+    /// Deleted has Restore and Delete Permanently…. A header has none. Delete has no shortcut here: ⌘⌫ is handled by the
+    /// table (`SidebarTableView`), and a key equivalent in a menu would be offered to the text view's ⌘⌫ too.
     private func menu(forRow row: Int) -> NSMenu? {
-        guard rows.indices.contains(row), case .note(let summary) = rows[row], summary.deletedAt == nil else {
-            return nil
-        }
+        guard let summary = noteSummary(atRow: row) else { return nil }
         let menu = NSMenu()
-        let item = NSMenuItem(
-            title: summary.pinnedAt == nil ? "Pin" : "Unpin", action: #selector(togglePinFromMenu(_:)),
-            keyEquivalent: "")
+        if summary.deletedAt == nil {
+            menu.addItem(
+                menuItem(summary.pinnedAt == nil ? "Pin" : "Unpin", #selector(togglePinFromMenu(_:)), for: summary))
+            menu.addItem(.separator())
+            menu.addItem(menuItem("Delete", #selector(deleteFromMenu(_:)), for: summary))
+        } else {
+            menu.addItem(menuItem("Restore", #selector(restoreFromMenu(_:)), for: summary))
+            menu.addItem(menuItem("Delete Permanently…", #selector(deletePermanentlyFromMenu(_:)), for: summary))
+        }
+        return menu
+    }
+
+    /// A context menu item that sends `action` to this controller, and remembers the note it is for.
+    private func menuItem(_ title: String, _ action: Selector, for summary: NoteSummary) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
         item.representedObject = summary.id
-        menu.addItem(item)
-        return menu
+        return item
     }
 
     @objc private func togglePinFromMenu(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? NoteID else { return }
         onTogglePin?(id)
+    }
+
+    @objc private func deleteFromMenu(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? NoteID else { return }
+        onDelete?(id)
+    }
+
+    @objc private func restoreFromMenu(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? NoteID else { return }
+        onRestore?(id)
+    }
+
+    /// Asks, in a sheet on the window, whether the note is to be deleted for good, and only a "Delete" calls
+    /// `onDeletePermanently`. Nothing can bring the note back after that.
+    @objc private func deletePermanentlyFromMenu(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? NoteID, let window = view.window else { return }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Delete \(title(ofNote: id).map(Self.quoted) ?? "this note") permanently?"
+        alert.informativeText = "This can't be undone."
+        alert.addButton(withTitle: "Delete").hasDestructiveAction = true
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: window) { [weak self] response in
+            MainActor.assumeIsolated {
+                if response == .alertFirstButtonReturn { self?.onDeletePermanently?(id) }
+            }
+        }
+    }
+
+    /// The title of the row of the note `id` as the list shows it, which the question quotes. Nil when the note is not
+    /// in the list any more.
+    private func title(ofNote id: NoteID) -> String? {
+        for case .note(let summary) in rows where summary.id == id {
+            return summary.displayTitle.isEmpty ? "Untitled" : summary.displayTitle
+        }
+        return nil
+    }
+
+    /// `title` in typographic quotes, cut off after 60 characters so that a long first line does not make a huge sheet.
+    private static func quoted(_ title: String) -> String {
+        let shown = title.count > 60 ? String(title.prefix(60)) + "…" : title
+        return "“\(shown)”"
     }
 
     // MARK: Search

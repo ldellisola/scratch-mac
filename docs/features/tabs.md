@@ -6,7 +6,8 @@ the sidebar, ⌘-click) and §6.6 (a relaunch restores the tabs), guarding the a
 (§4). The rules themselves live in ScratchCore (`TabList`, plan 2 task 4).
 
 Status: plan 2, task 7. The sidebar's groups, search and pinning are in [sidebar.md](sidebar.md) (task 8). Deleting a
-note, which closes its tab, follows in task 9.
+note, which closes its tab, and a deleted note that is shown read-only in a tab are in
+[recently-deleted.md](recently-deleted.md) (task 9).
 
 ## Behaviour
 
@@ -35,7 +36,8 @@ note, which closes its tab, follows in task 9.
 - **Each tab keeps its cursor and its scroll position** while it is open, and an undo history that lasts for the
   session (spec §6.6): ⌘Z after switching away and back still undoes the typing in the tab.
 - **A relaunch restores the tabs**, in their order, with the active one. A tab whose note is gone or deleted is
-  dropped, and so is a second tab for the same note. When no tab is left, the app starts one tab with a new empty note.
+  dropped (also one that showed a deleted note read-only), and so is a second tab for the same note. When no tab is
+  left, the app starts one tab with a new empty note.
 - **The session is written at once after every open, close or switch**, and not with the next autosave, so a crash right
   after changing the tabs keeps them. The text of the active note still goes out with the autosave, and with every
   switch.

@@ -254,6 +254,52 @@ final class EditorViewControllerTests: XCTestCase {
         XCTAssertTrue(host.editor.titleField.isEditable)
     }
 
+    /// A note in Recently Deleted can have an undo history from before it was deleted. Undoing would change its text, so
+    /// a read-only note offers none, and gets its history back when it is restored (docs/features/recently-deleted.md).
+    func testReadOnlyNoteOffersNoUndo() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let note = makeNote("alpha")
+        let undo = UndoManager()
+        host.editor.show(note, tab: makeTab(for: note), undoManager: undo, isReadOnly: false)
+        insertText("x", into: host.editor)
+        var edited = note
+        edited.body = host.editor.currentText
+        XCTAssertTrue(undo.canUndo)
+        XCTAssertTrue(host.editor.activeUndoManager === undo)
+
+        host.editor.show(edited, tab: makeTab(for: edited), undoManager: undo, isReadOnly: true)
+
+        XCTAssertNil(host.editor.activeUndoManager)
+        XCTAssertNil(host.editor.textView.undoManager)
+        XCTAssertEqual(host.editor.currentText, "xalpha")
+
+        host.editor.setReadOnly(false)
+
+        XCTAssertTrue(host.editor.activeUndoManager === undo)
+        XCTAssertTrue(host.editor.textView.undoManager === undo)
+        XCTAssertTrue(undo.canUndo, "the history is kept for when the note is restored")
+    }
+
+    /// Restoring the note that is open makes it editable in place: the text, the title and the cursor stay.
+    func testSetReadOnlyFalseMakesTheShownNoteEditable() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let note = makeNote("abc", title: "Kept")
+        host.editor.show(note, tab: makeTab(for: note), undoManager: UndoManager(), isReadOnly: true)
+        insertText("x", into: host.editor)
+        XCTAssertEqual(host.editor.currentText, "abc")
+
+        host.editor.setReadOnly(false)
+        insertText("x", into: host.editor)
+
+        XCTAssertEqual(host.editor.currentText, "xabc")
+        XCTAssertFalse(host.editor.isReadOnly)
+        XCTAssertTrue(host.editor.textView.isEditable)
+        XCTAssertTrue(host.editor.titleField.isEditable)
+        XCTAssertEqual(host.editor.titleField.stringValue, "Kept")
+    }
+
     // MARK: Title field
 
     func testShowFillsTheTitleField() {

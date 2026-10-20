@@ -30,8 +30,8 @@ final class NoteListModel {
     /// The note of the active tab, whose row is highlighted.
     var selectedNoteID: NoteID?
     /// Whether the rows of Recently Deleted are shown under its header. It is not saved: the section starts collapsed
-    /// at every launch.
-    var recentlyDeletedExpanded = false
+    /// at every launch [call].
+    private(set) var recentlyDeletedExpanded = false
 
     /// What the search field holds.
     private var searchText = ""
@@ -110,10 +110,19 @@ final class NoteListModel {
         render()
     }
 
-    /// Takes the row of the note `id` out of what is shown, until the next read. For a note that was just discarded.
+    /// The owner clicked the header of Recently Deleted: shows its rows when they are hidden, and hides them when they
+    /// are shown. It needs no read.
+    func toggleRecentlyDeleted() {
+        recentlyDeletedExpanded.toggle()
+        render()
+    }
+
+    /// Takes the row of the note `id` out of what is shown, until the next read. For a note that was just discarded,
+    /// deleted or removed for good.
     func forget(_ id: NoteID) {
         live.removeAll { $0.id == id }
         results?.removeAll { $0.id == id }
+        deleted.removeAll { $0.id == id }
     }
 
     // MARK: Showing

@@ -2,9 +2,9 @@ import AppKit
 import ScratchCore
 
 /// Connects the editor, the tab strip, the sidebar and the storage: it decides which notes are open in which tabs and
-/// which tab is active, keeps the active note's text and the session saved, pins notes, and keeps the sidebar list and
-/// the tab titles current. The editor, the tab strip and the sidebar only report what the user did. The sidebar's data
-/// (the reads, the search, the groups) is `NoteListModel`'s.
+/// which tab is active, keeps the active note's text and the session saved, pins, deletes and restores notes, and keeps
+/// the sidebar list and the tab titles current. The editor, the tab strip and the sidebar only report what the user did.
+/// The sidebar's data (the reads, the search, the groups) is `NoteListModel`'s.
 ///
 /// **Threading.** Everything here runs on the main thread (the class is `@MainActor`). Writes go to one private serial
 /// queue, so typing never waits for the disk. The exceptions wait for that queue on purpose: `persistNow()`, which
@@ -22,6 +22,14 @@ import ScratchCore
 ///
 /// **Undo.** Every note has an undo manager of its own for as long as the app runs (spec §6.6). The coordinator keeps
 /// them and gives the editor the one of the note it shows, so leaving a note and coming back finds its history.
+///
+/// **Deleted notes.** Deleting a note moves it to Recently Deleted (`NoteStore.delete`) and closes its tab (spec §6.7).
+/// A note in Recently Deleted opens like any other, in the active tab, and the editor shows it read-only: that is the
+/// only way a tab holds a deleted note, so the tab list never does after a launch (`restoredTabs` drops such tabs).
+/// Restoring a note that is open makes it editable in place. Thirty days after its deletion a note is purged
+/// (`purgeExpiredNotes`), and its tab, if it has one, closes. The writes of deleting, restoring and deleting for good run
+/// on the main thread, after `persistNow()` has emptied the storage queue: they are one statement each, the owner just
+/// asked for them, and a tab only closes when the write worked. The purge runs on the storage queue.
 @MainActor
 final class SessionCoordinator {
     private let storage: ScratchStorage
@@ -49,6 +57,11 @@ final class SessionCoordinator {
     /// What the tab strip shows for each open tab. It comes from the note when the note is shown, and from the note
     /// list after each save, so a tab title follows an edit about as fast as the sidebar row does.
     private var tabItems: [NoteID: TabStripItem] = [:]
+
+    /// When Recently Deleted was last purged, which a purge at most once an hour follows (`purgeExpiredNotes`).
+    private var lastPurge: Date?
+    /// How long after a purge the next one may run: the app becoming active asks for one each time.
+    private static let purgeInterval: TimeInterval = 60 * 60
 
     /// Every live note as of the last read of the note list, whatever the search field says. The pin button and the
     /// menu item read the pin of the active note from it.
@@ -80,6 +93,10 @@ final class SessionCoordinator {
         sidebar.onOpen = { [weak self] id, inNewTab in self?.open(id, inNewTab: inNewTab) }
         sidebar.onSearch = { [weak self] text in self?.noteList.setSearchText(text) }
         sidebar.onTogglePin = { [weak self] id in self?.togglePin(id) }
+        sidebar.onDelete = { [weak self] id in self?.deleteNote(id) }
+        sidebar.onRestore = { [weak self] id in self?.restoreNote(id) }
+        sidebar.onDeletePermanently = { [weak self] id in self?.deleteNotePermanently(id) }
+        sidebar.onToggleRecentlyDeleted = { [weak self] in self?.noteList.toggleRecentlyDeleted() }
         noteList.onLiveSummaries = { [weak self] summaries in self?.didReadLiveSummaries(summaries) }
         tabStrip.onSelect = { [weak self] index in self?.selectTab(at: index) }
         tabStrip.onClose = { [weak self] index in self?.closeTab(at: index) }
@@ -184,6 +201,8 @@ final class SessionCoordinator {
     /// - Otherwise it replaces the note in the active tab, and the note that was there is discarded when it was never
     ///   used.
     ///
+    /// A note in Recently Deleted opens the same way, and the editor shows it read-only.
+    ///
     /// The cursor stays where it is: a click in the sidebar must not take the sidebar's keyboard focus away.
     func open(_ id: NoteID, inNewTab: Bool) {
         guard let list = tabs, current != nil else { return }
@@ -265,19 +284,22 @@ final class SessionCoordinator {
 
     /// Closes the tab at `index`. The note stays in the list: a tab is a view onto a note, and only a note that was
     /// never used is discarded with its tab (spec §6.3). Closing the only tab leaves a tab with a new empty note.
-    func closeTab(at index: Int) {
+    ///
+    /// The cursor goes into the note that is shown after the tab closed, unless `focusingEditor` is false: deleting a
+    /// note from the sidebar leaves the keyboard where it is, so that ⌘⌫ in the sidebar cannot become ⌘⌫ in a note.
+    func closeTab(at index: Int, focusingEditor: Bool = true) {
         guard let list = tabs, current != nil, list.tabs.indices.contains(index) else { return }
         if list.tabs.count == 1 {
-            closeOnlyTab()
+            closeOnlyTab(focusingEditor: focusingEditor)
         } else if index == list.activeIndex {
-            closeActiveTabOfSeveral()
+            closeActiveTabOfSeveral(focusingEditor: focusingEditor)
         } else {
             closeOtherTab(at: index)
         }
     }
 
     /// Closes the active tab while others are open: the tab that takes its place is shown.
-    private func closeActiveTabOfSeveral() {
+    private func closeActiveTabOfSeveral(focusingEditor: Bool) {
         guard var list = tabs else { return }
         guard case .closed(let closedID) = list.close(at: list.activeIndex) else { return }
         // Closing a tab shows another note: the interval of opening one.
@@ -289,7 +311,7 @@ final class SessionCoordinator {
         showActive(next)
         tabsDidChange()
         noteList.refresh()
-        editor.focus()
+        if focusingEditor { editor.focus() }
     }
 
     /// Closes a tab that is not active. The note in the editor does not change.
@@ -305,10 +327,10 @@ final class SessionCoordinator {
 
     /// Closes the only tab: there is always one, so it gets a new empty note. When its note is such a note already,
     /// nothing is left to replace.
-    private func closeOnlyTab() {
+    private func closeOnlyTab(focusingEditor: Bool) {
         guard let leaving = current, let list = tabs else { return }
         if isUntouched(leaving) {
-            editor.focus()
+            if focusingEditor { editor.focus() }
             return
         }
         let note: Note
@@ -328,16 +350,16 @@ final class SessionCoordinator {
         showActive(note)
         tabsDidChange()
         noteList.refresh()
-        editor.focus()
+        if focusingEditor { editor.focus() }
     }
 
     // MARK: Changing the active note
 
-    /// Reads the note `id` from the storage for showing. Nil, and a new read of the note list, when it is gone or
-    /// deleted: the list was stale.
+    /// Reads the note `id` from the storage for showing, also when it is in Recently Deleted (the editor shows it
+    /// read-only). Nil, and a new read of the note list, when it is gone: the list was stale.
     private func loadNote(_ id: NoteID) -> Note? {
         do {
-            guard let note = try storage.notes.note(id), note.deletedAt == nil else {
+            guard let note = try storage.notes.note(id) else {
                 noteList.refresh()
                 return nil
             }
@@ -373,9 +395,10 @@ final class SessionCoordinator {
         show(note, tab: list.active)
     }
 
-    /// Shows `note` in the editor with its own undo history, which switching notes never clears.
+    /// Shows `note` in the editor with its own undo history, which switching notes never clears. A note in Recently
+    /// Deleted is read-only (spec §6.2).
     private func show(_ note: Note, tab: TabState) {
-        editor.show(note, tab: tab, undoManager: undoManager(for: note.id), isReadOnly: false)
+        editor.show(note, tab: tab, undoManager: undoManager(for: note.id), isReadOnly: note.deletedAt != nil)
     }
 
     /// What follows every change of the tabs: the strip and the sidebar show them, and the session is written at once.
@@ -548,7 +571,8 @@ final class SessionCoordinator {
 
     /// ⇧⌘P and the toolbar's pin button: pins the note of the active tab, or unpins it.
     func togglePinOfActiveNote() {
-        guard let note = current else { return }
+        // A deleted note cannot be pinned (the button and the menu item are off for it too).
+        guard let note = current, note.deletedAt == nil else { return }
         togglePin(note.id)
     }
 
@@ -557,6 +581,127 @@ final class SessionCoordinator {
         guard let note = current else { return }
         let isPinned = latestLive.first { $0.id == note.id }?.pinnedAt != nil
         onActiveNotePinChange?(isPinned, note.deletedAt == nil)
+    }
+
+    // MARK: Deleting and restoring
+
+    /// Moves the note `id` to Recently Deleted (a row's context menu, or ⌘⌫ in the sidebar) and closes the tab that
+    /// shows it (spec §6.7). When that was the only tab, it gets a new empty note.
+    ///
+    /// What is typed in the note and not saved yet is written first, so that the note goes to Recently Deleted with all
+    /// its text. Only the deletion is stored, and `NoteStore.save` never changes it, so no later save of the note's
+    /// text can bring it back. When the write fails, nothing else happens and the note stays where it is.
+    func deleteNote(_ id: NoteID) {
+        guard tabs != nil, current != nil else { return }
+        persistNow()
+        do {
+            try storage.notes.delete(id, now: Date())
+        } catch {
+            report("cannot delete note \(id.rawValue): \(error)")
+            return
+        }
+        // Not a note that nobody used any more: that would let closing its tab remove the row for good.
+        untouchedNoteIDs.remove(id)
+        noteList.forget(id)
+        // The tabs are read after `persistNow()`, which records the cursor and scroll position in them.
+        if let index = tabs?.index(of: id) {
+            closeTab(at: index, focusingEditor: false)
+        } else {
+            noteList.refresh()
+        }
+    }
+
+    /// Takes the note `id` out of Recently Deleted. A note that is open in a tab stays there and becomes editable at
+    /// once, and its tab is no longer dimmed.
+    func restoreNote(_ id: NoteID) {
+        guard let list = tabs, current != nil else { return }
+        do {
+            try storage.notes.restore(id)
+        } catch {
+            report("cannot restore note \(id.rawValue): \(error)")
+            return
+        }
+        if list.index(of: id) != nil, let item = tabItems[id] {
+            tabItems[id] = TabStripItem(title: item.title, hasTitle: item.hasTitle, isDeleted: false)
+        }
+        if current?.id == id {
+            current?.deletedAt = nil
+            editor.setReadOnly(false)
+        }
+        renderTabs()
+        updatePinState()
+        noteList.refresh()
+    }
+
+    /// Removes the note `id` from Recently Deleted for good, after the sidebar asked the owner. A tab that shows it
+    /// closes. Nothing happens to a note that is not deleted (`NoteStore.deletePermanently`).
+    func deleteNotePermanently(_ id: NoteID) {
+        guard tabs != nil, current != nil else { return }
+        persistNow()
+        do {
+            try storage.notes.deletePermanently(id)
+        } catch {
+            report("cannot delete note \(id.rawValue) permanently: \(error)")
+            return
+        }
+        didRemoveNotes([id])
+    }
+
+    /// Removes the notes of Recently Deleted that were deleted more than 30 days ago (`NoteStore.purge`, spec §6.2). It
+    /// runs on the storage queue, at launch one main-queue turn after `restore()` and when the app becomes active, but
+    /// not when the last purge was less than an hour ago. A purged note that is open in a tab closes the tab.
+    func purgeExpiredNotes(now: Date) {
+        if let last = lastPurge, now.timeIntervalSince(last) < Self.purgeInterval { return }
+        lastPurge = now
+        let cutoff = now.addingTimeInterval(-NoteStore.recentlyDeletedRetention)
+        let storage = self.storage
+        storageQueue.async { [weak self, storage] in
+            do {
+                guard try storage.notes.purge(deletedBefore: cutoff) > 0 else { return }
+            } catch {
+                report("cannot purge Recently Deleted: \(error)")
+                return
+            }
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.didPurge() }
+            }
+        }
+    }
+
+    /// Some notes were purged. The purge does not say which, so the open notes are looked up: a tab whose note is gone
+    /// closes.
+    private func didPurge() {
+        guard let list = tabs else { return }
+        didRemoveNotes(list.tabs.map(\.noteID).filter { !noteExists($0) })
+    }
+
+    /// The notes `ids` are gone from the storage. Forgets what the coordinator holds of them, closes their tabs and
+    /// reads the note list again. The note of the active tab goes last: closing it shows the tab next to it, which must
+    /// not be one that is gone too.
+    private func didRemoveNotes(_ ids: [NoteID]) {
+        var closedATab = false
+        let activeID = current?.id
+        for id in ids.filter({ $0 != activeID }) + ids.filter({ $0 == activeID }) {
+            untouchedNoteIDs.remove(id)
+            undoManagers[id] = nil
+            noteList.forget(id)
+            // The indexes change with every close, so each tab is looked up again.
+            if let index = tabs?.index(of: id) {
+                closeTab(at: index, focusingEditor: false)
+                closedATab = true
+            }
+        }
+        if !closedATab { noteList.refresh() }
+    }
+
+    /// Whether the storage has the note `id`. A note that cannot be read counts as there, so that a read error never
+    /// closes a tab.
+    private func noteExists(_ id: NoteID) -> Bool {
+        do {
+            return try storage.notes.note(id) != nil
+        } catch {
+            return true
+        }
     }
 
     // MARK: The note list and the tab titles

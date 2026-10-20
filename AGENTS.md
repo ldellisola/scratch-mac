@@ -60,12 +60,14 @@ App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `
                                   `TabStripLayout`, `TabStripContentView`, `TabItemView`)
 App/Sources/Sidebar/              SidebarViewController (the search field and the note list in the glass sidebar: an
                                   NSTableView with group headers; a click or Return opens a note, `onOpen`; `onSearch`,
-                                  `onTogglePin`), SidebarRowViews (`NoteRowCellView`, `GroupRowCellView`),
-                                  SidebarTableView (Return, the row's context menu)
+                                  `onTogglePin`, `onDelete`, `onRestore`, `onDeletePermanently` and
+                                  `onToggleRecentlyDeleted`), SidebarRowViews (`NoteRowCellView`, `GroupRowCellView`),
+                                  SidebarTableView (Return, ⌘⌫, the click on the Recently Deleted header, the row's
+                                  context menu)
 App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore, new note, close,
-                                  pinning, the tab titles; the one place that writes to storage), NoteListModel (the
-                                  sidebar's data: reads the note list, the search results and Recently Deleted on the
-                                  storage queue, builds the sections)
+                                  pinning, delete, restore and purge, the tab titles; the one place that writes to
+                                  storage), NoteListModel (the sidebar's data: reads the note list, the search results
+                                  and Recently Deleted on the storage queue, builds the sections)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
                                   TitleField (the optional title above the text), EditorViewController (the title field
@@ -83,7 +85,8 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
-                                  tab strip, opening, closing and switching tabs),
+                                  tab strip, opening, closing and switching tabs), DeleteUITests (delete, Recently
+                                  Deleted, restore, the purge),
                                   ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
@@ -110,7 +113,8 @@ docs/architecture.md              module boundaries, data flow, threading
 docs/release-notes-footer.md      the install and update steps, put at the top of every release's notes
                                   (`scripts/release-notes.sh` replaces its `<version>` placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
-                                  title-and-font-size.md, tabs.md (more as features land)
+                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md (more as features
+                                  land)
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
                                   performance check compares)
@@ -399,7 +403,7 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   that is released skips its pending save. `SessionCoordinator` owns it and `AppDelegate` owns the coordinator, so keep
   both. The save closure holds the coordinator weakly. Never replace the autosaver while it is dirty.
 - **`SessionCoordinator.persistNow()` waits for the storage queue** (`storageQueue.sync {}`), and so does every change
-  of the active tab (`open`, `selectTab`, `closeTab`, `newNoteInNewTab`), which calls it first. Call all of them and
+  of the active tab (`open`, `selectTab`, `closeTab`, `newNoteInNewTab`, `deleteNote`), which calls it first. Call all of them and
   `flush()` on the main thread only, and never from a block that runs on the storage queue.
 - **A new note that nobody has used is not in the sidebar** and is discarded when its tab closes or another note
   replaces it in the tab, while it is still empty. It is "untouched" while it was created in this session (or restored
@@ -431,6 +435,30 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   all end there. The button's state comes from `onActiveNotePinChange`, which the coordinator calls after every read and
   every change of the tabs. The toolbar item has `autovalidates = false`, or AppKit would enable it again by itself,
   and `AppCommands.validateMenuItem` sets the title of the Pin Note menu item ("Pin Note" or "Unpin Note").
+- **⌘⌫ deletes a note only through `SidebarTableView.keyDown`, never as a menu key equivalent.** A key equivalent in
+  the menu bar is offered before the key reaches the first responder, so it would take ⌘⌫ away from the text view,
+  where it deletes to the start of the line (`testCommandBackspaceInEditorKeepsNote`). The table only gets the key while
+  it is the first responder, which is "the sidebar has focus". A delete from the sidebar must not move the keyboard into
+  the editor either (`closeTab(at:focusingEditor: false)`), or the next ⌘⌫ would delete text.
+- **Delete, restore and delete permanently write on the main thread, after `persistNow()`.** `SessionCoordinator.
+  deleteNote` writes the typing first, then `NoteStore.delete`, then closes the tab (only when the write worked), and
+  `NoteStore.save` never writes `deleted_at`, so a later save of the same note cannot bring it back. Do not delete a
+  note through the storage queue with a stale copy of the tabs. `didRemoveNotes` closes the tab of the active note last,
+  because closing it shows its neighbour, which must still exist.
+- **A tab can hold a deleted note, read-only.** Clicking a row of Recently Deleted opens it (`loadNote` loads deleted notes
+  too, `show` passes `isReadOnly: note.deletedAt != nil`), and a relaunch drops such a tab. A read-only editor has no
+  undo manager (`NoteTextView.undoManager`, `EditorViewController.activeUndoManager`): undo would still change the text
+  of a note that cannot be changed, and the change would be saved. `restoreNote` calls `setReadOnly(false)` instead of
+  showing the note again, so the cursor, scroll position and undo history stay.
+- **The Recently Deleted header is a group row that takes its own click.** A header cannot be highlighted, and
+  the table's action is not something to rely on for a row it will not select, so `SidebarTableView.mouseDown` asks
+  `takesClick` first. Its text has the identifier `sidebar.recentlyDeleted` (`UITestSupport.sidebarGroupTitles` does not
+  list it) and reads "Recently Deleted (N)", the number of deleted notes, shown or not. The section starts collapsed at
+  every launch.
+- **The purge runs on the storage queue and tells the main thread only when it removed something.**
+  `SessionCoordinator.purgeExpiredNotes(now:)` runs at launch (one main-queue turn after `restore()`) and from
+  `applicationDidBecomeActive`, at most once an hour. It cannot say which notes went, so `didPurge` looks up the open
+  tabs' notes. A launch on the `recently-deleted` fixture shows "(2)" for a moment and then "(1)": UI tests wait for the header text.
 - **The search field sends its text twice.** A keystroke triggers both the field's action (`sendsSearchStringImmediately`)
   and `controlTextDidChange`, and Escape is handled in `control(_:textView:doCommandBy:)`. `searchTextMayHaveChanged`
   reports a text only when it differs from the last one, so the list is read once. ⌥⌘F is a menu item (Edit > Search

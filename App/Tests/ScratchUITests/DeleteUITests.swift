@@ -210,6 +210,11 @@ final class DeleteUITests: XCTestCase {
     func testDeletingNoteInOnlyTabLeavesEmptyNote() throws {
         continueAfterFailure = false
         let app = launchTypical()
+        // ⌘W closes the active tab, so the curl note's tab is the one to close: "Deploy checklist" is left alone.
+        UITestSupport.tabs(in: app)[1].click()
+        XCTAssertTrue(
+            UITestSupport.wait { UITestSupport.activeTabIndex(in: app) == 1 },
+            "the tabs: \(UITestSupport.tabTitles(in: app))")
         app.typeKey("w", modifierFlags: .command)
         waitForTabs(["Deploy checklist"], in: app)
 

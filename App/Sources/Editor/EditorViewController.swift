@@ -129,7 +129,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         showScrollPosition(of: tab, in: note)
     }
 
-    private func setReadOnly(_ readOnly: Bool) {
+    /// Makes the text and the title uneditable (`true`, the note is in Recently Deleted) or editable again (`false`, the
+    /// note was restored: the editor keeps showing it, with its cursor, scroll position and undo history). `show` does
+    /// this for the note it shows.
+    func setReadOnly(_ readOnly: Bool) {
         isReadOnly = readOnly
         textView.isEditable = !readOnly
         titleField.isEditable = !readOnly
@@ -198,8 +201,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
 
     // MARK: Undo
 
-    /// The undo manager of the note shown, which the window hands to the Edit menu (`AppDelegate`).
-    var activeUndoManager: UndoManager? { textView.noteUndoManager }
+    /// The undo manager of the note shown, which the window hands to the Edit menu (`AppDelegate`). Nil for a note that
+    /// is read-only: its history, if it has one, is not offered, because undoing would change a note that cannot be
+    /// changed (`NoteTextView.undoManager` says the same to the text view).
+    var activeUndoManager: UndoManager? { isReadOnly ? nil : textView.noteUndoManager }
 
     // MARK: Debug state
 
@@ -232,7 +237,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
 
     /// The undo history of the note shown, not the window's (spec §6.6).
     func undoManager(for view: NSTextView) -> UndoManager? {
-        textView.noteUndoManager
+        activeUndoManager
     }
 
     // MARK: NSTextFieldDelegate

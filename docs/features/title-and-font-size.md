@@ -25,7 +25,9 @@ Status: plan 2, task 6. Sessions, scroll and the rest of the persistence are in
 - **Undo history is per note and lasts for the session.** Typing in note A, switching to note B and coming back leaves
   A's typing undoable with ⌘Z, and B's history is not mixed into it. Loading a note is never an undo step. Quitting
   ends the history (spec §6.6).
-- **A read-only note** (a note in Recently Deleted, plan 2 task 9) takes no typing in the text or in the title.
+- **A read-only note** (a note in Recently Deleted, [recently-deleted.md](recently-deleted.md)) takes no typing in the
+  text or in the title, and offers no undo: its history, if it has one, comes back when the note is restored
+  (`setReadOnly(false)`, which makes the note that is shown editable in place).
 
 ## Where it lives
 
@@ -55,6 +57,7 @@ Status: plan 2, task 6. Sessions, scroll and the rest of the persistence are in
 | Undo history is per note | `EditorViewControllerTests.testUndoHistoryIsPerNote` |
 | Showing a note does not clear its history | `EditorViewControllerTests.testShowDoesNotClearUndo` |
 | A read-only note takes no typing, and the next editable note does | `EditorViewControllerTests.testReadOnlyRejectsTyping` |
+| A read-only note offers no undo, and restoring it gives the history back and makes it editable | `EditorViewControllerTests.testReadOnlyNoteOffersNoUndo`, `testSetReadOnlyFalseMakesTheShownNoteEditable` |
 | A typed title becomes the sidebar title, and the text is not part of it | `TitleUITests.testTitleBecomesSidebarTitle` |
 | The title survives a relaunch | `TitleUITests.testTitleSurvivesRelaunch` |
 | ⌘= twice gives 15 pt, which survives a relaunch | `TitleUITests.testFontSizeIsRemembered` |

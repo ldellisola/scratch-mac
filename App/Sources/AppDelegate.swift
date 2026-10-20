@@ -48,9 +48,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     /// Coming back reads the note list again, so that "Today" and the time labels are those of today when the app was
-    /// left open over midnight (spec §6.2).
+    /// left open over midnight (spec §6.2), and purges Recently Deleted when that was not done in the last hour.
     func applicationDidBecomeActive(_ notification: Notification) {
         coordinator?.refreshNoteList()
+        coordinator?.purgeExpiredNotes(now: Date())
     }
 
     private func launch() throws {
@@ -107,6 +108,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         coordinator.restore()
         windowController.showWindow(nil)
         editor.focus()
+        // Notes that were deleted more than 30 days ago are removed once the window is up (spec §6.2): one turn of the
+        // main queue after the restore, so that it is not part of what the first frame waits for.
+        DispatchQueue.main.async { [weak coordinator] in
+            MainActor.assumeIsolated { coordinator?.purgeExpiredNotes(now: Date()) }
+        }
 
         if let file = environment.options.frameMonitorFile {
             let monitor = FrameMonitor(file: file, clipView: editor.clipView)

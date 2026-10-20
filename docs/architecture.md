@@ -52,6 +52,12 @@ key press
   same way through `AppCommands` (`docs/features/tabs.md`).
 - The open tabs are a `TabList` (ScratchCore) held by the coordinator. A change of the tabs writes the note being left,
   shows the next note, redraws the tab strip and the sidebar, and hands the session to the storage queue at once.
+- Deleting goes `SidebarViewController.onDelete` (a row's context menu, or ⌘⌫ while the table has the keyboard) ->
+  `SessionCoordinator.deleteNote`: `persistNow()`, `NoteStore.delete` on the main thread, close the tab that shows the
+  note, then a read of the note list. Restore and Delete Permanently… (after a sheet) go the same way
+  (`restoreNote`, `deleteNotePermanently`). A deleted note that is opened from Recently Deleted is shown read-only. The
+  purge (`purgeExpiredNotes`) runs on the storage queue at launch and when the app becomes active
+  (`docs/features/recently-deleted.md`).
 - The sidebar never shows a new note that nobody has used: the coordinator filters it out of the list, and deletes its
   row when its tab closes or another note replaces it while it is untouched (`NoteStore.discard`).
 
@@ -64,8 +70,9 @@ key press
   note list reads that follow. Writes go in one order, and typing never waits for the disk. The coordinator hands it
   copies (`Note` and `SessionState` are values), never the editor.
 - **`Database`** serialises every SQLite call with a mutex, so the main thread may also call the stores directly. It does
-  so for the rare, small calls: restoring the session, creating a note, loading the note that is opened and
-  discarding an untouched one. They wait for a write that is running.
+  so for the rare, small calls: restoring the session, creating a note, loading the note that is opened,
+  discarding an untouched one, and deleting, restoring or deleting for good a note the owner chose. They wait for a write
+  that is running.
 - **`persistNow()` and every change of the active tab (`open`, `selectTab`, `closeTab`, `newNoteInNewTab`) wait for the
   storage queue on purpose** (`storageQueue.sync {}`), so that they never leave a write behind that a later read could
   miss. They run on the main thread only. Nothing the queue runs ever waits

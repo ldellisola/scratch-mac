@@ -5,8 +5,8 @@ Spec: [§6.6 Saving, launching and quitting](../superpowers/specs/2026-10-19-scr
 list) and §6.3 (a new note that stays empty is discarded), guarding the anti-goal "Lost text" (§4).
 
 Status: plan 1 (walking skeleton) and plan 2, tasks 6 and 7 (the title, the font size, the scroll anchor, the undo
-history, and tabs). Notes are open in tabs: see [tabs.md](tabs.md). Later tasks of plan 2 add pinning, search and
-deleting.
+history, and tabs). Notes are open in tabs: see [tabs.md](tabs.md). Pinning and search are in
+[sidebar.md](sidebar.md), deleting in [recently-deleted.md](recently-deleted.md).
 
 ## Guarantees
 
