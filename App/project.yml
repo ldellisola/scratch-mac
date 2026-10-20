@@ -1,0 +1,123 @@
+# XcodeGen spec for the Scratch app. `make project` generates App/Scratch.xcodeproj from this file; the generated
+# project is never committed. SCRATCH_VERSION comes from the VERSION file (the Makefile exports it).
+name: Scratch
+
+options:
+  bundleIdPrefix: io.github.ldellisola
+  createIntermediateGroups: true
+
+packages:
+  ScratchCore:
+    path: ../Packages/ScratchCore
+
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    ARCHS: arm64
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: ${SCRATCH_VERSION}
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_APP_SANDBOX: NO
+
+targets:
+  Scratch:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+      - path: Resources
+    dependencies:
+      - package: ScratchCore
+    settings:
+      base:
+        PRODUCT_NAME: Scratch
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ldellisola.Scratch
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The Info.plist is generated from these keys. There is no main storyboard.
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Scratch
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+
+  # Unit tests hosted in the app: they run inside the Scratch process, so they can use its AppKit classes.
+  ScratchAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/ScratchAppTests
+    dependencies:
+      - target: Scratch
+      - package: ScratchCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ldellisola.Scratch.AppTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Scratch.app/Contents/MacOS/Scratch
+        BUNDLE_LOADER: $(TEST_HOST)
+
+  # UI tests drive the built app from a separate process. AccessibilityID is compiled into the app and into every
+  # UI test target, so both sides share the identifiers.
+  ScratchUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: Tests/ScratchUITests
+      - path: Sources/Support/AccessibilityID.swift
+    dependencies:
+      - target: Scratch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ldellisola.Scratch.UITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Scratch
+
+  # Performance tests (plan 1, task 10). They run in the Release configuration through the ScratchPerf scheme, and
+  # drive the app like the UI tests do, so they share AccessibilityID and UITestSupport with them.
+  ScratchPerfTests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: Tests/ScratchPerfTests
+      - path: Sources/Support/AccessibilityID.swift
+      - path: Tests/ScratchUITests/UITestSupport.swift
+    dependencies:
+      - target: Scratch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ldellisola.Scratch.PerfTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Scratch
+
+schemes:
+  Scratch:
+    build:
+      targets:
+        Scratch: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - ScratchAppTests
+        - ScratchUITests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+  ScratchPerf:
+    build:
+      targets:
+        Scratch: all
+    run:
+      config: Release
+    test:
+      config: Release
+      targets:
+        - ScratchPerfTests

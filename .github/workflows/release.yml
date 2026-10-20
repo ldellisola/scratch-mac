@@ -1,0 +1,101 @@
+# Publishes a GitHub Release when a merge to main changes the app (spec section 9.6, plan 1 task 11).
+#
+# The version is the VERSION file. A merge that changes App/, Packages/ or VERSION runs this workflow. When the tag
+# v<VERSION> already exists, that version is released and the run stops successfully. Otherwise it builds the Release
+# app, zips it (`make release-zip`) and creates the release with the zip attached. The builds are ad-hoc signed and not
+# notarised (docs/decisions/0002-ad-hoc-signing.md), so there is no secret to configure: the workflow only needs the
+# repository token, with write access to contents.
+#
+# A change to App/ or Packages/ that keeps the old VERSION releases nothing. CI refuses that on the branch
+# (scripts/check-version-bump.sh, the linux job), so it should not reach main.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'App/**'
+      - 'Packages/**'
+      - 'VERSION'
+
+permissions:
+  contents: write
+
+# One release at a time: two quick merges must not both try to create the same tag. The second one waits, then finds
+# the tag and stops.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - id: checkout
+        name: Check out
+        uses: actions/checkout@v5
+
+      - id: version
+        name: Read VERSION and look for its tag
+        run: |
+          version=$(cat VERSION)
+          if ! [[ $version =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::VERSION must be MAJOR.MINOR.PATCH, it is '$version'"
+            exit 1
+          fi
+          # ls-remote --exit-code: 0 when the tag exists, 2 when no ref matches, anything else is a real failure.
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null || status=$?
+          case $status in
+            0)
+              echo "::notice::Tag v$version already exists, so $version is released. Nothing to do."
+              exists=true
+              ;;
+            2)
+              exists=false
+              ;;
+            *)
+              echo "::error::git ls-remote failed with exit code $status"
+              exit 1
+              ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "exists=$exists" >> "$GITHUB_OUTPUT"
+
+      - id: xcode
+        name: Select Xcode 26.6
+        if: steps.version.outputs.exists == 'false'
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+          swift --version
+
+      - id: xcodegen
+        name: Install XcodeGen
+        if: steps.version.outputs.exists == 'false'
+        run: brew install xcodegen
+
+      # Builds build/release/Scratch-<VERSION>.zip and checks it (scripts/check-release-zip.sh).
+      - id: build
+        name: Build the release zip
+        if: steps.version.outputs.exists == 'false'
+        run: make project release-zip
+
+      # --generate-notes lists what changed since the previous release. gh puts the text of --notes-file before that
+      # list, so the install steps come first. --target pins the tag to the commit that was built, not to whatever main
+      # is by the time this step runs.
+      - id: publish
+        name: Create the release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v$VERSION" "build/release/Scratch-$VERSION.zip" \
+            --title "Scratch $VERSION" --target "$GITHUB_SHA" \
+            --generate-notes --notes-file docs/release-notes-footer.md

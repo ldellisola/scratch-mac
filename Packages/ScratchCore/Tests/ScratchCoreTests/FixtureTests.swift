@@ -1,0 +1,182 @@
+import Foundation
+import Testing
+
+@testable import ScratchCore
+
+// Spec §9.4 (fixtures): a named fixture gives UI tests, screenshots and benchmarks the same data every time.
+
+private let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+private func stores() throws -> (NoteStore, SessionStore) {
+    let db = try Database(path: ":memory:")
+    return (try NoteStore(database: db), try SessionStore(database: db))
+}
+
+private func lines(of text: String) -> [Substring] {
+    text.split(separator: "\n", omittingEmptySubsequences: false)
+}
+
+private func note(titled title: String, in notes: NoteStore) throws -> Note {
+    let summary = try #require(try notes.summaries().first { $0.displayTitle == title })
+    return try #require(try notes.note(summary.id))
+}
+
+@Test func typicalMatchesMockup() throws {
+    let (notes, session) = try stores()
+    try Fixture.typical.seed(notes: notes, session: session, now: now)
+    let summaries = try notes.summaries()
+    #expect(summaries.count == 6)
+    #expect(summaries[0].displayTitle == "Snippets I keep reusing")
+    #expect(summaries[0].pinnedAt != nil)
+    #expect(summaries[1].displayTitle == "Deploy checklist")
+    #expect(summaries.dropFirst().allSatisfy { $0.pinnedAt == nil })
+    let state = try #require(try session.load())
+    #expect(state.tabs.count == 2)
+    #expect(state.activeTabIndex == 0)
+}
+
+@Test func typicalListsTheMockupRowsInOrder() throws {
+    let (notes, session) = try stores()
+    try Fixture.typical.seed(notes: notes, session: session, now: now)
+    let summaries = try notes.summaries()
+    #expect(
+        summaries.map(\.displayTitle) == [
+            "Snippets I keep reusing", "Deploy checklist", "curl -X POST https://api.local/v1/notes \\", "Standup",
+            "SELECT region, sum(volume)", "Groceries",
+        ])
+    #expect(summaries.map(\.hasTitle) == [true, true, false, true, false, true])
+    #expect(summaries[0].preview.hasPrefix("git log --oneline --graph --all"))
+    #expect(summaries[5].preview == "milk, eggs, coffee beans")
+}
+
+@Test func typicalDatesAreRelativeToNow() throws {
+    let (notes, session) = try stores()
+    try Fixture.typical.seed(notes: notes, session: session, now: now)
+    let hour = 3600.0
+    let day = 24 * hour
+    let expected: [String: Double] = [
+        "Snippets I keep reusing": -7 * day,
+        "Deploy checklist": -hour,
+        "curl -X POST https://api.local/v1/notes \\": -2 * hour,
+        "Standup": -day,
+        "SELECT region, sum(volume)": -day - 3 * hour,
+        "Groceries": -5 * day,
+    ]
+    for summary in try notes.summaries() {
+        let offset = try #require(expected[summary.displayTitle])
+        #expect(summary.modifiedAt == now.addingTimeInterval(offset), "\(summary.displayTitle)")
+    }
+}
+
+@Test func typicalSessionOpensDeployChecklistThenTheCurlNote() throws {
+    let (notes, session) = try stores()
+    try Fixture.typical.seed(notes: notes, session: session, now: now)
+    let state = try #require(try session.load())
+    let first = try #require(try notes.note(state.tabs[0].noteID))
+    let second = try #require(try notes.note(state.tabs[1].noteID))
+    #expect(first.displayTitle == "Deploy checklist")
+    #expect(second.hasTitle == false)
+    #expect(second.body.hasPrefix("curl -X POST https://api.local/v1/notes \\\n"))
+    #expect(lines(of: second.body).count == 3)
+    #expect(state.tabs.allSatisfy { $0.selection == 0 && $0.scrollY == 0 })
+}
+
+@Test func typicalDeployChecklistUsesEveryFormattingFeature() throws {
+    let (notes, session) = try stores()
+    try Fixture.typical.seed(notes: notes, session: session, now: now)
+    let deploy = try note(titled: "Deploy checklist", in: notes)
+    #expect(deploy.title == "Deploy checklist")
+    for marker in ["[ ] ", "[x] ", "- ", "**", "`2.4.1`", "```bash\n", "\n```"] {
+        #expect(deploy.body.contains(marker), "\(marker)")
+    }
+}
+
+@Test func typicalUntitledNotesStartWithTheMockupText() throws {
+    let (notes, session) = try stores()
+    try Fixture.typical.seed(notes: notes, session: session, now: now)
+    let query = try note(titled: "SELECT region, sum(volume)", in: notes)
+    #expect(query.title == "")
+    #expect(query.body == "SELECT region, sum(volume)\nFROM production GROUP BY region")
+    let groceries = try note(titled: "Groceries", in: notes)
+    #expect(groceries.body == "milk, eggs, coffee beans")
+}
+
+@Test func hugeNoteHasTenThousandLines() throws {
+    let (notes, session) = try stores()
+    try Fixture.hugeNote.seed(notes: notes, session: session, now: now)
+    let huge = try note(titled: "Huge", in: notes)
+    #expect(lines(of: huge.body).count == 10_000)
+    #expect(huge.body.contains("```swift"))
+}
+
+@Test func hugeNoteAlternatesProseAndCodeBlocksOfFiftyLines() throws {
+    let (notes, session) = try stores()
+    try Fixture.hugeNote.seed(notes: notes, session: session, now: now)
+    let all = lines(of: try note(titled: "Huge", in: notes).body)
+    for block in 0..<200 {
+        let slice = all[block * 50..<(block + 1) * 50]
+        if block.isMultiple(of: 2) {
+            #expect(!slice.contains { $0.hasPrefix("```") }, "block \(block) is prose")
+        } else {
+            #expect(slice.first == "```swift" && slice.last == "```", "block \(block) is code")
+            #expect(!slice.dropFirst().dropLast().contains { $0.hasPrefix("```") }, "block \(block) has no inner fence")
+        }
+    }
+}
+
+@Test func hugeNoteSessionHasOneTabOnHuge() throws {
+    let (notes, session) = try stores()
+    try Fixture.hugeNote.seed(notes: notes, session: session, now: now)
+    let summaries = try notes.summaries()
+    #expect(summaries.count == 2)
+    let small = try note(titled: "Small", in: notes)
+    #expect(lines(of: small.body).count == 10)
+    let huge = try note(titled: "Huge", in: notes)
+    let state = try #require(try session.load())
+    #expect(state.tabs.map(\.noteID) == [huge.id])
+    #expect(state.activeTabIndex == 0)
+}
+
+@Test func fixtureContentIsTheSameEveryTime() throws {
+    for fixture in Fixture.allCases {
+        let (notesA, sessionA) = try stores()
+        let (notesB, sessionB) = try stores()
+        try fixture.seed(notes: notesA, session: sessionA, now: now)
+        try fixture.seed(notes: notesB, session: sessionB, now: now)
+        let bodiesA = try notesA.summaries().map { try #require(try notesA.note($0.id)).body }
+        let bodiesB = try notesB.summaries().map { try #require(try notesB.note($0.id)).body }
+        #expect(bodiesA == bodiesB, "\(fixture)")
+    }
+}
+
+@Test func manyNotesHasTwoThousandNotes() throws {
+    let (notes, session) = try stores()
+    let started = ContinuousClock.now
+    try Fixture.manyNotes.seed(notes: notes, session: session, now: now)
+    #expect(ContinuousClock.now - started < .seconds(2))
+    let summaries = try notes.summaries()
+    #expect(summaries.count == 2000)
+    #expect(Set(summaries.map(\.displayTitle)) == Set((1...2000).map { "Note \($0)" }))
+}
+
+@Test func manyNotesAreOneMinuteApartAndTheSessionIsOnTheNewest() throws {
+    let (notes, session) = try stores()
+    try Fixture.manyNotes.seed(notes: notes, session: session, now: now)
+    let summaries = try notes.summaries()
+    #expect(summaries.first?.displayTitle == "Note 2000")
+    #expect(summaries.last?.displayTitle == "Note 1")
+    for (newer, older) in zip(summaries, summaries.dropFirst()) {
+        #expect(newer.modifiedAt.timeIntervalSince(older.modifiedAt) == 60)
+    }
+    #expect(summaries.allSatisfy { $0.modifiedAt <= now })
+    let state = try #require(try session.load())
+    #expect(state.tabs.map(\.noteID) == [summaries[0].id])
+    #expect(state.activeTabIndex == 0)
+}
+
+@Test func emptyHasNoNotesAndNoSession() throws {
+    let (notes, session) = try stores()
+    try Fixture.empty.seed(notes: notes, session: session, now: now)
+    #expect(try notes.summaries().isEmpty)
+    #expect(try session.load() == nil)
+}

@@ -1,0 +1,239 @@
+# Continuous integration. Every job publishes its result to the orphan `ci-results` branch (scripts/ci-summary.py and
+# scripts/publish-ci-results.sh), because cloud agents cannot download Actions artifacts. See AGENTS.md section 4.
+name: CI
+
+on:
+  push:
+    branches-ignore: [ci-results]
+  workflow_dispatch:
+
+# contents: write lets the job push to ci-results with the checkout's token.
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: linux
+    runs-on: ubuntu-24.04
+    container: swift:6.3.3-noble
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - id: deps
+        name: Install tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git make python3 libsqlite3-dev
+
+      # fetch-depth 0: the publish step fetches and pushes ci-results from this checkout.
+      - id: checkout
+        name: Check out
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: safe-directory
+        name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # Each check writes its output to build/ci/linux/<step>.log as well as to the job log.
+      - id: lint
+        name: Lint
+        run: |
+          mkdir -p build/ci/linux
+          make lint 2>&1 | tee build/ci/linux/lint.log
+
+      - id: core-test
+        name: ScratchCore tests
+        run: make core-test 2>&1 | tee build/ci/linux/core-test.log
+
+      - id: script-test
+        name: Script tests
+        run: make script-test 2>&1 | tee build/ci/linux/script-test.log
+
+      # A change to App/ or Packages/ needs a new VERSION, or the release workflow has nothing to publish (AGENTS.md
+      # section 6, Releases). Compares with main, which the full checkout has as origin/main. On main itself there is
+      # nothing to compare, and the check passes.
+      - id: version-bump
+        name: Version bump check
+        run: scripts/check-version-bump.sh origin/main 2>&1 | tee build/ci/linux/version-bump.log
+
+      - id: publish
+        name: Publish results to ci-results
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          mkdir -p build/ci/linux
+          for log in build/ci/linux/*.log; do
+            [ -e "$log" ] || continue
+            tail -n 300 "$log" > "$log.tail" && mv "$log.tail" "$log"
+          done
+          python3 scripts/ci-summary.py --job linux --sha "${{ github.sha }}" --run-url "$RUN_URL" --out build/ci/linux \
+            --step "deps=${{ steps.deps.outcome }}" \
+            --step "checkout=${{ steps.checkout.outcome }}" \
+            --step "safe-directory=${{ steps.safe-directory.outcome }}" \
+            --step "lint=${{ steps.lint.outcome }}" \
+            --step "core-test=${{ steps.core-test.outcome }}" \
+            --step "script-test=${{ steps.script-test.outcome }}" \
+            --step "version-bump=${{ steps.version-bump.outcome }}"
+          scripts/publish-ci-results.sh "${{ github.sha }}" linux build/ci/linux
+
+  # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests, the
+  # screenshots, the performance tests and the release zip. Runs on GitHub's Macs, because cloud agents have none
+  # (AGENTS.md section 4).
+  macos:
+    name: macos
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # fetch-depth 0: the publish step fetches and pushes ci-results from this checkout.
+      - id: checkout
+        name: Check out
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: xcode
+        name: Select Xcode 26.6
+        run: |
+          mkdir -p build/ci/macos
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+          swift --version
+
+      - id: xcodegen
+        name: Install XcodeGen
+        run: brew install xcodegen
+
+      # Each check writes its output to build/ci/macos/<step>.log as well as to the job log.
+      - id: project
+        name: Generate the Xcode project
+        run: make project 2>&1 | tee build/ci/macos/project.log
+
+      - id: core-test
+        name: ScratchCore tests on macOS
+        run: make core-test 2>&1 | tee build/ci/macos/core-test.log
+
+      # A step limit as well as the per-test limits in the Makefile: a hung UI test must fail this step, not the whole
+      # job, so that the publish step still runs and the results reach ci-results.
+      - id: app-test
+        name: App tests (hosted unit tests and UI tests)
+        timeout-minutes: 30
+        run: make app-test 2>&1 | tee build/ci/macos/app-test.log
+
+      # The key screens as PNG files (ScreenshotTests, `make screenshots`). Runs even when a test failed, because a
+      # picture of the failing app helps. Skipped only when the project could not be generated, or on cancel.
+      - id: screenshots
+        name: Screenshots
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        timeout-minutes: 15
+        run: make screenshots 2>&1 | tee build/ci/macos/screenshots.log
+
+      # The performance tests (make perf, about 5 minutes), then the numbers and their comparison with the baseline and
+      # the budgets (docs/decisions/0003). A FAIL in the check fails the job. Skipped only when the project could not be
+      # generated, or on cancel.
+      - id: perf
+        name: Performance tests
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        timeout-minutes: 25
+        run: make perf 2>&1 | tee build/ci/macos/perf.log
+
+      - id: perf-check
+        name: Performance check
+        if: ${{ !cancelled() && steps.perf.outcome == 'success' }}
+        run: |
+          mkdir -p build/ci/macos/perf
+          python3 scripts/perf-extract.py build/results/perf.xcresult build/ci/macos/perf/results.json
+          python3 scripts/perf-check.py --results build/ci/macos/perf/results.json \
+            --baseline perf/baseline.json --budgets perf/budgets.json | tee build/ci/macos/perf/report.md
+
+      # The release build and its zip, made the way the release workflow makes them (`make release-zip`, which also
+      # checks the zip: docs/decisions/0002). It runs on every push, so that a broken release shows up here and not on
+      # the first merge to main. After the performance tests, so that it cannot disturb them. Skipped only when the
+      # project could not be generated, or on cancel.
+      - id: release-zip
+        name: Release zip
+        if: ${{ !cancelled() && steps.project.outcome == 'success' }}
+        timeout-minutes: 15
+        run: make release-zip 2>&1 | tee build/ci/macos/release-zip.log
+
+      - id: publish
+        name: Publish results to ci-results
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          mkdir -p build/ci/macos
+          # What failed, from the result bundle. Best effort: a missing bundle or an unknown flag must not stop
+          # the results from being published.
+          if [ -d build/results/app.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path build/results/app.xcresult \
+              > build/ci/macos/test-summary.json 2> build/ci/macos/test-summary.err || true
+            xcrun xcresulttool export attachments --path build/results/app.xcresult \
+              --output-path build/ci/macos/failure-attachments --only-failures \
+              > build/ci/macos/failure-attachments.log 2>&1 || true
+          fi
+          # The performance run: what failed, everything xcresulttool knows about the metrics, the attachments (the
+          # screenshots of the keystroke test and the frame report), and the numbers when perf-check did not get to
+          # extract them. Best effort, like the rest. Screen recordings of failed tests are left out: they are large.
+          mkdir -p build/ci/macos/perf
+          if [ -d build/results/perf.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path build/results/perf.xcresult \
+              > build/ci/macos/perf/test-summary.json 2> build/ci/macos/perf/test-summary.err || true
+            xcrun xcresulttool get test-results metrics --path build/results/perf.xcresult \
+              > build/ci/macos/perf/metrics.json 2> build/ci/macos/perf/metrics.err || true
+            xcrun xcresulttool export attachments --path build/results/perf.xcresult \
+              --output-path build/ci/macos/perf/attachments > build/ci/macos/perf/attachments.log 2>&1 || true
+            find build/ci/macos/perf/attachments -name '*.mp4' -delete 2> /dev/null || true
+            if [ ! -f build/ci/macos/perf/results.json ]; then
+              python3 scripts/perf-extract.py build/results/perf.xcresult build/ci/macos/perf/results.json \
+                > build/ci/macos/perf/extract.log 2>&1 || true
+            fi
+          fi
+          # The screenshots (make screenshots): the named PNGs go to screenshots/. The manifest that names them is kept
+          # too, and, if naming failed, the files as exported, so that a failed naming can be diagnosed from here.
+          mkdir -p build/ci/macos/screenshots
+          if ls build/screenshots/*.png > /dev/null 2>&1; then
+            cp build/screenshots/*.png build/ci/macos/screenshots/
+          elif [ -d build/screenshots/raw ]; then
+            cp -R build/screenshots/raw build/ci/macos/screenshots-raw
+          fi
+          if [ -f build/screenshots/raw/manifest.json ]; then
+            cp build/screenshots/raw/manifest.json build/ci/macos/screenshots-manifest.json
+          fi
+          if [ -d build/results/screenshots.xcresult ]; then
+            xcrun xcresulttool get test-results summary --path build/results/screenshots.xcresult \
+              > build/ci/macos/screenshots-test-summary.json 2> build/ci/macos/screenshots-test-summary.err || true
+          fi
+          # Every compiler warning and error, from the whole log, before the logs are cut to their last 300 lines.
+          if [ -f build/ci/macos/app-test.log ]; then
+            grep -E '(warning|error):' build/ci/macos/app-test.log \
+              | grep -v -e appintentsmetadataprocessor -e linkd.autoShortcut | sort -u | head -n 200 \
+              > build/ci/macos/app-test-diagnostics.txt || true
+          fi
+          for log in build/ci/macos/*.log; do
+            [ -e "$log" ] || continue
+            tail -n 300 "$log" > "$log.tail" && mv "$log.tail" "$log"
+          done
+          python3 scripts/ci-summary.py --job macos --sha "${{ github.sha }}" --run-url "$RUN_URL" --out build/ci/macos \
+            --step "checkout=${{ steps.checkout.outcome }}" \
+            --step "xcode=${{ steps.xcode.outcome }}" \
+            --step "xcodegen=${{ steps.xcodegen.outcome }}" \
+            --step "project=${{ steps.project.outcome }}" \
+            --step "core-test=${{ steps.core-test.outcome }}" \
+            --step "app-test=${{ steps.app-test.outcome }}" \
+            --step "screenshots=${{ steps.screenshots.outcome }}" \
+            --step "perf=${{ steps.perf.outcome }}" \
+            --step "perf-check=${{ steps.perf-check.outcome }}" \
+            --step "release-zip=${{ steps.release-zip.outcome }}"
+          scripts/publish-ci-results.sh "${{ github.sha }}" macos build/ci/macos
