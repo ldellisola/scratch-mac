@@ -22,12 +22,13 @@ lint:
 format:
 	swift format format --in-place --recursive Packages App
 
-# [linux] Run the tests for the scripts in scripts/ (the ci-results loop and the performance scripts). Needs bash, git
-# and python3.
+# [linux] Run the tests for the scripts in scripts/ (the ci-results loop, the performance scripts and the version bump
+# check). Needs bash, git and python3.
 script-test:
 	bash scripts/tests/test-ci-scripts.sh
 	bash scripts/tests/test-perf-check.sh
 	bash scripts/tests/test-perf-extract.sh
+	bash scripts/tests/test-version-bump.sh
 
 # [linux] Wait for CI results on the ci-results branch: make ci-wait SHA=<sha> [JOBS="linux macos"].
 # CI_WAIT_TIMEOUT (seconds) bounds one wait. make exits 2 on any failure, so read the last line of output to tell a

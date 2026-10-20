@@ -57,6 +57,13 @@ jobs:
         name: Script tests
         run: make script-test 2>&1 | tee build/ci/linux/script-test.log
 
+      # A change to App/ or Packages/ needs a new VERSION, or the release workflow has nothing to publish (AGENTS.md,
+      # section 'Releases'). Compares with main, which the full checkout has as origin/main. On main itself there is
+      # nothing to compare, and the check passes.
+      - id: version-bump
+        name: Version bump check
+        run: scripts/check-version-bump.sh origin/main 2>&1 | tee build/ci/linux/version-bump.log
+
       - id: publish
         name: Publish results to ci-results
         if: always()
@@ -74,7 +81,8 @@ jobs:
             --step "safe-directory=${{ steps.safe-directory.outcome }}" \
             --step "lint=${{ steps.lint.outcome }}" \
             --step "core-test=${{ steps.core-test.outcome }}" \
-            --step "script-test=${{ steps.script-test.outcome }}"
+            --step "script-test=${{ steps.script-test.outcome }}" \
+            --step "version-bump=${{ steps.version-bump.outcome }}"
           scripts/publish-ci-results.sh "${{ github.sha }}" linux build/ci/linux
 
   # Everything that needs macOS: ScratchCore on macOS, then the app build, hosted unit tests and UI tests, the
