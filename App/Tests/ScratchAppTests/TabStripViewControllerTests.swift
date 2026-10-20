@@ -38,6 +38,22 @@ final class TabStripViewControllerTests: XCTestCase {
         return (area, strip, editor, window)
     }
 
+    /// What a failure message needs to say about the strip's width: the sizes and the constraints that decide it.
+    private func describeStrip(_ strip: TabStripViewController) -> String {
+        guard let stripView = strip.view as? TabStripView else { return "the strip's view is not a TabStripView" }
+        let glass = stripView.glassView
+        let content = glass.contentView
+        let horizontal = stripView.constraintsAffectingLayout(for: .horizontal).map { String(describing: $0) }
+        return """
+            strip frame \(stripView.frame), intrinsic \(stripView.intrinsicContentSize), fitting \(stripView.fittingSize)
+            glass frame \(glass.frame), intrinsic \(glass.intrinsicContentSize), \
+            hugging \(glass.contentHuggingPriority(for: .horizontal).rawValue), \
+            translates \(glass.translatesAutoresizingMaskIntoConstraints)
+            content frame \(content?.frame ?? .zero), translates \(content?.translatesAutoresizingMaskIntoConstraints ?? false)
+            horizontal constraints: \(horizontal.joined(separator: "; "))
+            """
+    }
+
     // MARK: The tabs
 
     /// Each tab is one button that says its title, and the active one is the selected one.
@@ -142,7 +158,8 @@ final class TabStripViewControllerTests: XCTestCase {
         XCTAssertEqual(strip.height, 32, accuracy: 0.5)
         XCTAssertEqual(strip.minX, 12, accuracy: 0.5)
         XCTAssertEqual(container.maxY - strip.maxY, 8, accuracy: 0.5, "the space above the strip")
-        XCTAssertEqual(strip.width, expectedWidth, accuracy: 0.5, "the strip hugs its tabs")
+        XCTAssertEqual(
+            strip.width, expectedWidth, accuracy: 0.5, "the strip hugs its tabs. \(describeStrip(host.strip))")
         XCTAssertEqual(editor.maxY, strip.minY - 4, accuracy: 0.5, "the editor starts below the strip")
         XCTAssertEqual(editor.minY, 0, accuracy: 0.5)
         XCTAssertEqual(editor.width, container.width, accuracy: 0.5)
@@ -168,7 +185,9 @@ final class TabStripViewControllerTests: XCTestCase {
 
         let container = host.area.view.bounds
         let strip = host.strip.view.frame
-        XCTAssertEqual(strip.maxX, container.maxX - 12, accuracy: 0.5, "the strip stops short of the right edge")
+        XCTAssertEqual(
+            strip.maxX, container.maxX - 12, accuracy: 0.5,
+            "the strip stops short of the right edge. \(describeStrip(host.strip))")
         let tabs = tabViews(in: host.strip.view)
         XCTAssertEqual(tabs.count, 12)
         XCTAssertTrue(tabs.allSatisfy { $0.frame.width >= TabStripLayout.minimumWidth - 0.5 })
