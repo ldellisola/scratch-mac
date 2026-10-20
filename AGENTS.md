@@ -123,8 +123,10 @@ docs/features/                    one short behaviour spec per feature: paste-an
                                   title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md (more as features
                                   land)
 docs/images/                      the README's screenshots (window-light, window-dark, search, recently-deleted): copies
-                                  of the PNGs that CI published for a release (`scripts/ci-fetch.sh`, section 4), so they
-                                  change only when someone replaces them
+                                  of the `screenshots/` that CI published for a release commit (`scripts/ci-fetch.sh`,
+                                  section 4: typical-light, typical-dark, search-light, recently-deleted-light). They
+                                  change only when someone replaces them, so refresh them when a plan visibly changes
+                                  the UI
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
                                   performance check compares), 0004 (a new note opens at the end of the tab strip, and

@@ -9,6 +9,13 @@ notes and todo lists.
   <img src="docs/images/window-dark.png" alt="The same window in dark mode" width="49%">
 </p>
 
+## Why
+
+On Windows, Notepad was the place for anything you did not want to file: open it, type or paste, close it without
+saving, and find it all again next time. Scratch is that habit on the Mac, with just enough structure for what ends up
+there: code snippets, quick notes and todo lists. Text you paste always takes the note's font, whatever it was copied
+from, and text you copy always comes out as plain text.
+
 ## What it does
 
 Scratch is at version 0.2, which does these things:
@@ -22,10 +29,13 @@ Scratch is at version 0.2, which does these things:
   is autocorrected, so pasted code keeps every character.
 - **Notes with an optional title, and tabs.** A note can have a bold title above its text. Tabs sit in a glass strip
   above the note, each with its own cursor, scroll position and undo history.
-- **A sidebar that finds things.** Notes are grouped as Pinned, Today, Yesterday and Earlier, newest edit first. The
-  search field filters them as you type, over titles and text.
-- **Only you delete notes.** Delete moves a note to Recently Deleted, where you can restore it. It is removed for good
-  after 30 days.
+- **A sidebar that finds things.** Notes are grouped as Pinned, Today, Yesterday and Earlier, newest edit first. Pin a
+  note (the pin button or ⇧⌘P) to keep it at the top. The search field filters the notes as you type, over titles and
+  text.
+- **Deleting is undoable.** Delete a note from its right-click menu, or with ⌘⌫ in the sidebar. It moves to Recently
+  Deleted, where you can restore it, and is removed for good after 30 days.
+- **Made for macOS 26.** The sidebar, the tab strip and the toolbar buttons are native Liquid Glass, and the app is
+  built only for Apple Silicon.
 
 <p align="center">
   <img src="docs/images/search.png" alt="Typing kube in the search field leaves only the notes that contain it" width="49%">
@@ -51,7 +61,7 @@ Scratch needs macOS 26 on a Mac with Apple Silicon.
 1. Download `Scratch-<version>.dmg` from the [latest release](https://github.com/ldellisola/scratch-mac/releases/latest)
    and open it.
 2. Drag Scratch onto the Applications folder in the window that opens, then eject the disk image.
-3. Open Scratch. macOS blocks the first launch of every new version, because the app is signed but not notarised. Go to
+3. Open Scratch. macOS blocks the first launch of every new version, because the app is not notarised. Go to
    System Settings → Privacy & Security, scroll down to the message about Scratch and click **Open Anyway**. In Terminal,
    `xattr -dr com.apple.quarantine /Applications/Scratch.app` does the same.
 
