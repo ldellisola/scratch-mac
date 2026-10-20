@@ -24,6 +24,8 @@ final class NoteRowCellView: NSTableCellView {
 
     private static let pinSize: CGFloat = 10
     private static let sideMargin: CGFloat = 8
+    /// The pin before a pinned note's title. One image for every row: looking a symbol up costs more than a row.
+    private static let pinImage = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: nil)
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -49,7 +51,6 @@ final class NoteRowCellView: NSTableCellView {
         timeField.setContentCompressionResistancePriority(.required, for: .horizontal)
         timeField.setContentHuggingPriority(.required, for: .horizontal)
 
-        pinView.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: nil)
         pinView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 9, weight: .regular)
         pinView.contentTintColor = .systemOrange
         pinView.imageScaling = .scaleProportionallyDown
@@ -108,6 +109,7 @@ final class NoteRowCellView: NSTableCellView {
         }
 
         let isPinned = summary.pinnedAt != nil && summary.deletedAt == nil
+        if isPinned && pinView.image == nil { pinView.image = Self.pinImage }
         pinView.isHidden = !isPinned
         pinWidth.constant = isPinned ? Self.pinSize : 0
         titleLeading.constant = isPinned ? 4 : 0

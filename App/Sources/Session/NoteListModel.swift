@@ -37,6 +37,8 @@ final class NoteListModel {
     private var searchText = ""
     /// Numbers the reads: the result of read `n` is shown only while `n` is the latest.
     private var request = 0
+    /// When the last read was asked for.
+    private var lastRefresh = Date.distantPast
 
     /// Every live note, as of the last read.
     private var live: [NoteSummary] = []
@@ -58,6 +60,7 @@ final class NoteListModel {
     /// arrives, unless a newer read was asked for.
     func refresh() {
         request += 1
+        lastRefresh = Date()
         let request = self.request
         let text = searchText
         let searching = SearchQuery.ftsExpression(text) != nil
@@ -81,6 +84,14 @@ final class NoteListModel {
                 }
             }
         }
+    }
+
+    /// Reads the note list again unless a read was asked for less than `age` seconds ago. For the app becoming active:
+    /// it does so at every launch too, right after the read that the restore asked for, and a second read and a second
+    /// reload of the rows would only delay the first frames.
+    func refresh(ifOlderThan age: TimeInterval) {
+        guard Date().timeIntervalSince(lastRefresh) >= age else { return }
+        refresh()
     }
 
     /// The search field changed. An empty text, or one with no word in it (`SearchQuery`), shows the whole list.

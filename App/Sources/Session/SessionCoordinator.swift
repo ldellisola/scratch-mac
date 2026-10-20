@@ -561,10 +561,11 @@ final class SessionCoordinator {
 
     // MARK: The note list and the tab titles
 
-    /// Reads the note list again, for example when the app becomes active, so that the day groups and the time labels
-    /// are those of today.
+    /// Reads the note list again when the app becomes active, so that the day groups and the time labels are those of
+    /// today after a long time away. Every autosave reads the list too, so only a read that is older than half a minute
+    /// is worth another (and none is right after the launch's own).
     func refreshNoteList() {
-        noteList.refresh()
+        noteList.refresh(ifOlderThan: 30)
     }
 
     /// The note list was read. The tab titles of the open notes follow it, and so does the pin of the active note, and
