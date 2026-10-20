@@ -31,6 +31,8 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   "state"), TabList (the tab rules: open, close, select, with TabOpening and
                                   TabClosing as results), FontSize (13 pt, 9 to 32, steps of 1), TextOffset (clamps a
                                   saved cursor offset to a Character boundary)
+  Sources/ScratchCore/Sidebar/    SidebarSections (splits the note list into Pinned, Today, Yesterday, Earlier and
+                                  Recently Deleted by calendar day), NoteTimeLabel (a row's "10:42" or "Oct 14")
   Sources/ScratchCore/Autosave/   Autosaver (decides when unsaved changes are written: 300 ms after the last change,
                                   at most 1 s after the first, no repeating timers) and the AutosaveScheduler clocks it
                                   runs on: DispatchAutosaveScheduler (production), ManualAutosaveScheduler (tests)
@@ -315,6 +317,11 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   of `search`, so a restore needs no reindexing.
 - **Search text is never FTS5 syntax.** Pass what the owner typed through `SearchQuery.ftsExpression`, which quotes every
   word, and never build a `MATCH` string yourself. A word without a letter or a digit is dropped.
+- **Sidebar days are calendar days, and time labels are the locale's.** `SidebarSections` and `NoteTimeLabel` both ask
+  `SidebarSections.group(of:now:calendar:)`, which compares with the start of today and of yesterday in the given
+  calendar. Never subtract 24 hours: a day is 23 or 25 hours long when the clocks change. ICU puts a narrow no-break
+  space (U+202F) before AM/PM and its version differs between Linux and macOS, so tests of a label turn U+202F and
+  U+00A0 into plain spaces before comparing (`spaced` in `NoteTimeLabelTests`).
 - **`swift test --sanitize=thread` reports false data races on `Synchronization.Mutex` on Linux.** TSAN does not see
   the futex that `Mutex` uses, so every `Mutex`-guarded access looks unsynchronised (`Database` and `Autosaver` both
   show it). A report whose two accesses are both inside `withLock` is noise.
