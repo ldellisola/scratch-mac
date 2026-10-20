@@ -141,6 +141,41 @@ final class EditorViewControllerTests: XCTestCase {
         }
     }
 
+    /// Plan 3 task 7: AppKit scrolls a text view to its selection when its frame changes, and for a caret on the first
+    /// line of a long note that put the line at the top of the window, 12 pt up, in the huge-note screenshot (the stack
+    /// was `-[NSTextView setFrameSize:]` to `-scrollRectToVisible:`). `NoteTextView.scrollToVisible` scrolls the rest
+    /// of the way to the top when a scroll to a rect that starts in the top inset leaves less than the inset above.
+    func testScrollToTheFirstLineKeepsTheTopInsetOnScreen() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let (text, _) = makeTenThousandLines()
+        let note = makeNote(text)
+        host.editor.show(note, tab: makeTab(for: note), undoManager: UndoManager(), isReadOnly: false)
+        host.editor.view.layoutSubtreeIfNeeded()
+        let textView = host.editor.textView
+        let clipView = host.editor.clipView
+        let insetTop = clipView.enclosingScrollView?.contentInsets.top ?? 0
+        let top = -insetTop
+        let firstLine = NSRect(x: 0, y: textView.textContainerInset.height, width: 100, height: 16)
+
+        // From further down, the minimum scroll that shows the first line puts it at the top of the window.
+        textView.scroll(NSPoint(x: 0, y: 400))
+        XCTAssertEqual(clipView.bounds.origin.y, 400, "the scroll away from the top")
+        _ = textView.scrollToVisible(firstLine)
+        XCTAssertEqual(clipView.bounds.origin.y, top, "the first line was shown without its top inset")
+        XCTAssertLessThanOrEqual(textView.visibleRect.minY, 0)
+
+        // A rect that is visible already scrolls nothing: not even the few points that the top inset needs.
+        textView.scroll(NSPoint(x: 0, y: 6))
+        _ = textView.scrollToVisible(firstLine)
+        XCTAssertEqual(clipView.bounds.origin.y, 6, "a visible rect must not scroll the view")
+
+        // A rect further down scrolls as AppKit decides.
+        textView.scroll(NSPoint(x: 0, y: 0))
+        _ = textView.scrollToVisible(NSRect(x: 0, y: 5_000, width: 100, height: 16))
+        XCTAssertGreaterThan(clipView.bounds.origin.y, 1_000, "a rect far down must scroll normally")
+    }
+
     // MARK: Font size
 
     func testFontSizeAppliesToTextTypingAndTitle() {

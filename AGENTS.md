@@ -434,6 +434,17 @@ new kind of release file, with no change to the app, ships.
   the editor starts below the strip, so the editor's own safe area has no toolbar in it: its title field sits 10 pt
   below the editor's top, the scroll view starts below the title field, and its inset is 0. The code does not rely on
   that: every scroll position goes through `contentInsets.top`.
+- **AppKit scrolls a text view to its selection whenever its frame changes, and that hid the top inset.** The text
+  starts `NoteTextView.verticalInset` (12 pt) below the top of the view. `-[NSTextView setFrameSize:]` calls
+  `-scrollRectToVisible:` for the selection (in the CI stack it came from `NSScrollerImpPair`'s new recommended scroller
+  style, which retiles the scroll view at launch, and the same happens when the window or the sidebar is resized), and
+  for a caret on the first line of a note taller than the window it moved the clip view to y = 12, so the huge-note
+  screenshot had its first line 12 pt higher than the typical one. `NoteTextView.scrollToVisible(_:)` finishes the
+  scroll to the top when a scroll to a rect that starts in the top inset left less than the inset above it. To find
+  who scrolls a view, log `Thread.callStackSymbols` from a `boundsDidChangeNotification` observer of the clip view, and
+  print it in a UI test's failure message through the `debug.state` element: that is how this was found.
+  (`show` itself was right all along: `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTopInset` passes without
+  the override, and `TitleUITests.testHugeNoteShowsItsTopInsetAtLaunch` is the test that needs it.)
 - **A scroll anchor waits for a layout.** Text can only be positioned at a width, and at launch `show` runs before the
   window has laid out (the scroll view is 0 wide), so `EditorViewController` keeps the anchor and scrolls in
   `viewDidLayout` (`isLaidOut`, `scrollAnchorToApply`). It keeps applying it in the layouts before the window is

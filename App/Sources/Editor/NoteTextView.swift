@@ -142,6 +142,32 @@ final class NoteTextView: NSTextView {
         typingAttributes = Self.noteAttributes(size: fontSize)
     }
 
+    // MARK: Scrolling
+
+    /// Keeps the top inset on screen when AppKit scrolls to a rect that starts in it.
+    ///
+    /// A text view keeps its selection visible whenever its frame changes (`-[NSTextView setFrameSize:]` scrolls to the
+    /// selection): at launch, when the scrollers change their style, and whenever the window or the sidebar is resized.
+    /// With the caret on the first line of a note that is taller than the window, the rect it asks for starts at the top
+    /// of the text, `textContainerInset.height` below the top of the view, and AppKit puts it at the top of the window.
+    /// That scrolled the huge note 12 pt, so its first line sat higher than the typical note's (Plan 2's final review).
+    /// When such a scroll leaves less than the inset above the text, the view is scrolled the rest of the way to the top
+    /// (`-contentInsets.top`, which every scroll position of the editor goes through). A call that did not scroll (the
+    /// rect was visible already) or that ends further down is left alone.
+    override func scrollToVisible(_ rect: NSRect) -> Bool {
+        let before = enclosingScrollView?.contentView.bounds.origin.y
+        let scrolled = super.scrollToVisible(rect)
+        let inset = textContainerInset.height
+        guard rect.minY <= inset + 1, let scrollView = enclosingScrollView else { return scrolled }
+        let clipView = scrollView.contentView
+        let top = -scrollView.contentInsets.top
+        let y = clipView.bounds.origin.y
+        if y != before, y > top, y <= top + inset + 1 {
+            scroll(NSPoint(x: clipView.bounds.origin.x, y: top))
+        }
+        return scrolled
+    }
+
     // MARK: Edits the owner asks for
 
     /// Applies an edit that one of the editing rules (`ListEditing`, `InlineEditing`) answered with, as one undo step:

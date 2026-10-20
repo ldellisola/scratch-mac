@@ -37,6 +37,12 @@ history, and tabs) and plan 3, task 7 (failed writes, the top inset). Notes are 
   width, so at launch it keeps the anchor and scrolls to it in the first layout, and a save before that layout writes
   the anchor it was given. The text above the anchor is laid out for this (TextKit lays out lazily), which takes a
   moment in a very long note.
+- **A note at its top shows the gap above its first line.** The text starts 12 pt below the top of the editor (the text
+  container's inset), and a note shown without an anchor, with anchor 0 or scrolled to its top has that gap on screen,
+  as the first note of the typical fixture has. AppKit scrolls a text view to its selection whenever the view is resized
+  (at launch, when the scrollers change style, when the window or the sidebar is resized), which moved a long note's
+  first line up to the top of the window; `NoteTextView.scrollToVisible(_:)` finishes the scroll to the top when that
+  leaves less than the gap above the text.
 - **The first launch opens one empty note**, ready to type in.
 - **The sidebar lists the notes**, pinned first and then the most recently edited first, with the open note
   highlighted. A row shows the title (bold) or else the first line (in the note font), a preview line below it and
@@ -85,7 +91,7 @@ clicking the editor first, which also proves that the editor is ready to type at
 | The scroll position comes back as the same text at the top (read from the `debug.state` element) | `TitleUITests.testScrollPositionSurvivesRelaunch` |
 | A note shown before the first layout, or after it, is scrolled to its anchor | `EditorViewControllerTests.testScrollAnchorRoundTrips`, `testScrollAnchorAppliesWhenAlreadyLaidOut` |
 | A note without an anchor shows its top, and the anchor given is the one saved | `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTop`, `testScrollAnchorIsSavedAsGiven` |
-| A note at its top shows the text view's top inset (the clip view is at `-contentInsets.top`, not past it) | `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTopInset`, `TitleUITests.testHugeNoteShowsItsTopInsetAtLaunch` |
+| A note at its top shows the text view's top inset (the clip view is at `-contentInsets.top`, not past it) | `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTopInset`, `testScrollToTheFirstLineKeepsTheTopInsetOnScreen`, `TitleUITests.testHugeNoteShowsItsTopInsetAtLaunch` |
 | A failed write of a note that was left is retried by the next save | `SaveFailureTests.testFailedSaveOfLeftNoteIsRetried`, `testFailedFirstSaveOfLeftNoteIsRetried`, `testNewerTypingWinsOverAFailedOlderCopy` |
 | Switching back to a note whose write failed shows the text that was left | `SaveFailureTests.testSwitchingBackShowsUnsavedText` |
 | The record of failed writes keeps the newest copy of a note, and forgets it when a write succeeds | ScratchCore `UnsavedNotesTests` |
