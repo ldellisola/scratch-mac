@@ -250,14 +250,18 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         let y = Double(scrollView.contentView.bounds.origin.y)
         guard scrollLog.count < 10, y != scrollLogY else { return }
         scrollLogY = y
-        let frames = Thread.callStackSymbols.dropFirst(2).prefix(16).map { frame in
-            frame.split(separator: " ", omittingEmptySubsequences: true).dropFirst(3).joined(separator: " ")
+        // The first frames are this observer and the notification that called it.
+        let frames = Thread.callStackSymbols.dropFirst(14).prefix(34).map { frame in
+            String(
+                frame.split(separator: " ", omittingEmptySubsequences: true).dropFirst(3).joined(separator: " ").prefix(
+                    90))
         }
         let event = NSApp.currentEvent.map { String($0.type.rawValue) } ?? "none"
         let window = view.window
         let state =
             "y=\(y) event=\(event) visible=\(window?.isVisible ?? false) key=\(window?.isKeyWindow ?? false) "
-            + "applying=\(isApplyingScroll) loading=\(isLoadingNote) laidOut=\(isLaidOut)"
+            + "applying=\(isApplyingScroll) loading=\(isLoadingNote) laidOut=\(isLaidOut) "
+            + "responder=\(window?.firstResponder.map { String(describing: type(of: $0)) } ?? "none")"
         scrollLog.append(state + " | " + frames.joined(separator: " <- "))
     }
 

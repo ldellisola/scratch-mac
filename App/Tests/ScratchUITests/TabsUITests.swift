@@ -270,18 +270,15 @@ final class TabsUITests: XCTestCase {
     }
 
     /// Plan 3 task 7, docs/decisions/0004: a note that had text, was emptied and was still open in a tab at quit is
-    /// restored as the owner's note: it is listed, and closing its tab keeps it.
+    /// restored as the owner's note: it is listed, and closing its tab keeps it. The curl note is the one to empty, and
+    /// not "Groceries": a title stays when the text is deleted, and a note with a title is not empty.
     func testEmptiedNoteSurvivesRelaunch() throws {
         continueAfterFailure = false
         let app = launchTypical()
-        let groceries = UITestSupport.sidebarRow(titled: "Groceries", in: app)
-        XCTAssertTrue(groceries.waitForExistence(timeout: 10), "the sidebar has no row titled Groceries")
-        groceries.click()
-        let shown = UITestSupport.wait { self.editorText(in: app).contains("milk, eggs") }
-        XCTAssertTrue(shown, "the editor shows: \(editorText(in: app))")
+        UITestSupport.tabs(in: app)[1].click()
+        waitForActiveTab(1, in: app)
 
-        // The click in the sidebar leaves the keyboard there: click the editor, then empty it.
-        UITestSupport.editor(in: app).click()
+        // Selecting a tab puts the cursor in its note.
         app.typeKey("a", modifierFlags: .command)
         app.typeKey(.delete, modifierFlags: [])
         Thread.sleep(forTimeInterval: 1.5)
@@ -292,11 +289,15 @@ final class TabsUITests: XCTestCase {
         XCTAssertTrue(
             UITestSupport.wait(timeout: 20) { UITestSupport.tabs(in: relaunched).count == 2 },
             "the tabs after relaunch: \(UITestSupport.tabTitles(in: relaunched))")
+        XCTAssertEqual(UITestSupport.tabTitles(in: relaunched), ["Deploy checklist", "Untitled"])
+        waitForActiveTab(1, in: relaunched)
+        // The emptied note is listed as a dimmed "Untitled": the six rows are back.
         let listed = UITestSupport.wait(timeout: 20) { UITestSupport.sidebarTitleTexts(in: relaunched).count == 6 }
-        XCTAssertTrue(listed, "the sidebar rows after relaunch: \(UITestSupport.sidebarTitleTexts(in: relaunched))")
+        let before = UITestSupport.sidebarTitleTexts(in: relaunched)
+        XCTAssertTrue(listed, "the sidebar rows after relaunch: \(before)")
+        XCTAssertEqual(before.filter { $0 == "Untitled" }.count, 1, "the sidebar rows after relaunch: \(before)")
 
-        // The restored tab is the emptied note, the active one: closing it keeps the note.
-        XCTAssertEqual(UITestSupport.activeTabTitle(in: relaunched), "Untitled")
+        // The restored active tab is the emptied note: closing it keeps the note.
         relaunched.typeKey("w", modifierFlags: .command)
         waitForTabs(1, in: relaunched)
         Thread.sleep(forTimeInterval: 1.0)
