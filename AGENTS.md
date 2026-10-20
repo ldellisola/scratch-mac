@@ -37,11 +37,14 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   Recently Deleted by calendar day), NoteTimeLabel (a row's "10:42" or "Oct 14")
   Sources/ScratchCore/Autosave/   Autosaver (decides when unsaved changes are written: 300 ms after the last change,
                                   at most 1 s after the first, no repeating timers) and the AutosaveScheduler clocks it
-                                  runs on: DispatchAutosaveScheduler (production), ManualAutosaveScheduler (tests)
+                                  runs on: DispatchAutosaveScheduler (production), ManualAutosaveScheduler (tests);
+                                  UnsavedNotes (the notes whose write failed, kept with the owner's text until a write
+                                  succeeds: thread-safe, the newest copy of a note wins)
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
                                   SQLValue and Row, Schema (version 2, with the FTS5 index `notes_fts`, the migration
                                   rule, and SchemaError for a database from a newer Scratch), ScratchStorage (opens
-                                  the data directory and its stores; refuses a fixture on the real directory)
+                                  the data directory and its stores; refuses a fixture on the real directory; its
+                                  `database` is public so that tests can make writes fail, see section 7)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
   Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold,
                                   inline code and links, as UTF-16 `NSRange`s), MarkupSpan and MarkupKind, LinkScanner
@@ -102,7 +105,7 @@ App/Sources/Support/              AccessibilityID (also compiled into the UI tes
                                   afterMeasurementsOrder` after the signposts end), FrameMonitor
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
-                                  size and scroll anchor from, in isolated launches only)
+                                  size, scroll anchor and scroll offset from, in isolated launches only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code, each with a light and a dark variant)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
@@ -111,7 +114,9 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
                                   reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
                                   click ticks a box, ⇧⌘L, the drawn symbol, the Format menu, ListKeyTests: Return, Tab,
-                                  ⇧Tab and ⌘B, LinkTests: ⌘-click opens a link, the pointing hand)
+                                  ⇧Tab and ⌘B, LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
+                                  coordinator on a failing disk keeps and retries the notes it could not write, and
+                                  the emptied-note rules)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -441,10 +446,10 @@ new kind of release file, with no change to the app, ships.
   return, so they cannot disagree. Loading a note's text runs between `disableUndoRegistration()` and
   `enableUndoRegistration()` of its manager and is not an undo step, and `breakUndoCoalescing()` ends the typing run of
   the note being left. Show a note with the text it had when it was left: an undo step holds ranges of that text.
-- **UI tests read the font size and the scroll anchor from `debug.state`.** `DebugStateElement` is a 1 x 1 point view
-  in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its accessibility value
-  that it computes when asked: `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no clicks, so it is
-  not in a screenshot.
+- **UI tests read the font size, the scroll anchor and the scroll offset from `debug.state`.** `DebugStateElement` is a
+  1 x 1 point view in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its
+  accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY` and `topInset`):
+  `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no clicks, so it is not in a screenshot.
 - **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
   `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
   equivalents needs two items.
@@ -469,9 +474,19 @@ new kind of release file, with no change to the app, ships.
 - **A new note that nobody has used is not in the sidebar** and is discarded when its tab closes or another note
   replaces it in the tab, while it is still empty. It is "untouched" while it was created in this session (or restored
   empty) and has no text. Test changes that look at the sidebar must type first. Switching to another tab keeps an
-  untouched note and its tab: only closing or replacing discards it. An existing note that the owner empties is kept
-  (docs/decisions/0004), except in two cases the code cannot tell apart yet (a note created and typed in this session,
-  and one still open in a tab at quit): the record says what closing them takes.
+  untouched note and its tab: only closing or replacing discards it. A note the owner empties is kept
+  (docs/decisions/0004): the first edit of its text or title (`noteWasEdited`) takes it out of `untouchedNoteIDs` for
+  good, and at a restore a note is untouched only when it is empty and its `modifiedAt` is still its `createdAt`
+  (`isNeverUsed`). Anything that writes a note's text must set `modifiedAt`, or that rule breaks.
+- **A failed write keeps the note, and the storage queue says so itself.** `SessionCoordinator.saveNow` writes the notes
+  in `unsavedNotes` (`UnsavedNotes`, ScratchCore) first, then the note of the active tab when it has edits, then the
+  session, each note as a write of its own. The storage-queue block records the outcome in `unsavedNotes` (a mutex,
+  not a hop to the main thread), so it is right when `persistNow()` returns: a note that was left while its write failed
+  is retried by the next save and is shown again from `unsavedNotes` (`loadNote`), never from the older stored text. A
+  code path that removes a note from the storage (`discard`, `didRemoveNotes`) must `forget` it there, or a retry would
+  insert it again. To make writes fail in a test, run `PRAGMA query_only = 1` on `storage.database` (file permissions do
+  not work on an open SQLite file), and `= 0` to repair. Under it `NoteStore.create` fails too, so `newNoteInNewTab`
+  does nothing: switch with `open(_:inNewTab:)` to a note that exists.
 - **A tab is the unit of `TabList`, and `SessionCoordinator.tabs` is the only copy.** The coordinator holds the note of
   the active tab (`current`) and nothing else of any note: another tab's note is read from the storage when its tab is
   shown, after the note being left was written (`leaveCurrentNote`). `saveNow` records the cursor and scroll anchor of

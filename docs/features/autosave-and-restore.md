@@ -4,8 +4,8 @@ What is saved, when, and what a relaunch brings back, plus the sidebar and the n
 Spec: [§6.6 Saving, launching and quitting](../superpowers/specs/2026-10-19-scratchpad-design.md), §6.2 (the sidebar
 list) and §6.3 (a new note that stays empty is discarded), guarding the anti-goal "Lost text" (§4).
 
-Status: plan 1 (walking skeleton) and plan 2, tasks 6 and 7 (the title, the font size, the scroll anchor, the undo
-history, and tabs). Notes are open in tabs: see [tabs.md](tabs.md). Pinning and search are in
+Status: plan 1 (walking skeleton), plan 2, tasks 6 and 7 (the title, the font size, the scroll anchor, the undo
+history, and tabs) and plan 3, task 7 (failed writes, the top inset). Notes are open in tabs: see [tabs.md](tabs.md). Pinning and search are in
 [sidebar.md](sidebar.md), deleting in [recently-deleted.md](recently-deleted.md).
 
 ## Guarantees
@@ -44,8 +44,12 @@ history, and tabs). Notes are open in tabs: see [tabs.md](tabs.md). Pinning and 
   search are in [sidebar.md](sidebar.md).
 - **The toolbar's new note button** (and ⌘N, ⌘T) starts an empty note in a new tab and puts the cursor in it. The note
   is not listed until it has text. It shows up in the sidebar about 300 ms after the first character.
-- **Write errors are not silent.** A failed save is written to the standard error stream, the text stays in the editor,
-  and the autosaver tries again.
+- **Write errors are not silent, and never cost text.** A failed save is written to the standard error stream, the text
+  stays in the editor, and the autosaver tries again. A note whose write failed is kept in memory (`UnsavedNotes`, in
+  `SessionCoordinator.unsavedNotes`), also when the owner has already switched to another note or tab: every save writes
+  it again, before the note of the active tab, until a write succeeds, and `persistNow()` (quitting, deactivating,
+  leaving a note) does the same. Switching back to such a note shows the text the owner left, not the older text in the
+  database. The session is written even when a note's write failed.
 
 Within a session every note keeps its own undo history, and switching notes never clears it. It does not survive
 quitting (spec §6.6: it lasts for the session). See [title-and-font-size.md](title-and-font-size.md). A power cut can lose the last moments of typing,
@@ -65,8 +69,8 @@ not necessarily a loss of power.
 - `App/Sources/Window/ToolbarController.swift` has the new note button (`onNewNote`).
 - `App/Sources/AppDelegate.swift` creates all of them, keeps the coordinator and the toolbar controller alive, and calls
   `persistNow()` when the app quits or deactivates.
-- ScratchCore: `Autosaver` (when to save), `NoteStore` and `SessionStore` (what is stored), `TextOffset.clamp` (the
-  restored cursor). See `docs/architecture.md` for the data flow and the threading.
+- ScratchCore: `Autosaver` (when to save), `UnsavedNotes` (the notes whose write failed), `NoteStore` and `SessionStore`
+  (what is stored), `TextOffset.clamp` (the restored cursor). See `docs/architecture.md` for the data flow and the threading.
 
 ## Tests
 
@@ -81,6 +85,10 @@ clicking the editor first, which also proves that the editor is ready to type at
 | The scroll position comes back as the same text at the top (read from the `debug.state` element) | `TitleUITests.testScrollPositionSurvivesRelaunch` |
 | A note shown before the first layout, or after it, is scrolled to its anchor | `EditorViewControllerTests.testScrollAnchorRoundTrips`, `testScrollAnchorAppliesWhenAlreadyLaidOut` |
 | A note without an anchor shows its top, and the anchor given is the one saved | `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTop`, `testScrollAnchorIsSavedAsGiven` |
+| A note at its top shows the text view's top inset (the clip view is at `-contentInsets.top`, not past it) | `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTopInset`, `TitleUITests.testHugeNoteShowsItsTopInsetAtLaunch` |
+| A failed write of a note that was left is retried by the next save | `SaveFailureTests.testFailedSaveOfLeftNoteIsRetried`, `testFailedFirstSaveOfLeftNoteIsRetried`, `testNewerTypingWinsOverAFailedOlderCopy` |
+| Switching back to a note whose write failed shows the text that was left | `SaveFailureTests.testSwitchingBackShowsUnsavedText` |
+| The record of failed writes keeps the newest copy of a note, and forgets it when a write succeeds | ScratchCore `UnsavedNotesTests` |
 | The launch shows the session's active note | `LaunchUITests.testLaunchShowsActiveNoteFromFixture` |
 | The sidebar lists the fixture's notes, pinned first | `SidebarUITests.testSidebarListsFixtureNotesPinnedFirst` |
 | Clicking a row shows that note | `SidebarUITests.testClickingRowShowsNote` |
@@ -92,5 +100,6 @@ The rules under these live in ScratchCore and have unit tests there: the autosav
 note and session (`NoteStoreTests`, `SessionStoreTests`), the clamped cursor (`TextOffsetTests`, including emoji and
 CRLF) and a multi-megabyte body (`NoteStoreTests.largeBodyRoundTrips`).
 
-Not covered by an automated test yet: saving the note being left when another is opened right after typing, a crash
-right after a change of the tabs, and a failing write.
+Not covered by an automated test yet: a crash right after a change of the tabs. (Saving the note being left when another
+is opened right after typing, and a failing write, are `SaveFailureTests`: `PRAGMA query_only = 1` on
+`ScratchStorage.database` makes every write fail, which file permissions cannot do on an open SQLite file.)

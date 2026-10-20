@@ -2,7 +2,8 @@
 
 Status: accepted, 2026-10-20 (the owner's decisions after Plan 2's final review). Settles where a new tab opens, which
 spec §6.3 left open, and narrows a [call] in spec §6.3: "A note that is still completely empty (no title, no text, no
-attachments) when its tab is closed is discarded."
+attachments) when its tab is closed is discarded." Scratch 0.2.x did not tell every emptied note from an untouched one:
+that gap is closed in 0.3.0 (Plan 3, Task 7), see "What the app does" and "Consequences".
 
 ## Decision
 
@@ -29,26 +30,34 @@ attachments) when its tab is closed is discarded."
 ## What the app does
 
 `SessionCoordinator` keeps `untouchedNoteIDs`: the notes it created in this session (⌘N, ⌘T, the toolbar, "+", closing
-the only tab, the first launch) and the notes that were empty when the saved session was restored. An untouched note is
-one of these that is still empty. It is not listed in the sidebar while it is empty, it survives a switch to another tab,
-and it is discarded (`NoteStore.discard`, the row is deleted) when its tab closes or another note replaces it in its
-tab. `newNoteInNewTab` selects the last tab before it opens the new one, which puts it at the end. The sidebar's
-⌘-click goes through `TabList.open(_:inNewTab:)`, which inserts after the active tab.
+the only tab, the first launch) and the notes that were never typed in when the saved session was restored. An untouched
+note is one of these that is still empty. It is not listed in the sidebar while it is empty, it survives a switch to
+another tab, and it is discarded (`NoteStore.discard`, the row is deleted) when its tab closes or another note replaces
+it in its tab. `newNoteInNewTab` selects the last tab before it opens the new one, which puts it at the end. The
+sidebar's ⌘-click goes through `TabList.open(_:inNewTab:)`, which inserts after the active tab.
+
+Since 0.3.0 two rules keep a note the owner emptied out of that set:
+
+1. **The first edit takes a note out of the set for good.** `textDidChange` and `titleDidChange` remove the note from
+   `untouchedNoteIDs`, so a note that is typed in and then emptied is not untouched any more: it is listed (as a dimmed
+   "Untitled") and closing its tab keeps it.
+2. **A restored note counts as untouched only when it is empty and its `modifiedAt` is still its `createdAt`.**
+   `NoteStore.create` sets both to one date and every save of typed text changes `modifiedAt`, so a note that had text,
+   was emptied and was still open in a tab at quit is not untouched after the relaunch, while a note that was only
+   created is.
 
 ## Consequences
 
 - `docs/features/tabs.md` states both rules and points here, and spec §6.3 carries a one-line note that this record
   amends it.
-- **The code does not tell every emptied note from an untouched one yet.** A stored note has no mark for "was typed in",
-  so the set above is an approximation of the owner's rule, and it is wrong in two cases, both for a note whose tab is
-  still open when it is emptied:
-  1. A note created in this session, typed in, and then emptied is still in `untouchedNoteIDs` (typing does not remove
-     it), so closing its tab discards it.
-  2. A note that had text, was emptied, and was still open in a tab at quit is empty when the session is restored, so it
-     counts as untouched after the relaunch: it is not listed in the sidebar and closing its tab discards it.
-
-  Closing both needs a change to `App/` (take a note out of the set at its first edit, and, when restoring, count a note
-  as untouched only when its `modifiedAt` is still its `createdAt`, which `NoteStore.create` sets and every save of typed
-  text changes) with a test for each case, and a `VERSION` bump. It is not part of this record's change, which touches
-  no app code.
+- **Both gaps that 0.2.x had are closed (0.3.0).** The set was an approximation of the owner's rule at first, because a
+  stored note has no mark for "was typed in", and it was wrong in two cases, both for a note whose tab is still open when
+  it is emptied: a note created in this session, typed in and then emptied was still in the set (typing did not remove
+  it), so closing its tab discarded it, and a note that was emptied and still open at quit counted as untouched after
+  the relaunch (it was empty), so it was not listed and closing its tab discarded it. The two rules above close them,
+  with a test for each: `SaveFailureTests.testTypedThenEmptiedNoteIsKeptWhenItsTabCloses` and
+  `testRestoredEmptiedNoteIsKeptAndRestoredUntouchedNoteIsDiscarded` (hosted), `TabsUITests.
+  testTypedThenEmptiedNoteIsKeptWhenItsTabCloses` and `testEmptiedNoteSurvivesRelaunch`. The edit time is the mark that
+  the stored note needed: no schema change. One consequence is small and chosen: a note in which the owner typed only
+  whitespace is theirs too (it is "Untitled" in the list), because its first edit took it out of the set.
 - Any other rule for discarding a note, or for where a tab opens, supersedes this record.
