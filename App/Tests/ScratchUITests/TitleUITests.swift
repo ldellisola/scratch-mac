@@ -124,4 +124,20 @@ final class TitleUITests: XCTestCase {
             abs(lineAfter - lineBefore), 1,
             "the anchor was \(before) (line \(lineBefore)) and is now \(after) (line \(lineAfter))")
     }
+
+    /// Plan 3 task 7 (the huge-note screenshot of Plan 2's final review showed line 1 12 pt higher than the typical
+    /// note's): a note that is shown at its top has the text view's top inset on screen, so the clip view is scrolled
+    /// to `-topInset` and not past it. Read after the first layouts and frames of a note of 10,000 lines.
+    func testHugeNoteShowsItsTopInsetAtLaunch() throws {
+        continueAfterFailure = false
+        let app = UITestSupport.launch(fixture: "huge-note")
+        let editor = UITestSupport.editor(in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 30), "the editor text view did not appear")
+        Thread.sleep(forTimeInterval: 3.0)
+
+        let state = UITestSupport.debugState(in: app)
+        let scrollY = try XCTUnwrap(state["scrollY"] as? Double, "the state: \(state)")
+        let topInset = try XCTUnwrap(state["topInset"] as? Double, "the state: \(state)")
+        XCTAssertEqual(scrollY, -topInset, accuracy: 0.5, "the note is scrolled past its top inset: \(state)")
+    }
 }

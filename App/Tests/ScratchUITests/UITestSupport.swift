@@ -51,8 +51,10 @@ enum UITestSupport {
     }
 
     /// What the app publishes about its editor in the `debug.state` element (`DebugStateElement`, only in an isolated
-    /// data directory): `fontSize` (points), `scrollAnchor` (the UTF-16 offset of the first visible character) and
-    /// `readOnly`. The app computes it when asked, so it is as current as the app. Empty when the element is missing.
+    /// data directory): `fontSize` (points), `scrollAnchor` (the UTF-16 offset of the first visible character),
+    /// `readOnly`, `scrollY` (the clip view's origin y, in points) and `topInset` (the scroll view's top content
+    /// inset: a note at its top has `scrollY == -topInset`). The app computes it when asked, so it is as current as the
+    /// app. Empty when the element is missing.
     @MainActor
     static func debugState(in app: XCUIApplication) -> [String: Any] {
         let element = app.descendants(matching: .any).matching(identifier: AccessibilityID.debugState).firstMatch

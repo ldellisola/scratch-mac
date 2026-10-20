@@ -112,6 +112,35 @@ final class EditorViewControllerTests: XCTestCase {
         XCTAssertEqual(host.editor.currentScrollAnchor, 0)
     }
 
+    /// Plan 3 task 7 (the huge-note screenshot of Plan 2's final review): the top of a note is the text view's top
+    /// inset, which stays visible: a note shown without an anchor, or with anchor 0, is scrolled to `-contentInsets.top`
+    /// and not to the first line itself. It holds after a note that was scrolled far down, and after the layout.
+    func testNoteWithoutAnchorShowsItsTopInset() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let (text, startOfLine5000) = makeTenThousandLines()
+        let scrolled = makeNote(text)
+        host.editor.show(
+            scrolled, tab: makeTab(for: scrolled, scrollAnchor: startOfLine5000), undoManager: UndoManager(),
+            isReadOnly: false)
+        host.editor.view.layoutSubtreeIfNeeded()
+
+        for anchor in [nil, 0] as [Int?] {
+            let note = makeNote(text)
+            host.editor.show(
+                note, tab: makeTab(for: note, scrollAnchor: anchor), undoManager: UndoManager(), isReadOnly: false)
+            host.editor.view.layoutSubtreeIfNeeded()
+
+            let clipView = host.editor.clipView
+            let insetTop = clipView.enclosingScrollView?.contentInsets.top ?? 0
+            let state =
+                "anchor \(String(describing: anchor)): clip origin \(clipView.bounds.origin), insets \(insetTop), "
+                + "visible rect \(host.editor.textView.visibleRect)"
+            XCTAssertEqual(clipView.bounds.origin.y, -insetTop, state)
+            XCTAssertLessThanOrEqual(host.editor.textView.visibleRect.minY, 0, state)
+        }
+    }
+
     // MARK: Font size
 
     func testFontSizeAppliesToTextTypingAndTitle() {

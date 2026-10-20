@@ -223,7 +223,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         let element = DebugStateElement(frame: .zero)
         element.state = { [weak self] in
             guard let self else { return [:] }
-            return ["fontSize": self.fontSize, "scrollAnchor": self.currentScrollAnchor, "readOnly": self.isReadOnly]
+            return [
+                "fontSize": self.fontSize, "scrollAnchor": self.currentScrollAnchor, "readOnly": self.isReadOnly,
+                // How far the clip view is scrolled and the scroll view's top inset, so a test can tell that a note at
+                // its top has the text view's own top inset on screen: `scrollY` is `-topInset` there.
+                "scrollY": self.currentScrollY, "topInset": Double(self.scrollView.contentInsets.top),
+            ]
         }
         view.addSubview(element)
         debugStateElement = element
