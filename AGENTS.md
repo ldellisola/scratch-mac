@@ -114,7 +114,7 @@ App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
                                   tab strip, opening, closing and switching tabs), DeleteUITests (delete, Recently
-                                  Deleted, restore, the purge),
+                                  Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
                                   ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
@@ -630,6 +630,14 @@ new kind of release file, with no change to the app, ships.
   undo manager, and the styler restyles the paragraph as for typing), then sets the selection. It never touches a
   read-only view. After undoing a checkbox click AppKit selects the character that came back, as it does for any
   programmatic replacement.
+- **Undo steps cannot be tested in a hosted test across two edits.** Measured on CI (macOS 26.6): typing opens an undo
+  group (`groupingLevel` 1, `isCoalescingUndo` true), `breakUndoCoalescing()` only clears `isCoalescingUndo` and leaves
+  the group open, and the group is closed by the end of the run loop turn, not by a nested `RunLoop.run(until:)`.
+  Ending it by hand with `endUndoGrouping()` while the view is still coalescing raises "must begin a group before
+  registering undo" (`NSInternalInconsistencyException`, which ends the whole test run). So in one test method the typing
+  and the edit after it are one undo group. Real key events are separate turns: `ChecklistUITests` types, presses ⇧⌘L and
+  ⌘Z, and the typing stays. Test "one step" of a single action in a hosted test (`testUndoAfterCheckboxClick`), and a
+  step next to typing with UI tests.
 - **A command that edits whole paragraphs asks `styler.intersectsCodeBlock` for the paragraphs it will change**, not
   `isInCodeBlock` for the caret: a selection can start and end outside a block and hold it. ⇧⌘L beeps there, and in a
   read-only note.

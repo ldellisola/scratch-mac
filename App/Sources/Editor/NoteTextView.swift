@@ -146,7 +146,9 @@ final class NoteTextView: NSTextView {
 
     /// Applies an edit that one of the editing rules (`ListEditing`, `InlineEditing`) answered with, as one undo step:
     /// the text is changed through `shouldChangeText` and `didChangeText`, which register the undo and tell the delegate,
-    /// then the selection is set. The typing before and after it is not part of its undo step (`breakUndoCoalescing`).
+    /// then the selection is set. The text view coalesces typing into one undo operation, and `breakUndoCoalescing`
+    /// ends that run before and after the edit, so the edit is not amended to what was typed before it and what is typed
+    /// next is not amended to the edit. (The undo manager's group ends with the run loop turn, as for any edit.)
     /// Does nothing when the view is not editable. An edit that replaces nothing with nothing only sets the selection.
     func apply(_ edit: TextEdit) {
         guard isEditable else { return }

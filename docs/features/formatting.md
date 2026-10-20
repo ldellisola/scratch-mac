@@ -93,9 +93,10 @@ that then renders like typed text.
 | A bullet or checkbox line hangs its wrapped lines under the text | `testBulletParagraphHasHangingIndent` |
 | A ticked item is struck through and dimmed, and the box is the `[?]` only | `testCheckedLineIsStruckThrough` |
 | A click on a box ticks or unticks it, keeps the caret and the keyboard, and changes only that box | `CheckboxTests.testClickingCheckboxTogglesWithoutMovingCaret`, `testClickingATickedUppercaseBoxUnticksIt`, `testClickingOneBoxChangesOnlyThatBox`, `testClickingABoxMovesTheKeyboardToTheEditor` |
-| A click is one undo step, apart from the typing before it | `testUndoAfterCheckboxClick`, `testAClickDoesNotJoinTheTypingBeforeItInOneUndoStep` |
+| A click is one undo step | `testUndoAfterCheckboxClick` |
 | Only the box is a toggle: not the space after it, the item's text, a read-only note or a code block | `testClickRightOfBoxIsNotAToggle`, `testReadOnlyCheckboxIgnoresClick`, `testNothingInACodeBlockIsACheckbox` |
 | ⇧⌘L makes a checklist and takes it away again, from a selection, a caret or bullets, as one undo step | `testToggleChecklistOnSelection`, `testToggleChecklistWithoutSelectionUsesTheCaretsLine`, `testToggleChecklistTurnsABulletIntoABox`, `testChecklistCommandIsOneUndoStep` |
+| ⇧⌘L from the keyboard goes through the Format menu, and ⌘Z after it takes back the checklist and not the typing before it | `ChecklistUITests.testChecklistShortcutTurnsTheLineIntoACheckbox`, `testCommandZAfterTheChecklistShortcutTakesBackOnlyTheChecklist` |
 | ⇧⌘L does nothing in a code block or a read-only note | `testToggleChecklistInACodeBlockDoesNothing`, `testToggleChecklistInAReadOnlyNoteDoesNothing`, ScratchCore `CodeBlockIndexTests.intersects…` |
 | The box is drawn, open as an outline and ticked filled | `testCheckboxSymbolIsDrawn` |
 | The Format menu follows Edit and has Checklist on ⇧⌘L | `testFormatMenuHasTheChecklistShortcut` |
