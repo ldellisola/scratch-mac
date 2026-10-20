@@ -36,6 +36,11 @@ final class LinkTests: XCTestCase {
         let tab = TabState(noteID: note.id, selection: caret, scrollY: 0, scrollAnchor: nil)
         host.editor.show(note, tab: tab, undoManager: UndoManager(), isReadOnly: readOnly)
         host.editor.view.layoutSubtreeIfNeeded()
+        // The editor lays out non-contiguously: a line is placed when something asks for it, and the lines above it may
+        // still be laid out later, which moves it. The whole of a small note is laid out now, so that a measured position
+        // is where the text is when a click arrives.
+        host.editor.textView.layoutManager?.ensureLayout(
+            forCharacterRange: NSRange(location: 0, length: (text as NSString).length))
     }
 
     /// The body of the `formatting` fixture (ScratchCore's `FixtureContent`): its fifth line holds the link.
@@ -66,10 +71,25 @@ final class LinkTests: XCTestCase {
         return rect
     }
 
-    /// The middle of the character at `index`, in the coordinates of the text view.
-    private func point(ofCharacterAt index: Int, in host: Host) -> NSPoint {
+    /// The middle of the character at `index`, in the coordinates of the text view. It is a place to click only when the
+    /// layout manager maps it back to the same character, which this checks.
+    private func point(
+        ofCharacterAt index: Int, in host: Host, file: StaticString = #filePath, line: UInt = #line
+    ) -> NSPoint {
         let rect = viewRect(ofCharacters: NSRange(location: index, length: 1), in: host)
-        return NSPoint(x: rect.midX, y: rect.midY)
+        let point = NSPoint(x: rect.midX, y: rect.midY)
+        let textView = host.editor.textView
+        if let layoutManager = textView.layoutManager, let container = textView.textContainer {
+            let origin = textView.textContainerOrigin
+            let back = layoutManager.characterIndex(
+                for: NSPoint(x: point.x - origin.x, y: point.y - origin.y), in: container,
+                fractionOfDistanceBetweenInsertionPoints: nil)
+            XCTAssertEqual(
+                back, index,
+                "the layout maps \(point), the middle of the glyph rectangle \(rect), to another character",
+                file: file, line: line)
+        }
+        return point
     }
 
     /// The offset of the first `needle` in `text`, in UTF-16 units.
@@ -118,6 +138,19 @@ final class LinkTests: XCTestCase {
         XCTAssertEqual(
             host.editor.textView.selectedRange(), NSRange(location: 0, length: 0), "a ⌘-click places no caret")
         XCTAssertEqual(host.editor.currentText, Self.formattingBody)
+    }
+
+    func testCommandClickOpensALinkAfterHiddenMarkers() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let text = "**bold** and `code` https://example.com/a now"
+        show(text, in: host)
+        var opened: [URL] = []
+        host.editor.textView.openURL = { opened.append($0) }
+
+        click(at: point(ofCharacterAt: offset(of: "example", in: text), in: host), modifiers: .command, in: host)
+
+        XCTAssertEqual(opened, [URL(string: "https://example.com/a")!], "the hidden markers before it take no room")
     }
 
     func testCommandClickOpensTheLinkUnderTheClick() {
