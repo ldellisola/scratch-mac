@@ -11,6 +11,16 @@ enum AccessibilityID {
     static let sidebarRowTitle = "sidebar.row.title"
     /// The preview text of a sidebar row. Its value is the row's preview line.
     static let sidebarRowPreview = "sidebar.row.preview"
+    /// The edit time on the right of a sidebar row (plan 2, task 8). Its value is the label, such as "10:42" or "Oct 14".
+    static let sidebarRowTime = "sidebar.row.time"
+    /// The title of a group of sidebar rows (plan 2, task 8): "Pinned", "Today", "Yesterday", "Earlier" or "Recently
+    /// Deleted". Its value is the title. A group title is not a row, so it does not have `sidebarRowTitle`.
+    static let sidebarGroup = "sidebar.group"
+    /// The search field above the sidebar's note list (plan 2, task 8). Its value is the text typed in it.
+    static let sidebarSearch = "sidebar.search"
+    /// The toolbar's pin button (plan 2, task 8). Like the new note button it is a view-less toolbar item, so this is
+    /// its item identifier, and UI tests also find it by its label, "Pin" or "Unpin".
+    static let pinButton = "toolbar.pin"
     /// The title field above the editor's text (plan 2, task 6). Its value is the note's title.
     static let titleField = "editor.titleField"
     /// A 1 x 1 point element that exists only in an isolated data directory (`DebugStateElement`). Its value is JSON

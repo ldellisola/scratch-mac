@@ -100,6 +100,43 @@ enum UITestSupport {
         ).firstMatch
     }
 
+    /// The toolbar's pin button, which pins the note of the active tab or unpins it. A toolbar item without a view has no
+    /// accessibility identifier of its own (see `newNoteButton(in:)`), so it is found by its item identifier or by its
+    /// label, which is "Pin" while the note is not pinned and "Unpin" while it is.
+    @MainActor
+    static func pinButton(in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(
+            NSPredicate(
+                format: "identifier == %@ OR label == %@ OR label == %@ OR title == %@ OR title == %@",
+                AccessibilityID.pinButton, "Pin", "Unpin", "Pin", "Unpin")
+        ).firstMatch
+    }
+
+    /// The search field at the top of the sidebar. Its `value` is the text typed in it.
+    @MainActor
+    static func searchField(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: AccessibilityID.sidebarSearch).firstMatch
+    }
+
+    /// The titles of the sidebar's groups from top to bottom: "Pinned", "Today", "Yesterday", "Earlier" and "Recently
+    /// Deleted", as far as they are shown.
+    @MainActor
+    static func sidebarGroupTitles(in app: XCUIApplication) -> [String] {
+        app.staticTexts.matching(identifier: AccessibilityID.sidebarGroup).allElementsBoundByIndex
+            .sorted { $0.frame.minY < $1.frame.minY }
+            .map { text(of: $0) }
+    }
+
+    /// The edit time that the sidebar shows on the row of `title`, a title element from `sidebarRow(titled:in:)`: the
+    /// time label on the same line. Nil when no label is there.
+    @MainActor
+    static func sidebarRowTime(besides title: XCUIElement, in app: XCUIApplication) -> String? {
+        let line = title.frame.midY
+        return app.staticTexts.matching(identifier: AccessibilityID.sidebarRowTime).allElementsBoundByIndex
+            .first { abs($0.frame.midY - line) < 8 }
+            .map { text(of: $0) }
+    }
+
     /// The title texts of the sidebar rows, in the order the accessibility tree lists them.
     @MainActor
     static func sidebarTitles(in app: XCUIApplication) -> XCUIElementQuery {
