@@ -62,6 +62,32 @@ enum UITestSupport {
         return object
     }
 
+    /// The tabs of the tab strip, from left to right: the buttons with the identifier `AccessibilityID.tabItem`. Each
+    /// one's `label` is the tab's title, and `isSelected` is true for the active tab.
+    @MainActor
+    static func tabs(in app: XCUIApplication) -> [XCUIElement] {
+        app.buttons.matching(identifier: AccessibilityID.tabItem).allElementsBoundByIndex
+            .sorted { $0.frame.minX < $1.frame.minX }
+    }
+
+    /// The titles of the tabs from left to right.
+    @MainActor
+    static func tabTitles(in app: XCUIApplication) -> [String] {
+        tabs(in: app).map { $0.label.isEmpty ? $0.title : $0.label }
+    }
+
+    /// The title of the active tab, or nil when no tab is selected.
+    @MainActor
+    static func activeTabTitle(in app: XCUIApplication) -> String? {
+        tabs(in: app).first { $0.isSelected }.map { $0.label.isEmpty ? $0.title : $0.label }
+    }
+
+    /// The index of the active tab (0 is the leftmost), or nil when no tab is selected.
+    @MainActor
+    static func activeTabIndex(in app: XCUIApplication) -> Int? {
+        tabs(in: app).firstIndex { $0.isSelected }
+    }
+
     /// The toolbar's "new note" button. A toolbar item without a view has no accessibility identifier of its own: AppKit
     /// reports its item identifier (`AccessibilityID.newNoteButton`) as the identifier, and its label as the title or
     /// label, so any of the three finds it.

@@ -16,4 +16,11 @@ enum AccessibilityID {
     /// A 1 x 1 point element that exists only in an isolated data directory (`DebugStateElement`). Its value is JSON
     /// with the editor's `fontSize`, `scrollAnchor` and `readOnly`, which UI tests read because they cannot see them.
     static let debugState = "debug.state"
+    /// A tab of the tab strip (plan 2, task 7): a button whose label is the tab's title and which is selected when the
+    /// tab is the active one. There is one per open tab.
+    static let tabItem = "tab.item"
+    /// The close button inside a tab.
+    static let tabClose = "tab.close"
+    /// The "+" button at the end of the tab strip, which opens a new empty note in a new tab.
+    static let tabNew = "tab.new"
 }
