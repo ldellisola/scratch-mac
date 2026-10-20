@@ -141,4 +141,15 @@ final class NoteTextView: NSTextView {
         styler.endLoad()
         typingAttributes = Self.noteAttributes(size: fontSize)
     }
+
+    // MARK: Checkboxes and the checklist command (plan 3, task 4; stubs until the tests have failed)
+
+    func checkboxMarker(atViewPoint point: NSPoint) -> NSRange? { nil }
+
+    @discardableResult
+    func toggleCheckbox(atViewPoint point: NSPoint) -> Bool { false }
+
+    @objc func toggleChecklist(_ sender: Any?) {}
+
+    func apply(_ edit: TextEdit) {}
 }
