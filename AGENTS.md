@@ -113,6 +113,8 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
 .github/workflows/release.yml     the release: a merge to main that changes App/, Packages/ or VERSION builds
                                   `make release-zip release-dmg` and publishes a GitHub Release `v<VERSION>` with the
                                   zip and the DMG (section 6, Releases)
+README.md                         what Scratch is, how to install it, the shortcuts, and the screenshots. Keep its
+                                  feature list and release table current (section 6)
 docs/architecture.md              module boundaries, data flow, threading
 docs/release-notes-footer.md      the install and update steps (the DMG first, the zip as the alternative), put at the
                                   top of every release's notes (`scripts/release-notes.sh` replaces its `<version>`
@@ -120,6 +122,9 @@ docs/release-notes-footer.md      the install and update steps (the DMG first, t
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
                                   title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md (more as features
                                   land)
+docs/images/                      the README's screenshots (window-light, window-dark, search, recently-deleted): copies
+                                  of the PNGs that CI published for a release (`scripts/ci-fetch.sh`, section 4), so they
+                                  change only when someone replaces them
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
                                   performance check compares), 0004 (a new note opens at the end of the tab strip, and
@@ -284,6 +289,8 @@ A change is done when:
 - no performance budget regressed
 - screenshots of any affected screen have been looked at
 - the feature doc and AGENTS.md are updated if behaviour or commands changed
+- the README's feature list, release table and screenshots (`docs/images/`) are current when a release changes what
+  Scratch does or looks like
 - a decision record exists for any new dependency or any changed [call]
 - the pull request is merged, and a release is published if the app changed (§9.6)
 
