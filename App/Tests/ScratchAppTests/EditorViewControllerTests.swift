@@ -42,6 +42,19 @@ final class EditorViewControllerTests: XCTestCase {
         return (lines.joined(separator: "\n"), start)
     }
 
+    /// Checks that `value` is the note font at `size` points: SF Mono, regular weight. The font is compared by name and
+    /// size, which does not depend on whether AppKit hands out the same `NSFont` object twice.
+    private func assertNoteFont(
+        _ value: Any?, size: Double, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        guard let font = value as? NSFont else {
+            return XCTFail("the font is \(String(describing: value))", file: file, line: line)
+        }
+        let expected = NSFont.monospacedSystemFont(ofSize: CGFloat(size), weight: .regular)
+        XCTAssertEqual(font.pointSize, CGFloat(size), file: file, line: line)
+        XCTAssertEqual(font.fontName, expected.fontName, file: file, line: line)
+    }
+
     // MARK: Scroll anchor
 
     /// A note shown before the window has laid out (as at launch) is scrolled to its anchor by the first layout.
@@ -113,14 +126,15 @@ final class EditorViewControllerTests: XCTestCase {
         var runs = 0
         storage.enumerateAttribute(.font, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
             runs += 1
-            XCTAssertEqual(value as? NSFont, NSFont.monospacedSystemFont(ofSize: 16, weight: .regular))
+            assertNoteFont(value, size: 16)
         }
         XCTAssertGreaterThan(runs, 0)
-        XCTAssertEqual(
-            host.editor.textView.typingAttributes[.font] as? NSFont,
-            NSFont.monospacedSystemFont(ofSize: 16, weight: .regular))
-        XCTAssertEqual(host.editor.titleField.font, NSFont.monospacedSystemFont(ofSize: 19, weight: .bold))
-        XCTAssertEqual(host.editor.titleField.font?.pointSize, 19)
+        assertNoteFont(host.editor.textView.typingAttributes[.font], size: 16)
+        // The title is bold, three points larger than the text.
+        let title = host.editor.titleField.font
+        XCTAssertEqual(title?.pointSize, 19)
+        XCTAssertEqual(title?.fontName, NSFont.monospacedSystemFont(ofSize: 19, weight: .bold).fontName)
+        XCTAssertNotEqual(title?.fontName, NSFont.monospacedSystemFont(ofSize: 19, weight: .regular).fontName)
         XCTAssertEqual(host.editor.fontSize, 16)
     }
 
@@ -137,7 +151,7 @@ final class EditorViewControllerTests: XCTestCase {
 
         let storage = host.editor.textView.textStorage!
         storage.enumerateAttribute(.font, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
-            XCTAssertEqual(value as? NSFont, NSFont.monospacedSystemFont(ofSize: 20, weight: .regular))
+            assertNoteFont(value, size: 20)
         }
     }
 
@@ -163,7 +177,7 @@ final class EditorViewControllerTests: XCTestCase {
         XCTAssertEqual(host.editor.currentText, "Pasted")
         let storage = host.editor.textView.textStorage!
         storage.enumerateAttribute(.font, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
-            XCTAssertEqual(value as? NSFont, NSFont.monospacedSystemFont(ofSize: 16, weight: .regular))
+            assertNoteFont(value, size: 16)
         }
     }
 

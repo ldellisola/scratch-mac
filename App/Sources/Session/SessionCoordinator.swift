@@ -12,8 +12,11 @@ import ScratchCore
 /// that is released skips its pending save. Whoever creates the coordinator must therefore keep it for as long as the
 /// app runs (`AppDelegate` does). The autosaver's save closure holds the coordinator weakly.
 ///
-/// There is one tab in plan 1, so the session is the current note, its cursor and its scroll position. Plan 2 adds more
-/// tabs.
+/// There is one tab, so the session is the current note, its cursor and its scroll position, and the font size. Later
+/// tasks of plan 2 add more tabs.
+///
+/// **Undo.** Every note has an undo manager of its own for as long as the app runs (spec §6.6). The coordinator keeps
+/// them and gives the editor the one of the note it shows, so leaving a note and coming back finds its history.
 @MainActor
 final class SessionCoordinator {
     private let storage: ScratchStorage
@@ -27,6 +30,10 @@ final class SessionCoordinator {
     private var current: Note?
     /// Whether `current` has edits that are not handed to the storage queue yet.
     private var currentIsDirty = false
+    /// The undo history of each note that was shown in this session. It does not survive quitting (spec §6.6).
+    private var undoManagers: [NoteID: UndoManager] = [:]
+    /// The note font size, the same for every note (spec §6.4). Restored with the session and saved with it.
+    private var fontSize = FontSize.standard
     /// Notes that nobody has used yet: created in this session, or restored empty. Leaving one of them while it is
     /// still empty discards it (spec §6.3).
     private var untouchedNoteIDs: Set<NoteID> = []
@@ -48,6 +55,7 @@ final class SessionCoordinator {
             MainActor.assumeIsolated { self?.saveNow() }
         }
         editor.onTextChange = { [weak self] text in self?.textDidChange(text) }
+        editor.onTitleChange = { [weak self] title in self?.titleDidChange(title) }
         editor.onViewStateChange = { [weak self] in self?.viewStateDidChange() }
         sidebar.onSelect = { [weak self] id in self?.open(id) }
     }
@@ -62,7 +70,8 @@ final class SessionCoordinator {
         current = note
         currentIsDirty = false
         if note.isEmpty { untouchedNoteIDs.insert(note.id) }
-        editor.show(note, selection: tab.selection, scrollY: tab.scrollY)
+        editor.setFontSize(fontSize)
+        show(note, tab: tab)
         renderSidebar()
         requestSummaries()
     }
@@ -76,6 +85,7 @@ final class SessionCoordinator {
     private func activeTab() -> (note: Note, tab: TabState) {
         do {
             if let state = try storage.session.load() {
+                fontSize = state.fontSize
                 let others = state.tabs.indices.filter { $0 != state.activeTabIndex }
                 let active = state.tabs.indices.filter { $0 == state.activeTabIndex }
                 for index in active + others {
@@ -87,7 +97,7 @@ final class SessionCoordinator {
             }
             let note = try storage.notes.create(now: Date())
             let tab = TabState(noteID: note.id, selection: 0, scrollY: 0)
-            try storage.session.save(SessionState(tabs: [tab], activeTabIndex: 0))
+            try storage.session.save(SessionState(tabs: [tab], activeTabIndex: 0, fontSize: fontSize))
             return (note, tab)
         } catch {
             report("cannot read the saved session: \(error)")
@@ -144,11 +154,24 @@ final class SessionCoordinator {
 
         current = next
         currentIsDirty = false
-        editor.show(next, selection: 0, scrollY: 0)
+        show(next, tab: TabState(noteID: next.id, selection: 0, scrollY: 0))
         // The session now points at `next`: the autosaver writes it soon.
         autosaver.markDirty()
         renderSidebar()
         requestSummaries()
+    }
+
+    /// Shows `note` in the editor with its own undo history, which switching notes never clears.
+    private func show(_ note: Note, tab: TabState) {
+        editor.show(note, tab: tab, undoManager: undoManager(for: note.id), isReadOnly: false)
+    }
+
+    /// The undo manager of the note `id`, made when the note is first shown.
+    private func undoManager(for id: NoteID) -> UndoManager {
+        if let existing = undoManagers[id] { return existing }
+        let manager = UndoManager()
+        undoManagers[id] = manager
+        return manager
     }
 
     /// True for a note that nobody has used: it is new (or was restored empty) and is still empty.
@@ -159,6 +182,7 @@ final class SessionCoordinator {
     /// Deletes the row of a note that was never used. Needs an idle storage queue, so call it after `persistNow()`.
     private func discard(_ note: Note) {
         untouchedNoteIDs.remove(note.id)
+        undoManagers[note.id] = nil
         latestSummaries.removeAll { $0.id == note.id }
         do {
             try storage.notes.discard(note.id)
@@ -189,6 +213,27 @@ final class SessionCoordinator {
         autosaver.markDirty()
     }
 
+    /// The title field changed. The title is part of the note, so it is saved like its text, and the note moves to the
+    /// top of the sidebar.
+    private func titleDidChange(_ title: String) {
+        guard var note = current else { return }
+        note.title = title
+        note.modifiedAt = Date()
+        current = note
+        currentIsDirty = true
+        autosaver.markDirty()
+    }
+
+    /// The font size changes to what `transform` makes of the current one, within the limits of `FontSize`: the editor
+    /// shows it at once, and the session saves it with the next write (spec §6.4: the size is remembered).
+    func changeFontSize(_ transform: (Double) -> Double) {
+        let size = FontSize.clamped(transform(fontSize))
+        guard size != fontSize else { return }
+        fontSize = size
+        editor.setFontSize(size)
+        autosaver.markDirty()
+    }
+
     /// The cursor or the scroll position moved. The session holds them, so it is saved soon (spec §6.6).
     private func viewStateDidChange() {
         autosaver.markDirty()
@@ -200,9 +245,10 @@ final class SessionCoordinator {
         guard let note = current else { return }
         let unsavedNote = currentIsDirty ? note : nil
         currentIsDirty = false
-        let session = SessionState(
-            tabs: [TabState(noteID: note.id, selection: editor.currentSelection, scrollY: editor.currentScrollY)],
-            activeTabIndex: 0)
+        let tab = TabState(
+            noteID: note.id, selection: editor.currentSelection, scrollY: editor.currentScrollY,
+            scrollAnchor: editor.currentScrollAnchor)
+        let session = SessionState(tabs: [tab], activeTabIndex: 0, fontSize: fontSize)
         let request: Int
         if unsavedNote != nil {
             summariesRequest += 1

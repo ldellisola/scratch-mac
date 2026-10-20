@@ -11,4 +11,9 @@ enum AccessibilityID {
     static let sidebarRowTitle = "sidebar.row.title"
     /// The preview text of a sidebar row. Its value is the row's preview line.
     static let sidebarRowPreview = "sidebar.row.preview"
+    /// The title field above the editor's text (plan 2, task 6). Its value is the note's title.
+    static let titleField = "editor.titleField"
+    /// A 1 x 1 point element that exists only in an isolated data directory (`DebugStateElement`). Its value is JSON
+    /// with the editor's `fontSize`, `scrollAnchor` and `readOnly`, which UI tests read because they cannot see them.
+    static let debugState = "debug.state"
 }

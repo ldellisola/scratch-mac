@@ -52,23 +52,29 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
                                   arguments, opens storage; isolates a hosted test run)
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
                                   sidebar item + editor item), MainMenu (menu bar, built in code: there is no storyboard),
-                                  ToolbarController (sidebar button, new note button)
+                                  AppCommands (the target of the app's own menu items: the font size), ToolbarController
+                                  (sidebar button, new note button)
 App/Sources/Sidebar/              SidebarViewController (the note list: an NSTableView in the glass sidebar)
 App/Sources/Session/              SessionCoordinator (which note is open, autosave, restore, new note, the sidebar list;
                                   the one place that writes to storage)
-App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy), TextViewFactory (builds the
-                                  TextKit 1 stack, docs/decisions/0001), EditorViewController (shows a note, reports
-                                  edits, cursor and scroll)
+App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
+                                  undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
+                                  TitleField (the optional title above the text), EditorViewController (the title field
+                                  and the editor: shows a note, reports edits, cursor and scroll anchor)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke` and
                                   `switch-note` intervals the performance tests read), RunLoopIdle (runs work when the
                                   main run loop is next about to wait: after the frame is drawn), FrameMonitor
-                                  (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames)
+                                  (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
+                                  DebugStateElement (the invisible `debug.state` element that UI tests read the font
+                                  size and scroll anchor from, in isolated launches only)
 App/Resources/                    Assets.xcassets (placeholder app icon)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
-                                  50,000-line paste returns within 500 ms, FrameMonitorTests)
+                                  50,000-line paste returns within 500 ms, FrameMonitorTests, EditorViewControllerTests:
+                                  the title, font size, per-note undo, read-only and scroll anchor)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
-                                  SidebarUITests, ScreenshotTests (one test per screenshot, section 3)
+                                  SidebarUITests, TitleUITests (title, font size, scroll position),
+                                  ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
                                   UITestSupport and AccessibilityID with the UI tests
@@ -93,8 +99,8 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
 docs/architecture.md              module boundaries, data flow, threading
 docs/release-notes-footer.md      the install and update steps, put at the top of every release's notes
                                   (`scripts/release-notes.sh` replaces its `<version>` placeholders)
-docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md (more as
-                                  features land)
+docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
+                                  title-and-font-size.md (more as features land)
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
                                   performance check compares)
@@ -345,7 +351,29 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   `.null` on the marker glyphs in `shouldGenerateGlyphs` (the code and the measurements are in docs/decisions/0001). The
   caret still stops at each hidden character.
 - **A text view needs `NSScrollView.contentInsets` in mind.** The window uses `fullSizeContentView`, so the toolbar
-  overlaps the scroll view, and the top of a note is at `y = -contentInsets.top`, not 0 (`EditorViewController.show`).
+  overlaps the top of the window, and the top of a note is at `y = -contentInsets.top`, not 0
+  (`EditorViewController.show`). The title field is constrained to the container's `safeAreaLayoutGuide` and the scroll
+  view starts below it, so the scroll view is not under the toolbar and its inset is 0. The code does not rely on
+  that: every scroll position goes through `contentInsets.top`.
+- **A scroll anchor waits for a layout.** Text can only be positioned at a width, and at launch `show` runs before the
+  window has laid out (the scroll view is 0 wide), so `EditorViewController` keeps the anchor and scrolls in
+  `viewDidLayout` (`isLaidOut`, `scrollAnchorToApply`). It keeps applying it in the layouts before the window is
+  visible, and stops when the window is visible or the user scrolls, types or moves the cursor. Never call
+  `ensureLayout` before `isLaidOut`: it would lay a 10,000-line note out at a width of 0. `currentScrollAnchor` returns
+  the waiting anchor until then, so an early save does not move the note back to its top.
+- **Undo is per note, and `show` never clears it.** `SessionCoordinator.undoManagers` holds one `UndoManager` per note,
+  and `show` hands the editor the one of the note. `NoteTextView.noteUndoManager` is what the text view, the
+  `NSTextViewDelegate.undoManager(for:)` answer and `AppDelegate.windowWillReturnUndoManager` (the Edit menu) all
+  return, so they cannot disagree. Loading a note's text runs between `disableUndoRegistration()` and
+  `enableUndoRegistration()` of its manager and is not an undo step, and `breakUndoCoalescing()` ends the typing run of
+  the note being left. Show a note with the text it had when it was left: an undo step holds ranges of that text.
+- **UI tests read the font size and the scroll anchor from `debug.state`.** `DebugStateElement` is a 1 x 1 point view
+  in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its accessibility value
+  that it computes when asked: `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no clicks, so it is
+  not in a screenshot.
+- **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
+  `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
+  equivalents needs two items.
 - **There is no storyboard, so there is no menu bar until `MainMenu.install` runs.** ⌘Q, ⌘C, ⌘V and ⌘Z only work
   because that menu exists. A new shortcut needs a menu item.
 - **The coordinator must outlive the autosaver's timers.** `Autosaver` does not keep itself alive: a dirty autosaver

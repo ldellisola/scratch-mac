@@ -1,9 +1,13 @@
 import AppKit
 import ScratchCore
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var environment: AppEnvironment?
     private var windowController: MainWindowController?
+    /// The editor, which the window asks for the undo manager of the note it shows (`windowWillReturnUndoManager`).
+    private var editor: EditorViewController?
+    /// The target of the menu items that belong to the app. A menu item holds its target weakly, so it stays here.
+    private let commands = AppCommands()
     /// The coordinator owns the autosaver, which does not keep itself alive: it stays here for the app's lifetime.
     private var coordinator: SessionCoordinator?
     /// The window's toolbar keeps its delegate weakly.
@@ -16,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The launch sequence: open the storage, restore the session, show the window with the active note and put the
     /// cursor in it. It does as little as possible before the first frame (spec §7).
     func applicationWillFinishLaunching(_ notification: Notification) {
-        MainMenu.install(in: NSApp)
+        MainMenu.install(in: NSApp, commands: commands)
         do {
             try launch()
         } catch {
@@ -52,10 +56,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let editor = EditorViewController()
+        self.editor = editor
         let sidebar = SidebarViewController()
         let content = MainSplitViewController(sidebar: sidebar, editor: editor)
         let windowController = MainWindowController(environment: environment, content: content)
         self.windowController = windowController
+        // The Edit menu's Undo asks the window for its undo manager, and the window asks this delegate.
+        windowController.window?.delegate = self
 
         let coordinator = SessionCoordinator(storage: environment.storage, editor: editor, sidebar: sidebar)
         self.coordinator = coordinator
@@ -63,6 +70,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNote() }
         self.toolbarController = toolbarController
         windowController.window?.toolbar = toolbarController.makeToolbar()
+
+        // View > Bigger, Smaller and Actual Size (spec §6.4).
+        commands.onBigger = { [weak coordinator] in coordinator?.changeFontSize(FontSize.larger) }
+        commands.onSmaller = { [weak coordinator] in coordinator?.changeFontSize(FontSize.smaller) }
+        commands.onActualSize = { [weak coordinator] in coordinator?.changeFontSize { _ in FontSize.standard } }
+        // UI tests read the editor's state from an element that a normal launch does not have.
+        if environment.options.isIsolated { editor.installDebugStateElement() }
 
         coordinator.restore()
         windowController.showWindow(nil)
@@ -73,6 +87,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             monitor.start()
             frameMonitor = monitor
         }
+    }
+
+    // MARK: NSWindowDelegate
+
+    /// Undo history is per note (spec §6.6): the window's undo manager is the one of the note in the editor. The text
+    /// view uses it too, so the Edit menu and typing agree whichever of them AppKit asks.
+    func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? {
+        editor?.activeUndoManager
     }
 
     /// The app cannot work without its storage. Say why, then quit.

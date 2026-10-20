@@ -1,14 +1,16 @@
 import AppKit
 
 /// The menu bar. The app has no storyboard, so without this there would be no ⌘Q and no ⌘C, ⌘V or ⌘Z for the editor.
-/// Every item sends its action to the first responder, so the editor and the window handle them.
+/// Most items send their action to the first responder, so the editor and the window handle them. The items that
+/// belong to the app (the font size) have `commands` as their target.
 enum MainMenu {
     /// Makes this the application's menu bar. The Window menu is registered as the application's windows menu, so the
-    /// system lists the open windows in it.
-    static func install(in application: NSApplication) {
+    /// system lists the open windows in it. `commands` is the target of the app's own items and must outlive the menu:
+    /// a menu item holds its target weakly.
+    static func install(in application: NSApplication, commands: AppCommands) {
         let menuBar = NSMenu()
         let windowMenu = windowMenu()
-        for menu in [appMenu(), fileMenu(), editMenu(), viewMenu(), windowMenu] {
+        for menu in [appMenu(), fileMenu(), editMenu(), viewMenu(commands: commands), windowMenu] {
             let item = NSMenuItem()
             item.submenu = menu
             menuBar.addItem(item)
@@ -82,8 +84,19 @@ enum MainMenu {
         return menu
     }
 
-    private static func viewMenu() -> NSMenu {
+    private static func viewMenu(commands: AppCommands) -> NSMenu {
         let menu = NSMenu(title: "View")
+        // The font size, the same for every note (spec §6.4).
+        menu.addItem(commandItem("Bigger", #selector(AppCommands.bigger(_:)), key: "+", target: commands))
+        // ⌘= does the same, because the + key needs Shift on most keyboards. It is hidden, so the menu lists ⌘+ only.
+        let alternate = commandItem("Bigger", #selector(AppCommands.bigger(_:)), key: "=", target: commands)
+        alternate.isHidden = true
+        allowKeyEquivalentWhenHidden(alternate)
+        menu.addItem(alternate)
+        menu.addItem(commandItem("Smaller", #selector(AppCommands.smaller(_:)), key: "-", target: commands))
+        menu.addItem(commandItem("Actual Size", #selector(AppCommands.actualSize(_:)), key: "0", target: commands))
+        menu.addItem(.separator())
+
         let sidebar = menu.addItem(
             withTitle: "Toggle Sidebar", action: #selector(NSSplitViewController.toggleSidebar(_:)),
             keyEquivalent: "s")
@@ -92,5 +105,20 @@ enum MainMenu {
             withTitle: "Enter Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
         fullScreen.keyEquivalentModifierMask = [.command, .control]
         return menu
+    }
+
+    /// A menu item with ⌘ plus `key` that sends `action` to `target`.
+    private static func commandItem(_ title: String, _ action: Selector, key: String, target: AnyObject) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        item.target = target
+        return item
+    }
+
+    /// Lets a hidden item still answer its key equivalent: AppKit may skip the key equivalent of a hidden item, and
+    /// `allowsKeyEquivalentWhenHidden` tells it not to. The property is set by name and only when the item has it, so
+    /// that a system without it leaves the item alone instead of failing.
+    private static func allowKeyEquivalentWhenHidden(_ item: NSMenuItem) {
+        guard item.responds(to: Selector(("setAllowsKeyEquivalentWhenHidden:"))) else { return }
+        item.setValue(true, forKey: "allowsKeyEquivalentWhenHidden")
     }
 }
