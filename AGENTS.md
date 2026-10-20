@@ -26,8 +26,11 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   deletes, restores and purges notes (`setPinned`, `delete`, `restore`,
                                   `deletePermanently`, `deletedSummaries`, `purge`). SearchQuery: typed text to an
                                   FTS5 MATCH expression
-  Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores), SessionStore (JSON under key
-                                  "state"), TextOffset (clamps a saved cursor offset to a Character boundary)
+  Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores: the tabs, the active one, the
+                                  font size, and each tab's cursor and `scrollAnchor`), SessionStore (JSON under key
+                                  "state"), TabList (the tab rules: open, close, select, with TabOpening and
+                                  TabClosing as results), FontSize (13 pt, 9 to 32, steps of 1), TextOffset (clamps a
+                                  saved cursor offset to a Character boundary)
   Sources/ScratchCore/Autosave/   Autosaver (decides when unsaved changes are written: 300 ms after the last change,
                                   at most 1 s after the first, no repeating timers) and the AutosaveScheduler clocks it
                                   runs on: DispatchAutosaveScheduler (production), ManualAutosaveScheduler (tests)
