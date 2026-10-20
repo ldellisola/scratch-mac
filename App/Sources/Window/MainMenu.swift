@@ -2,15 +2,15 @@ import AppKit
 
 /// The menu bar. The app has no storyboard, so without this there would be no ⌘Q and no ⌘C, ⌘V or ⌘Z for the editor.
 /// Most items send their action to the first responder, so the editor and the window handle them. The items that
-/// belong to the app (the font size) have `commands` as their target.
+/// belong to the app (the tabs and the font size) have `commands` as their target.
 enum MainMenu {
     /// Makes this the application's menu bar. The Window menu is registered as the application's windows menu, so the
     /// system lists the open windows in it. `commands` is the target of the app's own items and must outlive the menu:
     /// a menu item holds its target weakly.
     static func install(in application: NSApplication, commands: AppCommands) {
         let menuBar = NSMenu()
-        let windowMenu = windowMenu()
-        for menu in [appMenu(), fileMenu(), editMenu(), viewMenu(commands: commands), windowMenu] {
+        let windowMenu = windowMenu(commands: commands)
+        for menu in [appMenu(), fileMenu(commands: commands), editMenu(), viewMenu(commands: commands), windowMenu] {
             let item = NSMenuItem()
             item.submenu = menu
             menuBar.addItem(item)
@@ -19,13 +19,47 @@ enum MainMenu {
         application.windowsMenu = windowMenu
     }
 
-    private static func windowMenu() -> NSMenu {
+    /// Minimize and Zoom, then the tabs (spec §6.3): ⌃Tab and ⌃⇧Tab, and ⌘1 to ⌘9.
+    private static func windowMenu(commands: AppCommands) -> NSMenu {
         let menu = NSMenu(title: "Window")
         menu.addItem(
             withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         menu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        menu.addItem(.separator())
+
+        let next = commandItem("Show Next Tab", #selector(AppCommands.nextTab(_:)), key: "\t", target: commands)
+        next.keyEquivalentModifierMask = [.control]
+        menu.addItem(next)
+        // Shift+Tab is a character of its own on the keyboard, "back tab" (U+0019), and AppKit matches the key
+        // equivalent against the character. Whether it also wants the Shift flag in the mask is not documented, so the
+        // item exists in the three spellings that could match, and only the first one is listed. A hidden item still
+        // answers its key equivalent (`allowKeyEquivalentWhenHidden`).
+        let previous = commandItem(
+            "Show Previous Tab", #selector(AppCommands.previousTab(_:)), key: "\t", target: commands)
+        previous.keyEquivalentModifierMask = [.control, .shift]
+        menu.addItem(previous)
+        let backTabMasks: [NSEvent.ModifierFlags] = [[.control], [.control, .shift]]
+        for mask in backTabMasks {
+            let alternate = commandItem(
+                "Show Previous Tab", #selector(AppCommands.previousTab(_:)), key: backTab, target: commands)
+            alternate.keyEquivalentModifierMask = mask
+            alternate.isHidden = true
+            allowKeyEquivalentWhenHidden(alternate)
+            menu.addItem(alternate)
+        }
+
+        menu.addItem(.separator())
+        for number in 1...9 {
+            let title = number == 9 ? "Select Last Tab" : "Select Tab \(number)"
+            let item = commandItem(title, #selector(AppCommands.selectTab(_:)), key: String(number), target: commands)
+            item.tag = number
+            menu.addItem(item)
+        }
         return menu
     }
+
+    /// Shift+Tab's character, `NSBackTabCharacter`.
+    private static let backTab = "\u{19}"
 
     private static func appMenu() -> NSMenu {
         let menu = NSMenu(title: "Scratch")
@@ -45,9 +79,17 @@ enum MainMenu {
         return menu
     }
 
-    private static func fileMenu() -> NSMenu {
+    /// New Note and New Tab both open a new empty note in a new tab. ⌘W closes the tab, and ⇧⌘W the window (which
+    /// quits, spec §6.6).
+    private static func fileMenu(commands: AppCommands) -> NSMenu {
         let menu = NSMenu(title: "File")
-        menu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        menu.addItem(commandItem("New Note", #selector(AppCommands.newNote(_:)), key: "n", target: commands))
+        menu.addItem(commandItem("New Tab", #selector(AppCommands.newNote(_:)), key: "t", target: commands))
+        menu.addItem(.separator())
+        menu.addItem(commandItem("Close Tab", #selector(AppCommands.closeTab(_:)), key: "w", target: commands))
+        let closeWindow = menu.addItem(
+            withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        closeWindow.keyEquivalentModifierMask = [.command, .shift]
         return menu
     }
 

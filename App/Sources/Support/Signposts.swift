@@ -10,7 +10,7 @@ enum Signposts {
     /// that ended when the work returned would leave out the text system's layout and drawing, which TextKit does
     /// lazily and which is where the two TextKit versions differed (ADR 0001).
     ///
-    /// The names in use: `keystroke` (`NoteTextView.keyDown`) and `switch-note` (`SessionCoordinator.open`).
+    /// The names in use: `keystroke` (`NoteTextView.keyDown`) and `switch-note` (`SessionCoordinator.open` and a switch to another tab).
     static func beginEditorInterval(_ name: StaticString) {
         let interval = OpenInterval(name: name, state: editor.beginInterval(name, id: editor.makeSignpostID()))
         RunLoopIdle.onNext { interval.end() }

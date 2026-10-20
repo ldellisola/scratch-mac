@@ -6,7 +6,7 @@ import AppKit
 /// The toolbar keeps its delegate weakly, so whoever creates this controller must keep it alive for as long as the
 /// window lives (`AppDelegate` does).
 final class ToolbarController: NSObject, NSToolbarDelegate {
-    /// Called when the user presses the "new note" button.
+    /// Called when the user presses the "new note" button, which opens a new empty note in a new tab.
     var onNewNote: (() -> Void)?
 
     private static let newNoteItem = NSToolbarItem.Identifier(AccessibilityID.newNoteButton)

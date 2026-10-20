@@ -58,19 +58,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let editor = EditorViewController()
         self.editor = editor
         let sidebar = SidebarViewController()
-        let content = MainSplitViewController(sidebar: sidebar, editor: editor)
+        let tabStrip = TabStripViewController()
+        let editorArea = EditorAreaViewController(tabStrip: tabStrip, editor: editor)
+        let content = MainSplitViewController(sidebar: sidebar, editorArea: editorArea)
         let windowController = MainWindowController(environment: environment, content: content)
         self.windowController = windowController
         // The Edit menu's Undo asks the window for its undo manager, and the window asks this delegate.
         windowController.window?.delegate = self
 
-        let coordinator = SessionCoordinator(storage: environment.storage, editor: editor, sidebar: sidebar)
+        let coordinator = SessionCoordinator(
+            storage: environment.storage, editor: editor, sidebar: sidebar, tabStrip: tabStrip)
         self.coordinator = coordinator
         let toolbarController = ToolbarController()
-        toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNote() }
+        toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
         self.toolbarController = toolbarController
         windowController.window?.toolbar = toolbarController.makeToolbar()
 
+        // File > New Note, New Tab and Close Tab, and Window > Show Next and Previous Tab and Select Tab (spec §6.3).
+        commands.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
+        commands.onCloseTab = { [weak coordinator] in coordinator?.closeActiveTab() }
+        commands.onNextTab = { [weak coordinator] in coordinator?.selectNextTab() }
+        commands.onPreviousTab = { [weak coordinator] in coordinator?.selectPreviousTab() }
+        commands.onSelectTabNumber = { [weak coordinator] number in coordinator?.selectTab(number: number) }
         // View > Bigger, Smaller and Actual Size (spec §6.4).
         commands.onBigger = { [weak coordinator] in coordinator?.changeFontSize(FontSize.larger) }
         commands.onSmaller = { [weak coordinator] in coordinator?.changeFontSize(FontSize.smaller) }

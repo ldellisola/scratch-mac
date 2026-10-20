@@ -51,13 +51,17 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
                                   sequence: storage, session, window, menu bar), AppEnvironment (parses the launch
                                   arguments, opens storage; isolates a hosted test run)
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
-                                  sidebar item + editor item), MainMenu (menu bar, built in code: there is no storyboard),
-                                  AppCommands (the target of the app's own menu items: the font size), ToolbarController
+                                  sidebar item + editor area item), EditorAreaViewController (the tab strip above the
+                                  editor), MainMenu (menu bar, built in code: there is no storyboard), AppCommands (the
+                                  target of the app's own menu items: the tabs and the font size), ToolbarController
                                   (sidebar button, new note button), TitlebarPocket (hides the line macOS 26 draws under
                                   the toolbar, section 7)
-App/Sources/Sidebar/              SidebarViewController (the note list: an NSTableView in the glass sidebar)
-App/Sources/Session/              SessionCoordinator (which note is open, autosave, restore, new note, the sidebar list;
-                                  the one place that writes to storage)
+App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripGlassView`,
+                                  `TabStripLayout`, `TabStripContentView`, `TabItemView`)
+App/Sources/Sidebar/              SidebarViewController (the note list: an NSTableView in the glass sidebar; a click or
+                                  Return opens a note, `onOpen`)
+App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore, new note, close,
+                                  the sidebar list and the tab titles; the one place that writes to storage)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
                                   TitleField (the optional title above the text), EditorViewController (the title field
@@ -74,7 +78,8 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
-                                  SidebarUITests, TitleUITests (title, font size, scroll position),
+                                  SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
+                                  tab strip, opening, closing and switching tabs),
                                   ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
@@ -101,7 +106,7 @@ docs/architecture.md              module boundaries, data flow, threading
 docs/release-notes-footer.md      the install and update steps, put at the top of every release's notes
                                   (`scripts/release-notes.sh` replaces its `<version>` placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
-                                  title-and-font-size.md (more as features land)
+                                  title-and-font-size.md, tabs.md (more as features land)
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
                                   performance check compares)
@@ -353,8 +358,9 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   caret still stops at each hidden character.
 - **A text view needs `NSScrollView.contentInsets` in mind.** The window uses `fullSizeContentView`, so the toolbar
   overlaps the top of the window, and the top of a note is at `y = -contentInsets.top`, not 0
-  (`EditorViewController.show`). The title field is constrained to the container's `safeAreaLayoutGuide` and the scroll
-  view starts below it, so the scroll view is not under the toolbar and its inset is 0. The code does not rely on
+  (`EditorViewController.show`). The tab strip is constrained to the safe area of `EditorAreaViewController`'s view and
+  the editor starts below the strip, so the editor's own safe area has no toolbar in it: its title field sits 10 pt
+  below the editor's top, the scroll view starts below the title field, and its inset is 0. The code does not rely on
   that: every scroll position goes through `contentInsets.top`.
 - **A scroll anchor waits for a layout.** Text can only be positioned at a width, and at launch `show` runs before the
   window has laid out (the scroll view is 0 wide), so `EditorViewController` keeps the anchor and scrolls in
@@ -388,10 +394,39 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
 - **The coordinator must outlive the autosaver's timers.** `Autosaver` does not keep itself alive: a dirty autosaver
   that is released skips its pending save. `SessionCoordinator` owns it and `AppDelegate` owns the coordinator, so keep
   both. The save closure holds the coordinator weakly. Never replace the autosaver while it is dirty.
-- **`SessionCoordinator.persistNow()` waits for the storage queue** (`storageQueue.sync {}`). Call it, `flush()` and
-  `open(_:)` on the main thread only, and never from a block that runs on the storage queue.
-- **A new note that nobody has used is not in the sidebar** and is discarded when left empty. It is "untouched" while it
-  was created in this session (or restored empty) and has no text. Test changes that look at the sidebar must type first.
+- **`SessionCoordinator.persistNow()` waits for the storage queue** (`storageQueue.sync {}`), and so does every change
+  of the active tab (`open`, `selectTab`, `closeTab`, `newNoteInNewTab`), which calls it first. Call all of them and
+  `flush()` on the main thread only, and never from a block that runs on the storage queue.
+- **A new note that nobody has used is not in the sidebar** and is discarded when its tab closes or another note
+  replaces it in the tab, while it is still empty. It is "untouched" while it was created in this session (or restored
+  empty) and has no text. Test changes that look at the sidebar must type first. Switching to another tab keeps an
+  untouched note and its tab: only closing or replacing discards it.
+- **A tab is the unit of `TabList`, and `SessionCoordinator.tabs` is the only copy.** The coordinator holds the note of
+  the active tab (`current`) and nothing else of any note: another tab's note is read from the storage when its tab is
+  shown, after the note being left was written (`leaveCurrentNote`). `saveNow` records the cursor and scroll anchor of
+  the active tab in the list before it builds the session, so a code path that changes the tabs after `persistNow()`
+  must read `tabs` again and not reuse a copy from before it. A tab change ends with `tabsDidChange()`, which shows the
+  strip and the sidebar and writes the session at once (`writeSessionNow`).
+- **A new note opens at the end of the strip, a note opened from the sidebar next to the active tab.** `TabList.open`
+  inserts after the active tab, which is what ⌘-click wants. `newNoteInNewTab` selects the last tab first, so the new
+  tab is at the end, as in a browser, and `testCommandTOpensNewEmptyTab` expects the new tab to be the third.
+- **The sidebar opens a note from the table's click action, not from the selection.** `NSTableView.action` also fires
+  for the row that is highlighted already, and `tableView.clickedRow` is valid in it. The arrow keys move the
+  highlight without opening anything, so the highlight and the open note can differ until the coordinator renders the
+  list again (`SidebarList` turns Return into `onReturn`). ⌘-click on the highlighted row deselects it, which
+  `open(_:inNewTab:)` undoes by rendering the sidebar even when it has nothing to show.
+- **The tab strip is `NSGlassEffectView` with a frame-based content view.** `TabStripGlassView` gives the strip its
+  width as the intrinsic content size, with a compression resistance (40) below the fitting size priority (50), and
+  `EditorAreaViewController` caps it with a required `trailing <=` constraint. A width constraint on the strip, at any
+  priority above 50, would make the split view item's minimum width grow with the number of tabs. Do not use
+  `NSStackView` with required widths in the strip for the same reason.
+- **A tab is one accessibility element and its close button is not inside it.** `TabItemView` is a button
+  (`tab.item`) with a label, a title and a selected state, and the close button (`tab.close`) is a sibling placed over
+  its right end, so UI tests read `UITestSupport.tabs(in:)` and `activeTabTitle(in:)` and click a tab at its centre.
+- **Tab shortcuts are menu items, and ⌃⇧Tab has three spellings.** ⌃Tab is `"\t"` with `.control`. Shift+Tab is
+  the character U+0019 on the keyboard, and the Previous Tab item exists with `"\t"` and with U+0019, so one of them
+  matches (`MainMenu.windowMenu`), the others hidden with `allowKeyEquivalentWhenHidden`. If ⌃⇧Tab ever stops working,
+  `testControlTabCyclesAndWraps` says so.
 - **`NSToolbar` holds its delegate weakly.** `AppDelegate` keeps the `ToolbarController`.
 - **A toolbar item only gets a Liquid Glass capsule when it is a plain `NSToolbarItem` with an `image`.** The new note
   button was first an `NSButton` as the item's view, and the screenshot showed a small bare icon, also with
