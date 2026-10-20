@@ -29,6 +29,7 @@ script-test:
 	bash scripts/tests/test-perf-check.sh
 	bash scripts/tests/test-perf-extract.sh
 	bash scripts/tests/test-version-bump.sh
+	bash scripts/tests/test-release-notes.sh
 
 # [linux] Wait for CI results on the ci-results branch: make ci-wait SHA=<sha> [JOBS="linux macos"].
 # CI_WAIT_TIMEOUT (seconds) bounds one wait. make exits 2 on any failure, so read the last line of output to tell a

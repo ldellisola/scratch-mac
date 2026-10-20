@@ -5,7 +5,8 @@
 #
 # Checks:
 #   - the zip holds Scratch.app, and nothing else, at its top level
-#   - CFBundleShortVersionString is <version> and CFBundleIdentifier is io.github.ldellisola.Scratch
+#   - CFBundleShortVersionString and CFBundleVersion are <version> and CFBundleIdentifier is
+#     io.github.ldellisola.Scratch
 #   - the executable is arm64 only (spec section 5)
 #   - the signature verifies, and it is an ad-hoc one (docs/decisions/0002-ad-hoc-signing.md)
 #
@@ -56,9 +57,13 @@ plist_value() {
 }
 
 found_version=$(plist_value CFBundleShortVersionString)
+found_build=$(plist_value CFBundleVersion)
 found_identifier=$(plist_value CFBundleIdentifier)
 if [[ $found_version != "$version" ]]; then
     problem "CFBundleShortVersionString is $found_version, VERSION is $version"
+fi
+if [[ $found_build != "$version" ]]; then
+    problem "CFBundleVersion is $found_build, VERSION is $version (CURRENT_PROJECT_VERSION in App/project.yml)"
 fi
 if [[ $found_identifier != io.github.ldellisola.Scratch ]]; then
     problem "CFBundleIdentifier is $found_identifier, not io.github.ldellisola.Scratch"
@@ -77,7 +82,7 @@ if ! grep -Eq 'Signature=adhoc|flags=[^ ]*adhoc' <<<"$signature"; then
     problem "the app is not ad-hoc signed (wanted Signature=adhoc in the codesign output below)"
 fi
 
-echo "$script: $(basename "$zip"): version $found_version, $found_identifier, $archs"
+echo "$script: $(basename "$zip"): version $found_version (build $found_build), $found_identifier, $archs"
 echo "$signature" | sed 's/^/  codesign: /'
 
 if [[ $problems -ne 0 ]]; then

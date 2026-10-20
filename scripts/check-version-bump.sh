@@ -4,17 +4,20 @@
 #   check-version-bump.sh <base-ref>        (CI passes origin/main)
 #
 # Every merge to main that changes the app publishes a release named after the VERSION file, and the release workflow
-# stops when that version already has a tag. So a change under App/ or Packages/ that keeps the old VERSION would merge
-# and then never ship. This check catches it on the branch instead.
+# fails when that version already has a tag but App/ or Packages/ changed since. So a change under App/ or Packages/
+# that keeps the old VERSION would merge and then never ship. This check catches it on the branch instead.
 #
 # It looks at committed state only: VERSION as it is at HEAD, and `git diff --name-only <base-ref>...HEAD`, which is
 # what the branch changed since it left <base-ref>. Changes that main gained after that do not count.
 #
+# A bump has to go up. VERSION is compared with <base-ref>:VERSION number by number (MAJOR, then MINOR, then PATCH), so
+# 0.10.0 is greater than 0.9.0, and a branch that lowers the version fails with the same exit code as one that keeps it.
+#
 # Exit: 0 fine: nothing under App/ or Packages/ changed (so also on main itself, where HEAD is <base-ref>), or VERSION
-#         differs from <base-ref>:VERSION, or <base-ref> has no VERSION file (which counts as a bump). VERSION is
+#         is greater than <base-ref>:VERSION, or <base-ref> has no VERSION file (which counts as a bump). VERSION is
 #         well-formed in every one of these cases.
-#       1 a change under App/ or Packages/ with VERSION identical to <base-ref>:VERSION, or VERSION missing or not
-#         MAJOR.MINOR.PATCH (digits only, no leading zeros)
+#       1 a change under App/ or Packages/ with VERSION identical to, or lower than, <base-ref>:VERSION, or VERSION
+#         missing or not MAJOR.MINOR.PATCH (digits only, no leading zeros)
 #       64 usage error
 #       70 cannot run: not a git repository, <base-ref> does not exist, or git failed
 set -euo pipefail
@@ -29,6 +32,33 @@ usage_error() {
 internal_error() {
     echo "$script: $*" >&2
     exit 70
+}
+
+# semver_compare <a> <b>: prints -1, 0 or 1 as the version a is lower than, equal to or greater than b. Both are
+# MAJOR.MINOR.PATCH with no leading zeros. Compares field by field as numbers without shell arithmetic, so that a field
+# too big for 64 bits still compares right: with no leading zeros, a longer number is a bigger one, and numbers of the
+# same length compare as strings.
+semver_compare() {
+    local LC_COLLATE=C
+    local -a a b
+    IFS=. read -r -a a <<<"$1"
+    IFS=. read -r -a b <<<"$2"
+    local i
+    for i in 0 1 2; do
+        if ((${#a[i]} != ${#b[i]})); then
+            ((${#a[i]} < ${#b[i]})) && echo -1 || echo 1
+            return
+        fi
+        if [[ ${a[i]} < ${b[i]} ]]; then
+            echo -1
+            return
+        fi
+        if [[ ${a[i]} > ${b[i]} ]]; then
+            echo 1
+            return
+        fi
+    done
+    echo 0
 }
 
 [[ $# -eq 1 && -n $1 && $1 != -* ]] || usage_error
@@ -66,7 +96,24 @@ if ! base_version=$(git show "$base:VERSION" 2>/dev/null); then
     exit 0
 fi
 
-if [[ $head_version == "$base_version" ]]; then
+# A base VERSION that is not MAJOR.MINOR.PATCH cannot be compared with, and the well-formed one at HEAD fixes it.
+if ! [[ $base_version =~ $version_pattern ]]; then
+    echo "$script: VERSION $head_version replaces '$base_version' on $base, which is not MAJOR.MINOR.PATCH"
+    exit 0
+fi
+
+order=$(semver_compare "$head_version" "$base_version")
+
+if ((order < 0)); then
+    {
+        echo "$script: VERSION $head_version must be greater than $base_version on $base"
+        echo "A release is named after VERSION, and a lower number would be older than the last release. Raise VERSION in"
+        echo "the same pull request (AGENTS.md section 6, Releases)."
+    } >&2
+    exit 1
+fi
+
+if ((order == 0)); then
     {
         echo "$script: App/ or Packages/ changed since $base, but VERSION is still $base_version."
         echo "Bump VERSION in the same pull request (AGENTS.md section 6, Releases): a patch bump for a fix, a minor"

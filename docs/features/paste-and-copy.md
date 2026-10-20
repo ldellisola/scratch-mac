@@ -25,7 +25,7 @@ file references (plan 4), and may add rich copy-out.
 All of it is in `App/Sources/Editor/NoteTextView.swift`:
 
 - `applyScratchConfiguration()` makes the view a plain-text editor and turns every substitution off.
-  `TextViewFactory.makeEditor(mode:)` calls it.
+  `TextViewFactory.makeEditor()` calls it.
 - `readablePasteboardTypes` is `[.string]`: the one place that decides what a paste takes.
 - `writablePasteboardTypes` is `[.string]` and `writeSelection(to:types:)` writes the selected text as `.string` and
   nothing else: the one place that decides what Copy, Cut, drags and Services put out. Rich copy-out would be added

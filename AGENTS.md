@@ -12,7 +12,8 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
-- Current plan: [`docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md)
+- Current plan: [`docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md)
+  (Plan 1, done and released as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md))
 
 ## 2. Module map
 
@@ -64,15 +65,16 @@ App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release
 perf/                             budgets.json (the budgets CI enforces, in milliseconds) and baseline.json (CI's own
                                   numbers, the slowest of many runs: docs/decisions/0003)
 VERSION                           the app's version, MAJOR.MINOR.PATCH on one line. It names the release and feeds the
-                                  app's marketing version (`make project`). Bump it with every change to App/ or
-                                  Packages/ (section 6, Releases)
+                                  app's marketing and build versions (`make project`). Bump it with every change to
+                                  App/ or Packages/ (section 6, Releases)
 scripts/                          install-swift-linux.sh (toolchain), session-setup.sh (SessionStart hook),
                                   ci-summary.py, publish-ci-results.sh, ci-wait.sh, ci-fetch.sh (the ci-results loop,
                                   section 4), lib-ci-results.sh (shared by those), name-screenshots.py (names the
                                   exported screenshots), perf-extract.py (a ScratchPerf result bundle to numbers),
                                   perf-check.py (numbers against baseline and budgets), check-version-bump.sh (a change
-                                  to App/ or Packages/ needs a new VERSION), check-release-zip.sh (unpacks a release
-                                  zip and checks the app in it), tests/ (their tests)
+                                  to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
+                                  release notes footer with the version filled in), check-release-zip.sh (unpacks a
+                                  release zip and checks the app in it), tests/ (their tests)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests, version bump check. Job `macos`:
                                   XcodeGen, core tests on macOS, app build and app tests, screenshots, performance tests
                                   and their check, the release zip. Both publish to `ci-results`.
@@ -80,6 +82,7 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   `make release-zip` and publishes a GitHub Release `v<VERSION>` (section 6, Releases)
 docs/architecture.md              module boundaries, data flow, threading
 docs/release-notes-footer.md      the install and update steps, put at the top of every release's notes
+                                  (`scripts/release-notes.sh` replaces its `<version>` placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md (more as
                                   features land)
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
@@ -101,9 +104,11 @@ macOS and runs on GitHub's Macs.
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
 - `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py`,
-  `perf-extract.py` and `check-version-bump.sh`). Each test file ends with an `all ... passed` line.
+  `perf-extract.py`, `check-version-bump.sh` and `release-notes.sh`). Each test file ends with an `all ... passed` line.
 - `scripts/check-version-bump.sh <base-ref>` `[linux]`: exit 1 when the branch changed App/ or Packages/ since
-  `<base-ref>` without a new `VERSION`, or when `VERSION` is not MAJOR.MINOR.PATCH. CI runs it with `origin/main`.
+  `<base-ref>` without a `VERSION` that is greater than `<base-ref>`'s (compared number by number: 0.10.0 is greater than
+  0.9.0), or when `VERSION` is not MAJOR.MINOR.PATCH. CI runs it with `origin/main`.
+- `scripts/release-notes.sh <version>` `[linux]`: print `docs/release-notes-footer.md` with every `<version>` replaced.
 - `make ci-wait SHA=<sha> [JOBS="linux macos"]` `[linux]`: wait for CI to publish results for a commit and print them.
   See section 4 for how to read the outcome.
 - `scripts/ci-fetch.sh <sha> <dest>` `[linux]`: copy a commit's published CI results (summaries, log tails,
@@ -128,8 +133,8 @@ macOS and runs on GitHub's Macs.
 - `make run FIXTURE=<name>` `[macOS]`: build the app and open it on a fixture in a throwaway data directory.
 
 - `make release-zip` `[macOS]`: build the Release app into `build/release/Scratch.app`, zip it to
-  `build/release/Scratch-<VERSION>.zip`, and check what is in the zip (`scripts/check-release-zip.sh`: version, bundle
-  identifier, arm64 only, valid ad-hoc signature). CI runs it on every push, and the release workflow runs it to make
+  `build/release/Scratch-<VERSION>.zip`, and check what is in the zip (`scripts/check-release-zip.sh`: version and build
+  version, bundle identifier, arm64 only, valid ad-hoc signature). CI runs it on every push, and the release workflow runs it to make
   the file it publishes.
 
 ### Launch arguments
@@ -244,13 +249,17 @@ A release is published for every merge to `main` that changes the app, with no h
 1. **Bump `VERSION` in the same pull request.** It is one line, `MAJOR.MINOR.PATCH` (digits only, no leading zeros): a
    patch bump for a fix (`0.1.0` to `0.1.1`), a minor bump for a feature (`0.1.1` to `0.2.0`). The `linux` CI job runs
    `scripts/check-version-bump.sh origin/main` and fails a branch that changes anything under `App/` or `Packages/`
-   while `VERSION` still equals main's. Changes to docs, scripts, `perf/` or workflows need no bump and publish nothing.
+   while `VERSION` still equals main's or is lower than it. Changes to docs, scripts, `perf/` or workflows need no bump
+   and publish nothing.
    Run the check yourself with `git fetch origin main` and `scripts/check-version-bump.sh origin/main`.
 2. **Merge.** `.github/workflows/release.yml` runs on the push to `main` when `App/`, `Packages/` or `VERSION` changed.
-   If the tag `v<VERSION>` exists it stops, successfully. Otherwise it runs `make project release-zip` on `macos-26`
-   (Xcode 26.6) and creates the GitHub Release `v<VERSION>`, titled `Scratch <VERSION>`, with `Scratch-<VERSION>.zip`
-   attached, the notes GitHub generates (what changed since the last release) and `docs/release-notes-footer.md`
-   (install and update steps) at the top.
+   If the tag `v<VERSION>` exists and `App/` and `Packages/` are the same as at that tag, it stops, successfully (a
+   re-run). If the tag exists but `App/` or `Packages/` changed since, it **fails** with `v<VERSION> is already released
+   but App/ or Packages/ changed since; bump VERSION`: that change would ship in no release, so bump `VERSION` in a new
+   pull request. Otherwise it runs `make project release-zip` on `macos-26` (Xcode 26.6) and creates the GitHub Release
+   `v<VERSION>`, titled `Scratch <VERSION>`, with `Scratch-<VERSION>.zip` attached, the notes GitHub generates (what
+   changed since the last release) and the install and update steps (`scripts/release-notes.sh`, from
+   `docs/release-notes-footer.md`, with the version filled in) at the top.
 3. **Check it.** `git ls-remote --tags origin v<VERSION>` shows the tag once the release is published, and the release
    page lists the zip. If the workflow fails after the merge, the run's log says where. A failure of the workflow's own
    steps (a network error, say) is re-run from the Actions tab. A broken build needs a fix to `App/` or `Packages/`,
