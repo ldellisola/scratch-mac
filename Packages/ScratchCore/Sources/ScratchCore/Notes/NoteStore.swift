@@ -33,7 +33,12 @@ public final class NoteStore: Sendable {
         return try rows.first.map(Self.note(from:))
     }
 
-    /// Inserts the note, or replaces the stored one with the same id, and refreshes its derived columns.
+    /// Inserts the note, or updates the stored one with the same id, and refreshes its derived columns.
+    ///
+    /// A new row gets every column of `note`. An existing row gets only the title, the body and the edit time (and the
+    /// derived columns that follow from them). The pin, the deletion and the creation time of a stored note are left
+    /// alone, because `note` may be a copy from before the owner pinned or deleted it: an autosave of typing must
+    /// never undo that. Change them with ``setPinned(_:_:now:)``, ``delete(_:now:)`` and ``restore(_:)``.
     public func save(_ note: Note) throws {
         try database.execute(Self.upsertSQL, Self.arguments(for: note))
     }
@@ -72,14 +77,67 @@ public final class NoteStore: Sendable {
     }
 
     /// Removes the row for good. Only for a note that was never used: its tab closed while still empty (spec §6.3).
-    /// A note the owner deletes goes to Recently Deleted instead, which is a later plan.
+    /// A note the owner deletes goes to Recently Deleted instead (``delete(_:now:)``).
     public func discard(_ id: NoteID) throws {
         try database.execute("DELETE FROM notes WHERE id = ?", [.text(id.rawValue)])
     }
 
+    // MARK: Pin and delete
+
+    /// How long a note stays in Recently Deleted before ``purge(deletedBefore:)`` may remove it: 30 days (spec §6.2).
+    public static let recentlyDeletedRetention: TimeInterval = 30 * 24 * 60 * 60
+
+    /// Pins the note (`pinned_at` becomes `now`) or unpins it (`pinned_at` becomes NULL). The text and the edit time
+    /// stay as they are, so pinning does not move the note in the "newest edit first" order. An unknown id is ignored.
+    public func setPinned(_ id: NoteID, _ pinned: Bool, now: Date) throws {
+        try database.execute(
+            "UPDATE notes SET pinned_at = ? WHERE id = ?",
+            [pinned ? .date(now) : .null, .text(id.rawValue)])
+    }
+
+    /// Moves the note to Recently Deleted (`deleted_at` becomes `now`). Its text, edit time and pin stay as they are.
+    /// A note that is already deleted keeps its first deletion date, so a second delete cannot postpone the purge.
+    /// An unknown id is ignored.
+    public func delete(_ id: NoteID, now: Date) throws {
+        try database.execute(
+            "UPDATE notes SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
+            [.date(now), .text(id.rawValue)])
+    }
+
+    /// Takes the note out of Recently Deleted (`deleted_at` becomes NULL). Its text, edit time and pin stay as they
+    /// are. A note that is not deleted, and an unknown id, are left alone.
+    public func restore(_ id: NoteID) throws {
+        try database.execute("UPDATE notes SET deleted_at = NULL WHERE id = ?", [.text(id.rawValue)])
+    }
+
+    /// Removes a note from Recently Deleted for good (spec §6.2). A note that is not deleted is never removed:
+    /// only the owner's Delete puts a note in Recently Deleted, and nothing else removes one (spec §6.7).
+    public func deletePermanently(_ id: NoteID) throws {
+        try database.execute("DELETE FROM notes WHERE id = ? AND deleted_at IS NOT NULL", [.text(id.rawValue)])
+    }
+
+    /// The Recently Deleted rows, the most recently deleted first. Each has its ``NoteSummary/deletedAt``.
+    public func deletedSummaries() throws -> [NoteSummary] {
+        try summaries(
+            """
+            SELECT \(Self.summaryColumns) FROM notes
+            WHERE deleted_at IS NOT NULL
+            ORDER BY deleted_at DESC, id
+            """, [])
+    }
+
+    /// Removes every deleted note whose deletion is older than `cutoff`, and returns how many rows went. The
+    /// owner's own notes are never touched: a note that is not deleted stays however old it is (spec §6.7). Call it
+    /// with `now - recentlyDeletedRetention`.
+    public func purge(deletedBefore cutoff: Date) throws -> Int {
+        let removed = try database.query(
+            "DELETE FROM notes WHERE deleted_at IS NOT NULL AND deleted_at < ? RETURNING id", [.date(cutoff)])
+        return removed.count
+    }
+
     // MARK: Rows
 
-    private static let summaryColumns = "id, display_title, has_title, preview, modified_at, pinned_at"
+    private static let summaryColumns = "id, display_title, has_title, preview, modified_at, pinned_at, deleted_at"
     private static let summaryOrder = "ORDER BY pinned_at IS NULL, modified_at DESC, created_at DESC, id"
 
     private func summaries(_ sql: String, _ arguments: [SQLValue]) throws -> [NoteSummary] {
@@ -91,7 +149,7 @@ public final class NoteStore: Sendable {
             else { throw Self.malformedRow("notes") }
             return NoteSummary(
                 id: NoteID(rawValue: id), displayTitle: displayTitle, hasTitle: hasTitle != 0, preview: preview,
-                modifiedAt: modifiedAt, pinnedAt: row.date("pinned_at"))
+                modifiedAt: modifiedAt, pinnedAt: row.date("pinned_at"), deletedAt: row.date("deleted_at"))
         }
     }
 
@@ -102,8 +160,7 @@ public final class NoteStore: Sendable {
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title, body = excluded.body,
           display_title = excluded.display_title, has_title = excluded.has_title, preview = excluded.preview,
-          created_at = excluded.created_at, modified_at = excluded.modified_at,
-          pinned_at = excluded.pinned_at, deleted_at = excluded.deleted_at
+          modified_at = excluded.modified_at
         """
 
     private static func arguments(for note: Note) -> [SQLValue] {

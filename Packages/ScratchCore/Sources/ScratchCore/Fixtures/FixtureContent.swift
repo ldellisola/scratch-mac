@@ -11,6 +11,7 @@ struct FixtureContent {
         case .typical: typical(now: now)
         case .hugeNote: hugeNote(now: now)
         case .manyNotes: manyNotes(now: now)
+        case .recentlyDeleted: recentlyDeleted(now: now)
         }
     }
 
@@ -148,13 +149,33 @@ struct FixtureContent {
         return FixtureContent(notes: notes, session: SessionState(tabs: [tab(on: newest)], activeTabIndex: 0))
     }
 
+    // MARK: Recently deleted
+
+    /// One live note and two deleted ones, one of them past the 30-day retention. The session shows "Groceries".
+    private static func recentlyDeleted(now: Date) -> FixtureContent {
+        let hour: TimeInterval = 3600
+        let day = 24 * hour
+        let groceries = note("Groceries", "milk, eggs, coffee beans", editedAt: now.addingTimeInterval(-hour))
+        let meeting = note(
+            "Old meeting notes", "agenda: roadmap review\naction: send the summary to the team",
+            editedAt: now.addingTimeInterval(-3 * day), deletedAt: now.addingTimeInterval(-2 * day))
+        let ancient = note(
+            "Ancient", "notes from a project that no longer exists",
+            editedAt: now.addingTimeInterval(-40 * day), deletedAt: now.addingTimeInterval(-31 * day))
+        return FixtureContent(
+            notes: [groceries, meeting, ancient], session: SessionState(tabs: [tab(on: groceries)], activeTabIndex: 0))
+    }
+
     // MARK: Building blocks
 
-    /// A note created and last edited at `editedAt`. A pinned note is pinned at that moment too.
-    private static func note(_ title: String, _ body: String, editedAt: Date, pinned: Bool = false) -> Note {
+    /// A note created and last edited at `editedAt`. A pinned note is pinned at that moment too, and a note with a
+    /// `deletedAt` is in Recently Deleted.
+    private static func note(
+        _ title: String, _ body: String, editedAt: Date, pinned: Bool = false, deletedAt: Date? = nil
+    ) -> Note {
         Note(
             id: NoteID.make(), title: title, body: body, createdAt: editedAt, modifiedAt: editedAt,
-            pinnedAt: pinned ? editedAt : nil)
+            pinnedAt: pinned ? editedAt : nil, deletedAt: deletedAt)
     }
 
     private static func tab(on note: Note) -> TabState {

@@ -21,8 +21,11 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 Packages/ScratchCore/             Foundation-only Swift package. Builds and tests on Linux and macOS.
   Sources/CSQLite/                module map for the system SQLite library (no pkgConfig, on purpose)
   Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview. NoteSummary: a sidebar
-                                  row. NoteStore: reads and writes the notes table (pinned first, newest edit first)
-                                  and searches it (`search`). SearchQuery: typed text to an FTS5 MATCH expression
+                                  row (`deletedAt` is set for Recently Deleted rows). NoteStore: reads and writes the
+                                  notes table (pinned first, newest edit first), searches it (`search`), and pins,
+                                  deletes, restores and purges notes (`setPinned`, `delete`, `restore`,
+                                  `deletePermanently`, `deletedSummaries`, `purge`). SearchQuery: typed text to an
+                                  FTS5 MATCH expression
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores), SessionStore (JSON under key
                                   "state"), TextOffset (clamps a saved cursor offset to a Character boundary)
   Sources/ScratchCore/Autosave/   Autosaver (decides when unsaved changes are written: 300 ms after the last change,
@@ -33,8 +36,8 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   rule, and SchemaError for a database from a newer Scratch), ScratchStorage (opens
                                   the data directory and its stores; refuses a fixture on the real directory)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
-  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes) and FixtureContent, their notes and
-                                  session
+  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted) and FixtureContent,
+                                  their notes and session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
 App/project.yml                   XcodeGen spec: targets Scratch (app), ScratchAppTests (hosted unit tests),
                                   ScratchUITests, ScratchPerfTests; schemes Scratch and ScratchPerf. The generated
@@ -147,7 +150,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 | Flag | Value | Effect |
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
-| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes` | delete the database in the data directory and seed that fixture |
+| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted` | delete the database in the data directory and seed that fixture |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 
@@ -300,6 +303,13 @@ everything but its last step: the `macos` job runs `make release-zip`, which bui
   holds no text of its own, and three triggers keep it current, so never write to it by hand. `NoteStore.save` uses
   `INSERT ... ON CONFLICT DO UPDATE`, which keeps the `rowid` and fires the update trigger. `INSERT OR REPLACE` would
   give the note a new `rowid` and skip the delete trigger, which corrupts the index.
+- **`NoteStore.save` never changes a stored note's pin, deletion or creation time.** On a conflict it writes only the
+  title, the body, the derived columns and `modified_at`, because the `Note` being saved may be a copy from before the
+  owner pinned or deleted it (an autosave must not undo that). A new row still gets every column. Change the pin, the
+  deletion and the restore with `setPinned`, `delete` and `restore`, which touch only their own column and never
+  `modified_at`. `delete` keeps the first deletion date of a note that is already deleted, and `deletePermanently`
+  and `purge` only ever remove a note that is deleted. A deleted note stays in the search index and is filtered out
+  of `search`, so a restore needs no reindexing.
 - **Search text is never FTS5 syntax.** Pass what the owner typed through `SearchQuery.ftsExpression`, which quotes every
   word, and never build a `MATCH` string yourself. A word without a letter or a digit is dropped.
 - **`swift test --sanitize=thread` reports false data races on `Synchronization.Mutex` on Linux.** TSAN does not see

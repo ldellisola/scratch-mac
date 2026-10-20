@@ -168,9 +168,8 @@ private func ids(_ summaries: [NoteSummary]) -> [NoteID] { summaries.map(\.id) }
     try withTemporaryStore { store, _ in
         let old = try add(store, body: "match old", at: 1)
         let recent = try add(store, body: "match recent", at: 3)
-        var pinned = try add(store, body: "match pinned", at: 0)
-        pinned.pinnedAt = date(9)
-        try store.save(pinned)
+        let pinned = try add(store, body: "match pinned", at: 0)
+        try store.setPinned(pinned.id, true, now: date(9))
         #expect(ids(try store.search("match")) == [pinned.id, recent.id, old.id])
         #expect(try store.search("match") == (try store.summaries()))
     }
