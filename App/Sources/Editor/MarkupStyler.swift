@@ -140,6 +140,13 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         codeBlocks.contains(location)
     }
 
+    /// True when `range` has a character in common with a fenced block (the fence lines included). A command that edits
+    /// whole paragraphs, such as ⇧⌘L, asks it for the paragraphs it is about to change: the lines of a block are code and
+    /// never get a marker, also when the selection starts and ends outside the block and holds it.
+    func intersectsCodeBlock(_ range: NSRange) -> Bool {
+        codeBlocks.intersects(range)
+    }
+
     /// The `[?]` of the checkbox that the character at `characterIndex` belongs to, or nil when it is none (the space
     /// after a box and the text of the item are not).
     func checkboxMarker(at characterIndex: Int) -> NSRange? {

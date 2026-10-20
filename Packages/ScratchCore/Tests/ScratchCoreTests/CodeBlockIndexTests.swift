@@ -55,6 +55,38 @@ private let sample = "a\n```sh\nb\n```\nc"
     #expect(!index.contains(15))
 }
 
+@Test func intersectsCountsEveryCharacterOfTheBlockAndItsFenceLines() {
+    let index = CodeBlockIndex(text: sample)
+    #expect(!index.intersects(r(0, 2)), "the paragraph before the block, with its line break")
+    #expect(index.intersects(r(0, 3)), "the line break and the first backtick")
+    #expect(index.intersects(r(2, 6)), "the opening fence line, with its line break")
+    #expect(index.intersects(r(8, 2)), "the line inside the block")
+    #expect(index.intersects(r(10, 4)), "the closing fence line, with its line break")
+    #expect(index.intersects(r(13, 1)), "the end of the closing fence line")
+    #expect(!index.intersects(r(14, 1)), "the paragraph after the block")
+    #expect(index.intersects(r(0, 15)), "a selection that holds the whole block")
+    #expect(index.intersects(r(4, 1)), "a selection inside it")
+}
+
+@Test func anEmptyRangeIntersectsAsAPosition() {
+    let index = CodeBlockIndex(text: sample)
+    #expect(!index.intersects(r(1, 0)))
+    #expect(index.intersects(r(2, 0)))
+    #expect(index.intersects(r(9, 0)))
+    #expect(index.intersects(r(13, 0)))
+    #expect(!index.intersects(r(14, 0)))
+}
+
+@Test func intersectsLooksPastTheBlocksBeforeTheRange() {
+    let text = "```\na\n```\nx\n```\nb\n```\ny"
+    let index = CodeBlockIndex(text: text)
+    #expect(index.blocks.count == 2)
+    #expect(!index.intersects(r(10, 2)), "x and its line break lie between the blocks")
+    #expect(index.intersects(r(10, 3)), "up to the first backtick of the second block")
+    #expect(!index.intersects(r(22, 1)), "y after the last block")
+    #expect(!CodeBlockIndex().intersects(r(0, 5)))
+}
+
 @Test func coversFollowsTheParagraphRuleOfTheParser() {
     let index = CodeBlockIndex(text: sample)
     #expect(!index.covers(paragraphStart: 0))

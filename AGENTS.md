@@ -53,9 +53,9 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   the selection (`ParagraphLines`, internal: those lines with document offsets, and how
                                   a selection moves when they change). The editor's styling reads CodeBlockIndex (the
                                   fenced blocks of a note, carried over each edit and scanned again only when an edit
-                                  touches a fence line), EditMapping (where positions go when text is replaced) and
-                                  `MarkupParser.mayHaveSpans` (a cheap test that skips the parse of a line with no
-                                  marker)
+                                  touches a fence line; `intersects` says whether a range holds a block), EditMapping
+                                  (where positions go when text is replaced) and `MarkupParser.mayHaveSpans` (a cheap
+                                  test that skips the parse of a line with no marker)
   Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting) and
                                   FixtureContent, their notes and session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
@@ -67,9 +67,9 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
                                   arguments, opens storage; isolates a hosted test run)
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
                                   sidebar item + editor area item), EditorAreaViewController (the tab strip above the
-                                  editor), MainMenu (menu bar, built in code: there is no storyboard), AppCommands (the
-                                  target of the app's own menu items: the tabs, pinning, searching and the font size),
-                                  ToolbarController (sidebar button, pin button, new note button), TitlebarPocket (hides
+                                  editor), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
+                                  menu), AppCommands (the target of the app's own menu items: the tabs, pinning,
+                                  searching and the font size), ToolbarController (sidebar button, pin button, new note button), TitlebarPocket (hides
                                   the line macOS 26 draws under the toolbar, section 7)
 App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
                                   `TabStripLayout`, `TabStripContentView`, `TabItemView`)
@@ -86,10 +86,12 @@ App/Sources/Session/              SessionCoordinator (the tabs and which is acti
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
                                   TitleField (the optional title above the text), EditorViewController (the title field
-                                  and the editor: shows a note, reports edits, cursor and scroll anchor). The markers
+                                  and the editor: shows a note, reports edits, cursor and scroll anchor). NoteTextView
+                                  also applies the editing rules' `TextEdit`s (`apply`, one undo step), ticks a checkbox
+                                  on a click (`mouseDown`) and answers ⇧⌘L (`toggleChecklist`). The markers
                                   are rendered by MarkupStyler (the text storage's delegate: styles paragraphs from the
                                   core's parser, hides and reveals markers, styles a shown note in chunks),
-                                  MarkupLayoutManager (null glyphs for hidden markers, draws bullets),
+                                  MarkupLayoutManager (null glyphs for hidden markers, draws bullets and checkboxes),
                                   MarkupAppearance (fonts, colours and paragraph styles per font size), MarkupAttributes
                                   (the `scratchMarker` and `scratchLink` attributes, `MarkerRole`, `MarkupColors`) and
                                   ParagraphBatch (whole paragraphs read in one call)
@@ -106,7 +108,8 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   50,000-line paste returns within 500 ms, FrameMonitorTests, EditorViewControllerTests:
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
-                                  reveal, fenced blocks are literal, a long note is styled in chunks)
+                                  reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
+                                  click ticks a box, ⇧⌘L, the drawn symbol, the Format menu)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -614,3 +617,26 @@ new kind of release file, with no change to the app, ships.
 - **Paragraphs are `NSString.paragraphRange(for:)`'s, lines are the core's.** The styler splits the text at line feed,
   carriage return, CR LF, U+2029 and U+0085, and the core at the first three only, so a line with a paragraph
   separator in it can be styled differently by `MarkupParser.parse`. Nothing in Scratch makes one.
+- **A click on a checkbox is handled in `NoteTextView.mouseDown` and never reaches `super.mouseDown`.** A plain click
+  whose point is inside the rectangle of the three `[?]` glyphs (`checkboxMarker(atViewPoint:)`, which asks the layout
+  manager for the character under the point, not the nearest insertion point) ticks or unticks the item through
+  `apply(_:)` and leaves the caret where it was; the view takes the keyboard. Any other click, one with ⇧, ⌘, ⌥ or ⌃
+  held, and every click in a read-only note is AppKit's. **A hosted test must not send a click that ends in
+  `super.mouseDown`:** it runs a tracking loop until the mouse button is released, and the test hangs for its two
+  minutes. `CheckboxTests.clickBox` checks that the point is on a box first, and the cases that are not a toggle call
+  `checkboxMarker(atViewPoint:)` and `toggleCheckbox(atViewPoint:)` directly.
+- **A rule's `TextEdit` enters the note through `NoteTextView.apply(_:)` only.** It breaks the undo coalescing, changes
+  the text with `shouldChangeText`, `replaceCharacters` and `didChangeText` (one undo step, registered on the note's own
+  undo manager, and the styler restyles the paragraph as for typing), then sets the selection. It never touches a
+  read-only view. After undoing a checkbox click AppKit selects the character that came back, as it does for any
+  programmatic replacement.
+- **A command that edits whole paragraphs asks `styler.intersectsCodeBlock` for the paragraphs it will change**, not
+  `isInCodeBlock` for the caret: a selection can start and end outside a block and hold it. ⇧⌘L beeps there, and in a
+  read-only note.
+- **The Format menu is not auto-enabled** (`menu.autoenablesItems = false`, `MainMenu.formatMenu`): AppKit would ask the
+  first responder, and the way `NSTextView` validates an action it does not know is not documented. A Format item has
+  no target, so the first responder gets it, and a command that cannot work beeps (`NSSound.beep()`).
+- **The box is an SF Symbol drawn over the transparent `[?]`.** `MarkupLayoutManager.drawCheckbox` draws `square` or
+  `checkmark.square.fill` with a palette configuration of `controlAccentColor`, centred in the glyph rectangle of the
+  marker and 85% of the line height, on every draw (the colour and appearance of the moment). `testCheckboxSymbolIsDrawn`
+  renders the view with `cacheDisplay` and counts the pixels that are not the background.

@@ -142,14 +142,99 @@ final class NoteTextView: NSTextView {
         typingAttributes = Self.noteAttributes(size: fontSize)
     }
 
-    // MARK: Checkboxes and the checklist command (plan 3, task 4; stubs until the tests have failed)
+    // MARK: Edits the owner asks for
 
-    func checkboxMarker(atViewPoint point: NSPoint) -> NSRange? { nil }
+    /// Applies an edit that one of the editing rules (`ListEditing`, `InlineEditing`) answered with, as one undo step:
+    /// the text is changed through `shouldChangeText` and `didChangeText`, which register the undo and tell the delegate,
+    /// then the selection is set. The typing before and after it is not part of its undo step (`breakUndoCoalescing`).
+    /// Does nothing when the view is not editable. An edit that replaces nothing with nothing only sets the selection.
+    func apply(_ edit: TextEdit) {
+        guard isEditable else { return }
+        breakUndoCoalescing()
+        if edit.range.length > 0 || !edit.replacement.isEmpty {
+            guard shouldChangeText(in: edit.range, replacementString: edit.replacement) else { return }
+            textStorage?.replaceCharacters(in: edit.range, with: edit.replacement)
+            didChangeText()
+        }
+        setSelectedRange(edit.selection)
+        breakUndoCoalescing()
+    }
 
+    /// The whole paragraphs that cover the selection, which is all a rule of the core is given (never the whole note),
+    /// with the selection itself. The range is in UTF-16 units of the text.
+    private func coveringParagraphs() -> (text: String, range: NSRange, selection: NSRange) {
+        let selection = selectedRange()
+        let whole = string as NSString
+        let range = whole.paragraphRange(for: selection)
+        return (whole.substring(with: range), range, selection)
+    }
+
+    // MARK: Checkboxes
+
+    /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
+    /// it was, so the box can be clicked while typing somewhere else. Any other click, also one on a box with a
+    /// modifier key held (⇧ extends the selection, ⌘ will open a link) or in a note that cannot be edited, is the text
+    /// view's own.
+    override func mouseDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]),
+            toggleCheckbox(atViewPoint: convert(event.locationInWindow, from: nil))
+        {
+            return
+        }
+        super.mouseDown(with: event)
+    }
+
+    /// The `[?]` of the checkbox whose box is at `point`, in the coordinates of this view, or nil when `point` is
+    /// anywhere else: the space after the box, the text of the item, the margin, a line that is no checklist item or
+    /// the lines of a code block (`MarkupStyler` gives none of them a role). The box is the rectangle of the three
+    /// characters, which is what `MarkupLayoutManager` draws the symbol in.
+    func checkboxMarker(atViewPoint point: NSPoint) -> NSRange? {
+        guard let layoutManager, let container = textContainer, let styler else { return nil }
+        let origin = textContainerOrigin
+        let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+        // The character under the point, not the nearest place to put the caret: the right half of the last `]` would
+        // otherwise count as the space after the box.
+        let index = layoutManager.characterIndex(
+            for: local, in: container, fractionOfDistanceBetweenInsertionPoints: nil)
+        guard let marker = styler.checkboxMarker(at: index) else { return nil }
+        let glyphs = layoutManager.glyphRange(forCharacterRange: marker, actualCharacterRange: nil)
+        return layoutManager.boundingRect(forGlyphRange: glyphs, in: container).contains(local) ? marker : nil
+    }
+
+    /// Ticks or unticks the checkbox whose box is at `point` (`checkboxMarker(atViewPoint:)`) and returns true, or
+    /// returns false and does nothing when there is none there or the view cannot be edited. The selection is passed
+    /// through, so the caret stays; the view takes the keyboard, as a click in it does. One undo step.
     @discardableResult
-    func toggleCheckbox(atViewPoint point: NSPoint) -> Bool { false }
+    func toggleCheckbox(atViewPoint point: NSPoint) -> Bool {
+        guard isEditable, let marker = checkboxMarker(atViewPoint: point) else { return false }
+        let text = string as NSString
+        var lineStart = 0
+        var lineEnd = 0
+        var contentsEnd = 0
+        text.getParagraphStart(
+            &lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: marker.location, length: 0))
+        let line = text.substring(with: NSRange(location: lineStart, length: contentsEnd - lineStart))
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        guard
+            let edit = ListEditing.toggleCheckmark(line: line, lineStart: lineStart, selection: selectedRange())
+        else { return false }
+        apply(edit)
+        return true
+    }
 
-    @objc func toggleChecklist(_ sender: Any?) {}
+    // MARK: The Format menu
 
-    func apply(_ edit: TextEdit) {}
+    /// ⇧⌘L (Format > Checklist): the lines of the selection (the caret's line when there is none) become a checklist,
+    /// or, when every one of them already is one, plain lines again (`ListEditing.toggleChecklist`). One undo step. It
+    /// does nothing but beep when the note cannot be edited, or when a fenced block is among the lines: inside a block
+    /// nothing is formatting, so no marker is put there.
+    @objc func toggleChecklist(_ sender: Any?) {
+        guard isEditable else { return NSSound.beep() }
+        let paragraphs = coveringParagraphs()
+        guard !styler.intersectsCodeBlock(paragraphs.range) else { return NSSound.beep() }
+        apply(
+            ListEditing.toggleChecklist(
+                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))
+    }
 }

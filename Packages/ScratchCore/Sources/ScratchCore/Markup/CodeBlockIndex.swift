@@ -66,6 +66,16 @@ public struct CodeBlockIndex: Equatable, Sendable {
         return blocks[index].range.location <= location
     }
 
+    /// True when `range` has a character in common with a block, the fence lines included (the end of the closing fence
+    /// line, where its line break begins, counts). An empty `range` is a position and is asked as ``contains(_:)``. The
+    /// editor asks it for the paragraphs a command is about to change: a command never edits inside a block, which
+    /// includes a selection that starts and ends outside one but holds it.
+    public func intersects(_ range: NSRange) -> Bool {
+        if range.length == 0 { return contains(range.location) }
+        guard let index = firstBlock(endingAtOrAfter: range.location) else { return false }
+        return blocks[index].range.location < NSMaxRange(range)
+    }
+
     /// True when the paragraph that starts at `paragraphStart` is in a block, which is the rule `MarkupParser.parse`
     /// follows: its first character is from the start of the opening fence line up to, not including, the end of the
     /// closing one.

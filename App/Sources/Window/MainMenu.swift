@@ -11,8 +11,8 @@ enum MainMenu {
         let menuBar = NSMenu()
         let windowMenu = windowMenu(commands: commands)
         for menu in [
-            appMenu(), fileMenu(commands: commands), editMenu(commands: commands), viewMenu(commands: commands),
-            windowMenu,
+            appMenu(), fileMenu(commands: commands), editMenu(commands: commands), formatMenu(),
+            viewMenu(commands: commands), windowMenu,
         ] {
             let item = NSMenuItem()
             item.submenu = menu
@@ -135,6 +135,19 @@ enum MainMenu {
         let search = commandItem("Search Notes", #selector(AppCommands.focusSearch(_:)), key: "f", target: commands)
         search.keyEquivalentModifierMask = [.command, .option]
         menu.addItem(search)
+        return menu
+    }
+
+    /// The commands that change the text of the note (spec §6.4): Checklist, ⇧⌘L. They go to the first responder, so
+    /// only the editor answers them (`NoteTextView`). The items are not validated by AppKit: it would ask the first
+    /// responder, which is a text view whose own validation of an action it does not know is not documented, and a
+    /// command that cannot work (a read-only note, a code block) beeps instead of being greyed out.
+    static func formatMenu() -> NSMenu {
+        let menu = NSMenu(title: "Format")
+        menu.autoenablesItems = false
+        let checklist = menu.addItem(
+            withTitle: "Checklist", action: #selector(NoteTextView.toggleChecklist(_:)), keyEquivalent: "l")
+        checklist.keyEquivalentModifierMask = [.command, .shift]
         return menu
     }
 

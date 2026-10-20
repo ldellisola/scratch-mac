@@ -377,8 +377,8 @@ final class CheckboxTests: XCTestCase {
         let format = titles?.firstIndex(of: "Format")
         XCTAssertNotNil(edit)
         XCTAssertEqual(format, edit.map { $0 + 1 }, "Format comes after Edit")
-        let host = makeHostedEditor()
-        defer { withExtendedLifetime(host.window) {} }
-        if let item { XCTAssertTrue(host.editor.textView.validateUserInterfaceItem(item), "it is always enabled") }
+        XCTAssertEqual(
+            menu?.autoenablesItems, false, "AppKit does not switch the item off by asking the first responder")
+        XCTAssertEqual(item?.isEnabled, true)
     }
 }
