@@ -272,3 +272,44 @@ private func note(titled title: String, in notes: NoteStore) throws -> Note {
             "```",
         ])
 }
+
+// Spec §6.4 (code block, code highlighting): the `code` fixture holds a fenced block for five languages, a block whose
+// fence has no name, and prose between them. Plan 4 shows it in the screenshots and the code UI tests.
+
+@Test func codeFixtureHasOneNote() throws {
+    let (notes, session) = try stores()
+    try Fixture.code.seed(notes: notes, session: session, now: now)
+    let summaries = try notes.summaries()
+    #expect(summaries.map(\.displayTitle) == ["Code"])
+    #expect(try notes.deletedSummaries().isEmpty)
+    let code = try note(titled: "Code", in: notes)
+    #expect(code.pinnedAt == nil && code.deletedAt == nil)
+    #expect(code.modifiedAt == now)
+    let state = try #require(try session.load())
+    #expect(state.tabs.map(\.noteID) == [code.id])
+    #expect(state.activeTabIndex == 0)
+    #expect(state.tabs.allSatisfy { $0.selection == 0 && $0.scrollY == 0 })
+}
+
+@Test func codeFixtureHasABlockForEachLanguageAndOneWithoutAName() throws {
+    let (notes, session) = try stores()
+    try Fixture.code.seed(notes: notes, session: session, now: now)
+    let body = try note(titled: "Code", in: notes).body
+    let text = body as NSString
+
+    let blocks = FenceScanner.codeBlocks(in: body)
+    let names = blocks.map { block -> String in
+        let opening = text.substring(with: NSRange(location: block.location, length: min(12, block.length)))
+        return String(opening.prefix { $0 != "\n" }.dropFirst(3))
+    }
+    #expect(names == ["swift", "python", "sql", "json", "bash", ""])
+
+    // Every fence pairs up: the note has twelve fence lines and no stray one.
+    #expect(lines(of: body).filter { FenceScanner.isFenceLine(String($0)) }.count == 12)
+    // Prose before the first block and between the blocks, and the first line is not a fence.
+    #expect(lines(of: body).first == "Snippets, one block for each language.")
+    #expect(blocks.first?.location ?? 0 > 0)
+    // The block without a name is the last one, and holds JavaScript.
+    let unnamed = text.substring(with: try #require(blocks.last))
+    #expect(unnamed.contains("const notes = await fetch"))
+}

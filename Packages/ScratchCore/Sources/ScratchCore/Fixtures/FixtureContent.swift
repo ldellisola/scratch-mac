@@ -13,6 +13,7 @@ struct FixtureContent {
         case .manyNotes: manyNotes(now: now)
         case .recentlyDeleted: recentlyDeleted(now: now)
         case .formatting: formatting(now: now)
+        case .code: code(now: now)
         }
     }
 
@@ -187,6 +188,57 @@ struct FixtureContent {
         let formatting = note("Formatting", body, editedAt: now)
         return FixtureContent(
             notes: [formatting], session: SessionState(tabs: [tab(on: formatting)], activeTabIndex: 0))
+    }
+
+    // MARK: Code
+
+    /// The note "Code", edited at `now` and open in the only tab: a fenced block for each of five languages and one with
+    /// no name on its fence, with a line of prose between the blocks. Every line is short enough not to wrap in a window
+    /// of 1,024 points.
+    private static func code(now: Date) -> FixtureContent {
+        let body = [
+            "Snippets, one block for each language.",
+            "```swift",
+            "struct Note {",
+            "    let id: UUID",
+            #"    var title = "Untitled"  // shown in the sidebar"#,
+            "    var edits = 0",
+            "}",
+            "```",
+            "A route in Python, and the query behind it.",
+            "```python",
+            #"@app.route("/notes")"#,
+            "def notes(limit: int = 20):",
+            "    return [n.title for n in recent(limit)]  # newest first",
+            "```",
+            "```sql",
+            "SELECT title, modified_at FROM notes",
+            "WHERE deleted_at IS NULL -- live notes only",
+            "ORDER BY modified_at DESC LIMIT 20;",
+            "```",
+            "What the route answers, and a shell loop to check it.",
+            "```json",
+            "{",
+            #"  "title": "Standup","#,
+            #"  "pinned": true,"#,
+            #"  "edits": 3"#,
+            "}",
+            "```",
+            "```bash",
+            "# poll the endpoint",
+            "for i in 1 2 3; do",
+            "  curl -s localhost:8080/notes | head -c 80",
+            "done",
+            "```",
+            "A fence with no name: the language is detected from the code.",
+            "```",
+            #"const notes = await fetch("/notes").then((r) => r.json());"#,
+            "// the newest note comes first",
+            #"console.log(notes[0]?.title ?? "none", notes.length);"#,
+            "```",
+        ].joined(separator: "\n")
+        let code = note("Code", body, editedAt: now)
+        return FixtureContent(notes: [code], session: SessionState(tabs: [tab(on: code)], activeTabIndex: 0))
     }
 
     // MARK: Building blocks

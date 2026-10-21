@@ -58,9 +58,15 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     /// True when every paragraph of the text has been styled. False while a note is still being styled in chunks.
     private(set) var isFullyStyled = true
 
+    /// Colours the code of the fenced blocks and says which language each is (Plan 4).
+    let codeBlockStyler: CodeBlockStyler
+
     init(textView: NoteTextView) {
         self.textView = textView
         appearance = MarkupAppearance(fontSize: FontSize.standard)
+        codeBlockStyler = CodeBlockStyler(
+            textView: textView,
+            queue: DispatchQueue(label: "io.github.ldellisola.Scratch.highlight", qos: .userInitiated))
         super.init()
     }
 
