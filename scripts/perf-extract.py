@@ -5,13 +5,16 @@
 
 Writes <out.json>, a flat JSON object of milliseconds that perf-check.py reads:
 
-    {"launch_ms": ..., "keystroke_ms": ..., "scroll_frame_ms": ..., "switch_small_ms": ..., "switch_huge_ms": ...}
+    {"launch_ms": ..., "keystroke_ms": ..., "scroll_frame_ms": ..., "switch_small_ms": ..., "switch_huge_ms": ...,
+     "paste_code_ms": ...}
 
 Two sources, both read from <xcresult> with `xcrun xcresulttool`:
 
 - `get test-results metrics`: the XCTest metrics. launch_ms is LaunchPerfTests/testLaunch (XCTApplicationLaunchMetric),
   keystroke_ms, switch_small_ms and switch_huge_ms are the signpost intervals `keystroke` and `switch-note` of the
-  EditorPerfTests tests. A value is the median of that test's measurements, in milliseconds. The median, because
+  EditorPerfTests tests, and paste_code_ms is the signpost interval `paste-code` of
+  CodePastePerfTests/testPasteFiveHundredLinesOfCode (a paste of 500 lines of code until its colours are on screen).
+  A value is the median of that test's measurements, in milliseconds. The median, because
   a run on a shared virtual Mac now and then has one iteration that takes ten times as long (an outlier of 228 ms
   among keystrokes of 3 ms moved the mean by 6 ms), and a metric that such an iteration moves cannot be compared
   with a baseline.
@@ -49,6 +52,7 @@ XCTEST_METRICS = {
     "keystroke_ms": ("EditorPerfTests/testKeystroke", "keystroke"),
     "switch_small_ms": ("EditorPerfTests/testSwitchToSmallNote", "switch-note"),
     "switch_huge_ms": ("EditorPerfTests/testSwitchToHugeNote", "switch-note"),
+    "paste_code_ms": ("CodePastePerfTests/testPasteFiveHundredLinesOfCode", "paste-code"),
 }
 # The attachment of the scroll test: its name, and the keys of its JSON that are results: result key -> JSON key.
 SCROLL_KEY = "scroll_frame_ms"

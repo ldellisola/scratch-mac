@@ -92,6 +92,15 @@ cat >"$TMP/metrics.json" <<'JSON'
       "displayName": "Duration (switch-note)",
       "identifier": "com.apple.dt.XCTMetric_OSSignpost-switch-note.duration", "unitOfMeasurement": "µs", "measurements": [40000, 60000]}]}]
   },
+  {
+    "testIdentifier": "CodePastePerfTests/testPasteFiveHundredLinesOfCode()",
+    "testRuns": [{"metrics": [
+      {"displayName": "Duration", "identifier": "com.apple.dt.XCTMetric_Clock.time.monotonic",
+       "unitOfMeasurement": "s", "measurements": [4.0, 4.0]},
+      {"displayName": "Duration (paste-code)",
+       "identifier": "com.apple.dt.XCTMetric_OSSignpost-paste-code.duration",
+       "unitOfMeasurement": "ms", "measurements": [30.0, 90.0, 40.0]}]}]
+  },
   {"testIdentifier": "EditorPerfTests/testScrollHugeNote()", "testRuns": [{"metrics": []}]}
 ]
 JSON
@@ -125,6 +134,7 @@ value_is "launch_ms is the median of the launches, in milliseconds" "$TMP/out/re
 value_is "keystroke_ms picks the signpost metric, not the clock, and ignores an outlier" "$TMP/out/results.json" keystroke_ms 4.000
 value_is "switch_small_ms converts seconds" "$TMP/out/results.json" switch_small_ms 4.000
 value_is "switch_huge_ms converts microseconds" "$TMP/out/results.json" switch_huge_ms 50.000
+value_is "paste_code_ms picks the paste-code signpost, not the clock, and is a median" "$TMP/out/results.json" paste_code_ms 40.000
 value_is "scroll_frame_ms is the median CPU time in the scroll_frame_ms attachment" "$TMP/out/results.json" scroll_frame_ms 0.750
 value_is "scroll_frame_wall_ms is the median frame by the clock" "$TMP/out/results.json" scroll_frame_wall_ms 1.750
 value_is "scroll_frame_p95_ms is the 95th percentile of the CPU time" "$TMP/out/results.json" scroll_frame_p95_ms 2.500
