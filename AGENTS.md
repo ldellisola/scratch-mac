@@ -528,8 +528,8 @@ new kind of release file, with no change to the app, ships.
   so `EditorViewController` keeps the anchor and scrolls in `viewDidLayout` (`isLaidOut`, `scrollAnchorToApply`). A
   launch lays the text out at several widths (a first one, the window's, and a retile when the scrollers change style,
   which no layout of the editor's view follows), and each change of the width lays the text above the anchor out again
-  and leaves its height an estimate, far from the real one when lines wrap or fences are 6 pt (measured on CI, with the
-  trace of plan 4 task 5: line 1003 of the huge note at y = 18,408 laid out and at y = 12,530 estimated, after which
+  and leaves its height an estimate, far from the real one when lines wrap or fences are 6 pt (measured on CI with a
+  temporary trace: line 1003 of the huge note at y = 18,408 laid out and at y = 12,530 estimated, after which
   AppKit's move of the clip view left the note 1 to 3 lines off, and its bounds change was taken for the user
   scrolling, which ended the wait). So `isAnchorStale` (the text view's width is not the one the anchor was applied at)
   makes the clip view's bounds notification and the text view's frame notification apply it again, on the main queue

@@ -135,7 +135,6 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         }
         let text = storage.string as NSString
         let length = text.length
-        AnchorTrace.log("noteDidLoad visible=\(visibleRange)")
         let visible = text.paragraphRange(for: Self.clamp(visibleRange, toLength: length))
         let start = Self.paragraphStart(stepping: Self.marginParagraphs, backFrom: visible.location, in: text)
         let end = Self.paragraphEnd(stepping: Self.marginParagraphs, forwardFrom: NSMaxRange(visible), in: text)
@@ -822,9 +821,6 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         }
         storage.endEditing()
         isApplying = false
-        AnchorTrace.log(
-            "chunk styled=\(styled.first.map { "\($0)" } ?? "-")..\(styled.last.map { "\($0)" } ?? "-") n=\(styled.count) pending=\(pending.count)"
-        )
 
         if let changed { invalidate(changed) }
         codeBlockStyler.clearColours(in: moved)
@@ -872,7 +868,6 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         guard let layoutManager = textView?.layoutManager, let length = textView?.textStorage?.length else { return }
         let clamped = Self.clamp(range, toLength: length)
         guard clamped.length > 0 else { return }
-        AnchorTrace.log("invalidate \(clamped)")
         layoutManager.invalidateGlyphs(forCharacterRange: clamped, changeInLength: 0, actualCharacterRange: nil)
         layoutManager.invalidateLayout(forCharacterRange: clamped, actualCharacterRange: nil)
         layoutManager.invalidateDisplay(forCharacterRange: clamped)

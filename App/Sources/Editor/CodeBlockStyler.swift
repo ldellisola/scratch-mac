@@ -303,7 +303,6 @@ final class CodeBlockStyler {
 
         if !work.didStart {
             work.didStart = true
-            AnchorTrace.log("colour block \(work.block) tokens=\(highlight.tokens.count)")
             if parts.content.length > 0 {
                 layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: parts.content)
             }
@@ -315,7 +314,6 @@ final class CodeBlockStyler {
                 storage.beginEditing()
                 storage.addAttribute(.scratchCodeBlock, value: mark, range: parts.openingParagraph)
                 storage.endEditing()
-                AnchorTrace.log("label written \(work.block)")
                 // The label reaches into the first line of code, so the whole block is drawn again.
                 layoutManager.invalidateDisplay(forCharacterRange: work.block)
             }
