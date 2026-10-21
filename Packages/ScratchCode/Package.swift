@@ -19,7 +19,12 @@ let package = Package(
     ],
     targets: [
         // The Python grammar, vendored: its Package.swift cannot be used as a dependency (Sources/GrammarPython/README.md).
-        .target(name: "GrammarPython", exclude: ["LICENSE", "README.md"]),
+        // `-w`: Xcode's build of the generated C warns (-Wshorten-64-to-32), and the app builds without warnings.
+        .target(
+            name: "GrammarPython",
+            exclude: ["LICENSE", "README.md"],
+            cSettings: [.unsafeFlags(["-w"])]
+        ),
         .target(
             name: "ScratchCode",
             dependencies: [

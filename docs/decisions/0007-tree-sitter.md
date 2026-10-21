@@ -13,9 +13,9 @@ Plan 4, `CodeDetector`. `ScratchCore` does not depend on it.
 ### The wrapper: `tree-sitter/swift-tree-sitter`
 
 Plan 4 asked for this package (formerly ChimeHQ/SwiftTreeSitter) if its products build and pass the tests on both the
-Linux job and the macOS job, and for a thin wrapper over the C API if they do not. It builds and passes on both
-(`macos` job: "ScratchCore and ScratchCode tests on macOS" and the hosted `HighlighterInAppTests`), so the thin wrapper
-was not written. What it gives: `Parser`, `Query` (which is `Sendable`, so one compiled query is shared by every
+Linux job and the macOS job, and for a thin wrapper over the C API if they do not. It builds and passes on both (the
+`linux` job's and the `macos` job's "ScratchCore and ScratchCode tests", and the hosted `HighlighterInAppTests` in the
+app), so the thin wrapper was not written. What it gives: `Parser`, `Query` (which is `Sendable`, so one compiled query is shared by every
 thread), the `#eq?`, `#not-eq?`, `#match?`, `#not-match?` predicates, and UTF-16 offsets for nodes. What `ScratchCode`
 does not use: `SwiftTreeSitterLayer`, and `LanguageConfiguration`, which finds a grammar's queries through a
 `<Name>_<Name>.bundle` folder next to the executable. SwiftPM calls that folder `.resources` on Linux, so the lookup
@@ -53,6 +53,8 @@ builds, not in the dependency's folder. The check is false, the scanner is left 
 `tree_sitter_python_external_scanner_*` symbols (reproduced with a manifest that prints its working directory). So the
 Python grammar's generated `parser.c`, `scanner.c`, `tree_sitter/*.h` and `LICENSE` are vendored, unchanged, into the
 C target `Packages/ScratchCode/Sources/GrammarPython`, with a `README.md` that names the repository, the tag and the commit.
+The target is compiled with `-w` (`cSettings: [.unsafeFlags(["-w"])]`, allowed because the package is a local one):
+Xcode's build of the generated C reports `-Wshorten-64-to-32`, and the app builds with no warnings.
 A grammar whose manifest lists its sources outright (tree-sitter-swift's does) stays a dependency, because vendoring a
 23 MB parser would bloat the repository for nothing. Another grammar with the same template is vendored the same way.
 
@@ -104,3 +106,19 @@ change a query:
    `CaptureMapping` does not know.
 4. Add corpus samples under `Tests/ScratchCodeTests` and a highlighter test.
 5. Add the package, its URL, its exact version and its licence to the table above, and the app size to the table below.
+
+## App size
+
+`scripts/check-release-zip.sh` prints these (`release-zip.log` of the `macos` job). "Before" is the 0.3.0 release, whose
+app differs from this one only in the bold rule (ADR 0006): its zip and executable are exact, and its app folder was
+measured with `du -sk` on Linux, so it is comparable with the CI's number to a few per cent only. The executable grows by
+the grammars and the runtime although nothing in the app calls `Highlighter` yet.
+
+| | Zip | `Scratch.app` | Executable | Grammars |
+|---|---|---|---|---|
+| Before: 0.3.0 | 377,087 bytes | 1,260 KB | 1,202,288 bytes | none |
+| After Plan 4, task 2 (commit 24ca9e3) | 1,052,484 bytes | 6,472 KB | 6,500,080 bytes | Swift, Python |
+
+The Swift grammar is the big one. Object code of a Release build with `swift build -c release` on Linux x86_64, before
+stripping: tree-sitter-swift 4.5 MB, the Python grammar 0.6 MB, the runtime 1.0 MB, swift-tree-sitter 1.8 MB and
+ScratchCode itself 0.4 MB. Task 3 adds a row for all seventeen languages.

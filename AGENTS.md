@@ -436,8 +436,8 @@ new kind of release file, with no change to the app, ships.
 - **A grammar's own `Package.swift` may silently leave out its scanner.** The `tree-sitter init` template adds
   `src/scanner.c` only when `FileManager.default.fileExists(atPath: "src/scanner.c")`, and SwiftPM evaluates a dependency's
   manifest in the builder's working directory, so linking fails with undefined `*_external_scanner_*` symbols. Such a
-  grammar is vendored into `Packages/ScratchCode/Sources/Grammar<Language>/` (docs/decisions/0007, which also lists how to
-  add a language). Pin every package in `Package.swift` with `exact:`: the generated Xcode project has no
+  grammar is vendored into `Packages/ScratchCode/Sources/Grammar<Language>/`, compiled with `-w` (Xcode warns about the
+  generated C, and the app builds with no warnings; docs/decisions/0007, which also lists how to add a language). Pin every package in `Package.swift` with `exact:`: the generated Xcode project has no
   `Package.resolved` of its own.
 - **ScratchCode's queries are a resource bundle, and a missing one stops the app.** `Grammar.makeQuery` reads
   `Queries/<language>/highlights.scm` through `Bundle.module`, which calls `fatalError` when it cannot find
