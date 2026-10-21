@@ -192,7 +192,17 @@ the grammars and the runtime although nothing in the app calls `Highlighter` yet
 |---|---|---|---|---|
 | Before: 0.3.0 | 377,087 bytes | 1,260 KB | 1,202,288 bytes | none |
 | After Plan 4, task 2 (commit 24ca9e3) | 1,052,484 bytes | 6,472 KB | 6,500,080 bytes | Swift, Python |
+| After Plan 4, task 3 (commit 9fd31db) | 3,566,046 bytes | 34,908 KB | 35,311,488 bytes | all 17 |
 
 The Swift grammar is the big one. Object code of a Release build with `swift build -c release` on Linux x86_64, before
 stripping: tree-sitter-swift 4.5 MB, the Python grammar 0.6 MB, the runtime 1.0 MB, swift-tree-sitter 1.8 MB and
-ScratchCode itself 0.4 MB. Task 3 adds a row for all seventeen languages.
+ScratchCode itself 0.4 MB.
+
+Task 3, all 17 grammars. Against task 2 the executable grows by 28.8 MB and the zip by 2.5 MB, and against 0.3.0 the
+executable is 29 times and the zip 9.5 times as big. The generated tables compress well, and they are most of the
+size: object code of a Release build with
+`swift build -c release` on Linux x86_64, before stripping, SQL 12.0 MB (its 43 MB `parser.c`), C# 5.5, Swift 4.5, C++ 3.6,
+Bash 1.6, TypeScript 1.6 (its TSX grammar, 1.6 MB more, is built too, and nothing references it), Rust 1.3, PowerShell 1.2, C 0.7,
+Python 0.6, Java 0.5, JavaScript 0.5, Go 0.3, YAML 0.3, CSS 0.2, HTML 0.1 and JSON 0.04, with the runtime at 1.0 MB. They
+add up to the executable's growth. The tables are read-only data, which the system maps and reads only when a language
+is used. The app's launch time is measured in every CI run (`launch_ms`, AGENTS.md section 4).
