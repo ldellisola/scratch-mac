@@ -65,6 +65,17 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
   Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting) and
                                   FixtureContent, their notes and session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
+Packages/ScratchCode/             Swift package, no AppKit, builds and tests on Linux and macOS. Wraps tree-sitter, the one
+                                  third-party dependency (docs/decisions/0007). ScratchCore does not depend on it.
+  Sources/ScratchCode/            CodeLanguage (the 17 languages: fence names, aliases, labels), HighlightKind and
+                                  HighlightToken (UTF-16 ranges), Highlighter (`tokens(in:language:)`, nil over the cap of
+                                  5,000 lines or 300,000 units; `errorRate(of:language:)`), CaptureMapping (capture names
+                                  to the eight kinds), Grammars (internal: each language's grammar and queries, and the
+                                  compiled-query cache)
+  Sources/ScratchCode/Queries/    `<language>/highlights.scm`, copies of the grammars' queries with their licences; a
+                                  resource bundle, read through `Bundle.module`
+  Sources/GrammarPython/          the Python grammar's generated C, vendored (its README.md says why)
+  Tests/ScratchCodeTests/         Swift Testing, one file per source file
 App/project.yml                   XcodeGen spec: targets Scratch (app), ScratchAppTests (hosted unit tests),
                                   ScratchUITests, ScratchPerfTests; schemes Scratch and ScratchPerf. The generated
                                   App/Scratch.xcodeproj is never committed.
@@ -142,7 +153,7 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   perf-check.py (numbers against baseline and budgets), check-version-bump.sh (a change
                                   to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
                                   release notes footer with the version filled in), check-release-zip.sh (unpacks a
-                                  release zip and checks the app in it), check-release-dmg.sh (attaches a release DMG
+                                  release zip, checks the app in it and prints its sizes), check-release-dmg.sh (attaches a release DMG
                                   read-only and checks the window and the app in it), tests/ (their tests, the DMG
                                   check's against stubs of hdiutil, codesign and lipo)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests, version bump check. Job `macos`:
@@ -182,8 +193,10 @@ the current plan.
 Run them from the repository root. `[linux]` means it also runs in the Linux cloud sessions. Everything else needs
 macOS and runs on GitHub's Macs.
 
-- `make core-test` `[linux]`: build and run the ScratchCore tests.
-- `swift test --package-path Packages/ScratchCore --filter <name>` `[linux]`: run matching tests only.
+- `make core-test` `[linux]`: build and run the ScratchCore tests, then the ScratchCode tests (the first run fetches
+  tree-sitter and its grammar from GitHub and compiles them).
+- `swift test --package-path Packages/ScratchCore --filter <name>` `[linux]`: run matching tests only (the same for
+  `Packages/ScratchCode`).
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
 - `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py`,
@@ -221,8 +234,9 @@ macOS and runs on GitHub's Macs.
 
 - `make release-zip` `[macOS]`: build the Release app into `build/release/Scratch.app`, zip it to
   `build/release/Scratch-<VERSION>.zip`, and check what is in the zip (`scripts/check-release-zip.sh`: version and build
-  version, bundle identifier, arm64 only, valid ad-hoc signature). CI runs it on every push, and the release workflow runs it to make
-  the file it publishes.
+  version, bundle identifier, arm64 only, valid ad-hoc signature, ScratchCode's highlight queries in the app; it prints the
+  sizes of the zip, the app and the executable). CI runs it on every push, and the release workflow runs it to make the
+  file it publishes.
 - `make release-dmg` `[macOS]`: after `make release-zip` (it runs that first when `build/release/Scratch.app` is not
   there), copy that app with `ditto` into a staging folder with an `Applications` symlink, and make
   `build/release/Scratch-<VERSION>.dmg` from it (`hdiutil create`, UDZO, volume "Scratch <VERSION>", tried up to three
@@ -419,6 +433,17 @@ new kind of release file, with no change to the app, ships.
 - **`swift test --sanitize=thread` reports false data races on `Synchronization.Mutex` on Linux.** TSAN does not see
   the futex that `Mutex` uses, so every `Mutex`-guarded access looks unsynchronised (`Database` and `Autosaver` both
   show it). A report whose two accesses are both inside `withLock` is noise.
+- **A grammar's own `Package.swift` may silently leave out its scanner.** The `tree-sitter init` template adds
+  `src/scanner.c` only when `FileManager.default.fileExists(atPath: "src/scanner.c")`, and SwiftPM evaluates a dependency's
+  manifest in the builder's working directory, so linking fails with undefined `*_external_scanner_*` symbols. Such a
+  grammar is vendored into `Packages/ScratchCode/Sources/Grammar<Language>/` (docs/decisions/0007, which also lists how to
+  add a language). Pin every package in `Package.swift` with `exact:`: the generated Xcode project has no
+  `Package.resolved` of its own.
+- **ScratchCode's queries are a resource bundle, and a missing one stops the app.** `Grammar.makeQuery` reads
+  `Queries/<language>/highlights.scm` through `Bundle.module`, which calls `fatalError` when it cannot find
+  `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries
+  it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 ms
+  for Swift, Release, on Linux), and `Highlighter` is thread-safe.
 - **Do not link Homebrew's SQLite.** `CSQLite` deliberately has no `pkgConfig`, so macOS links the system library.
 - **Never commit `App/Scratch.xcodeproj`.** It is generated from `App/project.yml`.
 - **App tests run inside the app.** `ScratchAppTests` are hosted: Xcode starts the real app, then loads the tests into

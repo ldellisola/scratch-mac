@@ -9,6 +9,8 @@ options:
 packages:
   ScratchCore:
     path: ../Packages/ScratchCore
+  ScratchCode:
+    path: ../Packages/ScratchCode
 
 settings:
   base:
@@ -31,6 +33,7 @@ targets:
       - path: Resources
     dependencies:
       - package: ScratchCore
+      - package: ScratchCode
     settings:
       base:
         PRODUCT_NAME: Scratch
@@ -52,6 +55,7 @@ targets:
     dependencies:
       - target: Scratch
       - package: ScratchCore
+      - package: ScratchCode
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.ldellisola.Scratch.AppTests

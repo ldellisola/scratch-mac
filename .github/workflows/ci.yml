@@ -50,7 +50,7 @@ jobs:
           make lint 2>&1 | tee build/ci/linux/lint.log
 
       - id: core-test
-        name: ScratchCore tests
+        name: ScratchCore and ScratchCode tests
         run: make core-test 2>&1 | tee build/ci/linux/core-test.log
 
       - id: script-test
@@ -121,7 +121,7 @@ jobs:
         run: make project 2>&1 | tee build/ci/macos/project.log
 
       - id: core-test
-        name: ScratchCore tests on macOS
+        name: ScratchCore and ScratchCode tests on macOS
         run: make core-test 2>&1 | tee build/ci/macos/core-test.log
 
       # A step limit as well as the per-test limits in the Makefile: a hung UI test must fail this step, not the whole

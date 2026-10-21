@@ -1,6 +1,7 @@
 # One obvious command per question (spec §9.3). Targets marked [linux] also run in the Linux cloud sessions.
 
 CORE_PACKAGE := Packages/ScratchCore
+CODE_PACKAGE := Packages/ScratchCode
 
 # App build settings. Every xcodebuild call uses the same DerivedData folder, so the built app is always at
 # $(DERIVED_DATA)/Build/Products/Debug/Scratch.app.
@@ -10,9 +11,11 @@ DESTINATION := platform=macOS,arch=arm64
 
 .PHONY: core-test lint format script-test ci-wait project app-build app-test screenshots run perf perf-baseline release-zip release-dmg
 
-# [linux] Run the ScratchCore tests.
+# [linux] Run the tests of both packages: ScratchCore, then ScratchCode (tree-sitter highlighting and code detection).
+# The first run of ScratchCode fetches its dependencies from GitHub and compiles the grammars.
 core-test:
 	swift test --package-path $(CORE_PACKAGE)
+	swift test --package-path $(CODE_PACKAGE)
 
 # [linux] Check formatting. Fails on any difference.
 lint:
