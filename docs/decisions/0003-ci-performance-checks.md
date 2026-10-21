@@ -88,3 +88,22 @@ runs of the macOS job: take the largest median of each metric from `ci-results/<
 perf-baseline` writes one run's numbers, which on a laptop are not CI's). If CI fails a metric that no change of the
 code explains, look at the run's `perf/report.md` and `perf/metrics.json` before touching the baseline, and run the job
 again: a slow run is a fact about the runner.
+
+## Addendum: `paste_code_ms` (plan 4, task 6)
+
+A sixth metric, for the spec §7 row "Highlight colours appearing after a 500-line code paste: 50 ms". It adds a budget and
+changes no other: the spec's 50 ms is kept as it is, because the other CI budgets that are looser than the spec's are
+the ones the runner cannot meet at all (a launch), and this one is only over it by a little (see the numbers below).
+
+- **What it measures.** The `paste-code` signpost interval (`Signposts.beginOpenEditorInterval`), from `NoteTextView.paste`
+  until the colours of the block that the paste made are on screen: the plain paste and its styling, the detection of the
+  language (`PasteClassifier`, `CodeDetector`), the wrap in a fence on the next turn, the highlighting on its queue and the
+  colours written back (at most 8 ms at a time), and then the next idle moment of the run loop
+  (`CodeBlockStyler.whenHighlighted`). Unlike `keystroke` and `switch-note` it does not end at the first idle moment: the
+  colours are written in later turns on purpose (docs/features/code.md).
+- **The test.** `CodePastePerfTests.testPasteFiveHundredLinesOfCode` pastes 500 lines of Swift (125 functions of four lines,
+  about 11,500 characters) into an empty note with ⌘V, ten times, with different names in each so that the app has not
+  coloured any of them before (it keeps the results of the blocks it has seen). The metric is the median of the ten
+  (`scripts/perf-extract.py`), like the others, and the test waits for `debug.state` to say nothing is pending before it
+  empties the note for the next paste.
+- **The baseline** is the slowest median of at least three runs of the macOS job, as above. The table is filled in below.
