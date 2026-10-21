@@ -26,10 +26,27 @@ final class CodePastePerfTests: XCTestCase {
         }.joined(separator: "\n")
     }
 
+    /// Pastes 500 lines that the app has not coloured before with ⌘V and waits until the paste is wrapped and its colours
+    /// are written (`debug.state`): the interval has ended by then, or ends a moment later.
+    private func pasteAndWait(in app: XCUIApplication, editor: XCUIElement) {
+        seed += 1
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(Self.code(seed: seed), forType: .string)
+        app.typeKey("v", modifierFlags: .command)
+
+        let isDone = UITestSupport.wait(timeout: 30) {
+            guard (editor.value as? String ?? "").hasPrefix("```swift\n") else { return false }
+            let state = UITestSupport.debugState(in: app)
+            return state["pendingPastes"] as? Int == 0 && state["pendingHighlights"] as? Int == 0
+        }
+        XCTAssertTrue(isDone, "the paste was not wrapped and coloured: \(UITestSupport.debugState(in: app))")
+        Thread.sleep(forTimeInterval: 0.3)
+    }
+
     /// `paste_code_ms`: the median `paste-code` interval of ten pastes of 500 lines into an empty note. After each paste
-    /// the test waits for the colours to be written (`debug.state`), and then empties the note for the next one. The
-    /// first paste after the launch is the slowest (the grammars and their queries load then), and the median leaves it
-    /// out.
+    /// the test waits for the colours to be written, and then empties the note for the next one. The first paste after
+    /// the launch is the slowest (the grammars and their queries load then), and the median leaves it out. One more paste
+    /// after the measurement is for the screenshot `paste-code-after`: the block, its colours and its label.
     func testPasteFiveHundredLinesOfCode() throws {
         continueAfterFailure = false
         let app = PerfSupport.launch(fixture: "empty", dataDirectory: UITestSupport.makeDataDirectory())
@@ -40,19 +57,7 @@ final class CodePastePerfTests: XCTestCase {
         let options = XCTMeasureOptions()
         options.iterationCount = Self.iterations
         measure(metrics: [PerfSupport.signpostMetric(named: "paste-code")], options: options) {
-            self.seed += 1
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(Self.code(seed: self.seed), forType: .string)
-            app.typeKey("v", modifierFlags: .command)
-
-            // The fence is in the note, and nothing is left to colour: the interval has ended or ends a moment later.
-            let isDone = UITestSupport.wait(timeout: 30) {
-                guard (editor.value as? String ?? "").hasPrefix("```swift\n") else { return false }
-                let state = UITestSupport.debugState(in: app)
-                return state["pendingPastes"] as? Int == 0 && state["pendingHighlights"] as? Int == 0
-            }
-            XCTAssertTrue(isDone, "the paste was not wrapped and coloured: \(UITestSupport.debugState(in: app))")
-            Thread.sleep(forTimeInterval: 0.3)
+            self.pasteAndWait(in: app, editor: editor)
 
             // An empty note for the next paste.
             app.typeKey("a", modifierFlags: .command)
@@ -60,6 +65,8 @@ final class CodePastePerfTests: XCTestCase {
             let isEmpty = UITestSupport.wait(timeout: 30) { (editor.value as? String ?? "").isEmpty }
             XCTAssertTrue(isEmpty, "the note was not emptied")
         }
+
+        pasteAndWait(in: app, editor: editor)
         PerfSupport.attachScreenshot(of: app, named: "paste-code-after", to: self)
     }
 }
