@@ -37,13 +37,22 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     /// which also changes the clip view's bounds, does not count as scrolling.
     private var lastScrollY: Double = 0
     /// The anchor of the shown note that the editor still has to scroll to, or may have to scroll to again. It waits
-    /// for a layout, because text can only be positioned at a width (`isLaidOut`), and stays until the window has
-    /// shown it, because the layouts before that may be at a size the window does not keep. The user's own scrolling,
+    /// for a layout, because text can only be positioned at a width (`isLaidOut`), and it is applied again whenever the
+    /// text view's width changes in the `anchorSettleTime` after it was last applied: the window and the scroll view
+    /// settle at launch (a first size, the window's, a scroller style), and each change of the width lays the text out
+    /// again, with the height of what is above the anchor only estimated until it is laid out. The user's own scrolling,
     /// typing or moving the cursor ends the wait.
     private var scrollAnchorToApply: Int?
     /// True once `scrollAnchorToApply` has been applied at least once, which is when the editor may take a change of
     /// the scroll position for the user's.
     private var anchorWasApplied = false
+    /// The width of the text view when the anchor was last applied. A different width means that the text was laid out
+    /// again since, and that the line at the top may not be the anchor's any more.
+    private var widthAtApply: CGFloat = 0
+    /// When the wait for the settling of the layout ends, `anchorSettleTime` after the anchor was last applied.
+    private var anchorDeadline = ContinuousClock.now
+    private var isReapplyScheduled = false
+    private static let anchorSettleTime: Duration = .seconds(5)
     private var debugStateElement: DebugStateElement?
     private var traceAnchor = 0
     private var traceTimer: Timer?
@@ -61,6 +70,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         NotificationCenter.default.addObserver(
             self, selector: #selector(clipViewBoundsDidChange(_:)), name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView)
+        textView.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(textViewFrameDidChange(_:)), name: NSView.frameDidChangeNotification,
+            object: textView)
     }
 
     @available(*, unavailable)
@@ -204,6 +217,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     func setFontSize(_ size: Double) {
         let size = FontSize.clamped(size)
         guard size != fontSize else { return }
+        userDidMoveView()
         let anchor = isLaidOut ? currentScrollAnchor : nil
         fontSize = size
         textView.applyFontSize(size)
@@ -286,8 +300,48 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         let scrollY = currentScrollY
         guard scrollY != lastScrollY else { return }
         lastScrollY = scrollY
+        AnchorTrace.log("bounds y=\(scrollY) stale=\(isAnchorStale) \(describeState())")
+        if isAnchorStale {
+            // The text was laid out again at another width under the position that the editor put the note in, and
+            // AppKit moved the clip view with the new height: that is not the user scrolling, and it says nothing
+            // about the line at the top. The anchor is applied again.
+            scheduleAnchorReapply()
+            return
+        }
         userDidMoveView()
         onViewStateChange?()
+    }
+
+    @objc private func textViewFrameDidChange(_ notification: Notification) {
+        if isAnchorStale { scheduleAnchorReapply() }
+    }
+
+    /// True while the editor keeps the note at its anchor: it has been applied and the text has not been laid out at
+    /// another width since, or has been and that is not yet corrected (`applyPendingScrollAnchor`).
+    private var isAnchorStale: Bool {
+        isAnchorPending && anchorWasApplied && textView.frame.width != widthAtApply
+    }
+
+    /// True while there is an anchor that the editor applies again when the layout changes: until it has been applied
+    /// for the first time, and then for `anchorSettleTime` after the last time.
+    private var isAnchorPending: Bool {
+        guard scrollAnchorToApply != nil else { return false }
+        return !anchorWasApplied || ContinuousClock.now < anchorDeadline
+    }
+
+    /// Applies the anchor again after what is on the call stack, which is AppKit tiling the scroll view or laying out the
+    /// text view and is no place to lay out and scroll. Once is enough for however many changes come before it runs.
+    private func scheduleAnchorReapply() {
+        guard !isReapplyScheduled else { return }
+        isReapplyScheduled = true
+        AnchorTrace.log("reapply scheduled \(describeState())")
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.isReapplyScheduled = false
+                self.applyPendingScrollAnchor()
+            }
+        }
     }
 
     /// The user scrolled, typed or moved the cursor, so the anchor that waited for a layout is out of date. Before
@@ -326,12 +380,16 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
 
     /// Scrolls to `scrollAnchorToApply` when the editor can position text. Called by `show` and by every layout.
     private func applyPendingScrollAnchor() {
+        guard scrollAnchorToApply != nil else { return }
+        guard isAnchorPending else {
+            scrollAnchorToApply = nil
+            return
+        }
         guard let anchor = scrollAnchorToApply, isLaidOut else { return }
         scrollToAnchor(anchor)
         anchorWasApplied = true
-        // Once the window is on screen this is the layout that counts. The ones before it are at a size that the
-        // window may not keep, so the anchor is applied again in each of them.
-        if view.window?.isVisible == true { scrollAnchorToApply = nil }
+        widthAtApply = textView.frame.width
+        anchorDeadline = ContinuousClock.now + Self.anchorSettleTime
     }
 
     /// Scrolls so that the line holding the character at `anchor` is at the top of the visible text, below the content

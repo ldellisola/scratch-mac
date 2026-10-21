@@ -523,12 +523,22 @@ new kind of release file, with no change to the app, ships.
   print it in a UI test's failure message through the `debug.state` element: that is how this was found.
   (`show` itself was right all along: `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTopInset` passes without
   the override, and `TitleUITests.testHugeNoteShowsItsTopInsetAtLaunch` is the test that needs it.)
-- **A scroll anchor waits for a layout.** Text can only be positioned at a width, and at launch `show` runs before the
-  window has laid out (the scroll view is 0 wide), so `EditorViewController` keeps the anchor and scrolls in
-  `viewDidLayout` (`isLaidOut`, `scrollAnchorToApply`). It keeps applying it in the layouts before the window is
-  visible, and stops when the window is visible or the user scrolls, types or moves the cursor. Never call
-  `ensureLayout` before `isLaidOut`: it would lay a 10,000-line note out at a width of 0. `currentScrollAnchor` returns
-  the waiting anchor until then, so an early save does not move the note back to its top.
+- **A scroll anchor waits for a layout, and is applied again whenever the layout settles at another width.** Text can
+  only be positioned at a width, and at launch `show` runs before the window has laid out (the scroll view is 0 wide),
+  so `EditorViewController` keeps the anchor and scrolls in `viewDidLayout` (`isLaidOut`, `scrollAnchorToApply`). A
+  launch lays the text out at several widths (a first one, the window's, and a retile when the scrollers change style,
+  which no layout of the editor's view follows), and each change of the width lays the text above the anchor out again
+  and leaves its height an estimate, far from the real one when lines wrap or fences are 6 pt (measured on CI, with the
+  trace of plan 4 task 5: line 1003 of the huge note at y = 18,408 laid out and at y = 12,530 estimated, after which
+  AppKit's move of the clip view left the note 1 to 3 lines off, and its bounds change was taken for the user
+  scrolling, which ended the wait). So `isAnchorStale` (the text view's width is not the one the anchor was applied at)
+  makes the clip view's bounds notification and the text view's frame notification apply it again, on the main queue
+  (`scheduleAnchorReapply`: not inside AppKit's tiling), and such a bounds change is not the user's. The wait ends when
+  the user scrolls (a change of the bounds at an unchanged width), types, moves the cursor or changes the font size,
+  and `anchorSettleTime` (5 s) after the last application, so that a later resize (the sidebar's animation) does not
+  lay a deep note out again at every step. Never call `ensureLayout` before `isLaidOut`: it would lay a 10,000-line
+  note out at a width of 0. `currentScrollAnchor` returns the waiting anchor until then, so an early save does not move
+  the note back to its top.
 - **Undo is per note, and `show` never clears it.** `SessionCoordinator.undoManagers` holds one `UndoManager` per note,
   and `show` hands the editor the one of the note. `NoteTextView.noteUndoManager` is what the text view, the
   `NSTextViewDelegate.undoManager(for:)` answer and `AppDelegate.windowWillReturnUndoManager` (the Edit menu) all

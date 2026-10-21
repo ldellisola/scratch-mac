@@ -99,6 +99,61 @@ final class EditorViewControllerTests: XCTestCase {
         XCTAssertEqual(host.editor.currentScrollAnchor, anchor)
     }
 
+    /// Lines that wrap at some widths and not at others, so that the height of the text above a line depends on the width,
+    /// and an estimate of it (what TextKit has for text it has not laid out) is far from the real one. Returns the text
+    /// and the UTF-16 offset at which line 5,000 starts.
+    private func makeWrappingLines() -> (text: String, startOfLine5000: Int) {
+        let long = String(repeating: "word ", count: 24)
+        let lines = (1...6_000).map { $0 % 3 == 0 ? "\($0) \(long)" : "line \($0)" }
+        let start = lines.prefix(4_999).reduce(0) { $0 + $1.utf16.count + 1 }
+        return (lines.joined(separator: "\n"), start)
+    }
+
+    /// At launch the window and the scroll view settle in steps (a first width, the window's, a scroller style), and the
+    /// text above the anchor is laid out again at each, its height only an estimate until then. A change of the text
+    /// view's width that no layout of the editor's view follows (the scroll view tiling itself) applies the anchor again.
+    func testScrollAnchorIsAppliedAgainWhenTheTextViewChangesWidth() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let (text, anchor) = makeWrappingLines()
+        let note = makeNote(text)
+        host.editor.show(
+            note, tab: makeTab(for: note, scrollAnchor: anchor), undoManager: UndoManager(), isReadOnly: false)
+        host.editor.view.layoutSubtreeIfNeeded()
+        XCTAssertEqual(lineNumber(ofOffset: host.editor.currentScrollAnchor, in: text), 5_000, "before the change")
+
+        let textView = host.editor.textView
+        textView.setFrameSize(NSSize(width: textView.frame.width - 140, height: textView.frame.height))
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+
+        XCTAssertEqual(lineNumber(ofOffset: host.editor.currentScrollAnchor, in: text), 5_000, "after the change")
+    }
+
+    /// The user's own scrolling ends the wait for the layout to settle: a change of the width after it does not take the
+    /// note back to its anchor.
+    func testScrollingByTheUserEndsTheWaitForTheAnchor() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let (text, anchor) = makeWrappingLines()
+        let note = makeNote(text)
+        host.editor.show(
+            note, tab: makeTab(for: note, scrollAnchor: anchor), undoManager: UndoManager(), isReadOnly: false)
+        host.editor.view.layoutSubtreeIfNeeded()
+
+        let clipView = host.editor.clipView
+        clipView.scroll(to: NSPoint(x: 0, y: clipView.bounds.origin.y + 6_000))
+        clipView.enclosingScrollView?.reflectScrolledClipView(clipView)
+        let scrolledTo = lineNumber(ofOffset: host.editor.currentScrollAnchor, in: text)
+        XCTAssertGreaterThan(scrolledTo, 5_100, "the scroll moved the note")
+
+        let textView = host.editor.textView
+        textView.setFrameSize(NSSize(width: textView.frame.width - 140, height: textView.frame.height))
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+
+        let after = lineNumber(ofOffset: host.editor.currentScrollAnchor, in: text)
+        XCTAssertGreaterThan(abs(after - 5_000), 30, "the note was taken back to the anchor it had at launch")
+    }
+
     /// Without an anchor (a session saved by Scratch 0.1.0) the note is at its top, and its anchor is 0.
     func testNoteWithoutAnchorShowsItsTop() {
         let host = makeHostedEditor()
