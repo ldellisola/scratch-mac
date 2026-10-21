@@ -67,7 +67,7 @@ app-test: project
 # The screenshots `make screenshots` writes, one PNG each into build/screenshots/. These names are the ones in
 # ScreenshotTests (a test attaches its screenshot under its name) and CI publishes them to ci-results.
 SCREENSHOT_NAMES := typical-light typical-dark empty-light huge-note-light search-light recently-deleted-light \
-  formatting-light formatting-dark
+  formatting-light formatting-dark code-light code-dark
 
 # [macOS] Render the key screens to PNG files in build/screenshots/<name>.png (SCREENSHOT_NAMES): run ScreenshotTests
 # only, export the attachments from the result bundle (build/results/screenshots.xcresult) into build/screenshots/raw,
