@@ -313,8 +313,8 @@ docs/decisions/0001 and 0003. What to know when one fails or changes:
   with this in-app monitor, not with XCTest's scroll metrics. `paste_code_ms`: the `paste-code` signpost, from
   `NoteTextView.paste` until the colours of the block that the paste made are on screen (`CodeBlockStyler.whenHighlighted`),
   one paste of 500 lines of Swift into an empty note per iteration, each with names that the app has not coloured before.
-  Budget 50 (spec §7), baseline 59.4: it is a WARN on CI by a little (55 to 59 ms, the ADR 0003 addendum), and a FAIL
-  above 71.3. All in milliseconds and all medians.
+  Budget 50 (spec §7), baseline 73.6: it is a WARN on CI by a little (55 to 74 ms, depending on the runner: the ADR 0003
+  addendum), and a FAIL above 88.3. All in milliseconds and all medians.
 - **The CI runner is slow and noisy.** Runs of the same build differ by up to a factor of two (the first run of a job is
   the slowest), and a launch takes about 400 ms there (Calculator takes 1 s). The baseline is therefore the slowest of
   many runs, and `launch_ms` and `switch_small_ms` are budgeted at 400 and 12 instead of the spec's 200 and 8
