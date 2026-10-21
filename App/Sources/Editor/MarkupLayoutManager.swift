@@ -14,9 +14,8 @@ import AppKit
 ///   colour) is drawn in their rectangle, which `NoteTextView` uses to find out whether a click is on the box.
 /// - **Fence lines have no glyphs either.** The characters of a fence line (role `fence`) are null glyphs like a hidden
 ///   marker, and the paragraph style of the line is 6 pt high, so that the line is the padding at the top or the bottom
-///   of its code block (plan 4, task 5). The line break of the line is a glyph of its own and stays, and so does the last
-///   character of the note when a fence line ends it: a line with no glyph but null ones is as high as the font, whatever
-///   its paragraph style says (the character is clear, so nothing is drawn).
+///   of its code block (plan 4, task 5). The first character of the line keeps its glyph, which is clear: null glyphs
+///   take no line fragment of their own, they sit at the end of the line above (see `shouldGenerateGlyphs`).
 /// - **Code blocks are drawn behind their lines.** The lines of a fenced block carry a `CodeBlockMark`. `drawBackground`
 ///   fills the rounded, tinted rectangle that they make together, and the label with the block's language at its top
 ///   right, without changing anything in the text.
@@ -55,18 +54,13 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
                 runEnd = NSMaxRange(run)
             }
             guard isHidden else { continue }
-            // A line of null glyphs only has no height of its own: the typesetter does not look at its paragraph style,
-            // so a closing fence that ends the note (no line break after it) was a full line. Its last character keeps its
-            // glyph, which is as clear as the other characters of the line, and the line is as high as the style says.
-            if isFence {
-                switch Self.diagnosticsKeep {
-                case .noteEnd: if character == storage.length - 1 { continue }
-                case .first: if character == runStart { continue }
-                case .last: if character == runEnd - 1 { continue }
-                case .all: continue
-                case .never: break
-                }
-            }
+            // A null glyph is zero wide and sits on the line fragment before it, whatever line it is on: a fence line of
+            // null glyphs only has no line fragment of its own (its characters end up on the end of the line above, and
+            // a closing fence that ends the note has no padding at all), and its line break is a line of its own that
+            // is 6 pt but that the caret and a click cannot tell from the line above. The first character of a fence
+            // line keeps its glyph, which is clear (`MarkupAppearance.markerAttributes`), so that the line starts a
+            // fragment of its own, as high as its paragraph style says.
+            if isFence, character == runStart { continue }
             if modified == nil { modified = Array(UnsafeBufferPointer(start: props, count: glyphRange.length)) }
             modified?[index] = .null
         }
@@ -80,11 +74,8 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
 
     /// Draws the tinted blocks and their labels behind the text, and then the rest of what is behind it (the tint of
     /// inline code and the selection). AppKit calls this on the main thread, for the glyphs of the area it redraws.
-    nonisolated(unsafe) static var diagnosticsDrawsCodeBlocks = true
-    enum DiagnosticsKeep { case noteEnd, first, last, all, never }
-    nonisolated(unsafe) static var diagnosticsKeep = DiagnosticsKeep.noteEnd
     override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
-        if Self.diagnosticsDrawsCodeBlocks { drawCodeBlocks(forGlyphRange: glyphsToShow, at: origin) }
+        drawCodeBlocks(forGlyphRange: glyphsToShow, at: origin)
         super.drawBackground(forGlyphRange: glyphsToShow, at: origin)
     }
 

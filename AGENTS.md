@@ -789,7 +789,8 @@ new kind of release file, with no change to the app, ships.
   marker and 85% of the line height, on every draw (the colour and appearance of the moment). `testCheckboxSymbolIsDrawn`
   renders the view with `cacheDisplay` and counts the pixels that are not the background.
 - **A fenced block is drawn from attributes, and its fence lines are null glyphs.** `MarkupStyler` gives the characters of a
-  fence line (not its line break) the role `fence`, which `MarkupLayoutManager` turns into null glyphs, and the paragraph
+  fence line (not its line break) the role `fence`, which `MarkupLayoutManager` turns into null glyphs (all but the first,
+  see below), and the paragraph
   `MarkupAppearance.codeFenceStyle` (minimum and maximum line height 6 pt), so the line is padding. While the caret or
   selection touches it (`touchesSelection`, the ends included) the role is `revealed` and the paragraph has
   `codeBodyStyle`, like the lines of code (10 pt head and tail indent). Every paragraph of a block carries a
@@ -820,13 +821,12 @@ new kind of release file, with no change to the app, ships.
   display only. The layout manager's own bookkeeping is in the edit's coordinates only once `textStorage(_:didProcessEditing:)`
   has returned, so `MarkupStyler` never calls it inside that callback: the ranges to clear are kept
   (`coloursToClearAfterEdit`) and cleared in `editDidFinish`, from `NoteTextView.didChangeText`.
-- **A line of null glyphs only ignores its paragraph style.** The macOS CI measured a closing fence that ends the note (no
-  line break after it, so no glyph on its line) at the height of the font, 16 pt, and not the 6 pt of the style; the opening
-  fence has the glyph of its line break and was 6 pt. `MarkupLayoutManager` keeps the last character of the note when it is
-  a fence character (`role` `fence` has a clear colour), and the tests expect that glyph and nothing else.
-- **Typing attributes carry the block's attributes out of it.** The characters typed next take the attributes before the
-  caret, so the empty line under a closing fence would be 6 pt high. `normalizeTypingAttributes` puts the note's own back
-  when the caret leaves a block.
+- **Null glyphs take no line fragment of their own.** TextKit puts a zero-width glyph at the end of the line before it,
+  so a fence line of null glyphs only was no line: the CI measured the first character of an opening fence in the fragment
+  of the blank line above (16 pt, while the fence's own 6 pt fragment held only its line break), and a closing fence that
+  ends the note had no padding at all and the tint ended at the last line of code. A click or the End key on the line above
+  would also have landed among the hidden characters. `MarkupLayoutManager.shouldGenerateGlyphs` keeps the glyph of the
+  first character of every fence line (the colour of the role `fence` is clear), and the line is a 6 pt fragment of its own.
 - **Adding a fixture means three more places.** `FixtureContent.make`, the `Fixture` case, and ScratchCore's
   `LaunchOptionsTests.parsesEveryFixtureName` (which lists every raw value), and then the launch argument table above and
   `make run`. A core test that lists the cases fails the Linux job and, through `make core-test` on the Mac, the whole

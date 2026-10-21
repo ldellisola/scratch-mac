@@ -44,7 +44,7 @@ final class MarkupAppearance {
         case .hidden:
             return [.scratchMarker: role.rawValue, .foregroundColor: NSColor.textColor]
         case .fence:
-            // No glyph, but for the last character of a note that a fence line ends, which is clear.
+            // No glyph, but for the first character of the line, which is clear.
             return [.scratchMarker: role.rawValue, .foregroundColor: NSColor.clear]
         case .revealed:
             return [.scratchMarker: role.rawValue, .foregroundColor: NSColor.tertiaryLabelColor]

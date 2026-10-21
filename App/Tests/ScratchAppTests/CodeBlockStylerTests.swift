@@ -163,19 +163,22 @@ final class CodeBlockStylerTests: XCTestCase {
         XCTAssertNotEqual(opening.location, closing.location)
         for (name, fence) in [("opening", opening), ("closing", closing)] {
             for offset in 0..<fence.length {
-                // The closing fence ends the note: its last character keeps a glyph, a clear one, so that the line has
-                // the height of its paragraph style (see `MarkupLayoutManager`).
-                let endsTheNote = fence.location + offset == text.length - 1
+                // The first character keeps its glyph, a clear one: null glyphs take no line fragment of their own, they
+                // sit at the end of the line above, and a line of null glyphs only would have no height at all (see
+                // `MarkupLayoutManager.shouldGenerateGlyphs`).
                 XCTAssertEqual(
-                    isNullGlyph(at: fence.location + offset, in: host), !endsTheNote,
-                    "\(name) fence character \(offset)")
+                    isNullGlyph(at: fence.location + offset, in: host), offset != 0, "\(name) fence character \(offset)"
+                )
                 XCTAssertEqual(role(at: fence.location + offset, in: host), "fence")
+                XCTAssertEqual(colour(at: fence.location + offset, in: host), NSColor.clear, "nothing of it is drawn")
             }
             XCTAssertLessThanOrEqual(
                 lineHeight(at: fence.location, in: host), 6.01, "the \(name) fence line is padding")
             XCTAssertEqual(
                 paragraphStyle(at: fence.location, in: host)?.maximumLineHeight, 6, "the paragraph style says so")
         }
+        XCTAssertEqual(
+            lineHeight(at: opening.location - 1, in: host), 16, accuracy: 1, "the blank line above is a line")
 
         // The lines of the block are 10 points in from both sides, and keep the note font.
         for needle in ["# watch the rollout", "kubectl rollout status", "kubectl logs"] {

@@ -61,11 +61,13 @@ block (docs/features/formatting.md).
   block whose fences changed (a fence typed or deleted, so that the pairs of fences are not what they were) is styled
   again whole, and a paragraph that leaves a block loses the colours of its code.
 - **A fence line is hidden by its role.** The characters of the line (not its line break) have the marker role `fence`,
-  which `MarkupLayoutManager` makes null glyphs, as for a hidden `**`. The line's paragraph style gives it a height of
-  6 pt (`MarkupAppearance.codeFenceStyle`); while it is shown it has the style of the lines of code. **A line of null
-  glyphs only is not 6 pt high:** the macOS CI measured 16 pt for a closing fence that ends the note, which has no line
-  break to give the line a glyph, whatever its paragraph style says. The last character of the note keeps its glyph in
-  that case (it is clear, so nothing is drawn), and the line is 6 pt.
+  which `MarkupLayoutManager` makes null glyphs, as for a hidden `**`, and a clear colour. The line's paragraph style
+  gives it a height of 6 pt (`MarkupAppearance.codeFenceStyle`); while it is shown it has the style of the lines of code.
+  **The first character of the line keeps its glyph** (clear, so nothing is drawn). A null glyph is zero wide and TextKit
+  puts it at the end of the line above, so a line of null glyphs only has no line fragment of its own: the macOS CI
+  measured the first character of a fence line in the fragment of the line above (16 pt), and a closing fence that ends
+  the note, with no line break after it, had no padding at all. With one glyph the line is a fragment of its own, 6 pt
+  high, which is also where a click on the padding puts the caret (and shows the fence).
 
 ### Tests
 
