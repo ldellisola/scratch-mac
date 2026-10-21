@@ -5,8 +5,8 @@ Code blocks, their colours and the detection of code in a paste. Spec:
 (the highlight budget) and §8.1 (tree-sitter, "Code detection"). The pieces live in `ScratchCode`
 (`Packages/ScratchCode`, no AppKit).
 
-Status: plan 4, tasks 2 to 7 (the languages, the highlighter, the detection, the rendering, the paste wrap, the label
-menu and the blocks typed by hand).
+Status: plan 4, done and released as 0.4.0: the languages, the highlighter, the detection, the rendering, the paste wrap,
+the label menu, the blocks typed by hand, and the screenshots and the performance numbers below.
 
 ## Rendering
 
@@ -175,6 +175,12 @@ block are on screen: the plain paste, the detection, the wrap, the highlighting 
 The performance test pastes 500 lines of Swift into an empty note (`CodePastePerfTests`, `paste_code_ms`, budget 50 ms,
 spec §7). A paste that is not wrapped ends the interval at the next idle moment.
 
+On the macOS CI the median is 55 to 85 ms (79.2 in the run of the final screenshots), which is a WARN above the budget
+and under the 100 ms where the check fails. The reason is the runner and not a step of the paste: the same build takes 55
+ms on a fast runner and 85 ms on a slow one, as `launch_ms` (506 to 871 ms against a budget of 400) and `switch_small_ms`
+do, and the slowest of five runs is the baseline (docs/decisions/0003, "Addendum: `paste_code_ms`"). The table there has the five
+runs, with the fastest and the slowest of the ten pastes of each.
+
 ### Tests
 
 - `CodePasteTests` (hosted, `readSelection(from:)` with a pasteboard of its own): `testMultiLinePythonPasteIsFenced`,
@@ -185,6 +191,28 @@ spec §7). A paste that is not wrapped ends the interval at the next idle moment
 - `CodePasteUITests` (real keys and the real pasteboard): `testUndoAfterCodePasteRestoresPlainText` (Review Focus 2),
   `testPastingAnEmailStaysPlain` (Review Focus 1) and a paste in the middle of a line.
 - `CodePastePerfTests.testPasteFiveHundredLinesOfCode`: `paste_code_ms`.
+
+## Screenshots
+
+`ScreenshotTests` takes two of the `code` fixture, `code-light` and `code-dark` (`make screenshots`, published by CI in
+`ci-results/<sha>/macos/screenshots/`), and `typical-*` and `formatting-*` have a block each. A person (or an agent that
+opens the PNGs) checks, in both appearances:
+
+- every block is a rounded, tinted block, with no fence line in sight (the caret is in the first line of the note);
+- each block has its label at the top right: `Swift`, `Python`, `SQL`, `JSON`, `Shell`, and `JavaScript` in italics for the
+  block whose fence has no name (the detected language); the `bash` block of `typical` says `Shell` and the `sh` block of
+  `formatting` too, upright;
+- keywords are `#9B2393` (light) or `#FC5FA3` (dark), strings `#C41A16` or `#FC6A5D`, comments `#5D6C79` or `#7F8C98`,
+  numbers `#1C00CF` or `#D0BF69`, types `#0B4F79` or `#5DD8FF`, functions (`curl`, `fetch`) `#326D74` or `#67B7A4`, and
+  attributes (`@app.route`) `#815F03` or `#BF8555`, as in Xcode's default themes.
+
+The colours come from a background queue after the window is up, so both tests wait for `debug.state` to report no pending
+highlight (`pendingHighlights` is zero) before the picture is taken. The note is 44 lines, and the whole of it, the last
+block included, fits the 1024 x 674 window. They were looked at on CI for the release: all six blocks, their labels and
+their colours are as above in light and dark (pixels of every colour in the table above are in both PNGs), and the blocks
+of `typical` and `formatting` look the same way. The
+README's `code.png` is `code-light`, and its other pictures are copies of the `typical`, `formatting` and `search`
+screenshots of the same run.
 
 ## Detection
 

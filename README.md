@@ -5,7 +5,7 @@ everything back when you open it again. It is made for one person on one Apple S
 notes and todo lists.
 
 <p align="center">
-  <img src="docs/images/window-light.png" alt="Scratch in light mode: a sidebar of notes grouped by day, a tab strip, and a note with a checklist, bullets, bold text and a shell snippet" width="49%">
+  <img src="docs/images/window-light.png" alt="Scratch in light mode: a sidebar of notes grouped by day, a tab strip, and a note with a checklist, bullets, bold text and a coloured shell snippet in a tinted block with a Shell label" width="49%">
   <img src="docs/images/window-dark.png" alt="The same window in dark mode" width="49%">
 </p>
 
@@ -18,7 +18,7 @@ from, and text you copy always comes out as plain text.
 
 ## What it does
 
-Scratch is at version 0.3, which does these things:
+Scratch is at version 0.4, which does these things:
 
 - **Always ready.** It opens to a note you can type in at once. There is no Save and no file to name: everything you
   type is written within about a second, and a crash or a force-quit loses at most that second. Quitting and opening
@@ -37,14 +37,31 @@ Scratch is at version 0.3, which does these things:
 - **Just enough formatting, from what you type.** `- ` is a bullet, `[ ] ` and `[x] ` are checkboxes you can click
   (ticked ones are struck through), `**bold**` is bold, `` `code` `` is tinted, and `http(s)://` links open with
   ⌘-click. Return continues a list, Tab and ⇧Tab indent it, ⌘B makes text bold and ⇧⌘L makes a checklist. The `**` and
-  the backticks hide, except where the caret is. What is stored never changes, so copying a note out gives the
-  characters you typed, `- ` and `**` included. Inside a fenced block (three backticks), and inside inline code, every
-  character stays exactly as typed.
+  the backticks hide, except where the caret is. Bold needs a word boundary on each side, so `x**2 + y**2` and
+  `src/**/*.ts` stay plain text. What is stored never changes, so copying a note out gives the characters you typed,
+  `- ` and `**` included. Inside a fenced block (three backticks), and inside inline code, every character stays
+  exactly as typed.
+- **Code looks like code.** A fenced block (a line of three backticks, the code, a line of three backticks) is drawn as a
+  tinted, rounded block with a small language label at its top right, and the code is coloured in the colours of Xcode's
+  default theme, light and dark, for 17 languages: Swift, Python, JavaScript, TypeScript, JSON, Shell, SQL, YAML,
+  HTML, CSS, C#, Go, Rust, C, C++, Java and PowerShell. The fence lines shrink to a little padding and come back where
+  the caret is. A block you type with no language on its fence gets one from its code (shown in italics, which means
+  "automatic"). Colouring never changes a character, and a block too long to colour (over 5,000 lines) stays tinted
+  and plain.
+- **Pasted code is fenced for you.** Paste two lines or more of code and Scratch puts them in a fence with the language
+  it detected, with every pasted character kept as it was. It works offline, and when it is unsure it leaves your text
+  alone: an email, a list, meeting notes with times, a log or a CSV row stay plain text. ⌘Z once gives back exactly the
+  text you pasted, and ⌘Z again removes it. Click a block's label to choose another language, to show the block as
+  plain text, or to take the fence off (Not Code), each one undo step.
 - **Made for macOS 26.** The sidebar, the tab strip and the toolbar buttons are native Liquid Glass, and the app is
   built only for Apple Silicon.
 
 <p align="center">
-  <img src="docs/images/formatting.png" alt="One note with a bullet and a nested bullet, an open and a ticked checkbox, bold text, inline code, a link, and a fenced block whose lines show exactly as typed" width="70%">
+  <img src="docs/images/formatting.png" alt="One note with a bullet and a nested bullet, an open and a ticked checkbox, bold text, inline code, a link, and a tinted block whose lines show exactly as typed" width="70%">
+</p>
+
+<p align="center">
+  <img src="docs/images/code.png" alt="One note with a tinted block for each of Swift, Python, SQL, JSON and Shell, and one whose language was detected, each with its label at the top right and its code in colour" width="70%">
 </p>
 
 <p align="center">
@@ -52,11 +69,10 @@ Scratch is at version 0.3, which does these things:
   <img src="docs/images/recently-deleted.png" alt="The Recently Deleted section open under the note list" width="49%">
 </p>
 
-Fenced code shows as typed for now. Scratch will highlight it, and detect code on paste, in the next releases:
+Coming in the next releases:
 
 | Release | Adds |
 |---|---|
-| 0.4 | Code detection on paste, syntax highlighting, code blocks with a language label |
 | 0.5 | Attachments: images and files, pasted or dragged in |
 | 1.0 | Performance and accessibility polish |
 
@@ -96,13 +112,16 @@ To update, do the same with the new release and choose Replace. Your notes live 
 | ⌘B | Bold: put `**` around the selection, or take the stars off a bold run |
 | ⇧⌘L | Turn the selected lines into a checklist, or back into plain lines |
 | ⌘-click a link | Open the `http://` or `https://` link in your browser. A plain click only places the caret |
+| ⌘V | Paste as plain text. Two lines or more of code are then wrapped in a fence with their language: ⌘Z once leaves the plain paste |
+| Click a code block's label | Choose the block's language, show it as plain text, or take its fence off (Not Code) |
 
 ## How it is built
 
 Scratch is developed only by AI agents. The app is a thin AppKit shell (a TextKit 1 editor, and a Liquid Glass sidebar
-and tab strip) over `ScratchCore`, a Foundation-only Swift package that holds the rules and the SQLite storage, and
-that builds and tests on Linux as well as on macOS. Everything that needs a Mac runs on GitHub's Macs, and each merge
-that changes the app publishes a release.
+and tab strip) over two Swift packages that build and test on Linux as well as on macOS: `ScratchCore`, which is
+Foundation-only and holds the rules and the SQLite storage, and `ScratchCode`, which wraps
+[tree-sitter](https://tree-sitter.github.io/) (the one third-party dependency) to colour code and to detect it.
+Everything that needs a Mac runs on GitHub's Macs, and each merge that changes the app publishes a release.
 
 - [AGENTS.md](AGENTS.md): the entry point for anyone working on the repository: commands, how to verify a change, and
   the pitfalls found so far

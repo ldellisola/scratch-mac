@@ -13,8 +13,8 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md),
-  in progress on the branch `plan-4-code`, to be released as 0.4.0 (code: highlighting, code blocks, paste
-  classification, and bold at word boundaries). Plan 3, released as 0.3.0 (the formatting):
+  done and released as 0.4.0 (code: highlighting, code blocks, paste classification, the language label menu, and bold
+  at word boundaries). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
   [`2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md). Plan 1, released
   as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md).
@@ -195,24 +195,25 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   zip and the DMG (section 6, Releases)
 README.md                         what Scratch is, how to install it, the shortcuts, and the screenshots. Keep its
                                   feature list and release table current (section 6)
-docs/architecture.md              module boundaries, data flow, threading
+docs/architecture.md              module boundaries (App, ScratchCore, ScratchCode), data flow, threading
 docs/release-notes-footer.md      the install and update steps (the DMG first, the zip as the alternative), put at the
                                   top of every release's notes (`scripts/release-notes.sh` replaces its `<version>`
                                   placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
-                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md (more
-                                  as features land)
-docs/images/                      the README's screenshots (window-light, window-dark, formatting, search,
+                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md
+                                  (more as features land)
+docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, search,
                                   recently-deleted): copies of the `screenshots/` that CI published for a release commit
                                   (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
-                                  search-light, recently-deleted-light). They
+                                  code-light, search-light, recently-deleted-light). They
                                   change only when someone replaces them, so refresh them when a plan visibly changes
                                   the UI
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
                                   performance check compares), 0004 (a new note opens at the end of the tab strip, and
                                   a note the owner empties is kept), 0005 (every release carries a DMG next to the zip),
-                                  0006 (bold needs word boundaries)
+                                  0006 (bold needs word boundaries), 0007 (tree-sitter: the packages, their versions and
+                                  licences, and how to add a language)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -251,8 +252,9 @@ macOS and runs on GitHub's Macs.
   `build/results/app.xcresult`. Each test has a 2 minute limit.
 - `make screenshots` `[macOS]`: run `ScreenshotTests` only and write `build/screenshots/<name>.png` for `typical-light`,
   `typical-dark`, `empty-light`, `huge-note-light`, `search-light` (typical, with "kube" typed in the search field),
-  `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), and `formatting-light` and
-  `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note). These are the
+  `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), `formatting-light` and
+  `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note), and `code-light` and
+  `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured). These are the
   names in the Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
@@ -369,14 +371,16 @@ Exit codes of `scripts/ci-wait.sh`: 0 all jobs succeeded, 1 a job failed (it ret
 ## 5. Conventions
 
 - Swift 6 language mode with strict concurrency. No warnings.
-- `ScratchCore` never imports AppKit or SwiftUI. App depends on Core, never the other way round. The Linux build
-  enforces it, because AppKit does not exist there. Rule-based logic belongs in Core, not in the shell.
+- `ScratchCore` and `ScratchCode` never import AppKit or SwiftUI, and `ScratchCore` does not depend on `ScratchCode`.
+  App depends on both, never the other way round. The Linux build enforces it, because AppKit does not exist there.
+  Rule-based logic belongs in Core (and what is about code in ScratchCode), not in the shell.
 - Swift Testing (`import Testing`, `@Test`, `#expect`) in Core. XCTest/XCUITest only in the app's test targets.
 - Files are small and single-purpose, and their names say what they do. One test file per source file.
 - Tests reference the `docs/features/*` section they cover. A behaviour change updates its feature doc in the same
   change.
 - A decision record in `docs/decisions/NNNN-title.md` for every new dependency, every changed `[call]` in the spec and
-  every budget change. Plan 1 adds no runtime dependency.
+  every budget change. Plan 4 adds one runtime dependency, tree-sitter (docs/decisions/0007); adding a language to it
+  follows that record's checklist.
 - Tests, screenshots and benchmarks never touch real data. They run against an isolated data directory.
 
 ## 6. Definition of done
@@ -692,6 +696,11 @@ new kind of release file, with no change to the app, ships.
   A screenshot is a picture of the window only (no desktop), light or dark, and its caret may or may not be showing.
   Exporting them needs the attachment `name`: `xcresulttool export attachments` suggests `<name>_<index>_<UUID>.png`,
   which `scripts/name-screenshots.py` turns into `<name>.png`.
+- **A screenshot of code waits for its colours.** They are written from the highlight queue after the window is up, so
+  `ScreenshotTests.testCodeLight` and `testCodeDark` wait for `debug.state`'s `pendingHighlights` to be zero before the
+  picture (the request is made in `show`, before the window is visible, so zero means done). The `code` fixture's note is
+  44 lines and fits the 1024 x 674 window whole: a line added to it can push the last block, the one with no fence name
+  and the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
 - **UI tests type without clicking the editor first** (`editor.typeText`): the editor is first responder at launch, and a
   click would move the cursor that `testCursorRestoredAfterRelaunch` checks. `typeText` and `typeKey` need keyboard focus.
   Kill the app with `NSRunningApplication.forceTerminate()`, never `XCUIApplication.terminate()`, which may quit

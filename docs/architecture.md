@@ -7,6 +7,8 @@ section 9.2. This page records how the code is actually organised. Update it whe
 
 ```
 App (AppKit shell)  ──depends on──▶  ScratchCore (Foundation + CSQLite)  ──links──▶  system SQLite
+        │
+        └───────────depends on──▶  ScratchCode (Foundation + tree-sitter)  ──▶  the tree-sitter runtime, 17 grammars
 ```
 
 - **`Packages/ScratchCore`** is a Swift package with no AppKit or SwiftUI imports. It holds everything rule-based:
@@ -14,16 +16,25 @@ App (AppKit shell)  ──depends on──▶  ScratchCore (Foundation + CSQLite
   the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures, and the marker
   parser (`Markup/`: the spans of a line and the fenced code blocks of a note, as UTF-16 ranges the editor applies
   directly) and the rules for the keys that edit it (`ListEditing`, `InlineEditing`: what Return, Tab, ⇧Tab, ⇧⌘L, ⌘B
-  and a click on a checkbox change, as a `TextEdit`). Later plans add paste classification, copy-out and code
-  detection. It builds and tests with plain `swift test` on macOS and on Linux.
+  and a click on a checkbox change, as a `TextEdit`). A later plan adds copy-out. It builds and tests with plain
+  `swift test` on macOS and on Linux.
+- **`Packages/ScratchCode`** is a second Swift package, also with no AppKit or SwiftUI imports, and the only one with a
+  third-party dependency: tree-sitter (`docs/decisions/0007-tree-sitter.md`, which lists every package, its version and
+  its licence). It holds what is about code and nothing about notes: `CodeLanguage` (the 17 languages, their fence names,
+  aliases and labels), `Highlighter` (text and a language in, `HighlightToken`s out, as UTF-16 ranges, nil over the cap
+  of 5,000 lines or 300,000 units; and the share of a parse that is an error), and `CodeDetector` (is a text of two lines
+  or more code, and which language: offline, deterministic, and "prose" when unsure). `ScratchCore` does not depend on
+  it, so the core stays Foundation-only and its tests stay fast; the highlight queries are a resource bundle that the
+  app carries (`scripts/check-release-zip.sh` checks that it does).
 - **`App/`** is the thin AppKit shell: window, sidebar, editor view. It maps core values to UI and UI events to core
   calls. Logic found in the shell that could live in the core is a refactoring target. The app project is generated
   by XcodeGen from `App/project.yml`, and the generated project is not committed.
 - **`CSQLite`** is a system-library target inside the package. Its module map links `sqlite3` and has no `pkgConfig`,
   so macOS builds link the system SQLite and never a Homebrew copy.
 
-**The rule:** App depends on Core, never the other way round. Core must not import AppKit or SwiftUI. The Linux CI
-job builds Core, and neither framework exists on Linux, so a forbidden import fails the build.
+**The rule:** App depends on Core and Code, never the other way round. Core and Code must not import AppKit or SwiftUI,
+and Core does not depend on Code. The Linux CI job builds both packages, and neither framework exists on Linux, so a
+forbidden import fails the build.
 
 ## Data flow
 
@@ -57,6 +68,27 @@ key press
   with `NoteTextView.apply` (`shouldChangeText`, `replaceCharacters`, `didChangeText`, one undo step). From
   `didChangeText` on it is the path of a typed character, and the styler restyles what changed. A ⌘-click on a link
   asks `MarkupStyler.link(at:)` and opens it with `NSWorkspace`.
+- **Code blocks are drawn from attributes, and coloured off the main thread** (`docs/features/code.md`).
+  `MarkupStyler` gives the lines of a fenced block (from `CodeBlockIndex`) their indent and the fence lines their 6 pt
+  height and null glyphs, and `MarkupLayoutManager` draws the tint and the language label behind and over them. It then
+  asks `CodeBlockStyler` to colour the blocks it styled or that an edit changed:
+
+  ```
+  MarkupStyler -> CodeBlockStyler.blocksDidChange (a request: the code, its fence name, a hash)
+    -> private serial queue: CodeDetector (a fence with no name) and Highlighter.tokens (ScratchCode)
+    -> main thread, when the run loop is next about to wait: the result is applied to every block that still holds the
+       same fence name and code (otherwise it is dropped), as temporary attributes of the layout manager
+  ```
+
+  A colour is never a character and never an attribute of the text, so storage, copy and search never see it, and a
+  keystroke in a block keeps the colours of its line until the new result replaces them. A result is for a text, not a
+  place, so a result for text that was edited since is dropped and never lands on newer text.
+- **A paste is a plain paste first, and a second edit wraps code in a fence.** `NoteTextView.paste` inserts the
+  pasteboard's text as always. On a later turn of the main run loop, once the undo group of the paste has closed,
+  `PasteClassifier.wrap` asks `CodeDetector` about it (never for one line, a paste into code, or one with a fence line in
+  it) and answers a `TextEdit` that puts the pasted text between two fences, applied with `apply`: the paste and the wrap
+  are two undo steps. The label menu (`CodeBlockMenu`) is the same kind of edit on the fence lines, one undo step each.
+  The `paste-code` signpost runs from the paste until the colours are on screen.
 - A write that fails never costs text: `UnsavedNotes` (ScratchCore) keeps the note with the owner's text until a write of
   it succeeds, `persistNow()` and every save write those notes again, and `SessionCoordinator.loadNote` shows a note
   from there when it is opened again (`docs/features/autosave-and-restore.md`, "Write errors are not silent").
@@ -95,6 +127,11 @@ key press
   thread reads without a hop is `UnsavedNotes`, a mutex-guarded record of the notes whose write failed: the queue
   records an outcome as the write ends, so the record is right when `persistNow()` returns, which a callback on the main
   queue would not be.
+- **One private serial highlight queue** (`io.github.ldellisola.Scratch.highlight`, QoS user-initiated, made by
+  `MarkupStyler` for `CodeBlockStyler`) runs `CodeDetector` and `Highlighter` for the code
+  blocks, one request at a time, so highlighting never runs on the main thread and never competes with itself. `Highlighter` is thread-safe (a parser for each call, a compiled query for each language, shared behind a
+  lock). The main thread only writes the colours back, at most 8 ms at a time. The one detection that runs on the main
+  thread is a paste's (`PasteClassifier`): it reads at most 300 lines and takes 3 to 12 ms for 500 lines.
 - **`Database`** serialises every SQLite call with a mutex, so the main thread may also call the stores directly. It does
   so for the rare, small calls: restoring the session, creating a note, loading the note that is opened,
   discarding an untouched one, and deleting, restoring or deleting for good a note the owner chose. They wait for a write
@@ -126,10 +163,11 @@ key press
   is fully styled a few turns later (`MarkupStyler.isFullyStyled`). A paste of more than 20,000 characters is styled in
   the same chunks. Showing another note cancels the job. `MarkupLayoutManager` is `nonisolated` (AppKit does not
   annotate `NSLayoutManager` for the main actor), the styler is `@MainActor`.
-- **Signposts** (`Signposts.editor`, subsystem `io.github.ldellisola.Scratch`, category `editor`) mark two intervals that
-  the performance tests read: `keystroke` (`NoteTextView.keyDown`) and `switch-note` (`SessionCoordinator.open`). Both
-  end when the main run loop is next about to wait (`RunLoopIdle`), so they include the layout and drawing that
-  TextKit does after the work returns.
+- **Signposts** (`Signposts.editor`, subsystem `io.github.ldellisola.Scratch`, category `editor`) mark three intervals that
+  the performance tests read: `keystroke` (`NoteTextView.keyDown`), `switch-note` (`SessionCoordinator.open`) and
+  `paste-code` (`NoteTextView.paste`). The first two end when the main run loop is next about to wait (`RunLoopIdle`), so
+  they include the layout and drawing that TextKit does after the work returns. `paste-code` stays open until the colours
+  of the block that the paste made are on screen, because they are written in later turns on purpose.
 - **`FrameMonitor`**, started only by `-ScratchFrameMonitor <path>`, scrolls the note by itself and records the main
   thread's work per frame. It observes the main run loop and the editor's clip view and does not touch the data flow.
 - The performance tests, their metrics and the CI check: AGENTS.md ("Performance") and `docs/decisions/0003-ci-performance-checks.md`.
