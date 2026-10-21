@@ -381,7 +381,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         traceTimer?.invalidate()
         AnchorTrace.log("show anchor=\(anchor)")
         var ticks = 0
-        traceTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
+        traceTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 ticks += 1
@@ -390,7 +390,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
                     self.traceLast = state
                     AnchorTrace.log("poll \(state)")
                 }
-                if ticks > 160 { timer.invalidate() }
+                if ticks > 160 { self.traceTimer?.invalidate() }
             }
         }
     }
