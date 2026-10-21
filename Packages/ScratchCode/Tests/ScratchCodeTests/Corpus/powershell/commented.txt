@@ -1,0 +1,4 @@
+# Stop every process named notepad
+Get-Process -Name notepad -ErrorAction SilentlyContinue |
+    Stop-Process -Force
+Write-Output "stopped"

@@ -1,0 +1,13 @@
+using System;
+
+namespace Demo
+{
+    // Prints a greeting
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            Console.WriteLine("Hello, " + args[0]);
+        }
+    }
+}

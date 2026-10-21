@@ -1,0 +1,6 @@
+$count = (Get-Content .\notes.txt).Count
+if ($count -gt 10) {
+    Write-Host "many notes"
+} else {
+    Write-Host "few notes"
+}

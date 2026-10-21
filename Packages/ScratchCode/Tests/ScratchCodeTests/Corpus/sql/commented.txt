@@ -1,0 +1,7 @@
+-- notes edited in the last week
+SELECT n.id, n.title, COUNT(t.id) AS tags
+FROM notes n
+LEFT JOIN tags t ON t.note_id = n.id
+WHERE n.modified_at > date('now', '-7 days')
+GROUP BY n.id
+ORDER BY n.modified_at DESC;

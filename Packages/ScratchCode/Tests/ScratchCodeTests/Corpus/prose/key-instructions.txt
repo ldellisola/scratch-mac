@@ -1,0 +1,2 @@
+Press <Enter> to continue or <Esc> to cancel.
+Hold <Shift> while clicking to select a range.

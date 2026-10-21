@@ -1,0 +1,10 @@
+// Debounce a function call
+function debounce(fn, wait) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer); // restart the clock
+    timer = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+module.exports = debounce;

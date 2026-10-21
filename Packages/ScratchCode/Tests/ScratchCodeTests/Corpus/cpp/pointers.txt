@@ -1,0 +1,3 @@
+auto node = std::make_unique<Node>();
+node->next = nullptr;
+std::unique_ptr<Node> head = std::move(node);

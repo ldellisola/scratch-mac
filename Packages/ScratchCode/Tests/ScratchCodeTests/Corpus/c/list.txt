@@ -1,0 +1,13 @@
+#include <stdlib.h>
+
+typedef struct Node {
+    int value;
+    struct Node *next;
+} Node;
+
+Node *push(Node *head, int value) {
+    Node *n = malloc(sizeof(Node));
+    n->value = value;
+    n->next = head;
+    return n;
+}

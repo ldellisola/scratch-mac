@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TARGET="${1:-staging}"
+
+if [ "$TARGET" = "production" ]; then
+  echo "deploying to production"
+else
+  echo "deploying to $TARGET"
+fi
+
+rsync -az ./build/ "deploy@$TARGET.example.com:/var/www/"

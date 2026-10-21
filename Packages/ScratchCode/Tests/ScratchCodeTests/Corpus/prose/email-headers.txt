@@ -1,0 +1,6 @@
+From: Dana Okafor <dana@example.com>
+To: team@example.com
+Subject: Rescheduling the Monday sync
+Date: Fri, 17 Oct 2025 16:05
+
+Hi all, Monday's sync moves to 11:00 because the room is booked. Same agenda as before.

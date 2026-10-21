@@ -1,0 +1,5 @@
+namespace util {
+    constexpr int kMaxItems = 128;
+
+    inline bool isEven(int n) { return n % 2 == 0; }
+}

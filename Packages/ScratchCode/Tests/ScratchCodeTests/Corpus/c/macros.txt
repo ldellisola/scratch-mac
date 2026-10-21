@@ -1,0 +1,5 @@
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+static int clamp(int v, int lo, int hi) {
+    return MAX(lo, v) < hi ? MAX(lo, v) : hi;
+}

@@ -75,7 +75,8 @@ let package = Package(
             // Linux, under `swift test` on macOS and inside the app, which the grammar packages' own bundles are not.
             resources: [.copy("Queries")]
         ),
-        .testTarget(name: "ScratchCodeTests", dependencies: ["ScratchCode"], resources: [.copy("Samples")]),
+        .testTarget(
+            name: "ScratchCodeTests", dependencies: ["ScratchCode"], resources: [.copy("Samples"), .copy("Corpus")]),
     ],
     swiftLanguageModes: [.v6]
 )

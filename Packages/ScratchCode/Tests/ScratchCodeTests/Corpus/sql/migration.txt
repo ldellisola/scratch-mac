@@ -1,0 +1,3 @@
+ALTER TABLE users ADD COLUMN last_login TIMESTAMP;
+CREATE INDEX idx_users_email ON users (email);
+UPDATE users SET last_login = NOW() WHERE active = 1;

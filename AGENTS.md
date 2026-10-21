@@ -72,14 +72,21 @@ Packages/ScratchCode/             Swift package, no AppKit, builds and tests on 
                                   5,000 lines or 300,000 units; `errorRate(of:language:)`), CaptureMapping (capture names
                                   to the eight kinds), Grammars (internal: each language's grammar and queries, and the
                                   compiled-query cache), QueryInheritance (internal: a `; inherits: <folder>` line at the
-                                  top of a query brings that folder's query in first)
+                                  top of a query brings that folder's query in first), CodeDetector (`detect(_:)`: a
+                                  text of two lines or more in, a `CodeDetection` (language or nil for code of an unknown
+                                  language, confidence) or nil for prose out), DetectionFeatures (internal: the lines of
+                                  a text, each with its facts and its evidence, and the shapes that decide alone),
+                                  LanguageSignals (internal: the idioms of each language as points), JSONShape (internal:
+                                  a strict JSON validator)
   Sources/ScratchCode/Queries/    `<folder>/highlights.scm`: the 17 languages' queries, copies of the grammars' with their
                                   licences and the changes Scratch made (docs/decisions/0007), plus `javascript-jsx`;
                                   a resource bundle, read through `Bundle.module`
   Sources/GrammarPython/          the Python grammar's generated C, vendored (its README.md says why)
   Sources/GrammarPowerShell/      the PowerShell grammar's generated C, vendored in the same way
   Tests/ScratchCodeTests/         Swift Testing, one file per source file, and `Samples/<fence name>.txt`, 15 to 40 lines
-                                  of ordinary code for each of the 17 languages (a test resource)
+                                  of ordinary code for each of the 17 languages (a test resource), and `Corpus/`: the
+                                  samples the detector is tuned against, in `<fence name>/` (code), `unknown/` (code of
+                                  a language Scratch lacks) and `prose/` (text that must stay plain)
 App/project.yml                   XcodeGen spec: targets Scratch (app), ScratchAppTests (hosted unit tests),
                                   ScratchUITests, ScratchPerfTests; schemes Scratch and ScratchPerf. The generated
                                   App/Scratch.xcodeproj is never committed.
@@ -458,6 +465,20 @@ new kind of release file, with no change to the app, ships.
   `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries
   it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 ms
   for Swift, Release, on Linux), and `Highlighter` is thread-safe.
+- **Code detection is tuned against `Tests/ScratchCodeTests/Corpus/`, and the corpus only grows.** A paste that is
+  detected wrongly becomes a sample first (the folder of its language, `unknown/` for a language Scratch lacks,
+  `prose/` for text that must stay plain), then the detector changes until every sample passes. Never delete a prose
+  sample to make a test pass, and write every sample fresh: no poems, lyrics, articles or real emails. The rule is the
+  spec's, "when unsure, it is prose": a text is code only with a mean line evidence of 0.5 or more and two lines of
+  code that are not comments (`DetectionFeatures.evidence`), so a list of `word;` lines, a note that mentions `init()`
+  and a log are prose. A text with no idiom of any language is named only when one grammar parses it better than the
+  others (else it is code of an unknown language), and a language that shares its idioms with another (TypeScript with
+  JavaScript, C++ with C) is settled by the idioms only it has (`CodeDetector.settleScriptFamily`).
+- **Detection reads text with its inline code masked.** `DetectionLine` turns what is between a pair of backticks into
+  letters before it looks at the line, so `call `init()` first` in a Markdown note is a sentence and not a call.
+  `JSONShape` is the JSON check, not `JSONSerialization`: Foundation on Linux accepts a trailing comma and the one on
+  macOS does not. Only the first 300 lines or 40,000 bytes of a paste are read, the first 50 lines or 4,000 bytes are
+  parsed to compare grammars, and a detection is 3 to 12 ms for 500 lines in Release (the budget is 20).
 - **Do not link Homebrew's SQLite.** `CSQLite` deliberately has no `pkgConfig`, so macOS links the system library.
 - **Never commit `App/Scratch.xcodeproj`.** It is generated from `App/project.yml`.
 - **App tests run inside the app.** `ScratchAppTests` are hosted: Xcode starts the real app, then loads the tests into

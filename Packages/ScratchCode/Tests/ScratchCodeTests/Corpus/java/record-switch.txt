@@ -1,0 +1,13 @@
+public record Point(int x, int y) {
+    public double distance() {
+        return Math.sqrt(x * x + y * y);
+    }
+}
+
+String describe(Object o) {
+    return switch (o) {
+        case Integer i -> "int " + i;
+        case String s -> "string " + s;
+        default -> "other";
+    };
+}

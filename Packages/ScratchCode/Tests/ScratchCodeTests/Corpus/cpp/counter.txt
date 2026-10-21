@@ -1,0 +1,9 @@
+class Counter {
+public:
+    explicit Counter(int start) : value_(start) {}
+    void increment() { ++value_; }
+    int value() const { return value_; }
+
+private:
+    int value_;
+};

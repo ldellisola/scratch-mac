@@ -1,0 +1,16 @@
+public record Order(int Id, decimal Total);
+
+public class OrderService
+{
+    private readonly HttpClient _client;
+
+    public OrderService(HttpClient client) => _client = client;
+
+    public async Task<Order?> GetAsync(int id)
+    {
+        var response = await _client.GetAsync($"/orders/{id}");
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<Order>()
+            : null;
+    }
+}

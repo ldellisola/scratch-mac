@@ -1,0 +1,7 @@
+$config = @{
+    Name = "backup"
+    Retention = 14
+}
+Get-Content .\servers.txt | ForEach-Object {
+    Test-Connection -ComputerName $_ -Count 1 -Quiet
+}

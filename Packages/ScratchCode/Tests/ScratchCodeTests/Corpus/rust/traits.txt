@@ -1,0 +1,15 @@
+trait Shape {
+    fn area(&self) -> f64;
+}
+
+struct Circle(f64);
+
+impl Shape for Circle {
+    fn area(&self) -> f64 {
+        std::f64::consts::PI * self.0 * self.0
+    }
+}
+
+fn total_area(shapes: &[Box<dyn Shape>]) -> f64 {
+    shapes.iter().map(|s| s.area()).sum()
+}

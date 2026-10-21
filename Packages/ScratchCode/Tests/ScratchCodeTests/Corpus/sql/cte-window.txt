@@ -1,0 +1,9 @@
+WITH ranked AS (
+  SELECT user_id,
+         amount,
+         ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) AS rn
+  FROM payments
+)
+SELECT user_id, amount
+FROM ranked
+WHERE rn = 1;

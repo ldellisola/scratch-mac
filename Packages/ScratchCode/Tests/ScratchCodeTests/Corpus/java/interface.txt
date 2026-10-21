@@ -1,0 +1,4 @@
+public interface Repository<T> {
+    Optional<T> findById(long id);
+    void save(T entity);
+}

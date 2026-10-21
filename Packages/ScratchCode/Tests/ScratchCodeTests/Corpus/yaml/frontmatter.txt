@@ -1,0 +1,6 @@
+---
+title: Weekly notes
+tags:
+  - work
+  - planning
+draft: false

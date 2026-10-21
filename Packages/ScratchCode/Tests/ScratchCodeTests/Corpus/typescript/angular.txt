@@ -1,0 +1,10 @@
+import { Injectable } from "@angular/core";
+
+@Injectable({ providedIn: "root" })
+export class NoteService {
+  private notes: string[] = [];
+
+  add(note: string): number {
+    return this.notes.push(note);
+  }
+}

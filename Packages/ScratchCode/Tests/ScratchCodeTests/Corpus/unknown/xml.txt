@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<notes>
+  <note id="1"><title>Groceries</title></note>
+  <note id="2"><title>Ideas</title></note>
+</notes>

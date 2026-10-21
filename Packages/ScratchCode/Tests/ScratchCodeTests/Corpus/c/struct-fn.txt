@@ -1,0 +1,11 @@
+#include <stdio.h>
+#include <string.h>
+
+struct person {
+    char name[32];
+    int age;
+};
+
+void print_person(const struct person *p) {
+    printf("%s is %d\n", p->name, p->age);
+}

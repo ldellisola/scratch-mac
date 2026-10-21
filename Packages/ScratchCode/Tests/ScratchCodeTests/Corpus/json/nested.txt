@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [10.75, 59.91] },
+      "properties": { "name": "Oslo", "population": 709000 }
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+Error: could not save "budget.xlsx"
+The file is locked by another user.
+Close it on the other computer and try again, or save a copy under a new name.

@@ -1,0 +1,3 @@
+The upload failed with the message "connection reset by peer" after about two minutes.
+I tried again on the office network and it worked, so I think the guest wifi is dropping
+long connections. If it happens again I will ask IT whether the router has a timeout set.

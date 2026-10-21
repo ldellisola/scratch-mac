@@ -1,0 +1,17 @@
+protocol Store: Sendable {
+    func load(id: UUID) async throws -> Note
+    func save(_ note: Note) async throws
+}
+
+actor MemoryStore: Store {
+    private var notes: [UUID: Note] = [:]
+
+    func load(id: UUID) async throws -> Note {
+        guard let note = notes[id] else { throw StoreError.missing }
+        return note
+    }
+
+    func save(_ note: Note) async throws {
+        notes[note.id] = note
+    }
+}

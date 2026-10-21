@@ -1,0 +1,14 @@
+@RestController
+@RequestMapping("/notes")
+public class NoteController {
+    private final NoteService service;
+
+    public NoteController(NoteService service) {
+        this.service = service;
+    }
+
+    @GetMapping("/{id}")
+    public Note get(@PathVariable long id) {
+        return service.find(id);
+    }
+}

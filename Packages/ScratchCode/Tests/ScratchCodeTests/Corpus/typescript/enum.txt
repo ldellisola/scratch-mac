@@ -1,0 +1,9 @@
+enum Status {
+  Active = "active",
+  Archived = "archived",
+}
+
+const label: Record<Status, string> = {
+  [Status.Active]: "Active",
+  [Status.Archived]: "Archived",
+};

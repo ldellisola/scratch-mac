@@ -1,0 +1,9 @@
+# docker compose for local development
+version: "3.9"
+services:
+  db:
+    image: postgres:16   # pinned major version
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - "5432:5432"

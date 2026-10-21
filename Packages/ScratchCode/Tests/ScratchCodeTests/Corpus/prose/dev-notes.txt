@@ -1,0 +1,2 @@
+Remember to call init() before run(). The config loader reads settings.json first.
+If the cache looks stale, delete the folder and restart the app.

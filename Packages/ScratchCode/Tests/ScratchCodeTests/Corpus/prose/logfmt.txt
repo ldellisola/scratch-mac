@@ -1,0 +1,3 @@
+time=10:42:07 level=info msg="sync finished" items=212
+time=10:42:09 level=warn msg="retrying upload" attempt=2
+time=10:42:15 level=info msg="upload ok" bytes=48211

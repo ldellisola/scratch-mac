@@ -1,0 +1,5 @@
+<?php
+$names = ["Ada", "Grace"];
+foreach ($names as $name) {
+    echo "Hello, " . $name . "\n";
+}
