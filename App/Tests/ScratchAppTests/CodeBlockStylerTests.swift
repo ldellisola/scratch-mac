@@ -68,10 +68,11 @@ final class CodeBlockStylerTests: XCTestCase {
         return layoutManager.propertyForGlyph(at: glyph).contains(.null)
     }
 
-    /// The height of the line that holds the character at `index`, laid out first.
+    /// The height of the line that holds the character at `index`, with the whole note laid out first (a layout that
+    /// stops at the line would leave it as it was before the fence lines were hidden).
     private func lineHeight(at index: Int, in host: Host) -> CGFloat {
         guard let layoutManager = host.editor.textView.layoutManager else { return -1 }
-        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: index + 1))
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: host.editor.currentText.utf16.count))
         let glyph = layoutManager.glyphIndexForCharacter(at: index)
         return layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil).height
     }

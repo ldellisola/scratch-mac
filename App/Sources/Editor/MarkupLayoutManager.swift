@@ -72,8 +72,9 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
 
     /// Draws the tinted blocks and their labels behind the text, and then the rest of what is behind it (the tint of
     /// inline code and the selection). AppKit calls this on the main thread, for the glyphs of the area it redraws.
+    nonisolated(unsafe) static var diagnosticsDrawsCodeBlocks = true
     override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
-        drawCodeBlocks(forGlyphRange: glyphsToShow, at: origin)
+        if Self.diagnosticsDrawsCodeBlocks { drawCodeBlocks(forGlyphRange: glyphsToShow, at: origin) }
         super.drawBackground(forGlyphRange: glyphsToShow, at: origin)
     }
 
