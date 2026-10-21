@@ -137,6 +137,7 @@ Marker rules:
 
 - Markers only mean something outside code. Inside inline code or code blocks every character is literal.
 - Typing `**` or a backtick without closing it leaves plain text, so nothing half-formatted appears.
+  - **Amended by [ADR 0006](../../decisions/0006-bold-word-boundaries.md):** `**` is bold only at word boundaries, so `x**2 + y**2` and `src/**/*.ts` stay plain.
 - How hidden markers behave under cursor movement, selection and deletion is [builder]. The bar: it should feel like editing ordinary text, and deleting a visible character must never silently delete an invisible one the user didn't intend to remove.
 
 **Code highlighting** [owner: automatic on paste, no picking a language].

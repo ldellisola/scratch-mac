@@ -12,8 +12,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
-- Latest plan: [`docs/superpowers/plans/2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md),
-  done and released as 0.3.0 (the formatting). Plan 2, released as 0.2.0:
+- Latest plan: [`docs/superpowers/plans/2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md),
+  in progress on the branch `plan-4-code`, to be released as 0.4.0 (code: highlighting, code blocks, paste
+  classification, and bold at word boundaries). Plan 3, released as 0.3.0 (the formatting):
+  [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
   [`2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md). Plan 1, released
   as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md).
 
@@ -46,8 +48,9 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   the data directory and its stores; refuses a fixture on the real directory; its
                                   `database` is public so that tests can make writes fail, see section 7)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
-  Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold,
-                                  inline code and links, as UTF-16 `NSRange`s), MarkupSpan and MarkupKind, LinkScanner
+  Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold at
+                                  word boundaries (docs/decisions/0006), inline code and links, as UTF-16 `NSRange`s),
+                                  MarkupSpan and MarkupKind, LinkScanner
                                   (the `http(s)://` URLs of a line), FenceScanner (the fenced code blocks, inside which
                                   nothing is formatting), TextLines (internal: line splitting and white space over UTF-16
                                   units). The editing rules answer an action with a `TextEdit` (a range, its
@@ -166,7 +169,8 @@ docs/images/                      the README's screenshots (window-light, window
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
                                   performance check compares), 0004 (a new note opens at the end of the tab strip, and
-                                  a note the owner empties is kept), 0005 (every release carries a DMG next to the zip)
+                                  a note the owner empties is kept), 0005 (every release carries a DMG next to the zip),
+                                  0006 (bold needs word boundaries)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -632,6 +636,11 @@ new kind of release file, with no change to the app, ships.
 - **Never set `font` or `textColor` on the editor to resize it.** On a plain-text view that resets every run of the text,
   bold included. `NoteTextView.applyFontSize` leaves the text to `styler.fontSize`, which styles it again (and still sets
   `font` and `textColor` while the text is empty, where `NoteTextView.font` reads them).
+- **Bold needs word boundaries** (docs/decisions/0006). `MarkupParser.boldRuns` accepts an opening `**` only after the
+  line start or a character that is not a letter or a digit, a closing one only before the line end or such a character,
+  and neither when it has punctuation on both sides (`src/**/*.ts`, `)**(`). So `x**2`, `a**b**c` and globs are plain
+  text, and `InlineEditing.toggleBold` inside a word inserts stars that are not a run. A test that types or shows bold
+  needs a space, the line edge or punctuation next to its stars.
 - **The line prefilter must know every marker the parser knows.** `MarkupParser.mayHaveSpans` (ScratchCore) lets the
   styler skip a line without parsing it. A new kind of marker needs its first character there, and
   `MarkupPrefilterTests` holds the parser to it with a few thousand random lines.

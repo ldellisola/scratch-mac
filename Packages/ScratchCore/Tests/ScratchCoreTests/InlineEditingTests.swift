@@ -75,6 +75,25 @@ private func r(_ location: Int, _ length: Int) -> NSRange {
     #expect(toggleBold("**a |b| c**") == "**a **|b|** c**")
 }
 
+@Test func wrapInsideAWordStillInsertsStarsButTheyAreNotBold() {
+    // Bold needs word boundaries (docs/decisions/0006): the stars go in as always, and the parser does not make a run
+    // of them. ⌘B in the middle of a word shows its stars, as typing them there does.
+    #expect(toggleBold("ab|c|d") == "ab**|c|**d")
+    #expect(MarkupParser.parseLine("ab**c**d", at: 0).isEmpty)
+    #expect(toggleBold("a|b|c") == "a**|b|**c")
+}
+
+@Test func unwrapNextToPunctuationStillWorks() {
+    #expect(toggleBold("(**|word|**)") == "(|word|)")
+    #expect(toggleBold("\"|**word**|\"") == "\"|word|\"")
+}
+
+@Test func wrapNextToPunctuationMakesARun() {
+    let wrapped = toggleBold("(|word|)")
+    #expect(wrapped == "(**|word|**)")
+    #expect(MarkupParser.parseLine("(**word**)", at: 0).count == 1)
+}
+
 @Test func emptySelectionInsertsPairs() {
     #expect(toggleBold("|") == "**|**")
     #expect(toggleBold("a| b") == "a**|** b")
