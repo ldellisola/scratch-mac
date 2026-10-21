@@ -45,6 +45,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     /// the scroll position for the user's.
     private var anchorWasApplied = false
     private var debugStateElement: DebugStateElement?
+    private var traceAnchor = 0
+    private var traceTimer: Timer?
+    private var traceLast = ""
 
     init() {
         let editor = TextViewFactory.makeEditor()
@@ -93,6 +96,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         super.viewDidLayout()
         // The text view is at least as tall as the visible area, so that a click below a short note still lands in it.
         textView.minSize = NSSize(width: 0, height: scrollView.contentSize.height)
+        AnchorTrace.log("viewDidLayout \(describeState())")
         applyPendingScrollAnchor()
     }
 
@@ -220,6 +224,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     /// this only in an isolated data directory.
     func installDebugStateElement() {
         guard debugStateElement == nil else { return }
+        AnchorTrace.isOn = true
         let element = DebugStateElement(frame: .zero)
         element.state = { [weak self] in
             guard let self else { return [:] }
@@ -228,6 +233,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
                 // How far the clip view is scrolled and the scroll view's top inset, so a test can tell that a note at
                 // its top has the text view's own top inset on screen: `scrollY` is `-topInset` there.
                 "scrollY": self.currentScrollY, "topInset": Double(self.scrollView.contentInsets.top),
+                "trace": AnchorTrace.lines.joined(separator: "\n"),
             ]
         }
         view.addSubview(element)
@@ -301,6 +307,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     private func showScrollPosition(of tab: TabState, in note: Note) {
         anchorWasApplied = false
         scrollAnchorToApply = nil
+        startTrace(anchor: tab.scrollAnchor ?? 0)
         if let anchor = tab.scrollAnchor {
             scrollAnchorToApply = TextOffset.clamp(anchor, in: note.body)
             applyPendingScrollAnchor()
@@ -348,5 +355,43 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         scrollView.reflectScrolledClipView(clipView)
         isApplyingScroll = false
         lastScrollY = currentScrollY
+        AnchorTrace.log("scrollToAnchor \(anchor) y=\(y) \(describeState())")
+    }
+
+    // MARK: TEMPORARY trace
+
+    private func describeState() -> String {
+        guard let layoutManager = textView.layoutManager, let length = textView.textStorage?.length, length > 0 else {
+            return "empty"
+        }
+        let location = min(traceAnchor, length - 1)
+        let glyph = layoutManager.glyphIndexForCharacter(at: location)
+        let rect = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil, withoutAdditionalLayout: true)
+        let top = scrollView.contentView.bounds.origin.y + scrollView.contentInsets.top
+        let drift = rect.minY + textView.textContainerOrigin.y - top
+        let visible = view.window?.isVisible == true ? "vis" : "hidden"
+        return String(
+            format: "drift=%.1f anchorLineY=%.1f clipY=%.1f frame=%.0fx%.0f %@", drift, rect.minY,
+            scrollView.contentView.bounds.origin.y, textView.frame.width, textView.frame.height, visible)
+    }
+
+    private func startTrace(anchor: Int) {
+        guard AnchorTrace.isOn else { return }
+        traceAnchor = anchor
+        traceTimer?.invalidate()
+        AnchorTrace.log("show anchor=\(anchor)")
+        var ticks = 0
+        traceTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                ticks += 1
+                let state = self.describeState()
+                if state != self.traceLast {
+                    self.traceLast = state
+                    AnchorTrace.log("poll \(state)")
+                }
+                if ticks > 160 { timer.invalidate() }
+            }
+        }
     }
 }

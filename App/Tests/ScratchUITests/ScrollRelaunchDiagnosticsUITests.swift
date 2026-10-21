@@ -32,30 +32,27 @@ final class ScrollRelaunchDiagnosticsUITests: XCTestCase {
         guard UITestSupport.editor(in: relaunched).waitForExistence(timeout: 30) else {
             return "iteration \(number): no editor after relaunch"
         }
-        var samples: [String] = []
         var anchors: [Int] = []
-        while Date().timeIntervalSince(started) < 8 {
+        while Date().timeIntervalSince(started) < 9 {
             let state = UITestSupport.debugState(in: relaunched)
-            let anchor = state["scrollAnchor"] as? Int ?? -1
-            anchors.append(anchor)
-            let scrollY = state["scrollY"] as? Double ?? -1
-            samples.append(String(format: "%.1fs anchor %d y %.1f", Date().timeIntervalSince(started), anchor, scrollY))
-            Thread.sleep(forTimeInterval: 0.15)
+            anchors.append(state["scrollAnchor"] as? Int ?? -1)
+            Thread.sleep(forTimeInterval: 0.5)
         }
+        let finalState = UITestSupport.debugState(in: relaunched)
         let text = UITestSupport.editor(in: relaunched).value as? String ?? ""
         let lines = anchors.map { $0 < 0 ? "-" : String(lineNumber(ofOffset: $0, in: text)) }
-        return "iteration \(number): before \(before) line \(lineNumber(ofOffset: before, in: text)) "
-            + "(y \(beforeState["scrollY"] ?? "?")); after, lines over time: \(lines.joined(separator: " "))\n"
-            + samples.joined(separator: "\n")
+        return "iteration \(number): before \(before) line \(lineNumber(ofOffset: before, in: text)); "
+            + "after, lines over time: \(lines.joined(separator: " "))\n"
+            + String(describing: finalState["trace"] ?? "no trace")
     }
 
     func testFirstTwo() throws {
-        let report = [iteration(1), iteration(2)].joined(separator: "\n\n")
+        let report = [iteration(1)].joined(separator: "\n\n")
         XCTFail("SCROLL DIAGNOSTICS\n" + report)
     }
 
     func testSecondTwo() throws {
-        let report = [iteration(3), iteration(4)].joined(separator: "\n\n")
+        let report = [iteration(2)].joined(separator: "\n\n")
         XCTFail("SCROLL DIAGNOSTICS\n" + report)
     }
 }
