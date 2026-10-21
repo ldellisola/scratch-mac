@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+log() {
+  printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"
+}
+
+for file in "$@"; do
+  [ -f "$file" ] || continue
+  log "checking $file"
+done

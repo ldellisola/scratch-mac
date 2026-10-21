@@ -1,0 +1,14 @@
+struct Note: Codable, Identifiable {
+    let id: UUID
+    var title: String
+    var body: String
+    var modified: Date
+
+    var preview: String {
+        body.split(separator: "\n").first.map(String.init) ?? ""
+    }
+}
+
+extension Note {
+    static let empty = Note(id: UUID(), title: "", body: "", modified: .now)
+}

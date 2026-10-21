@@ -1,0 +1,4 @@
+fn parse_port(s: &str) -> Result<u16, std::num::ParseIntError> {
+    let port = s.trim().parse::<u16>()?;
+    Ok(port)
+}

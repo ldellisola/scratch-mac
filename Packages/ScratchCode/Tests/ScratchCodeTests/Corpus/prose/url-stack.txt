@@ -1,0 +1,4 @@
+https://example.com/docs/getting-started
+https://example.com/docs/faq
+https://example.org/blog/2026/notes-on-fonts
+https://example.net/downloads?platform=mac&version=2

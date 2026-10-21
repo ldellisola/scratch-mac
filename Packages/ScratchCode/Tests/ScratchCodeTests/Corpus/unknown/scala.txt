@@ -1,0 +1,5 @@
+object Main extends App {
+  val xs = List(3, 1, 2)
+  val sorted = xs.sorted.map(_ * 2)
+  println(sorted.mkString(", "))
+}

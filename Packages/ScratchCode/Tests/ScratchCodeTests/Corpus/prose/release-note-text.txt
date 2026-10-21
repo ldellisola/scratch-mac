@@ -1,0 +1,2 @@
+Version 2.3 is out. It fixes the crash on startup (thanks to everyone who sent reports) and makes the sidebar a little faster.
+Known issue: dark mode icons may look blurry on older screens.

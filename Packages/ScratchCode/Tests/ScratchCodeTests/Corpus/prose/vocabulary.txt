@@ -1,0 +1,4 @@
+house = casa
+water = agua
+bread = pan
+thank you = gracias

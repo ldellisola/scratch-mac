@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "count": 2,
+  "items": [
+    {"id": 7, "title": "Groceries", "pinned": false},
+    {"id": 9, "title": "Ideas", "pinned": true}
+  ],
+  "error": null
+}

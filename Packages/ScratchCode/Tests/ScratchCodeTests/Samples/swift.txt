@@ -1,0 +1,31 @@
+import Foundation
+
+/// A note in the scratchpad.
+struct Note: Identifiable, Codable {
+    let id: UUID
+    var title: String = "Untitled"
+    var body: String
+    var pinned = false
+
+    @MainActor
+    func shout(times: Int = 3) -> String {
+        // Repeat the title, loudly.
+        var result = ""
+        for _ in 0..<times {
+            result += title.uppercased() + "!"
+        }
+        return result
+    }
+}
+
+enum NoteError: Error {
+    case empty
+    case tooLong(limit: Int)
+}
+
+func validate(_ note: Note) throws {
+    guard !note.body.isEmpty else { throw NoteError.empty }
+    if note.body.count > 10_000 {
+        throw NoteError.tooLong(limit: 10_000)
+    }
+}

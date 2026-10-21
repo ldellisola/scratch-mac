@@ -1,0 +1,5 @@
+match value {
+    Some(n) if n > 0 => println!("positive {}", n),
+    Some(_) => println!("non-positive"),
+    None => println!("nothing"),
+}

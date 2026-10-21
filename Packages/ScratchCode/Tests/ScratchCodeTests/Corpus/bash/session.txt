@@ -1,0 +1,3 @@
+$ cd ~/projects/scratch
+$ git status
+$ git pull --rebase origin main

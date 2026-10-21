@@ -1,0 +1,4 @@
+name,city,age
+Ada,London,36
+Grace,Boston,41
+Linus,Helsinki,29

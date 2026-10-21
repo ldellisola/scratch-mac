@@ -1,0 +1,17 @@
+class Cache {
+  constructor(ttl) {
+    this.ttl = ttl;
+    this.items = new Map();
+  }
+
+  get(key) {
+    const hit = this.items.get(key);
+    if (hit && hit.expires > Date.now()) return hit.value;
+    return undefined;
+  }
+}
+
+fetch("/api/items")
+  .then((res) => res.json())
+  .then((items) => console.log(items.length))
+  .catch(console.error);

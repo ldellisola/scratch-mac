@@ -36,7 +36,9 @@ history, and tabs) and plan 3, task 7 (failed writes, the top inset). Notes are 
   restores its scroll offset in points (`TabState.scrollY`) once. The editor can only position text when it has a
   width, so at launch it keeps the anchor and scrolls to it in the first layout, and a save before that layout writes
   the anchor it was given. The text above the anchor is laid out for this (TextKit lays out lazily), which takes a
-  moment in a very long note.
+  moment in a very long note. The window and the scroll view settle in steps at launch (a first width, the window's, a
+  scroller style) and the text is laid out again at each, so the editor applies the anchor again after each change of
+  the text view's width in the five seconds after the last time, until the user scrolls, types or moves the cursor.
 - **A note at its top shows the gap above its first line.** The text starts 12 pt below the top of the editor (the text
   container's inset), and a note shown without an anchor, with anchor 0 or scrolled to its top has that gap on screen,
   as the first note of the typical fixture has. AppKit scrolls a text view to its selection whenever the view is resized
@@ -90,6 +92,7 @@ clicking the editor first, which also proves that the editor is ready to type at
 | The cursor comes back where it was (a typed character lands at the saved offset) | `PersistenceUITests.testCursorRestoredAfterRelaunch` |
 | The scroll position comes back as the same text at the top (read from the `debug.state` element) | `TitleUITests.testScrollPositionSurvivesRelaunch` |
 | A note shown before the first layout, or after it, is scrolled to its anchor | `EditorViewControllerTests.testScrollAnchorRoundTrips`, `testScrollAnchorAppliesWhenAlreadyLaidOut` |
+| The anchor is applied again when the layout settles at another width, until the user scrolls | `EditorViewControllerTests.testScrollAnchorIsAppliedAgainWhenTheTextViewChangesWidth`, `testScrollingByTheUserEndsTheWaitForTheAnchor` |
 | A note without an anchor shows its top, and the anchor given is the one saved | `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTop`, `testScrollAnchorIsSavedAsGiven` |
 | A note at its top shows the text view's top inset (the clip view is at `-contentInsets.top`, not past it) | `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTopInset`, `testScrollToTheFirstLineKeepsTheTopInsetOnScreen`, `TitleUITests.testHugeNoteShowsItsTopInsetAtLaunch` |
 | A failed write of a note that was left is retried by the next save | `SaveFailureTests.testFailedSaveOfLeftNoteIsRetried`, `testFailedFirstSaveOfLeftNoteIsRetried`, `testNewerTypingWinsOverAFailedOlderCopy` |

@@ -1,0 +1,6 @@
+import requests
+import json
+
+response = requests.get("https://api.example.com/items")
+items = response.json()
+print(json.dumps(items, indent=2))

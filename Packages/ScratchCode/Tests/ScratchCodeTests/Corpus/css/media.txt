@@ -1,0 +1,8 @@
+@media (max-width: 600px) {
+  .sidebar {
+    display: none;
+  }
+  main {
+    padding: 8px;
+  }
+}

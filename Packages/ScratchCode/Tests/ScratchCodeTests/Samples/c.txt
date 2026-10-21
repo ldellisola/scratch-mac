@@ -1,0 +1,30 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "list.h"
+
+#define MAX_ITEMS 64
+
+typedef struct {
+    int id;
+    char name[32];
+} Item;
+
+/* Print every item of the list. */
+static void print_items(const Item *items, size_t count) {
+    for (size_t i = 0; i < count; i++) {
+        printf("%d: %s\n", items[i].id, items[i].name);
+    }
+}
+
+int main(int argc, char **argv) {
+    Item items[MAX_ITEMS];
+    size_t count = 0;
+    // Fill the list from the arguments.
+    for (int i = 1; i < argc && count < MAX_ITEMS; i++) {
+        items[count].id = atoi(argv[i]);
+        snprintf(items[count].name, sizeof(items[count].name), "item %d", i);
+        count++;
+    }
+    print_items(items, count);
+    return 0;
+}

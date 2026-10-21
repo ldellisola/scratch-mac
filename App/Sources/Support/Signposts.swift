@@ -10,25 +10,42 @@ enum Signposts {
     /// that ended when the work returned would leave out the text system's layout and drawing, which TextKit does
     /// lazily and which is where the two TextKit versions differed (ADR 0001).
     ///
-    /// The names in use: `keystroke` (`NoteTextView.keyDown`) and `switch-note` (`SessionCoordinator.open` and a switch to another tab).
+    /// The names in use: `keystroke` (`NoteTextView.keyDown`), `switch-note` (`SessionCoordinator.open` and a switch to
+    /// another tab) and `paste-code` (`NoteTextView`'s paste, see `beginOpenEditorInterval`).
     static func beginEditorInterval(_ name: StaticString) {
-        let interval = OpenInterval(name: name, state: editor.beginInterval(name, id: editor.makeSignpostID()))
-        RunLoopIdle.onNext { interval.end() }
+        beginOpenEditorInterval(name).endWhenIdle()
+    }
+
+    /// Begins the editor interval `name` and leaves it open: the caller ends it, with `end()` or `endWhenIdle()`, when
+    /// what began it is done. `paste-code` runs from a paste until the colours of the block that it made are on screen,
+    /// which is several run loop turns after the paste.
+    static func beginOpenEditorInterval(_ name: StaticString) -> OpenInterval {
+        OpenInterval(name: name, state: editor.beginInterval(name, id: editor.makeSignpostID()))
     }
 }
 
 /// A signpost interval that has begun and not ended. A class, so that the closure that ends it needs no Sendable
 /// parts: like everything in the app target it belongs to the main actor.
-private final class OpenInterval {
+final class OpenInterval {
     private let name: StaticString
     private let state: OSSignpostIntervalState
+    private var isEnded = false
 
-    init(name: StaticString, state: OSSignpostIntervalState) {
+    fileprivate init(name: StaticString, state: OSSignpostIntervalState) {
         self.name = name
         self.state = state
     }
 
+    /// Ends the interval now. Ending it again does nothing.
     func end() {
+        guard !isEnded else { return }
+        isEnded = true
         Signposts.editor.endInterval(name, state)
+    }
+
+    /// Ends the interval when the main run loop is next about to wait: what the interval measured has then been laid out,
+    /// drawn and committed (`RunLoopIdle`).
+    func endWhenIdle() {
+        RunLoopIdle.onNext { [self] in end() }
     }
 }

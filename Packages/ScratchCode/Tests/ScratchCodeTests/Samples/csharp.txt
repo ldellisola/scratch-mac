@@ -1,0 +1,39 @@
+using System;
+using System.Collections.Generic;
+
+namespace Notes;
+
+public interface IGreeter
+{
+    string Greet(string name);
+}
+
+public class Counter : IGreeter
+{
+    private readonly List<int> _values = new();
+
+    public int Count { get; private set; }
+
+    public string Greet(string name) => $"Hello, {name}!";
+
+    // Adds a value and returns the new total.
+    public int Add(int value)
+    {
+        _values.Add(value);
+        Count += 1;
+        return _values.Count;
+    }
+
+    public static void Main(string[] args)
+    {
+        var counter = new Counter();
+        foreach (var arg in args)
+        {
+            if (int.TryParse(arg, out var number))
+            {
+                counter.Add(number);
+            }
+        }
+        Console.WriteLine("total: " + counter.Count);
+    }
+}

@@ -1,0 +1,4 @@
+monday: gym
+tuesday: dentist
+wednesday: call mum
+thursday: pottery class

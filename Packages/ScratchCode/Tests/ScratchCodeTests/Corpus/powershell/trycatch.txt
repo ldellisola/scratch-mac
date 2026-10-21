@@ -1,0 +1,7 @@
+try {
+    $items = Get-ChildItem -Path $Path -Recurse -File
+    $items | Group-Object Extension | Sort-Object Count -Descending
+}
+catch {
+    Write-Error "Could not read $Path : $_"
+}

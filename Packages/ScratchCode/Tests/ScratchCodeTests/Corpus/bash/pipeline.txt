@@ -1,0 +1,3 @@
+ls -la | grep ".log" | wc -l
+find . -name "*.tmp" -mtime +7 -delete
+tar -czf backup.tar.gz ~/Documents

@@ -1,0 +1,3 @@
+foreach ($item in $items) {
+    Write-Output $item.Name
+}

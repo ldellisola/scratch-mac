@@ -1,0 +1,9 @@
+#include <iostream>
+#include <string>
+
+// Greets someone by name.
+int main() {
+    std::string name = "world";
+    std::cout << "Hello, " << name << "!" << std::endl;
+    return 0;
+}

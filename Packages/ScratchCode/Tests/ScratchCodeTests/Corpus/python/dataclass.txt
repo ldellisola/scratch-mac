@@ -1,0 +1,17 @@
+from dataclasses import dataclass, field
+from typing import Optional
+
+
+@dataclass
+class Task:
+    title: str
+    done: bool = False
+    tags: list[str] = field(default_factory=list)
+    due: Optional[str] = None
+
+    def mark_done(self) -> None:
+        self.done = True
+
+
+tasks = [Task("write report"), Task("call Ana", tags=["phone"])]
+open_tasks = [t for t in tasks if not t.done]

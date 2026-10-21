@@ -1,0 +1,9 @@
+// Returns the nth Fibonacci number.
+func fibonacci(_ n: Int) -> Int {
+    guard n > 1 else { return n }
+    var (a, b) = (0, 1)
+    for _ in 2...n {
+        (a, b) = (b, a + b) // shift the window
+    }
+    return b
+}

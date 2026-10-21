@@ -1,0 +1,8 @@
+function Get-Greeting {
+    param(
+        [string]$Name = "world"
+    )
+    "Hello, $Name!"
+}
+
+Get-Greeting -Name "Ada"

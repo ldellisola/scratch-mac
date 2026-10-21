@@ -19,6 +19,9 @@ public enum Fixture: String, CaseIterable, Sendable {
     /// "Formatting": one note with a bullet, a nested bullet, two checkboxes, bold, inline code, a link, unclosed
     /// markers and a fenced block whose markers must stay literal (spec §6.4).
     case formatting
+    /// "Code": one note with a `swift`, `python`, `sql`, `json` and `bash` block, a block whose fence has no name (it
+    /// holds JavaScript, so the editor detects the language), and prose between them (spec §6.4).
+    case code
 
     /// Writes this fixture's notes and session through the stores. All dates are relative to `now`.
     ///

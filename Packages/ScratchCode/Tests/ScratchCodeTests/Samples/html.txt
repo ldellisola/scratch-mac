@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>My notes</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body class="page">
+    <!-- The list of notes. -->
+    <h1 id="top">Notes</h1>
+    <ul>
+      <li><a href="/one">First</a></li>
+      <li><a href="/two" target="_blank">Second</a></li>
+    </ul>
+    <p>Some <strong>bold</strong> and <em>italic</em> text.</p>
+    <button type="button" disabled>Save</button>
+    <script src="app.js"></script>
+  </body>
+</html>

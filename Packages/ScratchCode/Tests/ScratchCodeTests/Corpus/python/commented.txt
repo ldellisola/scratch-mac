@@ -1,0 +1,13 @@
+# Count the words in a file
+import sys
+from collections import Counter
+
+def main(path):
+    with open(path) as handle:
+        words = handle.read().split()
+    counts = Counter(words)  # most common first
+    for word, n in counts.most_common(10):
+        print(word, n)
+
+if __name__ == "__main__":
+    main(sys.argv[1])

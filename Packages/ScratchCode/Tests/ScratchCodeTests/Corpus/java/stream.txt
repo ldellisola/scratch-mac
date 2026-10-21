@@ -1,0 +1,7 @@
+@Override
+public List<String> titles(List<Note> notes) {
+    return notes.stream()
+        .map(Note::getTitle)
+        .filter(t -> !t.isEmpty())
+        .collect(Collectors.toList());
+}

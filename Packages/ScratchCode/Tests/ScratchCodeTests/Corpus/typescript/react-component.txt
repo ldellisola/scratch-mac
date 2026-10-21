@@ -1,0 +1,17 @@
+import { useState } from "react";
+
+type Props = {
+  title: string;
+  onSave: (value: string) => void;
+};
+
+export function Editor({ title, onSave }: Props) {
+  const [value, setValue] = useState<string>("");
+  return (
+    <section>
+      <h2>{title}</h2>
+      <input value={value} onChange={(e) => setValue(e.target.value)} />
+      <button onClick={() => onSave(value)}>Save</button>
+    </section>
+  );
+}

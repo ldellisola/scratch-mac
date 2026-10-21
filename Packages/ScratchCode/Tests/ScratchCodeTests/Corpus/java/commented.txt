@@ -1,0 +1,16 @@
+package com.example.notes;
+
+import java.util.List;
+
+/** A note with a title. */
+public class Note {
+    private final String title; // never null
+
+    public Note(String title) {
+        this.title = title;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+}

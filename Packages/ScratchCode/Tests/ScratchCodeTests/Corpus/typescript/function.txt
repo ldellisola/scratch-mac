@@ -1,0 +1,5 @@
+export async function getUser(id: number): Promise<User | undefined> {
+  const response = await fetch(`/users/${id}`);
+  if (!response.ok) return undefined;
+  return (await response.json()) as User;
+}

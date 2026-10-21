@@ -1,0 +1,4 @@
+2026-03-02 08:14:07 INFO  backup started for volume photos
+2026-03-02 08:14:09 INFO  copied 312 files (1.4 GB)
+2026-03-02 08:14:31 WARN  slow disk, retrying chunk 17
+2026-03-02 08:14:44 INFO  backup finished in 37 s

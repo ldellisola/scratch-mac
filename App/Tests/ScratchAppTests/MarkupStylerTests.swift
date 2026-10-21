@@ -332,7 +332,10 @@ final class MarkupStylerTests: XCTestCase {
         XCTAssertFalse(isNullGlyph(at: notBold.location, in: host))
         let notBullet = utf16Range(of: "- not a bullet", in: text)
         XCTAssertNil(role(at: notBullet.location, in: host), "no role on the dash in the block")
-        XCTAssertNil(attribute(.paragraphStyle, at: notBullet.location, in: host))
+        // The line has the indent of a line of a block (plan 4, task 5) and not the hanging indent of a list line.
+        let blockStyle = attribute(.paragraphStyle, at: notBullet.location, in: host) as? NSParagraphStyle
+        XCTAssertEqual(blockStyle?.headIndent, 10)
+        XCTAssertEqual(blockStyle?.tailIndent, -10)
         XCTAssertEqual(attribute(.foregroundColor, at: notBullet.location, in: host) as? NSColor, NSColor.textColor)
 
         let styler = host.editor.textView.styler!

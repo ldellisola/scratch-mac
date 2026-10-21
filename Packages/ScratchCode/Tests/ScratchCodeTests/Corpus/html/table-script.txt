@@ -1,0 +1,11 @@
+<table class="prices">
+  <thead>
+    <tr><th>Item</th><th>Price</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Tea</td><td>3.50</td></tr>
+  </tbody>
+</table>
+<script>
+  document.querySelector(".prices").classList.add("ready");
+</script>

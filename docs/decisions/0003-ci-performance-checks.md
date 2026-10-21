@@ -88,3 +88,44 @@ runs of the macOS job: take the largest median of each metric from `ci-results/<
 perf-baseline` writes one run's numbers, which on a laptop are not CI's). If CI fails a metric that no change of the
 code explains, look at the run's `perf/report.md` and `perf/metrics.json` before touching the baseline, and run the job
 again: a slow run is a fact about the runner.
+
+## Addendum: `paste_code_ms` (plan 4, task 6)
+
+A sixth metric, for the spec §7 row "Highlight colours appearing after a 500-line code paste: 50 ms". It adds a budget and
+changes no other: the budget is the spec's 50 ms, the owner's M4's. On CI the metric is over it, 55 to 85 ms depending on
+the runner, so the report says WARN (over budget, inside the 2 x limit) on every run, for the reason that `launch_ms` is a
+WARN: the runner is slower than the owner's machine, and by a factor that changes from run to run (this record, above). It
+is not made a looser budget, because the fast runners are within a fifth of the real one and the WARN is the right amount
+of noise. The CI number is not a measurement of the owner's Mac, where the budget stays the target and is checked by
+hand, like the cold-boot number (spec §7).
+
+- **What it measures.** The `paste-code` signpost interval (`Signposts.beginOpenEditorInterval`), from `NoteTextView.paste`
+  until the colours of the block that the paste made are on screen: the plain paste and its styling, the detection of the
+  language (`PasteClassifier`, `CodeDetector`), the wrap in a fence on the next turn, the highlighting on its queue and the
+  colours written back (at most 8 ms at a time), and then the next idle moment of the run loop
+  (`CodeBlockStyler.whenHighlighted`). Unlike `keystroke` and `switch-note` it does not end at the first idle moment: the
+  colours are written in later turns on purpose (docs/features/code.md).
+- **The test.** `CodePastePerfTests.testPasteFiveHundredLinesOfCode` pastes 500 lines of Swift (125 functions of four lines,
+  about 11,500 characters) into an empty note with ⌘V, ten times, with different names in each so that the app has not
+  coloured any of them before (it keeps the results of the blocks it has seen). The metric is the median of the ten
+  (`scripts/perf-extract.py`), like the others, and the test waits for `debug.state` to say nothing is pending before it
+  empties the note for the next paste.
+- **The baseline is 85.3 ms**: the slowest median of five runs of the macOS job on the final tests, as the baselines above
+  are. The app code was the same in all five (the commits after the first only changed the screenshot of the test, a
+  document and the baseline). The first baseline was 59.4 ms, the slowest of the first three runs, and the fourth run
+  failed it; the second was 73.6 ms, the slowest of four, and the fifth run was slower again. Both were on slow runners
+  (`launch_ms` 520 and 871, `switch_small_ms` 13.7 and 13.6, where the first three had 401 to 447 and 7.9 to 9.8): the two
+  modes of the runner that decision 3 describes, and a slow one that is slower than the one before. Since 1.2 x 85.3 is
+  more than twice the budget, the limit is the 2 x budget one: the check fails a result above 100 ms.
+
+  | Run (commit) | `paste_code_ms` | Fastest and slowest of the ten pastes | Runner |
+  |---|---|---|---|
+  | `08a6d61` | 57.2 | 51.3 to 77.0 | fast |
+  | `e30e901` | 55.1 | 51.8 to 58.5 | fast |
+  | `f0a2925` | 59.4 | 50.1 to 81.4 | fast |
+  | `5860da5` | 73.6 | 60.8 to 141.3 | slow |
+  | `b963c99` | 85.3 | 56.3 to 150.0 | slower |
+
+  A run has one or two pastes well above the others (the first of the launch, where the grammars and their queries load,
+  and a slow turn), which is why the metric is the median. The medians of a slow runner are noisy as well: a failure above
+  100 ms with no change to the paste is the runner's (AGENTS.md section 4): run the job again.

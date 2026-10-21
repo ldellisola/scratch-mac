@@ -10,8 +10,8 @@ import XCTest
 /// that the screenshots are taken once per CI job.
 ///
 /// The names are `typical-light`, `typical-dark`, `empty-light`, `huge-note-light`, `search-light`,
-/// `recently-deleted-light`, `formatting-light` and `formatting-dark`. The Makefile's `SCREENSHOT_NAMES` lists them and
-/// must stay in step with this class.
+/// `recently-deleted-light`, `formatting-light`, `formatting-dark`, `code-light` and `code-dark`. The Makefile's
+/// `SCREENSHOT_NAMES` lists them and must stay in step with this class.
 @MainActor
 final class ScreenshotTests: XCTestCase {
     func testTypicalLight() {
@@ -76,6 +76,33 @@ final class ScreenshotTests: XCTestCase {
     /// The same note in dark mode: the colours of the boxes, the code and the link must all read on a dark background.
     func testFormattingDark() {
         capture("formatting-dark", fixture: "formatting", appearance: "dark", sidebarRows: 1)
+    }
+
+    /// The code fixture (plan 4, task 8): one note with a block for each of Swift, Python, SQL, JSON and Shell, and a last
+    /// one whose fence has no name, so that its language is detected. The test waits until the colours are written
+    /// (they come from a background queue, after the window is up), and a person (or an agent that opens the PNG)
+    /// checks: rounded tinted blocks with no fence lines in sight, a label at the top right of each block, the
+    /// detected one (JavaScript) in italics and the others upright, and keywords, strings, comments, numbers and types
+    /// in the colours of Xcode's default theme. The caret is in the first line of the note, so no fence is shown.
+    func testCodeLight() {
+        capture("code-light", fixture: "code", appearance: "light", sidebarRows: 1) { app in
+            waitForColours(in: app)
+        }
+    }
+
+    /// The same note in dark mode: the dark variants of the code colours on the dark tint.
+    func testCodeDark() {
+        capture("code-dark", fixture: "code", appearance: "dark", sidebarRows: 1) { app in
+            waitForColours(in: app)
+        }
+    }
+
+    /// Waits until the app has written the colours and the labels of every block (`debug.state`: `pendingHighlights` is
+    /// zero). The request is made when the note is shown, before the window is visible, so zero means done.
+    private func waitForColours(in app: XCUIApplication) {
+        XCTAssertTrue(
+            UITestSupport.wait(timeout: 20) { UITestSupport.debugState(in: app)["pendingHighlights"] as? Int == 0 },
+            "the code colours were not written: \(UITestSupport.debugState(in: app))")
     }
 
     /// Launches `fixture`, waits for the editor and for `sidebarRows` sidebar rows (the fixture's notes that the

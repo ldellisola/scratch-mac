@@ -1,0 +1,11 @@
+Packing list
+- clothes
+  - three shirts
+  - two pairs of trousers
+  - rain jacket
+- bathroom
+  - toothbrush
+  - sunscreen
+- misc
+  - charger
+  - passport

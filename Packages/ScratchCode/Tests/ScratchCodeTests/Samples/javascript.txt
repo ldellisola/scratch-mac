@@ -1,0 +1,37 @@
+// A tiny todo list.
+const todos = [];
+
+function addTodo(title, done = false) {
+  const todo = { id: todos.length + 1, title, done };
+  todos.push(todo);
+  return todo;
+}
+
+class Counter {
+  constructor(start) {
+    this.count = start;
+  }
+
+  increment() {
+    this.count += 1;
+    return this.count;
+  }
+}
+
+const greet = (name) => `Hello, ${name}!`;
+
+async function load(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Request failed: " + response.status);
+    }
+    return await response.json();
+  } catch (error) {
+    console.log(error.message);
+    return null;
+  }
+}
+
+addTodo("buy milk");
+console.log(greet("world"), new Counter(0).increment());

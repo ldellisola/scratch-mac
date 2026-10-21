@@ -141,7 +141,8 @@ public enum MarkupParser {
 
     /// `**`, content, `**`. The content is at least one character, contains no `**` outside inline code, and neither
     /// starts nor ends with white space. Inline code is skipped when looking for stars, so a run may hold code and
-    /// code may hold stars. `open` and `close` are the offsets of the two `**`.
+    /// code may hold stars. The stars need word boundaries (``opens(_:at:)``, ``closes(_:at:)``), so `x**2 + y**2` and
+    /// `src/**/*.ts` are plain text. `open` and `close` are the offsets of the two `**`.
     private static func boldRuns(
         in units: [UInt16], from start: Int, outside code: [Range<Int>]
     ) -> [(open: Int, close: Int)] {
@@ -152,7 +153,7 @@ public enum MarkupParser {
         var runs: [(open: Int, close: Int)] = []
         var index = start
         while index + 1 < masked.count {
-            guard isStarPair(masked, at: index) else {
+            guard isStarPair(masked, at: index), opens(masked, at: index) else {
                 index += 1
                 continue
             }
@@ -163,7 +164,9 @@ public enum MarkupParser {
             }
             var close = contentStart
             while close + 1 < masked.count, !isStarPair(masked, at: close) { close += 1 }
-            if close + 1 < masked.count, close > contentStart, !masked[close - 1].isMarkupWhitespace {
+            if close + 1 < masked.count, close > contentStart, !masked[close - 1].isMarkupWhitespace,
+                closes(masked, at: close)
+            {
                 runs.append((open: index, close: close))
                 index = close + 2
             } else {
@@ -175,5 +178,61 @@ public enum MarkupParser {
 
     private static func isStarPair(_ units: [UInt16], at index: Int) -> Bool {
         units[index] == star && units[index + 1] == star
+    }
+
+    // MARK: Word boundaries
+
+    /// What stands next to a pair of stars.
+    private enum Neighbour {
+        /// The start or the end of the line.
+        case lineEdge
+        case whiteSpace
+        /// `Character.isLetter` or `isNumber`, in any script.
+        case letterOrDigit
+        /// Anything else: punctuation, symbols, emoji, and the backticks that stand for inline code.
+        case other
+    }
+
+    /// The `**` at `index` may open a run. The character before it is the line start or not a letter or a digit, so
+    /// `x**2` is not bold. And the stars do not sit between two punctuation marks (`src/**/*.ts`, `(a)**(b)`): that is a
+    /// glob or an operator [owner, 2026-10-21, with the second rule a [call]: see docs/decisions/0006].
+    private static func opens(_ units: [UInt16], at index: Int) -> Bool {
+        let outside = neighbour(before: index, in: units)
+        guard outside != .letterOrDigit else { return false }
+        return !(outside == .other && neighbour(at: index + 2, in: units) == .other)
+    }
+
+    /// The `**` at `index` may close a run: the same rule, mirrored. The character after it is the line end or not a
+    /// letter or a digit, and the stars do not sit between two punctuation marks.
+    private static func closes(_ units: [UInt16], at index: Int) -> Bool {
+        let outside = neighbour(at: index + 2, in: units)
+        guard outside != .letterOrDigit else { return false }
+        return !(outside == .other && neighbour(before: index, in: units) == .other)
+    }
+
+    /// The character that ends `units[..<index]`, which is a whole grapheme cluster (`é` written as `e` and an accent
+    /// is a letter). A window of a few dozen units holds it: a cluster longer than that is not made of letters.
+    private static func neighbour(before index: Int, in units: [UInt16]) -> Neighbour {
+        guard index > 0 else { return .lineEdge }
+        var from = max(0, index - window)
+        if from > 0, UTF16.isTrailSurrogate(units[from]) { from -= 1 }
+        return classify(String(decoding: units[from..<index], as: UTF16.self).last)
+    }
+
+    /// The character that starts `units[index...]`.
+    private static func neighbour(at index: Int, in units: [UInt16]) -> Neighbour {
+        guard index < units.count else { return .lineEdge }
+        var to = min(units.count, index + window)
+        if to < units.count, UTF16.isLeadSurrogate(units[to - 1]) { to += 1 }
+        return classify(String(decoding: units[index..<to], as: UTF16.self).first)
+    }
+
+    private static let window = 32
+
+    private static func classify(_ character: Character?) -> Neighbour {
+        guard let character else { return .lineEdge }
+        if character.isWhitespace { return .whiteSpace }
+        if character.isLetter || character.isNumber { return .letterOrDigit }
+        return .other
     }
 }

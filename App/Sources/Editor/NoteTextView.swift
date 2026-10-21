@@ -87,6 +87,16 @@ final class NoteTextView: NSTextView {
         super.insertText(string, replacementRange: replacementRange)
     }
 
+    /// The text was edited and AppKit has processed the edit. The styler may have moved paragraphs into or out of a code
+    /// block that the edit did not change, and the layout manager can only be told to generate their glyphs again now
+    /// (`MarkupStyler.editDidFinish`). It is before the delegate hears of the edit, so that everything it does (scroll
+    /// to the caret, say) is on the layout that the edit made.
+    override func didChangeText() {
+        editCount &+= 1
+        styler.editDidFinish()
+        super.didChangeText()
+    }
+
     /// Starts the `keystroke` signpost interval that the performance tests measure: from the key press until what it
     /// typed is on screen (`Signposts.beginEditorInterval`).
     override func keyDown(with event: NSEvent) {
@@ -136,6 +146,7 @@ final class NoteTextView: NSTextView {
     /// typed next. The markers in it are not styled until the styler is told the note is shown
     /// (`MarkupStyler.noteDidLoad(visibleRange:)`, which `EditorViewController.show` calls).
     func load(_ text: String) {
+        editCount &+= 1
         styler.beginLoad()
         string = text
         styler.endLoad()
@@ -167,6 +178,178 @@ final class NoteTextView: NSTextView {
         }
         return scrolled
     }
+
+    // MARK: Paste
+
+    /// A paste is the plain paste first and a code block second (spec §6.5, plan 4 task 6). The plain paste is AppKit's,
+    /// as it was: the pasteboard's text takes the note's font (`readablePasteboardTypes`). When the pasted text turns out
+    /// to be code, `PasteClassifier` wraps it in a fence on the next turn of the main run loop, an edit of its own, so
+    /// that ⌘Z gives back exactly the pasted text and ⌘Z again takes it away. Nothing is classified in a note that
+    /// cannot be edited, for a rectangular selection, or when the text was edited between the paste and the wrap.
+    ///
+    /// Paste, Paste and Match Style and the hosted tests all end in `readSelection(from:)`, and each of the three starts
+    /// and ends the paste (`beginPaste`, `endPaste`): a call inside another one is the same paste, and the outer one
+    /// decides.
+    override func paste(_ sender: Any?) {
+        let start = beginPaste()
+        super.paste(sender)
+        endPaste(start)
+    }
+
+    /// "Paste and Match Style" is the same as Paste (spec §6.5).
+    override func pasteAsPlainText(_ sender: Any?) {
+        let start = beginPaste()
+        super.pasteAsPlainText(sender)
+        endPaste(start)
+    }
+
+    /// What Paste runs: reads the pasteboard's text over the selection. The hosted tests call it with a pasteboard of their
+    /// own. A note that cannot be edited takes no text, as in `insertText(_:replacementRange:)`.
+    override func readSelection(from pboard: NSPasteboard) -> Bool {
+        guard isEditable else { return false }
+        let start = beginPaste()
+        let didRead = super.readSelection(from: pboard)
+        endPaste(start)
+        return didRead
+    }
+
+    /// How many times the text has been edited or replaced. A paste that is waiting to be classified is dropped when it
+    /// is not the same any more (`PendingPaste`): the owner typed, or another note was loaded, in the meantime.
+    private var editCount = 0
+
+    /// The pastes that wait for their turn of the run loop, the oldest first. A closure that has to wait for the turn does not
+    /// carry a paste: it only asks for the next one (`classifyNextPaste`).
+    private var pendingPastes: [PendingPaste] = []
+
+    /// How many pastes wait for their turn. The hosted tests run the loop until it is zero.
+    var pendingPasteClassifications: Int { pendingPastes.count }
+
+    /// Greater than zero while a paste is being read, so that the paste that AppKit makes of `paste(_:)` by calling
+    /// `readSelection(from:)` is one paste and not two.
+    private var pasteDepth = 0
+
+    /// How many times the classification of a paste waits for the undo group of the paste to close. In the app that is the
+    /// end of the event's turn; a hosted test never ends its turn, and the wrap goes ahead after this many.
+    private static let undoGroupRetries = 8
+
+    /// How long the `paste-code` interval stays open at the most, in seconds, when the colours do not come.
+    private static let pasteIntervalLimit: TimeInterval = 5
+
+    /// What the text view looked like before a paste, and the paste's signpost interval.
+    private struct PasteStart {
+        let selection: NSRange
+        let length: Int
+        /// True when the paste can be classified: the note can be edited and the selection is one range.
+        let canClassify: Bool
+        /// True when the paste goes into a fenced block or into inline code.
+        let isInCode: Bool
+        let interval: OpenInterval
+    }
+
+    /// A paste that has been inserted and waits to be classified.
+    private struct PendingPaste {
+        /// Where the paste is in the text.
+        let range: NSRange
+        /// `editCount` right after the paste.
+        let editCount: Int
+        /// True when the paste went into a fenced block or into inline code.
+        let isInCode: Bool
+        /// The `paste-code` signpost interval, from the paste until the colours are on screen.
+        let interval: OpenInterval
+    }
+
+    /// Call before a paste reads the pasteboard. Returns what `endPaste` needs, or nil for a paste inside another paste.
+    private func beginPaste() -> PasteStart? {
+        pasteDepth += 1
+        guard pasteDepth == 1 else { return nil }
+        let selection = selectedRange()
+        let canClassify = isEditable && selectedRanges.count == 1 && styler != nil
+        return PasteStart(
+            selection: selection, length: textStorage?.length ?? 0, canClassify: canClassify,
+            isInCode: canClassify && isPastingIntoCode(selection),
+            interval: Signposts.beginOpenEditorInterval("paste-code"))
+    }
+
+    /// Call after the paste has read the pasteboard: schedules the classification of what it inserted.
+    private func endPaste(_ start: PasteStart?) {
+        pasteDepth -= 1
+        guard let start else { return }
+
+        // The text that came in is where the selection was and ends where the caret is. Anything else (nothing was pasted,
+        // or AppKit did something else with the text) is left alone.
+        guard start.canClassify, let length = textStorage?.length else { return start.interval.endWhenIdle() }
+        let pasted = NSRange(location: start.selection.location, length: length - start.length + start.selection.length)
+        guard pasted.length > 0, NSMaxRange(pasted) <= length,
+            selectedRange() == NSRange(location: NSMaxRange(pasted), length: 0)
+        else { return start.interval.endWhenIdle() }
+
+        pendingPastes.append(
+            PendingPaste(range: pasted, editCount: editCount, isInCode: start.isInCode, interval: start.interval))
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated { self?.classifyNextPaste(attempt: 0) }
+        }
+    }
+
+    /// The oldest paste has had its turn: wraps it in a fence when it is code (`PasteClassifier`), and ends the `paste-code`
+    /// interval when the colours of the block are on screen, or at once when nothing is going to be coloured.
+    private func classifyNextPaste(attempt: Int) {
+        guard let paste = pendingPastes.first else { return }
+        // The undo group of the paste has to be closed first, or the wrap would be a part of it.
+        if attempt < Self.undoGroupRetries, editCount == paste.editCount, let manager = undoManager,
+            manager.groupingLevel > 0
+        {
+            RunLoopIdle.onNext { [weak self] in self?.classifyNextPaste(attempt: attempt + 1) }
+            CFRunLoopWakeUp(CFRunLoopGetMain())
+            return
+        }
+        pendingPastes.removeFirst()
+
+        guard editCount == paste.editCount, isEditable, let storage = textStorage,
+            NSMaxRange(paste.range) <= storage.length
+        else { return paste.interval.endWhenIdle() }
+        let text = storage.string as NSString
+        let pasted = text.substring(with: paste.range)
+        guard
+            let edit = PasteClassifier.wrap(pasted: pasted, at: paste.range, in: text, isInCode: paste.isInCode)
+        else { return paste.interval.endWhenIdle() }
+
+        applyAndReveal(edit)
+        let interval = paste.interval
+        styler.codeBlockStyler.whenHighlighted { interval.endWhenIdle() }
+        // A block that is never coloured must not leave the interval open.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.pasteIntervalLimit) {
+            MainActor.assumeIsolated { interval.end() }
+        }
+    }
+
+    /// True when a paste over `selection` goes into code: the selection touches a fenced block (the fence lines included),
+    /// or an end of it is inside inline code. Asked before the paste, while the text is what the owner sees: a paste of
+    /// several lines splits the line that inline code is on.
+    private func isPastingIntoCode(_ selection: NSRange) -> Bool {
+        if styler.intersectsCodeBlock(selection) { return true }
+        return isInInlineCode(at: selection.location)
+            || (selection.length > 0 && isInInlineCode(at: NSMaxRange(selection)))
+    }
+
+    /// True when `location` is between the backticks of inline code (not before the first one or after the last one).
+    private func isInInlineCode(at location: Int) -> Bool {
+        let text = string as NSString
+        guard location >= 0, location <= text.length else { return false }
+        var start = 0
+        var end = 0
+        var contentsEnd = 0
+        text.getParagraphStart(
+            &start, end: &end, contentsEnd: &contentsEnd, for: NSRange(location: location, length: 0))
+        guard contentsEnd > start, contentsEnd - start <= Self.inlineCodeLookLimit else { return false }
+        let line = text.substring(with: NSRange(location: start, length: contentsEnd - start))
+        return MarkupParser.parseLine(line, at: start).contains { span in
+            guard case .inlineCode = span.kind else { return false }
+            return span.range.location < location && location < NSMaxRange(span.range)
+        }
+    }
+
+    /// A line longer than this many UTF-16 units is not looked at for inline code when something is pasted into it.
+    private static let inlineCodeLookLimit = 20_000
 
     // MARK: Edits the owner asks for
 
@@ -242,14 +425,18 @@ final class NoteTextView: NSTextView {
     // MARK: Checkboxes
 
     /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
-    /// it was, so the box can be clicked while typing somewhere else. A ⌘-click on a link opens it (`openURL`) and goes
-    /// no further either: it places no caret, and it also works in a note that cannot be edited. Any other click, also
-    /// one on a box with a modifier key held (⇧ extends the selection) or in a note that cannot be edited, is the text
-    /// view's own: a plain click on a link places the caret and never opens anything.
+    /// it was, so the box can be clicked while typing somewhere else. A plain click on the language label of a code block
+    /// opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A ⌘-click on a
+    /// link opens it (`openURL`) and goes no further: it places no caret, and it also works in a note that cannot be
+    /// edited. Any other click, also one on a box or a label with a modifier key held (⇧ extends the selection) or in a
+    /// note that cannot be edited, is the text view's own: a plain click on a link places the caret and never opens
+    /// anything.
     override func mouseDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
-        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]), toggleCheckbox(atViewPoint: point) {
+        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]),
+            toggleCheckbox(atViewPoint: point) || showCodeBlockMenu(atViewPoint: point)
+        {
             return
         }
         if modifiers.contains(.command), let url = link(atViewPoint: point) {
@@ -295,6 +482,85 @@ final class NoteTextView: NSTextView {
         else { return false }
         apply(edit)
         return true
+    }
+
+    // MARK: The language label of a code block
+
+    /// Shows the menu of a label, with its top left corner at the point (in the coordinates of this view). Nil, the
+    /// default, is `NSMenu.popUp(positioning:at:in:)`, which runs a tracking loop of its own until the menu is dismissed:
+    /// a hosted test replaces this, so that it does not wait for a mouse.
+    var codeBlockMenuPresenter: ((NSMenu, NSPoint) -> Void)?
+
+    /// How far outside its rectangle a click still counts as being on a label: a label is a few characters of small text.
+    private static let labelHitOutset: CGFloat = 3
+
+    /// How far below a point the second look for the block of a label is taken (`labelTarget`): the opening fence line is
+    /// 6 pt high, and the line below it is the first line of code, which the label reaches into.
+    private static let labelProbeOffset: CGFloat = 8
+
+    /// The block whose label is under `point` (in the coordinates of this view), with the label's rectangle in the same
+    /// coordinates, or nil. The block is the one that the character nearest to the point belongs to (a label sits on the
+    /// opening fence line and on the first line of code), so only that block is laid out and measured, never every block
+    /// of the note. The point is looked at twice, as it is and a few points lower: on the 6 pt line of a hidden fence
+    /// (a clear glyph and null glyphs) the nearest character is not something to rely on, and the line below is code.
+    /// The label's own rectangle decides.
+    private func labelTarget(atViewPoint point: NSPoint) -> (block: NSRange, rect: NSRect)? {
+        guard let layoutManager = layoutManager as? MarkupLayoutManager, let container = textContainer,
+            let styler, !styler.codeBlockList.isEmpty
+        else { return nil }
+        let origin = textContainerOrigin
+        let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+        for offset in [0, Self.labelProbeOffset] {
+            let probe = NSPoint(x: local.x, y: local.y + offset)
+            let index = layoutManager.characterIndex(
+                for: probe, in: container, fractionOfDistanceBetweenInsertionPoints: nil)
+            guard let block = styler.codeBlock(containing: index)?.range,
+                let rect = layoutManager.labelRect(forBlockAt: block.location),
+                rect.insetBy(dx: -Self.labelHitOutset, dy: -Self.labelHitOutset).contains(local)
+            else { continue }
+            return (block, rect.offsetBy(dx: origin.x, dy: origin.y))
+        }
+        return nil
+    }
+
+    /// The block whose language label is under `point`, in the coordinates of this view, or nil when `point` is anywhere
+    /// else: the code, the margin, a block that has no label (a fence with no name whose code is not code). It does not
+    /// ask whether the note can be edited: `showCodeBlockMenu(atViewPoint:)` does.
+    func labelHit(atViewPoint point: NSPoint) -> NSRange? {
+        labelTarget(atViewPoint: point)?.block
+    }
+
+    /// Shows the menu of the label under `point` (`CodeBlockMenu`) with its top left corner under the label, and returns
+    /// true, or returns false and shows nothing when no label is there or the note cannot be edited (a note in Recently
+    /// Deleted: a menu that changed its text would break spec §6.2).
+    @discardableResult
+    func showCodeBlockMenu(atViewPoint point: NSPoint) -> Bool {
+        guard isEditable, let target = labelTarget(atViewPoint: point), let storage = textStorage else { return false }
+        let mark =
+            storage.attribute(.scratchCodeBlock, at: target.block.location, effectiveRange: nil) as? CodeBlockMark
+        let menu = CodeBlockMenu.menu(for: target.block, current: mark?.language, target: self)
+        let anchor = NSPoint(x: target.rect.minX, y: target.rect.maxY)
+        if let codeBlockMenuPresenter {
+            codeBlockMenuPresenter(menu, anchor)
+        } else {
+            _ = menu.popUp(positioning: nil, at: anchor, in: self)
+        }
+        return true
+    }
+
+    /// What an item of the label menu does (`CodeBlockMenu.menu`): the action of its `CodeBlockChoice`, on its block.
+    @objc func chooseCodeBlockAction(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem, let choice = item.representedObject as? CodeBlockChoice else { return }
+        applyCodeBlockAction(choice.action, to: choice.block)
+    }
+
+    /// Changes the code block at `block` as `action` says, as one undo step (`apply(_:)`), with the caret where it was in
+    /// the text. Does nothing when the note cannot be edited or `block` is no longer a block of the note exactly as it was
+    /// (the menu is up while the note could have changed). The view takes the keyboard, as a click in it does.
+    func applyCodeBlockAction(_ action: CodeBlockAction, to block: NSRange) {
+        guard isEditable, styler.codeBlock(containing: block.location)?.range == block else { return }
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        apply(CodeBlockMenu.edit(for: action, block: block, in: string as NSString, selection: selectedRange()))
     }
 
     // MARK: Links

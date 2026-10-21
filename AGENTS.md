@@ -12,8 +12,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
-- Latest plan: [`docs/superpowers/plans/2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md),
-  done and released as 0.3.0 (the formatting). Plan 2, released as 0.2.0:
+- Latest plan: [`docs/superpowers/plans/2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md),
+  done and released as 0.4.0 (code: highlighting, code blocks, paste classification, the language label menu, and bold
+  at word boundaries). Plan 3, released as 0.3.0 (the formatting):
+  [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
   [`2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md). Plan 1, released
   as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md).
 
@@ -46,8 +48,9 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   the data directory and its stores; refuses a fixture on the real directory; its
                                   `database` is public so that tests can make writes fail, see section 7)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
-  Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold,
-                                  inline code and links, as UTF-16 `NSRange`s), MarkupSpan and MarkupKind, LinkScanner
+  Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold at
+                                  word boundaries (docs/decisions/0006), inline code and links, as UTF-16 `NSRange`s),
+                                  MarkupSpan and MarkupKind, LinkScanner
                                   (the `http(s)://` URLs of a line), FenceScanner (the fenced code blocks, inside which
                                   nothing is formatting), TextLines (internal: line splitting and white space over UTF-16
                                   units). The editing rules answer an action with a `TextEdit` (a range, its
@@ -59,9 +62,31 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   touches a fence line; `intersects` says whether a range holds a block), EditMapping
                                   (where positions go when text is replaced) and `MarkupParser.mayHaveSpans` (a cheap
                                   test that skips the parse of a line with no marker)
-  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting) and
+  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting, code) and
                                   FixtureContent, their notes and session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
+Packages/ScratchCode/             Swift package, no AppKit, builds and tests on Linux and macOS. Wraps tree-sitter, the one
+                                  third-party dependency (docs/decisions/0007). ScratchCore does not depend on it.
+  Sources/ScratchCode/            CodeLanguage (the 17 languages: fence names, aliases, labels), HighlightKind and
+                                  HighlightToken (UTF-16 ranges), Highlighter (`tokens(in:language:)`, nil over the cap of
+                                  5,000 lines or 300,000 units; `errorRate(of:language:)`), CaptureMapping (capture names
+                                  to the eight kinds), Grammars (internal: each language's grammar and queries, and the
+                                  compiled-query cache), QueryInheritance (internal: a `; inherits: <folder>` line at the
+                                  top of a query brings that folder's query in first), CodeDetector (`detect(_:)`: a
+                                  text of two lines or more in, a `CodeDetection` (language or nil for code of an unknown
+                                  language, confidence) or nil for prose out), DetectionFeatures (internal: the lines of
+                                  a text, each with its facts and its evidence, and the shapes that decide alone),
+                                  LanguageSignals (internal: the idioms of each language as points), JSONShape (internal:
+                                  a strict JSON validator)
+  Sources/ScratchCode/Queries/    `<folder>/highlights.scm`: the 17 languages' queries, copies of the grammars' with their
+                                  licences and the changes Scratch made (docs/decisions/0007), plus `javascript-jsx`;
+                                  a resource bundle, read through `Bundle.module`
+  Sources/GrammarPython/          the Python grammar's generated C, vendored (its README.md says why)
+  Sources/GrammarPowerShell/      the PowerShell grammar's generated C, vendored in the same way
+  Tests/ScratchCodeTests/         Swift Testing, one file per source file, and `Samples/<fence name>.txt`, 15 to 40 lines
+                                  of ordinary code for each of the 17 languages (a test resource), and `Corpus/`: the
+                                  samples the detector is tuned against, in `<fence name>/` (code), `unknown/` (code of
+                                  a language Scratch lacks) and `prose/` (text that must stay plain)
 App/project.yml                   XcodeGen spec: targets Scratch (app), ScratchAppTests (hosted unit tests),
                                   ScratchUITests, ScratchPerfTests; schemes Scratch and ScratchPerf. The generated
                                   App/Scratch.xcodeproj is never committed.
@@ -95,19 +120,33 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   and handles Return, Tab and ⇧Tab on list lines (`insertNewline` and the like). The markers
                                   are rendered by MarkupStyler (the text storage's delegate: styles paragraphs from the
                                   core's parser, hides and reveals markers, styles a shown note in chunks),
-                                  MarkupLayoutManager (null glyphs for hidden markers, draws bullets and checkboxes),
-                                  MarkupAppearance (fonts, colours and paragraph styles per font size), MarkupAttributes
-                                  (the `scratchMarker` and `scratchLink` attributes, `MarkerRole`, `MarkupColors`) and
-                                  ParagraphBatch (whole paragraphs read in one call)
-App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke` and
-                                  `switch-note` intervals the performance tests read), RunLoopIdle (runs work when the
-                                  main run loop is next about to wait: after the frame is drawn, and with `order:
-                                  afterMeasurementsOrder` after the signposts end), FrameMonitor
+                                  MarkupLayoutManager (null glyphs for hidden markers and fence lines, draws bullets and
+                                  checkboxes, the tinted code blocks and their labels), MarkupAppearance (fonts, colours
+                                  and paragraph styles per font size, the block styles), MarkupAttributes (the
+                                  `scratchMarker`, `scratchLink` and `scratchCodeBlock` attributes, `MarkerRole`,
+                                  `CodeBlockMark`, `CodeBlockMetrics`, `CodeBlockColors`, `MarkupColors`), ParagraphBatch
+                                  (whole paragraphs read in one call), CodeBlockStyler (colours the code of the fenced
+                                  blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
+                                  language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`,
+                                  `whenHighlighted`), CodeBlockParts (a block's name, code and fence lines from its range)
+                                  PasteClassifier (whether a paste is code, and the edit that wraps it in a fence:
+                                  `wrap`; NoteTextView asks it after every paste, `readSelection(from:)`) and
+                                  CodeBlockMenu (the menu of a block's language label, with `CodeBlockAction` and
+                                  `CodeBlockChoice`, and the edits its items make: `menu`, `edit`; NoteTextView opens it
+                                  from a click on a label, `labelHit`, `showCodeBlockMenu`, and applies a choice,
+                                  `applyCodeBlockAction`; `MarkupLayoutManager.labelRect(forBlockAt:)` is where the label is)
+App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
+                                  `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
+                                  (runs work when the main run loop is next about to wait: after the frame is drawn, and
+                                  with `order: afterMeasurementsOrder` after the signposts end), FrameMonitor
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
-                                  size, scroll anchor and scroll offset from, in isolated launches only)
+                                  size, scroll anchor, scroll offset and pending paste work from, in isolated launches
+                                  only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
-                                  inline code, each with a light and a dark variant)
+                                  inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
+                                  `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
+                                  light and a dark variant)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, FrameMonitorTests, EditorViewControllerTests:
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
@@ -116,16 +155,22 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   click ticks a box, ⇧⌘L, the drawn symbol, the Format menu, ListKeyTests: Return, Tab,
                                   ⇧Tab and ⌘B, LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
                                   coordinator on a failing disk keeps and retries the notes it could not write, and
-                                  the emptied-note rules)
+                                  the emptied-note rules, CodeBlockStylerTests: a fenced block is tinted with hidden
+                                  fences, indented lines, colours and a label, CodeBlockPartsTests, CodePasteTests: a
+                                  paste of code is wrapped in a fence on the next turn, prose, a paste into code and one
+                                  with a fence line stay plain, `PasteClassifier.wrap`, CodeBlockMenuTests: the label
+                                  menu, its edits and undo steps, the label's hit test, a block typed by hand)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
                                   tab strip, opening, closing and switching tabs), DeleteUITests (delete, Recently
                                   Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
                                   FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
+                                  CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
                                   ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
-                                  EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
+                                  EditorPerfTests (keystroke, scrolling, switching notes), CodePastePerfTests (a paste of
+                                  500 lines of code until its colours are on screen), PerfSupport. They share
                                   UITestSupport and AccessibilityID with the UI tests
 perf/                             budgets.json (the budgets CI enforces, in milliseconds) and baseline.json (CI's own
                                   numbers, the slowest of many runs: docs/decisions/0003)
@@ -139,7 +184,7 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   perf-check.py (numbers against baseline and budgets), check-version-bump.sh (a change
                                   to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
                                   release notes footer with the version filled in), check-release-zip.sh (unpacks a
-                                  release zip and checks the app in it), check-release-dmg.sh (attaches a release DMG
+                                  release zip, checks the app in it and prints its sizes), check-release-dmg.sh (attaches a release DMG
                                   read-only and checks the window and the app in it), tests/ (their tests, the DMG
                                   check's against stubs of hdiutil, codesign and lipo)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests, version bump check. Job `macos`:
@@ -150,23 +195,25 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   zip and the DMG (section 6, Releases)
 README.md                         what Scratch is, how to install it, the shortcuts, and the screenshots. Keep its
                                   feature list and release table current (section 6)
-docs/architecture.md              module boundaries, data flow, threading
+docs/architecture.md              module boundaries (App, ScratchCore, ScratchCode), data flow, threading
 docs/release-notes-footer.md      the install and update steps (the DMG first, the zip as the alternative), put at the
                                   top of every release's notes (`scripts/release-notes.sh` replaces its `<version>`
                                   placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
-                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md (more
-                                  as features land)
-docs/images/                      the README's screenshots (window-light, window-dark, formatting, search,
+                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md
+                                  (more as features land)
+docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, search,
                                   recently-deleted): copies of the `screenshots/` that CI published for a release commit
                                   (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
-                                  search-light, recently-deleted-light). They
+                                  code-light, search-light, recently-deleted-light). They
                                   change only when someone replaces them, so refresh them when a plan visibly changes
                                   the UI
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
                                   marker hiding prototypes), 0002 (releases are ad-hoc signed), 0003 (what the CI
                                   performance check compares), 0004 (a new note opens at the end of the tab strip, and
-                                  a note the owner empties is kept), 0005 (every release carries a DMG next to the zip)
+                                  a note the owner empties is kept), 0005 (every release carries a DMG next to the zip),
+                                  0006 (bold needs word boundaries), 0007 (tree-sitter: the packages, their versions and
+                                  licences, and how to add a language)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -178,8 +225,11 @@ the current plan.
 Run them from the repository root. `[linux]` means it also runs in the Linux cloud sessions. Everything else needs
 macOS and runs on GitHub's Macs.
 
-- `make core-test` `[linux]`: build and run the ScratchCore tests.
-- `swift test --package-path Packages/ScratchCore --filter <name>` `[linux]`: run matching tests only.
+- `make core-test` `[linux]`: build and run the ScratchCore tests, then the ScratchCode tests (the first run fetches
+  tree-sitter and its 15 grammar packages from GitHub, about 3 minutes with tree-sitter-sql's 150 MB history, and
+  compiles them).
+- `swift test --package-path Packages/ScratchCore --filter <name>` `[linux]`: run matching tests only (the same for
+  `Packages/ScratchCode`).
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
 - `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py`,
@@ -202,8 +252,9 @@ macOS and runs on GitHub's Macs.
   `build/results/app.xcresult`. Each test has a 2 minute limit.
 - `make screenshots` `[macOS]`: run `ScreenshotTests` only and write `build/screenshots/<name>.png` for `typical-light`,
   `typical-dark`, `empty-light`, `huge-note-light`, `search-light` (typical, with "kube" typed in the search field),
-  `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), and `formatting-light` and
-  `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note). These are the
+  `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), `formatting-light` and
+  `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note), and `code-light` and
+  `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured). These are the
   names in the Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
@@ -217,8 +268,9 @@ macOS and runs on GitHub's Macs.
 
 - `make release-zip` `[macOS]`: build the Release app into `build/release/Scratch.app`, zip it to
   `build/release/Scratch-<VERSION>.zip`, and check what is in the zip (`scripts/check-release-zip.sh`: version and build
-  version, bundle identifier, arm64 only, valid ad-hoc signature). CI runs it on every push, and the release workflow runs it to make
-  the file it publishes.
+  version, bundle identifier, arm64 only, valid ad-hoc signature, ScratchCode's highlight queries in the app; it prints the
+  sizes of the zip, the app and the executable). CI runs it on every push, and the release workflow runs it to make the
+  file it publishes.
 - `make release-dmg` `[macOS]`: after `make release-zip` (it runs that first when `build/release/Scratch.app` is not
   there), copy that app with `ditto` into a staging folder with an `Applications` symlink, and make
   `build/release/Scratch-<VERSION>.dmg` from it (`hdiutil create`, UDZO, volume "Scratch <VERSION>", tried up to three
@@ -236,7 +288,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 | Flag | Value | Effect |
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
-| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting` | delete the database in the data directory and seed that fixture |
+| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code` | delete the database in the data directory and seed that fixture |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 
@@ -265,7 +317,12 @@ docs/decisions/0001 and 0003. What to know when one fails or changes:
   a third into the huge note. `switch_small_ms` and `switch_huge_ms`: the `switch-note` signpost, from
   `SessionCoordinator.open` until the note is on screen. `scroll_frame_ms`: the median CPU time of the main thread per
   frame while the app scrolls the huge note by itself (`FrameMonitor`, `-ScratchFrameMonitor`). Scrolling is measured
-  with this in-app monitor, not with XCTest's scroll metrics. All in milliseconds and all medians.
+  with this in-app monitor, not with XCTest's scroll metrics. `paste_code_ms`: the `paste-code` signpost, from
+  `NoteTextView.paste` until the colours of the block that the paste made are on screen (`CodeBlockStyler.whenHighlighted`),
+  one paste of 500 lines of Swift into an empty note per iteration, each with names that the app has not coloured before.
+  Budget 50 (spec §7), baseline 85.3: it is a WARN on CI (55 to 85 ms, depending on the runner: the ADR 0003 addendum),
+  and a FAIL above 100 (2 x the budget), which a slow runner can reach with no change to the paste: run the job again.
+  All in milliseconds and all medians.
 - **The CI runner is slow and noisy.** Runs of the same build differ by up to a factor of two (the first run of a job is
   the slowest), and a launch takes about 400 ms there (Calculator takes 1 s). The baseline is therefore the slowest of
   many runs, and `launch_ms` and `switch_small_ms` are budgeted at 400 and 12 instead of the spec's 200 and 8
@@ -314,14 +371,16 @@ Exit codes of `scripts/ci-wait.sh`: 0 all jobs succeeded, 1 a job failed (it ret
 ## 5. Conventions
 
 - Swift 6 language mode with strict concurrency. No warnings.
-- `ScratchCore` never imports AppKit or SwiftUI. App depends on Core, never the other way round. The Linux build
-  enforces it, because AppKit does not exist there. Rule-based logic belongs in Core, not in the shell.
+- `ScratchCore` and `ScratchCode` never import AppKit or SwiftUI, and `ScratchCore` does not depend on `ScratchCode`.
+  App depends on both, never the other way round. The Linux build enforces it, because AppKit does not exist there.
+  Rule-based logic belongs in Core (and what is about code in ScratchCode), not in the shell.
 - Swift Testing (`import Testing`, `@Test`, `#expect`) in Core. XCTest/XCUITest only in the app's test targets.
 - Files are small and single-purpose, and their names say what they do. One test file per source file.
 - Tests reference the `docs/features/*` section they cover. A behaviour change updates its feature doc in the same
   change.
 - A decision record in `docs/decisions/NNNN-title.md` for every new dependency, every changed `[call]` in the spec and
-  every budget change. Plan 1 adds no runtime dependency.
+  every budget change. Plan 4 adds one runtime dependency, tree-sitter (docs/decisions/0007); adding a language to it
+  follows that record's checklist.
 - Tests, screenshots and benchmarks never touch real data. They run against an isolated data directory.
 
 ## 6. Definition of done
@@ -415,6 +474,40 @@ new kind of release file, with no change to the app, ships.
 - **`swift test --sanitize=thread` reports false data races on `Synchronization.Mutex` on Linux.** TSAN does not see
   the futex that `Mutex` uses, so every `Mutex`-guarded access looks unsynchronised (`Database` and `Autosaver` both
   show it). A report whose two accesses are both inside `withLock` is noise.
+- **A grammar's own `Package.swift` may silently leave out its scanner.** The `tree-sitter init` template adds
+  `src/scanner.c` only when `FileManager.default.fileExists(atPath: "src/scanner.c")`, and SwiftPM evaluates a dependency's
+  manifest in the builder's working directory, so linking fails with undefined `*_external_scanner_*` symbols. Such a
+  grammar is vendored into `Packages/ScratchCode/Sources/Grammar<Language>/`, compiled with `-w` (Xcode warns about the
+  generated C, and the app builds with no warnings; docs/decisions/0007, which also lists how to add a language). Python
+  and PowerShell are vendored. JavaScript, YAML and CSS are pinned to the older tags that list their sources outright,
+  and their queries are from those tags: a query must match the node names of the grammar it runs on. Pin every package
+  in `Package.swift` with `exact:`, because the generated Xcode project has no `Package.resolved` of its own. The one
+  exception is tree-sitter-sql, whose tags have no generated `parser.c`: it is pinned with `revision:` to a commit of its
+  `gh-pages` branch, where the builds of `main` are.
+- **A query that names a node its grammar lacks does not compile, and the language then goes uncoloured.**
+  `QueryCache` turns the error into nil, so only a test notices: `QueryInheritanceTests.everyLanguageHasAGrammarAndItsQueryFiles`
+  compiles all 17. That is why `javascript-jsx` is a folder of its own (TypeScript has no JSX nodes) and why a copy of
+  a query is taken from the tag of the grammar it runs on. A capture with no kind (`@property`, `@variable`) is dropped
+  before overlaps are resolved, so it cannot hide a wider coloured capture: YAML's keys are `@type` for that reason.
+- **ScratchCode's queries are a resource bundle, and a missing one stops the app.** `Grammar.makeQuery` reads
+  `Queries/<language>/highlights.scm` through `Bundle.module`, which calls `fatalError` when it cannot find
+  `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries
+  it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 ms
+  for Swift, Release, on Linux), and `Highlighter` is thread-safe.
+- **Code detection is tuned against `Tests/ScratchCodeTests/Corpus/`, and the corpus only grows.** A paste that is
+  detected wrongly becomes a sample first (the folder of its language, `unknown/` for a language Scratch lacks,
+  `prose/` for text that must stay plain), then the detector changes until every sample passes. Never delete a prose
+  sample to make a test pass, and write every sample fresh: no poems, lyrics, articles or real emails. The rule is the
+  spec's, "when unsure, it is prose": a text is code only with a mean line evidence of 0.5 or more and two lines of
+  code that are not comments (`DetectionFeatures.evidence`), so a list of `word;` lines, a note that mentions `init()`
+  and a log are prose. A text with no idiom of any language is named only when one grammar parses it better than the
+  others (else it is code of an unknown language), and a language that shares its idioms with another (TypeScript with
+  JavaScript, C++ with C) is settled by the idioms only it has (`CodeDetector.settleScriptFamily`).
+- **Detection reads text with its inline code masked.** `DetectionLine` turns what is between a pair of backticks into
+  letters before it looks at the line, so `call `init()` first` in a Markdown note is a sentence and not a call.
+  `JSONShape` is the JSON check, not `JSONSerialization`: Foundation on Linux accepts a trailing comma and the one on
+  macOS does not. Only the first 300 lines or 40,000 bytes of a paste are read, the first 50 lines or 4,000 bytes are
+  parsed to compare grammars, and a detection is 3 to 12 ms for 500 lines in Release (the budget is 20).
 - **Do not link Homebrew's SQLite.** `CSQLite` deliberately has no `pkgConfig`, so macOS links the system library.
 - **Never commit `App/Scratch.xcodeproj`.** It is generated from `App/project.yml`.
 - **App tests run inside the app.** `ScratchAppTests` are hosted: Xcode starts the real app, then loads the tests into
@@ -451,12 +544,22 @@ new kind of release file, with no change to the app, ships.
   print it in a UI test's failure message through the `debug.state` element: that is how this was found.
   (`show` itself was right all along: `EditorViewControllerTests.testNoteWithoutAnchorShowsItsTopInset` passes without
   the override, and `TitleUITests.testHugeNoteShowsItsTopInsetAtLaunch` is the test that needs it.)
-- **A scroll anchor waits for a layout.** Text can only be positioned at a width, and at launch `show` runs before the
-  window has laid out (the scroll view is 0 wide), so `EditorViewController` keeps the anchor and scrolls in
-  `viewDidLayout` (`isLaidOut`, `scrollAnchorToApply`). It keeps applying it in the layouts before the window is
-  visible, and stops when the window is visible or the user scrolls, types or moves the cursor. Never call
-  `ensureLayout` before `isLaidOut`: it would lay a 10,000-line note out at a width of 0. `currentScrollAnchor` returns
-  the waiting anchor until then, so an early save does not move the note back to its top.
+- **A scroll anchor waits for a layout, and is applied again whenever the layout settles at another width.** Text can
+  only be positioned at a width, and at launch `show` runs before the window has laid out (the scroll view is 0 wide),
+  so `EditorViewController` keeps the anchor and scrolls in `viewDidLayout` (`isLaidOut`, `scrollAnchorToApply`). A
+  launch lays the text out at several widths (a first one, the window's, and a retile when the scrollers change style,
+  which no layout of the editor's view follows), and each change of the width lays the text above the anchor out again
+  and leaves its height an estimate, far from the real one when lines wrap or fences are 6 pt (measured on CI with a
+  temporary trace: line 1003 of the huge note at y = 18,408 laid out and at y = 12,530 estimated, after which
+  AppKit's move of the clip view left the note 1 to 3 lines off, and its bounds change was taken for the user
+  scrolling, which ended the wait). So `isAnchorStale` (the text view's width is not the one the anchor was applied at)
+  makes the clip view's bounds notification and the text view's frame notification apply it again, on the main queue
+  (`scheduleAnchorReapply`: not inside AppKit's tiling), and such a bounds change is not the user's. The wait ends when
+  the user scrolls (a change of the bounds at an unchanged width), types, moves the cursor or changes the font size,
+  and `anchorSettleTime` (5 s) after the last application, so that a later resize (the sidebar's animation) does not
+  lay a deep note out again at every step. Never call `ensureLayout` before `isLaidOut`: it would lay a 10,000-line
+  note out at a width of 0. `currentScrollAnchor` returns the waiting anchor until then, so an early save does not move
+  the note back to its top.
 - **Undo is per note, and `show` never clears it.** `SessionCoordinator.undoManagers` holds one `UndoManager` per note,
   and `show` hands the editor the one of the note. `NoteTextView.noteUndoManager` is what the text view, the
   `NSTextViewDelegate.undoManager(for:)` answer and `AppDelegate.windowWillReturnUndoManager` (the Edit menu) all
@@ -465,8 +568,9 @@ new kind of release file, with no change to the app, ships.
   the note being left. Show a note with the text it had when it was left: an undo step holds ranges of that text.
 - **UI tests read the font size, the scroll anchor and the scroll offset from `debug.state`.** `DebugStateElement` is a
   1 x 1 point view in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its
-  accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY` and `topInset`):
-  `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no clicks, so it is not in a screenshot.
+  accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY`, `topInset`, and
+  `pendingHighlights` and `pendingPastes`, which are zero when a paste is done): `UITestSupport.debugState(in:)` reads
+  it. It draws nothing and takes no clicks, so it is not in a screenshot.
 - **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
   `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
   equivalents needs two items.
@@ -592,6 +696,11 @@ new kind of release file, with no change to the app, ships.
   A screenshot is a picture of the window only (no desktop), light or dark, and its caret may or may not be showing.
   Exporting them needs the attachment `name`: `xcresulttool export attachments` suggests `<name>_<index>_<UUID>.png`,
   which `scripts/name-screenshots.py` turns into `<name>.png`.
+- **A screenshot of code waits for its colours.** They are written from the highlight queue after the window is up, so
+  `ScreenshotTests.testCodeLight` and `testCodeDark` wait for `debug.state`'s `pendingHighlights` to be zero before the
+  picture (the request is made in `show`, before the window is visible, so zero means done). The `code` fixture's note is
+  44 lines and fits the 1024 x 674 window whole: a line added to it can push the last block, the one with no fence name
+  and the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
 - **UI tests type without clicking the editor first** (`editor.typeText`): the editor is first responder at launch, and a
   click would move the cursor that `testCursorRestoredAfterRelaunch` checks. `typeText` and `typeKey` need keyboard focus.
   Kill the app with `NSRunningApplication.forceTerminate()`, never `XCUIApplication.terminate()`, which may quit
@@ -632,6 +741,11 @@ new kind of release file, with no change to the app, ships.
 - **Never set `font` or `textColor` on the editor to resize it.** On a plain-text view that resets every run of the text,
   bold included. `NoteTextView.applyFontSize` leaves the text to `styler.fontSize`, which styles it again (and still sets
   `font` and `textColor` while the text is empty, where `NoteTextView.font` reads them).
+- **Bold needs word boundaries** (docs/decisions/0006). `MarkupParser.boldRuns` accepts an opening `**` only after the
+  line start or a character that is not a letter or a digit, a closing one only before the line end or such a character,
+  and neither when it has punctuation on both sides (`src/**/*.ts`, `)**(`). So `x**2`, `a**b**c` and globs are plain
+  text, and `InlineEditing.toggleBold` inside a word inserts stars that are not a run. A test that types or shows bold
+  needs a space, the line edge or punctuation next to its stars.
 - **The line prefilter must know every marker the parser knows.** `MarkupParser.mayHaveSpans` (ScratchCore) lets the
   styler skip a line without parsing it. A new kind of marker needs its first character there, and
   `MarkupPrefilterTests` holds the parser to it with a few thousand random lines.
@@ -711,3 +825,87 @@ new kind of release file, with no change to the app, ships.
   `checkmark.square.fill` with a palette configuration of `controlAccentColor`, centred in the glyph rectangle of the
   marker and 85% of the line height, on every draw (the colour and appearance of the moment). `testCheckboxSymbolIsDrawn`
   renders the view with `cacheDisplay` and counts the pixels that are not the background.
+- **A fenced block is drawn from attributes, and its fence lines are null glyphs.** `MarkupStyler` gives the characters of a
+  fence line (not its line break) the role `fence`, which `MarkupLayoutManager` turns into null glyphs (all but the first,
+  see below), and the paragraph
+  `MarkupAppearance.codeFenceStyle` (minimum and maximum line height 6 pt), so the line is padding. While the caret or
+  selection touches it (`touchesSelection`, the ends included) the role is `revealed` and the paragraph has
+  `codeBodyStyle`, like the lines of code (10 pt head and tail indent). Every paragraph of a block carries a
+  `CodeBlockMark` (`.scratchCodeBlock`: opening, body or closing); only the opening fence line's holds the language and
+  the label, so a keystroke in a line of code never has to know it, and a detected label stays while a new result is on its
+  way (`openingMark`). `MarkupLayoutManager.drawBackground` fills the tint per line fragment from what is laid out (never
+  from the block's end: the end of a block of thousands of lines would have to be laid out) and draws the labels, also
+  when only the first line of code is redrawn, because the label reaches into it. `CodeBlockMark` is a `nonisolated`
+  `NSObject` because the layout manager is not on the main actor; the nested structs of a nonisolated class are marked
+  `nonisolated` too.
+- **A fence line moved into or out of a block by an edit is invalidated after the edit.** The role of a fence line decides
+  whether it has glyphs, and `storageDidEdit` cannot invalidate glyphs from inside the edit, so it records the range
+  (`invalidationAfterEdit`) and `NoteTextView.didChangeText` calls `MarkupStyler.editDidFinish`, before the delegate hears of
+  the edit. A rescan that changes a block (not only its length) styles it again whole (`rescanCodeBlocks`): a paragraph can
+  stay in a block and still be another line of it.
+- **Blocks above the window are styled whole at load, because a scroll position depends on their height.** `show` sets the
+  scroll position from the layout of everything above it, and the chunks that style a long note run later. A hidden fence
+  line is 6 pt and a line of code is indented, so a block styled by a chunk after the scroll moved the note under the
+  reader (`TitleUITests.testScrollPositionSurvivesRelaunch`: three lines off on the CI). `MarkupStyler.styleBlocks` gives
+  every block that starts above the end of the window its look in one pass per block (a block, not a paragraph, is the
+  unit, so it is cheap for the huge note), and `styleFenceLine` and `styleCodeBody` write nothing, and invalidate nothing,
+  for a line that is as it should be. Anything else that changes the height of a paragraph (a new kind of marker) has the
+  same problem and the same remedy.
+- **Colours are keyed by text, not by place.** `CodeBlockStyler` sends a block's code to a private serial queue, one request
+  at a time, and a result is applied to every block that holds the same fence name and code (hash first, then text), where
+  the block is by then. A result for text that was edited since matches no block and is dropped (`droppedResults`): the edit
+  asked for the block again. There is a cache of results by hash, so a block that moved or a note shown again is coloured
+  without the queue. Results are written at `RunLoopIdle.afterMeasurementsOrder` for at most 8 ms at a time (a block of
+  thousands of tokens over several turns), so no signpost interval includes them, and an edit inside a block that is
+  being written ends that work (`textDidEdit`). `MarkupStyler.resetAttributes` keeps the opening mark of the paragraphs of
+  a block that stays a block.
+- **Code colours are temporary attributes of the layout manager, never attributes of the text.** As `.foregroundColor` of
+  the text storage they made the huge note (100 blocks, about 50,000 colour runs) over 10 times slower on the macOS CI (37 ms
+  per scroll frame and per keystroke, from 0.3 and 3): each colour was an edit, an edit invalidates the layout of its range, and the
+  layout manager then laid the whole note out again in the background on the main thread. `addTemporaryAttribute` is
+  display only. The layout manager's own bookkeeping is in the edit's coordinates only once `textStorage(_:didProcessEditing:)`
+  has returned, so `MarkupStyler` never calls it inside that callback: the ranges to clear are kept
+  (`coloursToClearAfterEdit`) and cleared in `editDidFinish`, from `NoteTextView.didChangeText`.
+- **Null glyphs take no line fragment of their own.** TextKit puts a zero-width glyph at the end of the line before it,
+  so a fence line of null glyphs only was no line: the CI measured the first character of an opening fence in the fragment
+  of the blank line above (16 pt, while the fence's own 6 pt fragment held only its line break), and a closing fence that
+  ends the note had no padding at all and the tint ended at the last line of code. A click or the End key on the line above
+  would also have landed among the hidden characters. `MarkupLayoutManager.shouldGenerateGlyphs` keeps the glyph of the
+  first character of every fence line (the colour of the role `fence` is clear), and the line is a 6 pt fragment of its own.
+- **Adding a fixture means three more places.** `FixtureContent.make`, the `Fixture` case, and ScratchCore's
+  `LaunchOptionsTests.parsesEveryFixtureName` (which lists every raw value), and then the launch argument table above and
+  `make run`. A core test that lists the cases fails the Linux job and, through `make core-test` on the Mac, the whole
+  macOS job before any app test runs.
+- **A paste is the plain paste, and its wrap is a second edit on a later turn** (`NoteTextView.beginPaste`, `endPaste`,
+  `classifyPaste`). `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` (which the hosted tests call, and which
+  Paste runs, a call inside another is the same paste) start and end the paste. Before it, the view works out whether the paste
+  goes into code (`isPastingIntoCode`: a fenced block, or between the backticks of inline code, which a multi-line paste would
+  split and which cannot be told afterwards). After it, the range that came in is queued with `editCount`, which every
+  `didChangeText` and `load` raises, and `DispatchQueue.main.async` asks `PasteClassifier.wrap`; typing in between drops the
+  paste. **The wrap waits until the paste's undo group has closed** (`undoManager.groupingLevel == 0`, retried at the run loop's
+  idle moments, at most 8 times: a hosted test never ends its turn and goes ahead after that), because a `DispatchQueue.main`
+  block can run in the same loop iteration as the event, and then ⌘Z would undo the paste and the wrap together
+  (`CodePasteUITests.testUndoAfterCodePasteRestoresPlainText`). Hosted tests wait for `pendingPasteClassifications == 0`, not
+  for a time. The wrap is one `TextEdit` that replaces the pasted range with itself between the fences: the closing fence
+  has no line break before it when the paste ended with one (no blank line in the block), a fence is never added below a
+  fence line that has no partner (the new pair would pair with it), and a paste that cuts a CRLF is left plain.
+- **The `paste-code` interval is open until the colours are written.** `Signposts.beginOpenEditorInterval` begins it and
+  `OpenInterval.endWhenIdle()` ends it, after `CodeBlockStyler.whenHighlighted` says nothing is pending and `MarkupStyler`
+  has styled every chunk (a paste of more than 20,000 characters is styled in chunks, which is why `runChunk` calls
+  `runHighlightedHandlersIfQuiet`). A paste that is not wrapped ends it at the next idle moment, and a wrapped one that is
+  never coloured at 5 s (`pasteIntervalLimit`), so no interval stays open.
+- **A click on a language label opens its menu in `NoteTextView.mouseDown`, and a hosted test must never pop it up.** A plain
+  click (no ⇧, ⌘, ⌥ or ⌃) whose point is in a label's rectangle (`labelHit`, 3 pt of margin) goes to
+  `showCodeBlockMenu(atViewPoint:)` and never to `super.mouseDown`, in an editable note only. `NSMenu.popUp(positioning:at:in:)`
+  runs a tracking loop of its own until the menu is dismissed, so `codeBlockMenuPresenter` replaces it in a test, and a click
+  is sent only after `labelHit` said the point is on a label (`CodeBlockMenuTests.testClickOnLabelOpensMenuWithoutPlacingTheCaret`).
+  The label's rectangle is `MarkupLayoutManager.labelRect(forBlockAt:)`, which `drawLabel` draws in as well, so what is
+  clicked is what is drawn. `labelTarget` finds the block from the character nearest to the point, and looks again a few points
+  lower, because the label starts on the 6 pt hidden fence line, whose nearest character is not something to rely on, and
+  ends on the first line of code. A fence with no name and no detected language has no label and so no menu.
+- **The label menu's choices are `TextEdit`s on the fence lines, applied with `apply(_:)`.** `CodeBlockMenu.edit` replaces the
+  name after the backticks of the opening fence (a language, or `text` for Plain Text) or replaces the whole block with the
+  lines between its fences (Not Code), so no character of the code changes and each choice is one undo step. The caret goes
+  through the edit (`EditMapping`): a caret in the code stays in the same place of the code. Choosing the name that is there
+  is an edit of nothing, which `apply` does not register as an undo step. The menu items have `NoteTextView` as their target and
+  the menu has `autoenablesItems = false`, as the Format menu does.

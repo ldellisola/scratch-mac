@@ -1,0 +1,10 @@
+// Server handles requests.
+type Server struct {
+	addr string
+	mux  *http.ServeMux
+}
+
+// NewServer returns a server for addr.
+func NewServer(addr string) *Server {
+	return &Server{addr: addr, mux: http.NewServeMux()}
+}

@@ -1,6 +1,7 @@
 # One obvious command per question (spec §9.3). Targets marked [linux] also run in the Linux cloud sessions.
 
 CORE_PACKAGE := Packages/ScratchCore
+CODE_PACKAGE := Packages/ScratchCode
 
 # App build settings. Every xcodebuild call uses the same DerivedData folder, so the built app is always at
 # $(DERIVED_DATA)/Build/Products/Debug/Scratch.app.
@@ -10,9 +11,11 @@ DESTINATION := platform=macOS,arch=arm64
 
 .PHONY: core-test lint format script-test ci-wait project app-build app-test screenshots run perf perf-baseline release-zip release-dmg
 
-# [linux] Run the ScratchCore tests.
+# [linux] Run the tests of both packages: ScratchCore, then ScratchCode (tree-sitter highlighting and code detection).
+# The first run of ScratchCode fetches its dependencies from GitHub and compiles the grammars.
 core-test:
 	swift test --package-path $(CORE_PACKAGE)
+	swift test --package-path $(CODE_PACKAGE)
 
 # [linux] Check formatting. Fails on any difference.
 lint:
@@ -64,7 +67,7 @@ app-test: project
 # The screenshots `make screenshots` writes, one PNG each into build/screenshots/. These names are the ones in
 # ScreenshotTests (a test attaches its screenshot under its name) and CI publishes them to ci-results.
 SCREENSHOT_NAMES := typical-light typical-dark empty-light huge-note-light search-light recently-deleted-light \
-  formatting-light formatting-dark
+  formatting-light formatting-dark code-light code-dark
 
 # [macOS] Render the key screens to PNG files in build/screenshots/<name>.png (SCREENSHOT_NAMES): run ScreenshotTests
 # only, export the attachments from the result bundle (build/results/screenshots.xcresult) into build/screenshots/raw,
@@ -82,9 +85,9 @@ screenshots: project
 	python3 scripts/name-screenshots.py build/screenshots/raw build/screenshots $(SCREENSHOT_NAMES)
 
 # [macOS] Build the app and open it on a named fixture in a throwaway data directory:
-# make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted|formatting>. It never touches real data.
+# make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted|formatting|code>. It never touches real data.
 run:
-	@test -n "$(FIXTURE)" || { echo 'usage: make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted|formatting>' >&2; exit 64; }
+	@test -n "$(FIXTURE)" || { echo 'usage: make run FIXTURE=<empty|typical|huge-note|many-notes|recently-deleted|formatting|code>' >&2; exit 64; }
 	$(MAKE) app-build
 	open -n $(DERIVED_DATA)/Build/Products/Debug/Scratch.app --args -ScratchFixture $(FIXTURE)
 

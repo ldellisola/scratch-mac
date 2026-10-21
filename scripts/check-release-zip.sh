@@ -9,6 +9,9 @@
 #     io.github.ldellisola.Scratch
 #   - the executable is arm64 only (spec section 5)
 #   - the signature verifies, and it is an ad-hoc one (docs/decisions/0002-ad-hoc-signing.md)
+#   - the app carries the highlight queries of ScratchCode (its resource bundle, docs/decisions/0007-tree-sitter.md)
+#
+# It also prints the sizes of the zip, the app and its executable, which docs/decisions/0007-tree-sitter.md compares.
 #
 # Exit: 0 all fine, 1 a check failed (every failed check is printed), 64 usage error, 70 cannot run.
 set -euo pipefail
@@ -82,7 +85,19 @@ if ! grep -Eq 'Signature=adhoc|flags=[^ ]*adhoc' <<<"$signature"; then
     problem "the app is not ad-hoc signed (wanted Signature=adhoc in the codesign output below)"
 fi
 
+# ScratchCode's queries are a resource bundle that Xcode puts into Contents/Resources. Without it the first highlight
+# of a code block would stop the app, so a zip that lacks it must not be released.
+queries=$(find "$app/Contents/Resources" -type f -path '*Queries/swift/highlights.scm' 2>/dev/null || true)
+if [[ -z $queries ]]; then
+    problem "no Queries/swift/highlights.scm under Contents/Resources: ScratchCode's resource bundle is not in the app"
+fi
+
+zip_bytes=$(wc -c <"$zip" | tr -d ' ')
+app_kilobytes=$(du -sk "$app" | cut -f1)
+executable_bytes=$(wc -c <"$app/Contents/MacOS/Scratch" | tr -d ' ')
+
 echo "$script: $(basename "$zip"): version $found_version (build $found_build), $found_identifier, $archs"
+echo "$script: sizes: zip $zip_bytes bytes, Scratch.app $app_kilobytes KB, executable $executable_bytes bytes"
 echo "$signature" | sed 's/^/  codesign: /'
 
 if [[ $problems -ne 0 ]]; then

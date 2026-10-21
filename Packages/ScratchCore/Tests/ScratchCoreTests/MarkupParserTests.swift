@@ -158,6 +158,98 @@ private func formattingBody() throws -> String {
         ])
 }
 
+// Bold needs word boundaries (docs/decisions/0006): an opening `**` follows the line start or a character that is not a
+// letter or a digit, a closing one is followed by the line end or such a character, and stars with punctuation on both
+// sides are a glob or an operator, never a marker.
+
+@Test func intrawordStarsAreNotBold() {
+    #expect(MarkupParser.parseLine("x**2 + y**2", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("2**10 and 3**4", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("area = w**2*h", at: 0).isEmpty)
+}
+
+@Test func globsAreNotBold() {
+    #expect(MarkupParser.parseLine("src/**/*.ts and lib/**/*.js", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("**/*.ts and **/*.js", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("\"**/*.ts\",\"**/*.js\"", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("git add src/**/*.swift", at: 0).isEmpty)
+}
+
+@Test func boldAfterPunctuationStillWorks() {
+    #expect(
+        MarkupParser.parseLine("(**a**)", at: 0) == [
+            MarkupSpan(kind: .bold, range: r(1, 5), markers: [r(1, 2), r(4, 2)], content: r(3, 1))
+        ])
+    #expect(
+        MarkupParser.parseLine("\"**a**\", **b**; (**c** d)", at: 0).map(\.range) == [r(1, 5), r(9, 5), r(17, 5)])
+}
+
+@Test func boldAtLineEdgesStillWorks() {
+    #expect(
+        MarkupParser.parseLine("**a**", at: 0) == [
+            MarkupSpan(kind: .bold, range: r(0, 5), markers: [r(0, 2), r(3, 2)], content: r(2, 1))
+        ])
+    #expect(MarkupParser.parseLine("**a** x", at: 0).map(\.range) == [r(0, 5)])
+    #expect(MarkupParser.parseLine("x **a**", at: 0).map(\.range) == [r(2, 5)])
+}
+
+@Test func wordGluedBoldIsPlain() {
+    #expect(MarkupParser.parseLine("a**b**c", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("a**b** c", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("a **b**c", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("**a**b", at: 0).isEmpty)
+}
+
+@Test func aGluedRunDoesNotHideALaterBoldRun() {
+    // The first run is glued to a word on its right, so it is plain. The second is bold.
+    #expect(
+        MarkupParser.parseLine("**a**b and **c**", at: 0) == [
+            MarkupSpan(kind: .bold, range: r(11, 5), markers: [r(11, 2), r(14, 2)], content: r(13, 1))
+        ])
+    #expect(MarkupParser.parseLine("a**b** **c**", at: 0).map(\.range) == [r(7, 5)])
+}
+
+@Test func theBoundaryIsALetterOrDigitOfAnyScript() {
+    #expect(MarkupParser.parseLine("é**a**", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("e\u{301}**a**", at: 0).isEmpty, "a letter with a combining accent is a letter")
+    #expect(MarkupParser.parseLine("日本**語**", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("**a**é", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("**a**٣", at: 0).isEmpty, "an Arabic-Indic digit is a digit")
+}
+
+@Test func anEmojiIsNotALetter() {
+    // The emoji is two UTF-16 units: the stars start at 2.
+    #expect(
+        MarkupParser.parseLine("😀**a**😀", at: 0) == [
+            MarkupSpan(kind: .bold, range: r(2, 5), markers: [r(2, 2), r(5, 2)], content: r(4, 1))
+        ])
+}
+
+@Test func starsBetweenPunctuationAreNotBold() {
+    // `)**(` is a power or a glob, even though the content would not start or end with white space.
+    #expect(MarkupParser.parseLine("(a+b)**(n)", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("f(x)**(2) + g(y)**(3)", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("[a]**[b]", at: 0).isEmpty)
+}
+
+@Test func punctuationOnOneSideIsEnough() {
+    #expect(MarkupParser.parseLine("(**Note**) x", at: 0).map(\.range) == [r(1, 8)])
+    #expect(MarkupParser.parseLine("**Note:** x", at: 0).map(\.range) == [r(0, 9)])
+    #expect(MarkupParser.parseLine("a **\"q\"** b", at: 0).map(\.range) == [r(2, 7)])
+}
+
+@Test func starsBetweenPunctuationAreTheTradeOffOfThatRule() {
+    // Content that starts or ends with punctuation, right inside punctuation, is plain too: the stars stay visible.
+    #expect(MarkupParser.parseLine("(**Note:**)", at: 0).isEmpty)
+    #expect(MarkupParser.parseLine("(**\"q\"**)", at: 0).isEmpty)
+}
+
+@Test func inlineCodeNextToStarsIsAPunctuationBoundary() {
+    // The backticks are what stands next to the stars, not the letters inside the code.
+    #expect(MarkupParser.parseLine("a **`b`** c", at: 0).map(\.kind) == [.bold, .inlineCode])
+    #expect(MarkupParser.parseLine("`ab`**c**", at: 0).map(\.kind) == [.inlineCode, .bold])
+}
+
 // MARK: Inline code
 
 @Test func inlineCodeRun() {

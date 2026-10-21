@@ -1,0 +1,8 @@
+public async Task<List<Note>> LoadAsync(int userId)
+{
+    var notes = await _db.Notes
+        .Where(n => n.UserId == userId)
+        .OrderByDescending(n => n.Modified)
+        .ToListAsync();
+    return notes;
+}

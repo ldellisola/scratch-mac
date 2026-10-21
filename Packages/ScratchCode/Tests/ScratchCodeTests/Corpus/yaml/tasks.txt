@@ -1,0 +1,8 @@
+- name: install packages
+  apt:
+    name: git
+    state: present
+- name: copy config
+  copy:
+    src: app.conf
+    dest: /etc/app.conf

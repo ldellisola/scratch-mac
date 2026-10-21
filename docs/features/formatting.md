@@ -6,7 +6,7 @@ behaviour, marker rules) and §6.5 (copy-out keeps the markers), guarding the an
 (§4). Plan: [Plan 3](../superpowers/plans/2026-10-20-plan-3-formatting.md).
 
 Status: released in 0.3.0 (plan 3): styling, checkboxes, ⇧⌘L, the keyboard (Return, Tab, ⇧Tab and ⌘B) and ⌘-click on
-links.
+links. From 0.4.0 (plan 4, task 1) bold needs word boundaries: [ADR 0006](../decisions/0006-bold-word-boundaries.md).
 
 ## Behaviour: what renders
 
@@ -18,15 +18,25 @@ that then renders like typed text.
 |---|---|---|
 | Bullet | spaces, then `- ` (two spaces per level) | the `-` is transparent and a `•` in the accent colour is drawn over it. Wrapped lines hang under the text of the item. |
 | Checkbox | spaces, then `[ ] `, `[x] ` or `[X] ` (`- [ ] ` is a bullet) | the `[?]` is transparent and a box is drawn over it: the symbol `square`, or `checkmark.square.fill` when ticked, in the accent colour. The text of a ticked item is struck through and dimmed (`secondaryLabelColor`). |
-| Bold | `**text**` on one line, no spaces at its edges | the text between the stars in the bold weight of the note font |
+| Bold | `**text**` on one line, no spaces at its edges, at word boundaries (below) | the text between the stars in the bold weight of the note font |
 | Inline code | `` `text` `` on one line | the text in the colour `CodeText` on the tint `CodeBackground` (the asset catalog, light and dark) |
 | Link | `http://` or `https://` and then non-space characters | `linkColor`, underlined. Trailing `.,;:!?'"` and an unmatched `)` are not part of it. |
 
 - **Inside a fenced block** (a pair of lines that start with three backticks) and **inside inline code**, every
   character is literal: `- ` and `**` in a pasted shell script render as typed. A fence without a partner is not a
   block, so typing three backticks never un-renders the rest of the note. A new fence line, or a changed one, restyles
-  the paragraphs that moved in or out of a block.
+  the paragraphs that moved in or out of a block. What a block looks like (tint, hidden fences, label, colours) is in
+  [code.md](code.md).
 - **An unclosed `**` or backtick is plain text.** Typing `**x` shows the stars; typing the second `**` closes the run.
+- **Bold needs word boundaries** (ADR 0006, the owner's decision of 2026-10-21), so that unfenced code in a note stays
+  as typed. An opening `**` counts only at the start of the line or after a character that is not a letter or a digit
+  (in any script), and a closing `**` only at the end of the line or before one. `x**2 + y**2` and `a**b**c` are plain
+  text, `(**a**)`, `"**a**"` and `**a** b` are bold. Stars with a punctuation mark on both sides (`src/**/*.ts`,
+  `(a)**(b)`, `"**/*.js"`) are a glob or an operator and never count, on either end of a run. The trade-off is that
+  content which starts or ends with punctuation right inside punctuation, as in `(**Note:**)`, is plain too: its stars
+  stay visible. A run that is rejected stays text, and a later run on the line is still found
+  (`**a**b and **c**` makes `**c**` bold). Plan 3's rules hold as well: the content is not empty and does not start or
+  end with white space.
 - **Hidden markers.** The `**` of a closed bold run and the backticks of inline code are hidden: they have no glyph and
   no width. While the caret or the selection **touches** the run, the positions at its two ends included, they show
   dimmed (`tertiaryLabelColor`). The caret never stops on a character that cannot be seen, so Backspace right behind a
@@ -81,6 +91,11 @@ spaces.
   at the ends of the selection (a triple click takes the line break) stays outside the stars, because a run that starts
   or ends with white space is not bold. With no selection `****` goes in and the caret between the pairs, so what is
   typed next is bold. The stored text is the only thing that changes: bold is not a font setting.
+- **⌘B inside a word inserts stars that are not bold.** With `c` selected in `abcd`, ⌘B gives `ab**c**d` (the selection
+  covers `c`, as always), and the stars stay visible because a run inside a word is plain text (see "Bold needs word
+  boundaries" above). ⌘B on the same selection again wraps it once more and does not take the stars off: there is no
+  bold run to unwrap. Next to white space or punctuation, as in `(word)`, the stars make a run, and ⌘B again takes them
+  off.
 - **⌘B does nothing, with a beep,** in a note that cannot be edited, when a fenced block is under the selection, and for
   a rectangular selection (several selections, which no key rule handles either).
 - **Copy still keeps the stars:** after ⌘B and a select-all, ⌘C puts `**word**` on the pasteboard.
@@ -142,6 +157,7 @@ text like any other, so that placing the caret in a link never opens a browser.
 | Behaviour | Test |
 |---|---|
 | A bold run is bold and its stars are null glyphs while the caret is away | `MarkupStylerTests.testBoldContentIsBoldAndMarkersAreNullGlyphs` |
+| Bold needs word boundaries: `x**2 + y**2`, `a**b**c` and globs are plain, `(**a**)` and a run at the line edges are bold, any script's letters and digits glue, an emoji does not, and a rejected run does not hide a later one (ScratchCore) | `MarkupParserTests.intrawordStarsAreNotBold`, `globsAreNotBold`, `boldAfterPunctuationStillWorks`, `boldAtLineEdgesStillWorks`, `wordGluedBoldIsPlain`, `aGluedRunDoesNotHideALaterBoldRun`, `theBoundaryIsALetterOrDigitOfAnyScript`, `anEmojiIsNotALetter`, `starsBetweenPunctuationAreNotBold`, `punctuationOnOneSideIsEnough`, `starsBetweenPunctuationAreTheTradeOffOfThatRule`, `inlineCodeNextToStarsIsAPunctuationBoundary` |
 | The markers show while the caret touches the run, at both edges, and for a selection | `testMarkersRevealedWhenCaretTouchesRun`, `testMarkersAreRevealedAtBothEdgesOfTheRun`, `testASelectionThatTouchesTheRunRevealsItsMarkers` |
 | Backspace behind a bold run deletes one visible star | `testBackspaceAfterBoldDeletesOneVisibleStar` |
 | Typing the closing `**` makes the run, and the markers hide when the caret leaves | `testTypingClosesBoldRun` |
@@ -168,6 +184,7 @@ text like any other, so that placing the caret in a link never opens a browser.
 | Tab indents the list lines of the selection and ⇧Tab outdents them | `testTabIndentsListLine`, `testTabIndentsEveryListLineOfTheSelection`, `testShiftTabOutdents`, `testShiftTabOnATopLevelListLineChangesNothing`, `FormattingUITests.testTabIndentsNestedBullet` |
 | Tab is a tab on a plain line and in a block, and nothing in a read-only note | `testTabOnAPlainLineInsertsATab`, `testTabInsideCodeBlockInsertsATab`, `testTabInAReadOnlyNoteChangesNothing`, `testShiftTabOnAPlainLineChangesNoText` |
 | ⌘B wraps the selection, takes the stars off a bold run, or puts the caret between a pair | `testCommandBWrapsSelection`, `testCommandBOnABoldRunTakesTheStarsAway`, `testCommandBWithoutSelectionPutsTheCaretBetweenTheStars` |
+| ⌘B inside a word wraps the selection, and the stars are not a run (the core's rule); next to punctuation they are | ScratchCore `InlineEditingTests.wrapInsideAWordStillInsertsStarsButTheyAreNotBold`, `unwrapNextToPunctuationStillWorks`, `wrapNextToPunctuationMakesARun` |
 | ⌘B does nothing in a block or a read-only note | `testCommandBInsideCodeBlockDoesNothing`, `testCommandBInAReadOnlyNoteDoesNothing` |
 | ⌘B is Format > Bold, and copy after it keeps the stars | `testFormatMenuHasBoldOnCommandB`, `FormattingUITests.testCommandBThenCopyKeepsMarkers` |
 | Each of these edits is one undo step | `testEachEditIsOneUndoStep` |
@@ -177,5 +194,5 @@ text like any other, so that placing the caret in a link never opens a browser.
 | Styling registers no undo | `testStylingDoesNotRegisterUndo`, `testTypingInStyledTextIsOneUndoStepThatStylesTheTextAgain` |
 | Copy keeps the markers, and pasted text renders like typed text | `testCopyKeepsMarkers`, `testPastedTextRendersLikeTypedText` |
 | A note of 10,000 lines is styled in chunks, an edit while it is pending is carried over, a big paste too | `testHugeNoteIsFullyStyledSoon`, `testAnEditWhileTheRestOfANoteIsStyledKeepsTheRestRight`, `testABigPasteIsStyledAfterwards` |
-| The whole table renders in light and dark: hanging bullets, boxes, a struck-through ticked item, hidden stars, tinted code, a coloured link and a fenced block as typed (the `formatting` fixture; a person looks at the PNGs in `ci-results`) | `ScreenshotTests.testFormattingLight`, `testFormattingDark` |
+| The whole table renders in light and dark: hanging bullets, boxes, a struck-through ticked item, hidden stars, tinted code, a coloured link and a fenced block whose lines are as typed, in a tinted block with a label (the `formatting` fixture; a person looks at the PNGs in `ci-results`) | `ScreenshotTests.testFormattingLight`, `testFormattingDark` |
 | ScratchCore: the blocks of a note, carried over edits; the position mapping; the prefilter | `CodeBlockIndexTests`, `EditMappingTests`, `MarkupPrefilterTests` |

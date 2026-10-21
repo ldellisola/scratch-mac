@@ -1,0 +1,4 @@
+Cmd+T: new tab
+Cmd+W: close tab
+Cmd+Shift+T: reopen closed tab
+Cmd+L: focus the address bar

@@ -1,0 +1,7 @@
+{
+  // editor settings
+  "editor.fontSize": 14,
+  "editor.tabSize": 2, // spaces
+  /* files */
+  "files.autoSave": "afterDelay"
+}
