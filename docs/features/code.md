@@ -74,6 +74,13 @@ block (docs/features/formatting.md).
   the note, with no line break after it, had no padding at all. With one glyph the line is a fragment of its own, 6 pt
   high, which is also where a click on the padding puts the caret (and shows the fence).
 
+### What it costs (the macOS CI, the huge note: 10,000 lines, 100 `swift` blocks)
+
+`keystroke_ms` 3.2 to 5.7 (baseline 6.3), `switch_huge_ms` 25 to 31 (baseline 65.9), `scroll_frame_ms` 0.3 to 7.1 (baseline
+5.8). The CI runners differ so much in the time they take for a frame (0.3 ms on a fast one, 4.5 ms in the prose and 7 ms
+in the blocks on a slow one, for the same build) that the scroll number is the one to read against the baseline of the same
+kind of runner: a run over 6.96 ms on a slow runner is a rerun before it is a regression (AGENTS.md section 4).
+
 ### Tests
 
 - `CodeBlockStylerTests` (hosted, `testExistingFencesRenderAsBlocks`, `testBlockIsColoured`,
