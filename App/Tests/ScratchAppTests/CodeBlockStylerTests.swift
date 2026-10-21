@@ -252,7 +252,8 @@ final class CodeBlockStylerTests: XCTestCase {
         let closing = text.range(of: "```", options: .backwards)
         let textView = host.editor.textView
 
-        XCTAssertTrue(isNullGlyph(at: opening.location, in: host), "hidden while the caret is away")
+        // The second character: the first keeps its (clear) glyph, so that the line has a line fragment of its own.
+        XCTAssertTrue(isNullGlyph(at: opening.location + 1, in: host), "hidden while the caret is away")
 
         textView.setSelectedRange(NSRange(location: opening.location + 3, length: 0))
 
@@ -262,23 +263,23 @@ final class CodeBlockStylerTests: XCTestCase {
             XCTAssertEqual(colour(at: opening.location + offset, in: host), NSColor.tertiaryLabelColor)
         }
         XCTAssertGreaterThan(lineHeight(at: opening.location, in: host), 10, "shown in full")
-        XCTAssertTrue(isNullGlyph(at: closing.location, in: host), "the other fence stays hidden")
+        XCTAssertTrue(isNullGlyph(at: closing.location + 1, in: host), "the other fence stays hidden")
         XCTAssertEqual(host.editor.currentText, Self.typicalBody)
 
         // The caret at the end of the closing fence line touches that one, and lets go of the first.
         textView.setSelectedRange(NSRange(location: NSMaxRange(closing), length: 0))
 
-        XCTAssertTrue(isNullGlyph(at: opening.location, in: host), "hidden again")
+        XCTAssertTrue(isNullGlyph(at: opening.location + 1, in: host), "hidden again")
         XCTAssertEqual(role(at: opening.location, in: host), "fence")
         XCTAssertLessThanOrEqual(lineHeight(at: opening.location, in: host), 6.01)
-        XCTAssertFalse(isNullGlyph(at: closing.location, in: host))
+        XCTAssertFalse(isNullGlyph(at: closing.location + 1, in: host))
         XCTAssertEqual(role(at: closing.location, in: host), "revealed")
 
         // A caret on the first line of code touches neither fence.
         textView.setSelectedRange(NSRange(location: text.range(of: "# watch").location, length: 0))
 
-        XCTAssertTrue(isNullGlyph(at: opening.location, in: host))
-        XCTAssertTrue(isNullGlyph(at: closing.location, in: host))
+        XCTAssertTrue(isNullGlyph(at: opening.location + 1, in: host))
+        XCTAssertTrue(isNullGlyph(at: closing.location + 1, in: host))
     }
 
     func testASelectionThatHoldsTheBlockShowsItsFences() {
@@ -290,7 +291,7 @@ final class CodeBlockStylerTests: XCTestCase {
 
         host.editor.textView.setSelectedRange(NSRange(location: opening.location - 4, length: 12))
 
-        XCTAssertFalse(isNullGlyph(at: opening.location, in: host), "a selection that touches the fence shows it")
+        XCTAssertFalse(isNullGlyph(at: opening.location + 1, in: host), "a selection that touches the fence shows it")
         XCTAssertEqual(role(at: opening.location, in: host), "revealed")
     }
 
@@ -494,7 +495,7 @@ final class CodeBlockStylerTests: XCTestCase {
         XCTAssertTrue(isTextColour(colour(at: comment, in: host)), "the colours went with the block")
         XCTAssertNil(paragraphStyle(at: comment, in: host), "and so did the indent")
         XCTAssertNil(role(at: text.range(of: "```bash").location, in: host), "the fence line is text again")
-        XCTAssertFalse(isNullGlyph(at: text.range(of: "```bash").location, in: host))
+        XCTAssertFalse(isNullGlyph(at: text.range(of: "```bash").location + 1, in: host))
     }
 
     // MARK: The colours
