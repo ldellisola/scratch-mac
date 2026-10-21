@@ -5,8 +5,8 @@ Code blocks, their colours and the detection of code in a paste. Spec:
 (the highlight budget) and §8.1 (tree-sitter, "Code detection"). The pieces live in `ScratchCode`
 (`Packages/ScratchCode`, no AppKit).
 
-Status: plan 4, tasks 2 to 6 (the languages, the highlighter, the detection, the rendering and the paste wrap). The
-label menu is added to this file by task 7.
+Status: plan 4, tasks 2 to 7 (the languages, the highlighter, the detection, the rendering, the paste wrap, the label
+menu and the blocks typed by hand).
 
 ## Rendering
 
@@ -91,6 +91,49 @@ kind of runner: a run over 6.96 ms on a slow runner is a rerun before it is a re
 - `CodeBlockPartsTests` (hosted): the name, the code and the fence lines of a block, found from its range.
 - `MarkupStylerTests.testFencedBlockIsNotStyled`: nothing in a block is formatting, and its lines are indented.
 - ScratchCore's `FixtureTests` (`codeFixtureHasABlockForEachLanguageAndOneWithoutAName`): the `code` fixture.
+
+### The language label menu
+
+Spec §6.4 "Code highlighting": the label on a block is also a small menu for changing the language or turning the block
+back into plain text (`CodeBlockMenu`, `NoteTextView`).
+
+- **Opening it.** A plain click on the label (its rectangle, with a margin of 3 pt: `NoteTextView.labelHit`, which asks
+  `MarkupLayoutManager.labelRect(forBlockAt:)` for the rectangle the label is drawn in) opens the menu under it and does
+  nothing else: no caret is placed, and the selection stays where it was. A click with ⇧, ⌘, ⌥ or ⌃ held is the text
+  view's own. A note that cannot be edited (Recently Deleted) shows no menu, and the click is the text view's own too.
+- **What is in it.** The 17 languages in the order of their names (C, C#, C++, CSS, Go, HTML, Java, JavaScript, JSON,
+  PowerShell, Python, Rust, Shell, SQL, Swift, TypeScript, YAML), with a tick on the block's current language (a detected
+  one too); a separator; "Plain Text", ticked when the fence is named `text`; and "Not Code".
+- **Each choice is an edit of the fence lines, and one undo step** (`CodeBlockMenu.edit`, applied through
+  `NoteTextView.apply(_:)`, and ⌘Z gives the fence back):
+  - a language replaces the name on the opening fence and nothing else: `bash` becomes `python`, a fence with no name gets
+    one (an automatic block becomes the owner's, so its label is no longer in italics), and spaces before the backticks
+    and the number of backticks are kept. Choosing the language the fence names already changes nothing, and is no undo
+    step;
+  - "Plain Text" names the block `text`: it stays a tinted block with no colours, and its label says `text`;
+  - "Not Code" takes both fence lines away and keeps the lines between them exactly as they are (line breaks as they
+    were, an empty line stays one). Two fences with nothing between them are taken away with one line break, so that no
+    empty line is left.
+- **The caret stays where it was in the text.** A caret in the code stays in the same place of the code, one in the
+  opening fence goes to the end of the new name (or to the start of the code, for "Not Code"), and one in the closing
+  fence to the end of the code that is left. The view takes the keyboard, as a click in it does.
+- **No label, no menu.** A fence with no name whose code is not code, or is a language Scratch does not know, shows no
+  label (see "The label" above), so it has nothing to click. Typing a name on its fence gives it one.
+
+### Blocks typed by hand
+
+Spec §6.4: a block started by typing the fence gets its language from what is in it, as the owner types. A block typed
+by hand has no name on its fence, so every highlight request of it (the first one, and the one that each edit of the
+block makes) finds the language again from the code between the fences (`CodeDetector`, on the highlight queue), and
+sets the label, in italics: it means "automatic". Until the closing fence is typed there is no block, and nothing is
+detected; when it is typed the block is looked at as any other. The fence is never edited by detection: the owner's text
+stays as it was typed, and only the label menu (or typing a name) writes a language on it. While the detection has no
+language yet (one line, or code that is not code) there is no label, and one appears when there is.
+
+Tests: `CodeBlockMenuTests` (hosted: `testSetLanguageRewritesFence`, `testPlainTextKeepsBlockUncoloured`,
+`testNotCodeRemovesFencesOnly`, `testMenuListsEveryLanguageWithCurrentTicked`, `testLabelHitTest`,
+`testTypedBlockGetsDetectedLabel`, `testReadOnlyShowsNoMenu`, and the edits, the caret, the click and a note with no label).
+No hosted test opens the menu on screen (`NSMenu.popUp` runs a tracking loop) or sends a click that is not on a label.
 
 ## Pasting code
 

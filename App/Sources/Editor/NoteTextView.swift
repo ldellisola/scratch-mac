@@ -425,14 +425,18 @@ final class NoteTextView: NSTextView {
     // MARK: Checkboxes
 
     /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
-    /// it was, so the box can be clicked while typing somewhere else. A ⌘-click on a link opens it (`openURL`) and goes
-    /// no further either: it places no caret, and it also works in a note that cannot be edited. Any other click, also
-    /// one on a box with a modifier key held (⇧ extends the selection) or in a note that cannot be edited, is the text
-    /// view's own: a plain click on a link places the caret and never opens anything.
+    /// it was, so the box can be clicked while typing somewhere else. A plain click on the language label of a code block
+    /// opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A ⌘-click on a
+    /// link opens it (`openURL`) and goes no further: it places no caret, and it also works in a note that cannot be
+    /// edited. Any other click, also one on a box or a label with a modifier key held (⇧ extends the selection) or in a
+    /// note that cannot be edited, is the text view's own: a plain click on a link places the caret and never opens
+    /// anything.
     override func mouseDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
-        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]), toggleCheckbox(atViewPoint: point) {
+        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]),
+            toggleCheckbox(atViewPoint: point) || showCodeBlockMenu(atViewPoint: point)
+        {
             return
         }
         if modifiers.contains(.command), let url = link(atViewPoint: point) {
@@ -478,6 +482,85 @@ final class NoteTextView: NSTextView {
         else { return false }
         apply(edit)
         return true
+    }
+
+    // MARK: The language label of a code block
+
+    /// Shows the menu of a label, with its top left corner at the point (in the coordinates of this view). Nil, the
+    /// default, is `NSMenu.popUp(positioning:at:in:)`, which runs a tracking loop of its own until the menu is dismissed:
+    /// a hosted test replaces this, so that it does not wait for a mouse.
+    var codeBlockMenuPresenter: ((NSMenu, NSPoint) -> Void)?
+
+    /// How far outside its rectangle a click still counts as being on a label: a label is a few characters of small text.
+    private static let labelHitOutset: CGFloat = 3
+
+    /// How far below a point the second look for the block of a label is taken (`labelTarget`): the opening fence line is
+    /// 6 pt high, and the line below it is the first line of code, which the label reaches into.
+    private static let labelProbeOffset: CGFloat = 8
+
+    /// The block whose label is under `point` (in the coordinates of this view), with the label's rectangle in the same
+    /// coordinates, or nil. The block is the one that the character nearest to the point belongs to (a label sits on the
+    /// opening fence line and on the first line of code), so only that block is laid out and measured, never every block
+    /// of the note. The point is looked at twice, as it is and a few points lower: on the 6 pt line of a hidden fence
+    /// (a clear glyph and null glyphs) the nearest character is not something to rely on, and the line below is code.
+    /// The label's own rectangle decides.
+    private func labelTarget(atViewPoint point: NSPoint) -> (block: NSRange, rect: NSRect)? {
+        guard let layoutManager = layoutManager as? MarkupLayoutManager, let container = textContainer,
+            let styler, !styler.codeBlockList.isEmpty
+        else { return nil }
+        let origin = textContainerOrigin
+        let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+        for offset in [0, Self.labelProbeOffset] {
+            let probe = NSPoint(x: local.x, y: local.y + offset)
+            let index = layoutManager.characterIndex(
+                for: probe, in: container, fractionOfDistanceBetweenInsertionPoints: nil)
+            guard let block = styler.codeBlock(containing: index)?.range,
+                let rect = layoutManager.labelRect(forBlockAt: block.location),
+                rect.insetBy(dx: -Self.labelHitOutset, dy: -Self.labelHitOutset).contains(local)
+            else { continue }
+            return (block, rect.offsetBy(dx: origin.x, dy: origin.y))
+        }
+        return nil
+    }
+
+    /// The block whose language label is under `point`, in the coordinates of this view, or nil when `point` is anywhere
+    /// else: the code, the margin, a block that has no label (a fence with no name whose code is not code). It does not
+    /// ask whether the note can be edited: `showCodeBlockMenu(atViewPoint:)` does.
+    func labelHit(atViewPoint point: NSPoint) -> NSRange? {
+        labelTarget(atViewPoint: point)?.block
+    }
+
+    /// Shows the menu of the label under `point` (`CodeBlockMenu`) with its top left corner under the label, and returns
+    /// true, or returns false and shows nothing when no label is there or the note cannot be edited (a note in Recently
+    /// Deleted: a menu that changed its text would break spec §6.2).
+    @discardableResult
+    func showCodeBlockMenu(atViewPoint point: NSPoint) -> Bool {
+        guard isEditable, let target = labelTarget(atViewPoint: point), let storage = textStorage else { return false }
+        let mark =
+            storage.attribute(.scratchCodeBlock, at: target.block.location, effectiveRange: nil) as? CodeBlockMark
+        let menu = CodeBlockMenu.menu(for: target.block, current: mark?.language, target: self)
+        let anchor = NSPoint(x: target.rect.minX, y: target.rect.maxY)
+        if let codeBlockMenuPresenter {
+            codeBlockMenuPresenter(menu, anchor)
+        } else {
+            _ = menu.popUp(positioning: nil, at: anchor, in: self)
+        }
+        return true
+    }
+
+    /// What an item of the label menu does (`CodeBlockMenu.menu`): the action of its `CodeBlockChoice`, on its block.
+    @objc func chooseCodeBlockAction(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem, let choice = item.representedObject as? CodeBlockChoice else { return }
+        applyCodeBlockAction(choice.action, to: choice.block)
+    }
+
+    /// Changes the code block at `block` as `action` says, as one undo step (`apply(_:)`), with the caret where it was in
+    /// the text. Does nothing when the note cannot be edited or `block` is no longer a block of the note exactly as it was
+    /// (the menu is up while the note could have changed). The view takes the keyboard, as a click in it does.
+    func applyCodeBlockAction(_ action: CodeBlockAction, to block: NSRange) {
+        guard isEditable, styler.codeBlock(containing: block.location)?.range == block else { return }
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        apply(CodeBlockMenu.edit(for: action, block: block, in: string as NSString, selection: selectedRange()))
     }
 
     // MARK: Links

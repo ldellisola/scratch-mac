@@ -307,14 +307,45 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         return attributes
     }
 
+    /// The rectangle of a label drawn with `attributes`, from where its block's opening fence line is: `right` is the
+    /// right edge of the tinted block, and the label ends one inset from it. `drawLabel` draws in this rectangle and
+    /// `labelRect(forBlockAt:)` answers it, so that what is clicked is what is drawn.
+    private func labelFrame(
+        of name: String, attributes: [NSAttributedString.Key: Any], fragmentTop: CGFloat, right: CGFloat
+    ) -> NSRect {
+        let size = (name as NSString).size(withAttributes: attributes)
+        return NSRect(
+            x: right - CodeBlockMetrics.inset - size.width, y: fragmentTop + CodeBlockMetrics.labelTopOffset,
+            width: size.width, height: size.height)
+    }
+
     /// Draws the label of a block at its top right: `secondaryLabelColor`, two points smaller than the note font, and
     /// leaning when the language was detected. `right` is the right edge of the tinted block.
     private func drawLabel(_ label: BlockLabel, right: CGFloat, in storage: NSTextStorage) {
         let attributes = labelAttributes(for: label.mark, at: label.characterIndex, in: storage)
-        let text = label.mark.name as NSString
-        let size = text.size(withAttributes: attributes)
-        let point = NSPoint(
-            x: right - CodeBlockMetrics.inset - size.width, y: label.fragmentTop + CodeBlockMetrics.labelTopOffset)
-        text.draw(at: point, withAttributes: attributes)
+        let frame = labelFrame(
+            of: label.mark.name, attributes: attributes, fragmentTop: label.fragmentTop, right: right)
+        (label.mark.name as NSString).draw(at: frame.origin, withAttributes: attributes)
+    }
+
+    /// The rectangle that the label of the block whose opening fence line starts at `location` is drawn in, in the
+    /// coordinates of the text container (add the text view's `textContainerOrigin` for the view's). Nil when there is
+    /// no label to click: `location` is not the start of an opening fence line, or the block has no name to show (a
+    /// fence with no name and no detected language).
+    ///
+    /// It lays out the opening fence line, and what is above it that has not been laid out yet. A click calls it for
+    /// the block that is under the mouse only, never for every block of the note.
+    func labelRect(forBlockAt location: Int) -> NSRect? {
+        guard let storage = textStorage, location >= 0, location < storage.length,
+            let mark = storage.attribute(.scratchCodeBlock, at: location, effectiveRange: nil) as? CodeBlockMark,
+            mark.part == .opening, !mark.name.isEmpty
+        else { return nil }
+        let glyph = glyphIndexForCharacter(at: location)
+        guard let container = textContainer(forGlyphAt: glyph, effectiveRange: nil) else { return nil }
+        let fragment = lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        // The tint is as wide as the text container less its padding on each side (`drawCodeBlocks`).
+        let right = container.size.width - container.lineFragmentPadding
+        let attributes = labelAttributes(for: mark, at: location, in: storage)
+        return labelFrame(of: mark.name, attributes: attributes, fragmentTop: fragment.minY, right: right)
     }
 }

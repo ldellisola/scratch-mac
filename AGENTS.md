@@ -129,8 +129,12 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
                                   language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`,
                                   `whenHighlighted`), CodeBlockParts (a block's name, code and fence lines from its range)
-                                  and PasteClassifier (whether a paste is code, and the edit that wraps it in a fence:
-                                  `wrap`; NoteTextView asks it after every paste, `readSelection(from:)`)
+                                  PasteClassifier (whether a paste is code, and the edit that wraps it in a fence:
+                                  `wrap`; NoteTextView asks it after every paste, `readSelection(from:)`) and
+                                  CodeBlockMenu (the menu of a block's language label, with `CodeBlockAction` and
+                                  `CodeBlockChoice`, and the edits its items make: `menu`, `edit`; NoteTextView opens it
+                                  from a click on a label, `labelHit`, `showCodeBlockMenu`, and applies a choice,
+                                  `applyCodeBlockAction`; `MarkupLayoutManager.labelRect(forBlockAt:)` is where the label is)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
                                   `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
                                   (runs work when the main run loop is next about to wait: after the frame is drawn, and
@@ -154,7 +158,8 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   the emptied-note rules, CodeBlockStylerTests: a fenced block is tinted with hidden
                                   fences, indented lines, colours and a label, CodeBlockPartsTests, CodePasteTests: a
                                   paste of code is wrapped in a fence on the next turn, prose, a paste into code and one
-                                  with a fence line stay plain, `PasteClassifier.wrap`)
+                                  with a fence line stay plain, `PasteClassifier.wrap`, CodeBlockMenuTests: the label
+                                  menu, its edits and undo steps, the label's hit test, a block typed by hand)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -880,3 +885,18 @@ new kind of release file, with no change to the app, ships.
   has styled every chunk (a paste of more than 20,000 characters is styled in chunks, which is why `runChunk` calls
   `runHighlightedHandlersIfQuiet`). A paste that is not wrapped ends it at the next idle moment, and a wrapped one that is
   never coloured at 5 s (`pasteIntervalLimit`), so no interval stays open.
+- **A click on a language label opens its menu in `NoteTextView.mouseDown`, and a hosted test must never pop it up.** A plain
+  click (no ⇧, ⌘, ⌥ or ⌃) whose point is in a label's rectangle (`labelHit`, 3 pt of margin) goes to
+  `showCodeBlockMenu(atViewPoint:)` and never to `super.mouseDown`, in an editable note only. `NSMenu.popUp(positioning:at:in:)`
+  runs a tracking loop of its own until the menu is dismissed, so `codeBlockMenuPresenter` replaces it in a test, and a click
+  is sent only after `labelHit` said the point is on a label (`CodeBlockMenuTests.testClickOnLabelOpensMenuWithoutPlacingTheCaret`).
+  The label's rectangle is `MarkupLayoutManager.labelRect(forBlockAt:)`, which `drawLabel` draws in as well, so what is
+  clicked is what is drawn. `labelTarget` finds the block from the character nearest to the point, and looks again a few points
+  lower, because the label starts on the 6 pt hidden fence line, whose nearest character is not something to rely on, and
+  ends on the first line of code. A fence with no name and no detected language has no label and so no menu.
+- **The label menu's choices are `TextEdit`s on the fence lines, applied with `apply(_:)`.** `CodeBlockMenu.edit` replaces the
+  name after the backticks of the opening fence (a language, or `text` for Plain Text) or replaces the whole block with the
+  lines between its fences (Not Code), so no character of the code changes and each choice is one undo step. The caret goes
+  through the edit (`EditMapping`): a caret in the code stays in the same place of the code. Choosing the name that is there
+  is an edit of nothing, which `apply` does not register as an undo step. The menu items have `NoteTextView` as their target and
+  the menu has `autoenablesItems = false`, as the Format menu does.
