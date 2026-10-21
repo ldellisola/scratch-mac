@@ -21,10 +21,15 @@ import ScratchCore
 ///   end a signpost interval (`RunLoopIdle.afterMeasurementsOrder`), and for at most `applyBudget` at a time: a block with
 ///   thousands of tokens is written in slices over several turns. A block that is edited while it is being written is
 ///   dropped from the work, and is asked for again.
-/// - **A block is coloured from scratch:** the code gets the text colour, then each token its colour. A block with no
-///   language (a fence name that is not one of the 17, a fence with no name whose code is not code, an empty block) is
-///   left with the text colour only, and so is a block that is too long to colour (`Highlighter.maximumLines` and
-///   `maximumLength`), which stays a tinted block.
+/// - **The colours are temporary attributes of the layout manager, not attributes of the text.** They are for display
+///   only, so writing them lays nothing out again and adds no attribute run to the text storage. As attributes of the
+///   text they made a note of 10,000 lines with 100 blocks several times slower to scroll and to type in: every colour
+///   was an edit that invalidated the layout of its block, and the layout manager laid the whole note out again in the
+///   background, a slice of tens of milliseconds at a time on the main thread (the macOS CI, Plan 4 task 5).
+/// - **A block is coloured from scratch:** the colours of its code are cleared, then each token gets its colour. A block
+///   with no language (a fence name that is not one of the 17, a fence with no name whose code is not code, an empty
+///   block) is left with the text colour only, and so is a block that is too long to colour (`Highlighter.maximumLines`
+///   and `maximumLength`), which stays a tinted block.
 ///
 /// The label of a block is the mark on its opening fence line (`CodeBlockMark`): a result sets it (it names the detected
 /// language of a fence with no name), and `MarkupStyler` sets it for a fence that names its language.
@@ -283,10 +288,12 @@ final class CodeBlockStyler {
         scheduleApply()
     }
 
-    /// Writes the next tokens of `work` into its block, until `deadline`: the first time also the text colour of the code
-    /// and the label. Returns true when the block is done, or is not the block that the result was made for any more.
+    /// Writes the next tokens of `work` into its block, until `deadline`: the first time also the end of the old colours of
+    /// the code and the label. Returns true when the block is done, or is not the block that the result was made for any
+    /// more.
     private func advance(_ work: inout Work, until deadline: ContinuousClock.Instant, in storage: NSTextStorage) -> Bool
     {
+        guard let layoutManager = textView?.layoutManager else { return true }
         let text = storage.string as NSString
         let highlight = work.highlight
         guard let parts = CodeBlockParts(block: work.block, in: text), parts.info == highlight.info,
@@ -294,15 +301,22 @@ final class CodeBlockStyler {
                 ? parts.content.length > Highlighter.maximumLength : parts.content.length == highlight.contentLength
         else { return true }
 
-        storage.beginEditing()
         if !work.didStart {
             work.didStart = true
             if parts.content.length > 0 {
-                storage.addAttribute(.foregroundColor, value: NSColor.textColor, range: parts.content)
+                layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: parts.content)
             }
+            // The label is the one attribute of the text that is written, and only when it is not the one there is.
             let mark = CodeBlockMark(
                 part: .opening, language: highlight.language, isDetected: highlight.isDetected, name: highlight.label)
-            storage.addAttribute(.scratchCodeBlock, value: mark, range: parts.openingParagraph)
+            let current = storage.attribute(.scratchCodeBlock, at: parts.openingParagraph.location, effectiveRange: nil)
+            if (current as? CodeBlockMark) != mark {
+                storage.beginEditing()
+                storage.addAttribute(.scratchCodeBlock, value: mark, range: parts.openingParagraph)
+                storage.endEditing()
+                // The label reaches into the first line of code, so the whole block is drawn again.
+                layoutManager.invalidateDisplay(forCharacterRange: work.block)
+            }
         }
         var written = 0
         while work.next < highlight.tokens.count {
@@ -312,14 +326,24 @@ final class CodeBlockStyler {
             guard let color = colors[token.kind], token.range.location >= 0,
                 NSMaxRange(range) <= NSMaxRange(parts.content)
             else { continue }
-            storage.addAttribute(.foregroundColor, value: color, range: range)
+            layoutManager.addTemporaryAttribute(.foregroundColor, value: color, forCharacterRange: range)
             written += 1
             if written % 64 == 0, ContinuousClock.now >= deadline { break }
         }
-        storage.endEditing()
-        // The label reaches into the first line of code, so the whole block is drawn again.
-        textView?.layoutManager?.invalidateDisplay(forCharacterRange: work.block)
         return work.next >= highlight.tokens.count
+    }
+
+    /// The colours of the code of the blocks in `ranges` are cleared: the paragraphs were styled again, or left their
+    /// block. (`MarkupStyler` calls it for what an edit moved, once the layout manager knows the edit.)
+    func clearColours(in ranges: [NSRange]) {
+        guard let layoutManager = textView?.layoutManager, let length = textView?.textStorage?.length else { return }
+        for range in ranges {
+            let location = min(max(range.location, 0), length)
+            let clamped = NSRange(location: location, length: min(max(range.length, 0), length - location))
+            if clamped.length > 0 {
+                layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: clamped)
+            }
+        }
     }
 
     // MARK: Finding blocks

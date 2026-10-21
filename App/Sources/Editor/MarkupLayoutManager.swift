@@ -14,7 +14,9 @@ import AppKit
 ///   colour) is drawn in their rectangle, which `NoteTextView` uses to find out whether a click is on the box.
 /// - **Fence lines have no glyphs either.** The characters of a fence line (role `fence`) are null glyphs like a hidden
 ///   marker, and the paragraph style of the line is 6 pt high, so that the line is the padding at the top or the bottom
-///   of its code block (plan 4, task 5). The line break of the line is a glyph of its own and stays.
+///   of its code block (plan 4, task 5). The line break of the line is a glyph of its own and stays, and so does the last
+///   character of the note when a fence line ends it: a line with no glyph but null ones is as high as the font, whatever
+///   its paragraph style says (the character is clear, so nothing is drawn).
 /// - **Code blocks are drawn behind their lines.** The lines of a fenced block carry a `CodeBlockMark`. `drawBackground`
 ///   fills the rounded, tinted rectangle that they make together, and the label with the block's language at its top
 ///   right, without changing anything in the text.
@@ -41,16 +43,22 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         var runStart = 0
         var runEnd = 0
         var isHidden = false
+        var isFence = false
         for index in 0..<glyphRange.length {
             let character = charIndexes[index]
             if character < runStart || character >= runEnd {
                 var run = NSRange(location: 0, length: 0)
                 let role = storage.attribute(.scratchMarker, at: character, effectiveRange: &run) as? String
-                isHidden = role == MarkerRole.hidden.rawValue || role == MarkerRole.fence.rawValue
+                isFence = role == MarkerRole.fence.rawValue
+                isHidden = role == MarkerRole.hidden.rawValue || isFence
                 runStart = run.location
                 runEnd = NSMaxRange(run)
             }
             guard isHidden else { continue }
+            // A line of null glyphs only has no height of its own: the typesetter does not look at its paragraph style,
+            // so a closing fence that ends the note (no line break after it) was a full line. Its last character keeps its
+            // glyph, which is as clear as the other characters of the line, and the line is as high as the style says.
+            if isFence, character == storage.length - 1 { continue }
             if modified == nil { modified = Array(UnsafeBufferPointer(start: props, count: glyphRange.length)) }
             modified?[index] = .null
         }

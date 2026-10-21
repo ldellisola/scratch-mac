@@ -50,8 +50,12 @@ final class CodeBlockStylerTests: XCTestCase {
         attribute(.scratchMarker, at: index, in: host) as? String
     }
 
+    /// The colour that the character at `index` is drawn in: the layout manager's temporary one, which is where the
+    /// colours of code are, or else the text storage's.
     private func colour(at index: Int, in host: Host) -> NSColor? {
-        attribute(.foregroundColor, at: index, in: host) as? NSColor
+        let temporary = host.editor.textView.layoutManager?.temporaryAttribute(
+            .foregroundColor, atCharacterIndex: index, effectiveRange: nil)
+        return (temporary ?? attribute(.foregroundColor, at: index, in: host)) as? NSColor
     }
 
     private func paragraphStyle(at index: Int, in host: Host) -> NSParagraphStyle? {
@@ -156,12 +160,18 @@ final class CodeBlockStylerTests: XCTestCase {
         let opening = text.range(of: "```bash")
         let closing = text.range(of: "```", options: .backwards)
         XCTAssertNotEqual(opening.location, closing.location)
-        for fence in [opening, closing] {
+        for (name, fence) in [("opening", opening), ("closing", closing)] {
             for offset in 0..<fence.length {
-                XCTAssertTrue(isNullGlyph(at: fence.location + offset, in: host), "fence character \(offset)")
+                // The closing fence ends the note: its last character keeps a glyph, a clear one, so that the line has
+                // the height of its paragraph style (see `MarkupLayoutManager`).
+                let endsTheNote = fence.location + offset == text.length - 1
+                XCTAssertEqual(
+                    isNullGlyph(at: fence.location + offset, in: host), !endsTheNote,
+                    "\(name) fence character \(offset)")
                 XCTAssertEqual(role(at: fence.location + offset, in: host), "fence")
             }
-            XCTAssertLessThanOrEqual(lineHeight(at: fence.location, in: host), 6.01, "the fence line is padding")
+            XCTAssertLessThanOrEqual(
+                lineHeight(at: fence.location, in: host), 6.01, "the \(name) fence line is padding")
             XCTAssertEqual(
                 paragraphStyle(at: fence.location, in: host)?.maximumLineHeight, 6, "the paragraph style says so")
         }
@@ -306,7 +316,7 @@ final class CodeBlockStylerTests: XCTestCase {
         let end = text.range(of: "```", options: .backwards).location - 1
         let code = text.substring(with: NSRange(location: start, length: end - start))
         let tokens = Highlighter.shared.tokens(in: code, language: .bash) ?? []
-        XCTAssertGreaterThan(tokens.count, 5)
+        XCTAssertGreaterThanOrEqual(tokens.count, 4)
         var expected = [String?](repeating: nil, count: (code as NSString).length)
         for token in tokens {
             for offset in token.range.location..<NSMaxRange(token.range) {

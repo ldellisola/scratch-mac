@@ -50,12 +50,22 @@ block (docs/features/formatting.md).
   that is shown again.
 - **The main thread only writes colours,** when the run loop is next about to wait, after the observers that end a
   performance signpost, at most 8 ms at a time. A block with thousands of tokens is written over several turns.
+- **The colours are temporary attributes of the layout manager,** not attributes of the text (a deviation from the
+  plan, which says "colours"). They are for display only, so writing them lays nothing out again and adds no run to the
+  text storage. As attributes of the text they were several times slower: the macOS CI measured the huge note (10,000
+  lines, 100 blocks) at 37 ms per scroll frame and 37 ms per keystroke, where it had been 3 ms, because every colour was
+  an edit that invalidated the layout of its block and the layout manager laid the note out again in the background, on
+  the main thread, a slice of tens of milliseconds at a time.
 - **A keystroke in a block keeps the colours of its line** until the new result replaces them, so that the line being
-  typed does not flash to the text colour. A block whose fences changed (a fence typed or deleted, so that the pairs of
-  fences are not what they were) is styled again whole.
+  typed does not flash to the text colour (the layout manager carries a temporary attribute along with the text). A
+  block whose fences changed (a fence typed or deleted, so that the pairs of fences are not what they were) is styled
+  again whole, and a paragraph that leaves a block loses the colours of its code.
 - **A fence line is hidden by its role.** The characters of the line (not its line break) have the marker role `fence`,
   which `MarkupLayoutManager` makes null glyphs, as for a hidden `**`. The line's paragraph style gives it a height of
-  6 pt (`MarkupAppearance.codeFenceStyle`); while it is shown it has the style of the lines of code.
+  6 pt (`MarkupAppearance.codeFenceStyle`); while it is shown it has the style of the lines of code. **A line of null
+  glyphs only is not 6 pt high:** the macOS CI measured 16 pt for a closing fence that ends the note, which has no line
+  break to give the line a glyph, whatever its paragraph style says. The last character of the note keeps its glyph in
+  that case (it is clear, so nothing is drawn), and the line is 6 pt.
 
 ### Tests
 

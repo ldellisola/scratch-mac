@@ -811,8 +811,19 @@ new kind of release file, with no change to the app, ships.
   asked for the block again. There is a cache of results by hash, so a block that moved or a note shown again is coloured
   without the queue. Results are written at `RunLoopIdle.afterMeasurementsOrder` for at most 8 ms at a time (a block of
   thousands of tokens over several turns), so no signpost interval includes them, and an edit inside a block that is
-  being written ends that work (`textDidEdit`). `MarkupStyler.resetAttributes` keeps the foreground colours (and the
-  opening mark) of the paragraphs of a block that stays a block, so the line being typed does not flash to the text colour.
+  being written ends that work (`textDidEdit`). `MarkupStyler.resetAttributes` keeps the opening mark of the paragraphs of
+  a block that stays a block.
+- **Code colours are temporary attributes of the layout manager, never attributes of the text.** As `.foregroundColor` of
+  the text storage they made the huge note (100 blocks, about 50,000 colour runs) 10 times slower on the macOS CI (37 ms
+  per scroll frame and per keystroke, from 3): each colour was an edit, an edit invalidates the layout of its range, and the
+  layout manager then laid the whole note out again in the background on the main thread. `addTemporaryAttribute` is
+  display only. The layout manager's own bookkeeping is in the edit's coordinates only once `textStorage(_:didProcessEditing:)`
+  has returned, so `MarkupStyler` never calls it inside that callback: the ranges to clear are kept
+  (`coloursToClearAfterEdit`) and cleared in `editDidFinish`, from `NoteTextView.didChangeText`.
+- **A line of null glyphs only ignores its paragraph style.** The macOS CI measured a closing fence that ends the note (no
+  line break after it, so no glyph on its line) at the height of the font, 16 pt, and not the 6 pt of the style; the opening
+  fence has the glyph of its line break and was 6 pt. `MarkupLayoutManager` keeps the last character of the note when it is
+  a fence character (`role` `fence` has a clear colour), and the tests expect that glyph and nothing else.
 - **Typing attributes carry the block's attributes out of it.** The characters typed next take the attributes before the
   caret, so the empty line under a closing fence would be 6 pt high. `normalizeTypingAttributes` puts the note's own back
   when the caret leaves a block.

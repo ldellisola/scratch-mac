@@ -67,6 +67,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     /// What the last edit moved into or out of a block, outside of the paragraphs it edited: the layout manager makes the
     /// glyphs of these again when the edit is over (`editDidFinish`), which cannot be done from inside it.
     private var invalidationAfterEdit: NSRange?
+    /// The ranges whose code colours (the layout manager's, `CodeBlockStyler`) are cleared when the last edit is over.
+    private var coloursToClearAfterEdit: [NSRange] = []
 
     /// True when every paragraph of the text has been styled. False while a note is still being styled in chunks.
     private(set) var isFullyStyled = true
@@ -117,6 +119,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             isApplying = true
             storage.setAttributes(appearance.base, range: NSRange(location: 0, length: length))
             isApplying = false
+            // The colours of the code of the note that was shown are the layout manager's, and not gone with its text.
+            codeBlockStyler.clearColours(in: [NSRange(location: 0, length: length)])
         }
     }
 
@@ -373,6 +377,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         storage.endEditing()
         isApplying = false
         invalidationAfterEdit = Self.union(invalidationAfterEdit, movedChanged)
+        coloursToClearAfterEdit.append(contentsOf: moved)
         // The blocks that the edit is in, or that it changed, are coloured again for the text they have now.
         requestBlocks(intersecting: [paragraphs] + moved, in: storage)
     }
@@ -381,6 +386,11 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     /// manager knows about it and can be told to generate the glyphs of what moved into or out of a block again: the
     /// role of a fence line decides whether it has glyphs, and the line did not change.
     func editDidFinish() {
+        if !coloursToClearAfterEdit.isEmpty {
+            // Paragraphs that left a block lose the colours of its code (the layout manager's, not the text's).
+            codeBlockStyler.clearColours(in: coloursToClearAfterEdit)
+            coloursToClearAfterEdit = []
+        }
         guard let range = invalidationAfterEdit else { return }
         invalidationAfterEdit = nil
         invalidate(range)
@@ -388,8 +398,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
 
     /// Gives the paragraphs that an edit touched the base attributes again, so that what the styler adds comes out as if
     /// the paragraph had never been styled. The lines of a block that was a block before the edit and still is one keep
-    /// their foreground colours, which are the token colours until `CodeBlockStyler` has the new ones, and the mark of
-    /// the opening fence line, which holds a label that was detected (`openingMark`).
+    /// the mark of the opening fence line, which holds a label that was detected (`openingMark`), and are left alone
+    /// otherwise: the colours of their code are the layout manager's and stay until `CodeBlockStyler` has the new ones.
     private func resetAttributes(
         of paragraphs: NSRange, batch: ParagraphBatch, keepingCodeOf before: CodeBlockIndex, in storage: NSTextStorage
     ) {
@@ -537,9 +547,10 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         var codeRun: NSRange?
         func flushCodeRun() {
             guard let run = codeRun else { return }
+            // Not in `result.changed`: nothing about the glyphs of a line of code changes, and the attributes' own edit
+            // lays the paragraphs out again.
             storage.addAttributes(
                 [.paragraphStyle: MarkupAppearance.codeBodyStyle, .scratchCodeBlock: CodeBlockMark.body], range: run)
-            result.changed = Self.union(result.changed, run)
             codeRun = nil
         }
         for index in batch.paragraphs.indices {
@@ -759,6 +770,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         isApplying = false
 
         if let changed { invalidate(changed) }
+        codeBlockStyler.clearColours(in: moved)
         // The blocks that this chunk styled are coloured, and so are those that a big paste changed.
         requestBlocks(startingIn: styled, in: storage)
         if !blockProbes.isEmpty || !moved.isEmpty {
