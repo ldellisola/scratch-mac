@@ -92,6 +92,7 @@ final class NoteTextView: NSTextView {
     /// (`MarkupStyler.editDidFinish`). It is before the delegate hears of the edit, so that everything it does (scroll
     /// to the caret, say) is on the layout that the edit made.
     override func didChangeText() {
+        editCount &+= 1
         styler.editDidFinish()
         super.didChangeText()
     }
@@ -145,6 +146,7 @@ final class NoteTextView: NSTextView {
     /// typed next. The markers in it are not styled until the styler is told the note is shown
     /// (`MarkupStyler.noteDidLoad(visibleRange:)`, which `EditorViewController.show` calls).
     func load(_ text: String) {
+        editCount &+= 1
         styler.beginLoad()
         string = text
         styler.endLoad()
@@ -176,6 +178,178 @@ final class NoteTextView: NSTextView {
         }
         return scrolled
     }
+
+    // MARK: Paste
+
+    /// A paste is the plain paste first and a code block second (spec §6.5, plan 4 task 6). The plain paste is AppKit's,
+    /// as it was: the pasteboard's text takes the note's font (`readablePasteboardTypes`). When the pasted text turns out
+    /// to be code, `PasteClassifier` wraps it in a fence on the next turn of the main run loop, an edit of its own, so
+    /// that ⌘Z gives back exactly the pasted text and ⌘Z again takes it away. Nothing is classified in a note that
+    /// cannot be edited, for a rectangular selection, or when the text was edited between the paste and the wrap.
+    ///
+    /// Paste, Paste and Match Style and the hosted tests all end in `readSelection(from:)`, and each of the three starts
+    /// and ends the paste (`beginPaste`, `endPaste`): a call inside another one is the same paste, and the outer one
+    /// decides.
+    override func paste(_ sender: Any?) {
+        let start = beginPaste()
+        super.paste(sender)
+        endPaste(start)
+    }
+
+    /// "Paste and Match Style" is the same as Paste (spec §6.5).
+    override func pasteAsPlainText(_ sender: Any?) {
+        let start = beginPaste()
+        super.pasteAsPlainText(sender)
+        endPaste(start)
+    }
+
+    /// What Paste runs: reads the pasteboard's text over the selection. The hosted tests call it with a pasteboard of their
+    /// own. A note that cannot be edited takes no text, as in `insertText(_:replacementRange:)`.
+    override func readSelection(from pboard: NSPasteboard) -> Bool {
+        guard isEditable else { return false }
+        let start = beginPaste()
+        let didRead = super.readSelection(from: pboard)
+        endPaste(start)
+        return didRead
+    }
+
+    /// How many times the text has been edited or replaced. A paste that is waiting to be classified is dropped when it
+    /// is not the same any more (`PendingPaste`): the owner typed, or another note was loaded, in the meantime.
+    private var editCount = 0
+
+    /// The pastes that wait for their turn of the run loop, the oldest first. A closure that has to wait for the turn does not
+    /// carry a paste: it only asks for the next one (`classifyNextPaste`).
+    private var pendingPastes: [PendingPaste] = []
+
+    /// How many pastes wait for their turn. The hosted tests run the loop until it is zero.
+    var pendingPasteClassifications: Int { pendingPastes.count }
+
+    /// Greater than zero while a paste is being read, so that the paste that AppKit makes of `paste(_:)` by calling
+    /// `readSelection(from:)` is one paste and not two.
+    private var pasteDepth = 0
+
+    /// How many times the classification of a paste waits for the undo group of the paste to close. In the app that is the
+    /// end of the event's turn; a hosted test never ends its turn, and the wrap goes ahead after this many.
+    private static let undoGroupRetries = 8
+
+    /// How long the `paste-code` interval stays open at the most, in seconds, when the colours do not come.
+    private static let pasteIntervalLimit: TimeInterval = 5
+
+    /// What the text view looked like before a paste, and the paste's signpost interval.
+    private struct PasteStart {
+        let selection: NSRange
+        let length: Int
+        /// True when the paste can be classified: the note can be edited and the selection is one range.
+        let canClassify: Bool
+        /// True when the paste goes into a fenced block or into inline code.
+        let isInCode: Bool
+        let interval: OpenInterval
+    }
+
+    /// A paste that has been inserted and waits to be classified.
+    private struct PendingPaste {
+        /// Where the paste is in the text.
+        let range: NSRange
+        /// `editCount` right after the paste.
+        let editCount: Int
+        /// True when the paste went into a fenced block or into inline code.
+        let isInCode: Bool
+        /// The `paste-code` signpost interval, from the paste until the colours are on screen.
+        let interval: OpenInterval
+    }
+
+    /// Call before a paste reads the pasteboard. Returns what `endPaste` needs, or nil for a paste inside another paste.
+    private func beginPaste() -> PasteStart? {
+        pasteDepth += 1
+        guard pasteDepth == 1 else { return nil }
+        let selection = selectedRange()
+        let canClassify = isEditable && selectedRanges.count == 1 && styler != nil
+        return PasteStart(
+            selection: selection, length: textStorage?.length ?? 0, canClassify: canClassify,
+            isInCode: canClassify && isPastingIntoCode(selection),
+            interval: Signposts.beginOpenEditorInterval("paste-code"))
+    }
+
+    /// Call after the paste has read the pasteboard: schedules the classification of what it inserted.
+    private func endPaste(_ start: PasteStart?) {
+        pasteDepth -= 1
+        guard let start else { return }
+
+        // The text that came in is where the selection was and ends where the caret is. Anything else (nothing was pasted,
+        // or AppKit did something else with the text) is left alone.
+        guard start.canClassify, let length = textStorage?.length else { return start.interval.endWhenIdle() }
+        let pasted = NSRange(location: start.selection.location, length: length - start.length + start.selection.length)
+        guard pasted.length > 0, NSMaxRange(pasted) <= length,
+            selectedRange() == NSRange(location: NSMaxRange(pasted), length: 0)
+        else { return start.interval.endWhenIdle() }
+
+        pendingPastes.append(
+            PendingPaste(range: pasted, editCount: editCount, isInCode: start.isInCode, interval: start.interval))
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated { self?.classifyNextPaste(attempt: 0) }
+        }
+    }
+
+    /// The oldest paste has had its turn: wraps it in a fence when it is code (`PasteClassifier`), and ends the `paste-code`
+    /// interval when the colours of the block are on screen, or at once when nothing is going to be coloured.
+    private func classifyNextPaste(attempt: Int) {
+        guard let paste = pendingPastes.first else { return }
+        // The undo group of the paste has to be closed first, or the wrap would be a part of it.
+        if attempt < Self.undoGroupRetries, editCount == paste.editCount, let manager = undoManager,
+            manager.groupingLevel > 0
+        {
+            RunLoopIdle.onNext { [weak self] in self?.classifyNextPaste(attempt: attempt + 1) }
+            CFRunLoopWakeUp(CFRunLoopGetMain())
+            return
+        }
+        pendingPastes.removeFirst()
+
+        guard editCount == paste.editCount, isEditable, let storage = textStorage,
+            NSMaxRange(paste.range) <= storage.length
+        else { return paste.interval.endWhenIdle() }
+        let text = storage.string as NSString
+        let pasted = text.substring(with: paste.range)
+        guard
+            let edit = PasteClassifier.wrap(pasted: pasted, at: paste.range, in: text, isInCode: paste.isInCode)
+        else { return paste.interval.endWhenIdle() }
+
+        applyAndReveal(edit)
+        let interval = paste.interval
+        styler.codeBlockStyler.whenHighlighted { interval.endWhenIdle() }
+        // A block that is never coloured must not leave the interval open.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.pasteIntervalLimit) {
+            MainActor.assumeIsolated { interval.end() }
+        }
+    }
+
+    /// True when a paste over `selection` goes into code: the selection touches a fenced block (the fence lines included),
+    /// or an end of it is inside inline code. Asked before the paste, while the text is what the owner sees: a paste of
+    /// several lines splits the line that inline code is on.
+    private func isPastingIntoCode(_ selection: NSRange) -> Bool {
+        if styler.intersectsCodeBlock(selection) { return true }
+        return isInInlineCode(at: selection.location)
+            || (selection.length > 0 && isInInlineCode(at: NSMaxRange(selection)))
+    }
+
+    /// True when `location` is between the backticks of inline code (not before the first one or after the last one).
+    private func isInInlineCode(at location: Int) -> Bool {
+        let text = string as NSString
+        guard location >= 0, location <= text.length else { return false }
+        var start = 0
+        var end = 0
+        var contentsEnd = 0
+        text.getParagraphStart(
+            &start, end: &end, contentsEnd: &contentsEnd, for: NSRange(location: location, length: 0))
+        guard contentsEnd > start, contentsEnd - start <= Self.inlineCodeLookLimit else { return false }
+        let line = text.substring(with: NSRange(location: start, length: contentsEnd - start))
+        return MarkupParser.parseLine(line, at: start).contains { span in
+            guard case .inlineCode = span.kind else { return false }
+            return span.range.location < location && location < NSMaxRange(span.range)
+        }
+    }
+
+    /// A line longer than this many UTF-16 units is not looked at for inline code when something is pasted into it.
+    private static let inlineCodeLookLimit = 20_000
 
     // MARK: Edits the owner asks for
 

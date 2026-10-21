@@ -59,6 +59,8 @@ final class CodeBlockStyler {
     private var works: [Work] = []
     private var cache = HighlightCache()
     private var isApplyScheduled = false
+    /// What waits for the colours (`whenHighlighted`).
+    private var highlightedHandlers: [@MainActor () -> Void] = []
 
     /// How many results were dropped because no block held their text any more. The tests read it.
     private(set) var droppedResults = 0
@@ -81,6 +83,27 @@ final class CodeBlockStyler {
     /// The highlights that are still on their way: asked for and not written yet (or dropped). A test waits for zero.
     var pendingHighlights: Int {
         todo.count + (running == nil ? 0 : 1) + ready.count + works.count
+    }
+
+    /// Calls `handler` when every highlight that was asked for has been written (or dropped) and the note is styled all the
+    /// way (a big paste is styled in chunks), at the next moment the main run loop is about to wait after that: the colours
+    /// have been drawn by then, as the display of the run loop turn comes before it (`RunLoopIdle`). When nothing is
+    /// pending it is the next such moment. The `paste-code` signpost interval ends there (`NoteTextView`).
+    func whenHighlighted(_ handler: @escaping @MainActor () -> Void) {
+        highlightedHandlers.append(handler)
+        runHighlightedHandlersIfQuiet()
+    }
+
+    /// Hands the handlers that wait for the colours on to the next idle moment when nothing is pending any more. Called
+    /// when colours have been written, and by `MarkupStyler` when it has styled the last chunk.
+    func runHighlightedHandlersIfQuiet() {
+        guard !highlightedHandlers.isEmpty, pendingHighlights == 0, textView?.styler.isFullyStyled ?? true else {
+            return
+        }
+        let handlers = highlightedHandlers
+        highlightedHandlers = []
+        for handler in handlers { RunLoopIdle.onNext(handler) }
+        CFRunLoopWakeUp(CFRunLoopGetMain())
     }
 
     // MARK: What MarkupStyler tells it
@@ -260,6 +283,7 @@ final class CodeBlockStyler {
     /// Writes results into the blocks that hold their code, for at most `applyBudget`, then asks for the next turn.
     private func applyReady() {
         isApplyScheduled = false
+        defer { runHighlightedHandlersIfQuiet() }
         guard let storage = textView?.textStorage else {
             ready = []
             works = []

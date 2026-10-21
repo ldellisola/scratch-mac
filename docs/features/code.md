@@ -5,8 +5,8 @@ Code blocks, their colours and the detection of code in a paste. Spec:
 (the highlight budget) and §8.1 (tree-sitter, "Code detection"). The pieces live in `ScratchCode`
 (`Packages/ScratchCode`, no AppKit).
 
-Status: plan 4, tasks 2 to 5 (the languages, the highlighter, the detection and the rendering). The paste wrap and the
-label menu are added to this file by tasks 6 and 7.
+Status: plan 4, tasks 2 to 6 (the languages, the highlighter, the detection, the rendering and the paste wrap). The
+label menu is added to this file by task 7.
 
 ## Rendering
 
@@ -91,6 +91,57 @@ kind of runner: a run over 6.96 ms on a slow runner is a rerun before it is a re
 - `CodeBlockPartsTests` (hosted): the name, the code and the fence lines of a block, found from its range.
 - `MarkupStylerTests.testFencedBlockIsNotStyled`: nothing in a block is formatting, and its lines are indented.
 - ScratchCore's `FixtureTests` (`codeFixtureHasABlockForEachLanguageAndOneWithoutAName`): the `code` fixture.
+
+## Pasting code
+
+Spec §6.4 "Code highlighting" and §6.5 (paste order). A paste is the plain paste first: the pasteboard's text goes in as
+it always did (docs/features/paste-and-copy.md). When it turns out to be code, it is wrapped in a fence in a second edit
+(`NoteTextView`, `PasteClassifier`).
+
+- **Candidates.** A paste of two lines or more (the line break that ends the last line does not start another: `"a\n"` is
+  one line). A single line stays plain, and so does everything that `CodeDetector` calls prose (Review Focus 1: an email
+  with a signature, a numbered list, meeting notes with times, a log excerpt, a CSV row, a list of URLs).
+- **Never into code.** A paste into a fenced block (the fence lines included), or between the backticks of inline code,
+  stays plain: the owner pasted into code, there is nothing to wrap. This is decided before the paste, because a paste
+  of several lines splits the line that inline code was on.
+- **Never with a fence of its own.** A paste that has a fence line in it (three backticks or more, after spaces) stays as
+  it is: it is a block already, or part of one.
+- **Never below a fence that has no partner.** A fence line above the paste that nothing closes is a block the owner is
+  still typing (a fence, Return, then the paste). The wrap's two fences would pair with it and take the note's blocks
+  apart, so the paste stays plain and the owner types the closing fence. A paste after blocks that are closed is wrapped.
+- **The wrap.** One edit that puts the pasted text between two fence lines:
+  - the opening fence names the detected language by its fence name (`python`, not `py`): ```` ```python ````. Code of a
+    language Scratch does not know (Ruby, PHP) gets a fence with no name, an uncoloured block;
+  - a line break goes before the opening fence when the paste did not start a line, and after the closing fence when it did
+    not end one, so that the fences are lines of their own and the text around the paste keeps its own lines;
+  - the closing fence is on the line after the last pasted line, and when the paste ended with a line break that break is
+    the one before the fence, so the block has no blank line that was not pasted;
+  - **every pasted character is inside the fences as it came**: no re-indenting, no trimming, no change of line breaks.
+  The caret ends up where it was, after everything that was pasted.
+- **Two undo steps.** The wrap is applied on the next turn of the main run loop, once the undo group of the paste has
+  closed, so ⌘Z once leaves exactly the pasted text, and ⌘Z again takes it away. The wrap is one `apply(_:)`.
+- **When the text changes first, nothing is wrapped.** A key typed, or a note loaded, between the paste and the wrap
+  cancels it. A note that cannot be edited takes no paste at all.
+- **Paste and Match Style** is the same as Paste, and so is a paste with the real Edit menu: all of them end in
+  `readSelection(from:)`.
+
+### How fast it is
+
+The `paste-code` signpost interval (`Signposts.beginOpenEditorInterval`) runs from the paste until the colours of the
+block are on screen: the plain paste, the detection, the wrap, the highlighting on its queue and the colours written back.
+The performance test pastes 500 lines of Swift into an empty note (`CodePastePerfTests`, `paste_code_ms`, budget 50 ms,
+spec §7). A paste that is not wrapped ends the interval at the next idle moment.
+
+### Tests
+
+- `CodePasteTests` (hosted, `readSelection(from:)` with a pasteboard of its own): `testMultiLinePythonPasteIsFenced`,
+  `testSingleLinePasteStaysPlain`, `testPasteMidLineGetsFenceOnItsOwnLines`, `testPasteInsideBlockIsNotFenced`,
+  `testPasteWithFencesStaysAsIs`, `testProseSampleStaysPlain`, `testUnknownLanguageGetsUnnamedFence`, and the cases above:
+  a paste ending with a line break, into inline code, below an unmatched fence, edited before the wrap, in a read-only note,
+  and `PasteClassifier.wrap` itself.
+- `CodePasteUITests` (real keys and the real pasteboard): `testUndoAfterCodePasteRestoresPlainText` (Review Focus 2),
+  `testPastingAnEmailStaysPlain` (Review Focus 1) and a paste in the middle of a line.
+- `CodePastePerfTests.testPasteFiveHundredLinesOfCode`: `paste_code_ms`.
 
 ## Detection
 

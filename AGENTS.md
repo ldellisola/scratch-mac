@@ -127,15 +127,18 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   `CodeBlockMark`, `CodeBlockMetrics`, `CodeBlockColors`, `MarkupColors`), ParagraphBatch
                                   (whole paragraphs read in one call), CodeBlockStyler (colours the code of the fenced
                                   blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
-                                  language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`) and
-                                  CodeBlockParts (a block's name, code and fence lines from its range)
-App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke` and
-                                  `switch-note` intervals the performance tests read), RunLoopIdle (runs work when the
-                                  main run loop is next about to wait: after the frame is drawn, and with `order:
-                                  afterMeasurementsOrder` after the signposts end), FrameMonitor
+                                  language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`,
+                                  `whenHighlighted`), CodeBlockParts (a block's name, code and fence lines from its range)
+                                  and PasteClassifier (whether a paste is code, and the edit that wraps it in a fence:
+                                  `wrap`; NoteTextView asks it after every paste, `readSelection(from:)`)
+App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
+                                  `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
+                                  (runs work when the main run loop is next about to wait: after the frame is drawn, and
+                                  with `order: afterMeasurementsOrder` after the signposts end), FrameMonitor
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
-                                  size, scroll anchor and scroll offset from, in isolated launches only)
+                                  size, scroll anchor, scroll offset and pending paste work from, in isolated launches
+                                  only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
@@ -149,16 +152,20 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   ⇧Tab and ⌘B, LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
                                   coordinator on a failing disk keeps and retries the notes it could not write, and
                                   the emptied-note rules, CodeBlockStylerTests: a fenced block is tinted with hidden
-                                  fences, indented lines, colours and a label, CodeBlockPartsTests)
+                                  fences, indented lines, colours and a label, CodeBlockPartsTests, CodePasteTests: a
+                                  paste of code is wrapped in a fence on the next turn, prose, a paste into code and one
+                                  with a fence line stay plain, `PasteClassifier.wrap`)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
                                   tab strip, opening, closing and switching tabs), DeleteUITests (delete, Recently
                                   Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
                                   FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
+                                  CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
                                   ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
-                                  EditorPerfTests (keystroke, scrolling, switching notes), PerfSupport. They share
+                                  EditorPerfTests (keystroke, scrolling, switching notes), CodePastePerfTests (a paste of
+                                  500 lines of code until its colours are on screen), PerfSupport. They share
                                   UITestSupport and AccessibilityID with the UI tests
 perf/                             budgets.json (the budgets CI enforces, in milliseconds) and baseline.json (CI's own
                                   numbers, the slowest of many runs: docs/decisions/0003)
@@ -303,7 +310,10 @@ docs/decisions/0001 and 0003. What to know when one fails or changes:
   a third into the huge note. `switch_small_ms` and `switch_huge_ms`: the `switch-note` signpost, from
   `SessionCoordinator.open` until the note is on screen. `scroll_frame_ms`: the median CPU time of the main thread per
   frame while the app scrolls the huge note by itself (`FrameMonitor`, `-ScratchFrameMonitor`). Scrolling is measured
-  with this in-app monitor, not with XCTest's scroll metrics. All in milliseconds and all medians.
+  with this in-app monitor, not with XCTest's scroll metrics. `paste_code_ms`: the `paste-code` signpost, from
+  `NoteTextView.paste` until the colours of the block that the paste made are on screen (`CodeBlockStyler.whenHighlighted`),
+  one paste of 500 lines of Swift into an empty note per iteration, each with names that the app has not coloured before.
+  Budget 50 (spec §7). All in milliseconds and all medians.
 - **The CI runner is slow and noisy.** Runs of the same build differ by up to a factor of two (the first run of a job is
   the slowest), and a launch takes about 400 ms there (Calculator takes 1 s). The baseline is therefore the slowest of
   many runs, and `launch_ms` and `switch_small_ms` are budgeted at 400 and 12 instead of the spec's 200 and 8
@@ -547,8 +557,9 @@ new kind of release file, with no change to the app, ships.
   the note being left. Show a note with the text it had when it was left: an undo step holds ranges of that text.
 - **UI tests read the font size, the scroll anchor and the scroll offset from `debug.state`.** `DebugStateElement` is a
   1 x 1 point view in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its
-  accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY` and `topInset`):
-  `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no clicks, so it is not in a screenshot.
+  accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY`, `topInset`, and
+  `pendingHighlights` and `pendingPastes`, which are zero when a paste is done): `UITestSupport.debugState(in:)` reads
+  it. It draws nothing and takes no clicks, so it is not in a screenshot.
 - **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
   `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
   equivalents needs two items.
@@ -849,3 +860,21 @@ new kind of release file, with no change to the app, ships.
   `LaunchOptionsTests.parsesEveryFixtureName` (which lists every raw value), and then the launch argument table above and
   `make run`. A core test that lists the cases fails the Linux job and, through `make core-test` on the Mac, the whole
   macOS job before any app test runs.
+- **A paste is the plain paste, and its wrap is a second edit on a later turn** (`NoteTextView.beginPaste`, `endPaste`,
+  `classifyPaste`). `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` (which the hosted tests call, and which
+  Paste runs, a call inside another is the same paste) start and end the paste. Before it, the view works out whether the paste
+  goes into code (`isPastingIntoCode`: a fenced block, or between the backticks of inline code, which a multi-line paste would
+  split and which cannot be told afterwards). After it, the range that came in is queued with `editCount`, which every
+  `didChangeText` and `load` raises, and `DispatchQueue.main.async` asks `PasteClassifier.wrap`; typing in between drops the
+  paste. **The wrap waits until the paste's undo group has closed** (`undoManager.groupingLevel == 0`, retried at the run loop's
+  idle moments, at most 8 times: a hosted test never ends its turn and goes ahead after that), because a `DispatchQueue.main`
+  block can run in the same loop iteration as the event, and then ⌘Z would undo the paste and the wrap together
+  (`CodePasteUITests.testUndoAfterCodePasteRestoresPlainText`). Hosted tests wait for `pendingPasteClassifications == 0`, not
+  for a time. The wrap is one `TextEdit` that replaces the pasted range with itself between the fences: the closing fence
+  has no line break before it when the paste ended with one (no blank line in the block), a fence is never added below a
+  fence line that has no partner (the new pair would pair with it), and a paste that cuts a CRLF is left plain.
+- **The `paste-code` interval is open until the colours are written.** `Signposts.beginOpenEditorInterval` begins it and
+  `OpenInterval.endWhenIdle()` ends it, after `CodeBlockStyler.whenHighlighted` says nothing is pending and `MarkupStyler`
+  has styled every chunk (a paste of more than 20,000 characters is styled in chunks, which is why `runChunk` calls
+  `runHighlightedHandlersIfQuiet`). A paste that is not wrapped ends it at the next idle moment, and a wrapped one that is
+  never coloured at 5 s (`pasteIntervalLimit`), so no interval stays open.

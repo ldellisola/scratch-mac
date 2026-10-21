@@ -242,6 +242,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
                 // How far the clip view is scrolled and the scroll view's top inset, so a test can tell that a note at
                 // its top has the text view's own top inset on screen: `scrollY` is `-topInset` there.
                 "scrollY": self.currentScrollY, "topInset": Double(self.scrollView.contentInsets.top),
+                // The work that is on its way after a paste: the code colours that are not written yet and the pastes
+                // that have not been classified, so a test can wait for a block to be done.
+                "pendingHighlights": self.textView.styler.codeBlockStyler.pendingHighlights,
+                "pendingPastes": self.textView.pendingPasteClassifications,
             ]
         }
         view.addSubview(element)

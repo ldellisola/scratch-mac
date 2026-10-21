@@ -832,6 +832,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         }
         isFullyStyled = pending.isEmpty
         scheduleChunk()
+        // Whoever waits for the colours of a big paste waits for the last chunk too.
+        if isFullyStyled { codeBlockStyler.runHighlightedHandlersIfQuiet() }
     }
 
     // MARK: Font size
