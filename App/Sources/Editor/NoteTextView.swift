@@ -87,6 +87,15 @@ final class NoteTextView: NSTextView {
         super.insertText(string, replacementRange: replacementRange)
     }
 
+    /// The text was edited and AppKit has processed the edit. The styler may have moved paragraphs into or out of a code
+    /// block that the edit did not change, and the layout manager can only be told to generate their glyphs again now
+    /// (`MarkupStyler.editDidFinish`). It is before the delegate hears of the edit, so that everything it does (scroll
+    /// to the caret, say) is on the layout that the edit made.
+    override func didChangeText() {
+        styler.editDidFinish()
+        super.didChangeText()
+    }
+
     /// Starts the `keystroke` signpost interval that the performance tests measure: from the key press until what it
     /// typed is on screen (`Signposts.beginEditorInterval`).
     override func keyDown(with event: NSEvent) {

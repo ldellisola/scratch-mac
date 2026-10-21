@@ -5,8 +5,67 @@ Code blocks, their colours and the detection of code in a paste. Spec:
 (the highlight budget) and §8.1 (tree-sitter, "Code detection"). The pieces live in `ScratchCode`
 (`Packages/ScratchCode`, no AppKit).
 
-Status: plan 4, tasks 2 to 4 (the languages, the highlighter and the detection). Rendering, the paste wrap and the
-label menu are added to this file by tasks 5 to 7.
+Status: plan 4, tasks 2 to 5 (the languages, the highlighter, the detection and the rendering). The paste wrap and the
+label menu are added to this file by tasks 6 and 7.
+
+## Rendering
+
+A fenced block (a line of three backticks, lines of code, a line of three backticks) is drawn as a block. Nothing is
+changed in the note's text: the characters, copy, search and storage stay as they are, and every look below is an
+attribute or a drawing (`MarkupStyler`, `CodeBlockStyler`, `MarkupLayoutManager`). A fence that has no partner is not a
+block (docs/features/formatting.md).
+
+- **The tint.** A rounded block (6 pt radius) in the `CodeBackground` colour, black at 6% in light mode and white at 10%
+  in dark mode, as wide as the text (the width of the editor less its margins). It is drawn from the opening fence line
+  to the closing one, behind the lines.
+- **The lines.** Each line of the block is 10 pt in from both sides of the tint (head and tail indent), in the note font,
+  and nothing in it is formatting (no bullet, bold or link).
+- **The fence lines are padding.** Each is a line of exactly 6 pt with no glyphs, so the top and the bottom of a block have
+  a little space and no text. While the caret or the selection touches a fence line (its two ends included, so the
+  caret just below the opening fence or just above the closing one does not) the line is shown in full, in
+  `tertiaryLabelColor`, and is as high as any line. A selection of more than 20,000 characters shows none.
+- **The label.** At the top right of the block, 2 pt smaller than the note font, in `secondaryLabelColor`: the language
+  (`Swift`, `Shell`, `C#`), or the name as written for a fence name that is not one of the 17 (`ruby`). A language that
+  was detected, which is when the fence has no name, is in italics: it means "automatic". A fence with no name whose
+  code is not code, or of a language Scratch does not know, has no label. A block that is too long to colour shows its
+  name only.
+- **The colours** are Xcode's default themes (spec §6.4, plan 4 "Colours"), assets named `Code<Kind>` with a light and a
+  dark variant: keyword `#9B2393` / `#FC5FA3`, string `#C41A16` / `#FC6A5D`, comment `#5D6C79` / `#7F8C98`, number
+  `#1C00CF` / `#D0BF69`, type `#0B4F79` / `#5DD8FF`, function `#326D74` / `#67B7A4`, attribute `#815F03` / `#BF8555`,
+  preprocessor `#643820` / `#FD8F3F`. Everything else has the text colour.
+- **Which language.** The name on the opening fence, by its fence name or an alias in any case (`py`, `JS`, `c#`). An
+  empty name is detected from the code between the fences (`CodeDetector`, below), and the fence is never edited. A
+  name that is not one of the 17 gives an uncoloured block, with the name as its label.
+- **Too long to colour.** A block of more than 5,000 lines or 300,000 UTF-16 units (spec §7) stays tinted and is not
+  coloured; nothing is copied out of the text for a block over the length, and the text is pasted as fast as any other.
+
+### How the colours get on the page
+
+- **Never on the main thread.** `CodeBlockStyler` sends the code of a block to a private serial queue, one request at a
+  time, the blocks on screen first. `MarkupStyler` asks for the blocks of what it styles first (the paragraphs around
+  the visible ones when a note is shown), then for the rest in the idle chunks that style a long note.
+- **A result is for a text.** It is applied only to a block that holds the same fence name and the same code, compared
+  by hash and then as text. A result for text that has been edited since is dropped (`droppedResults`), and the edit has
+  already asked for the block again. So a block that only moved is coloured from a cache of results, and so is a note
+  that is shown again.
+- **The main thread only writes colours,** when the run loop is next about to wait, after the observers that end a
+  performance signpost, at most 8 ms at a time. A block with thousands of tokens is written over several turns.
+- **A keystroke in a block keeps the colours of its line** until the new result replaces them, so that the line being
+  typed does not flash to the text colour. A block whose fences changed (a fence typed or deleted, so that the pairs of
+  fences are not what they were) is styled again whole.
+- **A fence line is hidden by its role.** The characters of the line (not its line break) have the marker role `fence`,
+  which `MarkupLayoutManager` makes null glyphs, as for a hidden `**`. The line's paragraph style gives it a height of
+  6 pt (`MarkupAppearance.codeFenceStyle`); while it is shown it has the style of the lines of code.
+
+### Tests
+
+- `CodeBlockStylerTests` (hosted, `testExistingFencesRenderAsBlocks`, `testBlockIsColoured`,
+  `testFenceRevealedWhenCaretOnIt`, `testStaleHighlightIsNotApplied`, `testUnnamedFenceUsesDetectedLanguage`,
+  `testUnknownFenceNameIsUncoloured`, `testHugeBlockIsNotHighlighted`, `testDarkModeUsesDarkColours` and more): the
+  blocks of the `typical` fixture, the `code` fixture's JavaScript block, a 6,000-line block, the colour assets.
+- `CodeBlockPartsTests` (hosted): the name, the code and the fence lines of a block, found from its range.
+- `MarkupStylerTests.testFencedBlockIsNotStyled`: nothing in a block is formatting, and its lines are indented.
+- ScratchCore's `FixtureTests` (`codeFixtureHasABlockForEachLanguageAndOneWithoutAName`): the `code` fixture.
 
 ## Detection
 

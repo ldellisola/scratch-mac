@@ -8,6 +8,8 @@ final class MarkupAppearance {
     let fontSize: Double
     /// The note font and the standard text colour: what every character has before a span changes it.
     let base: [NSAttributedString.Key: Any]
+    /// The regular note font: what a line of a code block has, whatever it was before.
+    let regularFont: NSFont
     /// The font of a bold run.
     let boldFont: NSFont
     /// The width of one character of the monospaced note font, which is what a list's hanging indent counts in.
@@ -17,6 +19,7 @@ final class MarkupAppearance {
     init(fontSize: Double) {
         self.fontSize = fontSize
         base = NoteTextView.noteAttributes(size: fontSize)
+        regularFont = NoteTextView.noteFont(size: fontSize)
         boldFont = NoteTextView.boldNoteFont(size: fontSize)
         spaceWidth = (" " as NSString).size(withAttributes: [.font: NoteTextView.noteFont(size: fontSize)]).width
     }
@@ -38,7 +41,7 @@ final class MarkupAppearance {
     /// `MarkupLayoutManager` draws the bullet or the box over it.
     func markerAttributes(_ role: MarkerRole) -> [NSAttributedString.Key: Any] {
         switch role {
-        case .hidden:
+        case .hidden, .fence:
             return [.scratchMarker: role.rawValue, .foregroundColor: NSColor.textColor]
         case .revealed:
             return [.scratchMarker: role.rawValue, .foregroundColor: NSColor.tertiaryLabelColor]
@@ -51,6 +54,28 @@ final class MarkupAppearance {
     static var tickedTextAttributes: [NSAttributedString.Key: Any] {
         [.strikethroughStyle: NSUnderlineStyle.single.rawValue, .foregroundColor: NSColor.secondaryLabelColor]
     }
+
+    /// The paragraph style of a line of a code block, and of a fence line while it is shown: the lines are
+    /// `CodeBlockMetrics.inset` in from both sides of the tinted block (plan 4 "Blocks").
+    static let codeBodyStyle: NSParagraphStyle = {
+        let style = NSMutableParagraphStyle()
+        style.firstLineHeadIndent = CodeBlockMetrics.inset
+        style.headIndent = CodeBlockMetrics.inset
+        style.tailIndent = -CodeBlockMetrics.inset
+        return style
+    }()
+
+    /// The paragraph style of a fence line while it is hidden: a line of exactly `CodeBlockMetrics.fenceHeight`, so that
+    /// the top and the bottom of the block have a little padding and no text.
+    static let codeFenceStyle: NSParagraphStyle = {
+        let style = NSMutableParagraphStyle()
+        style.firstLineHeadIndent = CodeBlockMetrics.inset
+        style.headIndent = CodeBlockMetrics.inset
+        style.tailIndent = -CodeBlockMetrics.inset
+        style.minimumLineHeight = CodeBlockMetrics.fenceHeight
+        style.maximumLineHeight = CodeBlockMetrics.fenceHeight
+        return style
+    }()
 
     /// What a link looks like: the link colour and an underline. The URL is kept for ⌘-click (`MarkupStyler.link(at:)`).
     static func linkAttributes(for url: URL) -> [NSAttributedString.Key: Any] {

@@ -62,7 +62,7 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   touches a fence line; `intersects` says whether a range holds a block), EditMapping
                                   (where positions go when text is replaced) and `MarkupParser.mayHaveSpans` (a cheap
                                   test that skips the parse of a line with no marker)
-  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting) and
+  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting, code) and
                                   FixtureContent, their notes and session
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
 Packages/ScratchCode/             Swift package, no AppKit, builds and tests on Linux and macOS. Wraps tree-sitter, the one
@@ -120,10 +120,15 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   and handles Return, Tab and ⇧Tab on list lines (`insertNewline` and the like). The markers
                                   are rendered by MarkupStyler (the text storage's delegate: styles paragraphs from the
                                   core's parser, hides and reveals markers, styles a shown note in chunks),
-                                  MarkupLayoutManager (null glyphs for hidden markers, draws bullets and checkboxes),
-                                  MarkupAppearance (fonts, colours and paragraph styles per font size), MarkupAttributes
-                                  (the `scratchMarker` and `scratchLink` attributes, `MarkerRole`, `MarkupColors`) and
-                                  ParagraphBatch (whole paragraphs read in one call)
+                                  MarkupLayoutManager (null glyphs for hidden markers and fence lines, draws bullets and
+                                  checkboxes, the tinted code blocks and their labels), MarkupAppearance (fonts, colours
+                                  and paragraph styles per font size, the block styles), MarkupAttributes (the
+                                  `scratchMarker`, `scratchLink` and `scratchCodeBlock` attributes, `MarkerRole`,
+                                  `CodeBlockMark`, `CodeBlockMetrics`, `CodeBlockColors`, `MarkupColors`), ParagraphBatch
+                                  (whole paragraphs read in one call), CodeBlockStyler (colours the code of the fenced
+                                  blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
+                                  language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`) and
+                                  CodeBlockParts (a block's name, code and fence lines from its range)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke` and
                                   `switch-note` intervals the performance tests read), RunLoopIdle (runs work when the
                                   main run loop is next about to wait: after the frame is drawn, and with `order:
@@ -132,7 +137,9 @@ App/Sources/Support/              AccessibilityID (also compiled into the UI tes
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
                                   size, scroll anchor and scroll offset from, in isolated launches only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
-                                  inline code, each with a light and a dark variant)
+                                  inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
+                                  `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
+                                  light and a dark variant)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, FrameMonitorTests, EditorViewControllerTests:
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
@@ -141,7 +148,8 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   click ticks a box, ⇧⌘L, the drawn symbol, the Format menu, ListKeyTests: Return, Tab,
                                   ⇧Tab and ⌘B, LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
                                   coordinator on a failing disk keeps and retries the notes it could not write, and
-                                  the emptied-note rules)
+                                  the emptied-note rules, CodeBlockStylerTests: a fenced block is tinted with hidden
+                                  fences, indented lines, colours and a label, CodeBlockPartsTests)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -266,7 +274,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 | Flag | Value | Effect |
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
-| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting` | delete the database in the data directory and seed that fixture |
+| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code` | delete the database in the data directory and seed that fixture |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 
@@ -780,3 +788,35 @@ new kind of release file, with no change to the app, ships.
   `checkmark.square.fill` with a palette configuration of `controlAccentColor`, centred in the glyph rectangle of the
   marker and 85% of the line height, on every draw (the colour and appearance of the moment). `testCheckboxSymbolIsDrawn`
   renders the view with `cacheDisplay` and counts the pixels that are not the background.
+- **A fenced block is drawn from attributes, and its fence lines are null glyphs.** `MarkupStyler` gives the characters of a
+  fence line (not its line break) the role `fence`, which `MarkupLayoutManager` turns into null glyphs, and the paragraph
+  `MarkupAppearance.codeFenceStyle` (minimum and maximum line height 6 pt), so the line is padding. While the caret or
+  selection touches it (`touchesSelection`, the ends included) the role is `revealed` and the paragraph has
+  `codeBodyStyle`, like the lines of code (10 pt head and tail indent). Every paragraph of a block carries a
+  `CodeBlockMark` (`.scratchCodeBlock`: opening, body or closing); only the opening fence line's holds the language and
+  the label, so a keystroke in a line of code never has to know it, and a detected label stays while a new result is on its
+  way (`openingMark`). `MarkupLayoutManager.drawBackground` fills the tint per line fragment from what is laid out (never
+  from the block's end: the end of a block of thousands of lines would have to be laid out) and draws the labels, also
+  when only the first line of code is redrawn, because the label reaches into it. `CodeBlockMark` is a `nonisolated`
+  `NSObject` because the layout manager is not on the main actor; the nested structs of a nonisolated class are marked
+  `nonisolated` too.
+- **A fence line moved into or out of a block by an edit is invalidated after the edit.** The role of a fence line decides
+  whether it has glyphs, and `storageDidEdit` cannot invalidate glyphs from inside the edit, so it records the range
+  (`invalidationAfterEdit`) and `NoteTextView.didChangeText` calls `MarkupStyler.editDidFinish`, before the delegate hears of
+  the edit. A rescan that changes a block (not only its length) styles it again whole (`rescanCodeBlocks`): a paragraph can
+  stay in a block and still be another line of it.
+- **Colours are keyed by text, not by place.** `CodeBlockStyler` sends a block's code to a private serial queue, one request
+  at a time, and a result is applied to every block that holds the same fence name and code (hash first, then text), where
+  the block is by then. A result for text that was edited since matches no block and is dropped (`droppedResults`): the edit
+  asked for the block again. There is a cache of results by hash, so a block that moved or a note shown again is coloured
+  without the queue. Results are written at `RunLoopIdle.afterMeasurementsOrder` for at most 8 ms at a time (a block of
+  thousands of tokens over several turns), so no signpost interval includes them, and an edit inside a block that is
+  being written ends that work (`textDidEdit`). `MarkupStyler.resetAttributes` keeps the foreground colours (and the
+  opening mark) of the paragraphs of a block that stays a block, so the line being typed does not flash to the text colour.
+- **Typing attributes carry the block's attributes out of it.** The characters typed next take the attributes before the
+  caret, so the empty line under a closing fence would be 6 pt high. `normalizeTypingAttributes` puts the note's own back
+  when the caret leaves a block.
+- **Adding a fixture means three more places.** `FixtureContent.make`, the `Fixture` case, and ScratchCore's
+  `LaunchOptionsTests.parsesEveryFixtureName` (which lists every raw value), and then the launch argument table above and
+  `make run`. A core test that lists the cases fails the Linux job and, through `make core-test` on the Mac, the whole
+  macOS job before any app test runs.

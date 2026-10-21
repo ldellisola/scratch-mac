@@ -1,4 +1,5 @@
 import AppKit
+import ScratchCode
 
 extension NSAttributedString.Key {
     /// What a marker character is for: the value is a `MarkerRole`'s raw value. The characters of a bold run's `**` and
@@ -11,6 +12,12 @@ extension NSAttributedString.Key {
     /// `.link` with a plain click and changes the cursor over it, and Scratch opens a link only with ⌘-click, so that a
     /// click that places the caret never opens a browser (spec §6.4).
     nonisolated static let scratchLink = NSAttributedString.Key("io.github.ldellisola.Scratch.link")
+
+    /// What a paragraph of a fenced code block is: a `CodeBlockMark`, on the whole paragraph (its line break included),
+    /// for the lines of the block and for both of its fence lines. `MarkupLayoutManager` reads it to draw the tinted
+    /// block behind the lines and the language label at its top right, and `CodeBlockStyler.language(ofBlockAt:)` reads
+    /// the language off the one on the opening fence line. Only `MarkupStyler` and `CodeBlockStyler` set it.
+    nonisolated static let scratchCodeBlock = NSAttributedString.Key("io.github.ldellisola.Scratch.codeBlock")
 }
 
 /// The roles a marker character can have (`NSAttributedString.Key.scratchMarker`).
@@ -25,6 +32,94 @@ nonisolated enum MarkerRole: String, Sendable {
     case checkboxOpen
     /// The `[x]` of a ticked checkbox: transparent, with a ticked box drawn over it (plan 3, task 4).
     case checkboxChecked
+    /// The characters of a fence line of a code block (the three backticks and the language name) while the caret is
+    /// away: no glyph, no width, so that the line is the 6 pt of padding that its paragraph style makes of it (plan 4,
+    /// task 5). The line break of the line has no role. While the caret or selection touches the line its characters
+    /// are `revealed`.
+    case fence
+}
+
+/// Which line of a fenced block a paragraph is (`CodeBlockMark`).
+nonisolated enum CodeBlockPart: Int, Sendable {
+    /// The line with the opening fence.
+    case opening
+    /// A line of code between the fences.
+    case body
+    /// The line with the closing fence.
+    case closing
+}
+
+/// The value of `NSAttributedString.Key.scratchCodeBlock`: where the paragraph is in its block, and, on the opening
+/// fence line, which language the block is and what its label says. Immutable, and equal to another mark with the same
+/// values, so that the attribute runs of the lines of a block are one run.
+///
+/// The label state is only on the mark of the opening fence line, so that a keystroke in a line of code never has to
+/// know it, and the label does not flicker while the new result is on its way (`MarkupStyler` keeps a detected label
+/// when it styles the fence line again).
+nonisolated final class CodeBlockMark: NSObject, @unchecked Sendable {
+    let part: CodeBlockPart
+    /// The language of the block: the one the fence names, or the one detected from the code. Nil for a name Scratch
+    /// does not know (`ruby`), and until the detection of an unnamed fence has a language.
+    let language: CodeLanguage?
+    /// True when the language was detected, which is when the fence has no name: the label is shown in italics.
+    let isDetected: Bool
+    /// What the label says: the language's label, or an unknown fence name as written. Empty when there is none.
+    let name: String
+
+    init(part: CodeBlockPart, language: CodeLanguage? = nil, isDetected: Bool = false, name: String = "") {
+        self.part = part
+        self.language = language
+        self.isDetected = isDetected
+        self.name = name
+        super.init()
+    }
+
+    /// The mark of a line of code and of a closing fence line: they have no label.
+    static let body = CodeBlockMark(part: .body)
+    static let closing = CodeBlockMark(part: .closing)
+
+    override func isEqual(_ object: Any?) -> Bool {
+        guard let other = object as? CodeBlockMark else { return false }
+        return part == other.part && language == other.language && isDetected == other.isDetected && name == other.name
+    }
+
+    override var hash: Int {
+        var hasher = Hasher()
+        hasher.combine(part)
+        hasher.combine(language)
+        hasher.combine(isDetected)
+        hasher.combine(name)
+        return hasher.finalize()
+    }
+}
+
+/// The measures of a code block, in points (plan 4 "Blocks"). The paragraph styles, the layout manager and the tests
+/// all read them from here.
+nonisolated enum CodeBlockMetrics {
+    /// The space between the edge of the tinted block and its lines, on each side.
+    static let inset: CGFloat = 10
+    /// The height of a hidden fence line: the padding at the top and the bottom of the block.
+    static let fenceHeight: CGFloat = 6
+    /// The radius of the block's corners.
+    static let cornerRadius: CGFloat = 6
+    /// How much smaller than the note font the label is.
+    static let labelSizeReduction: CGFloat = 2
+    /// The space between the top of the block and the top of the label.
+    static let labelTopOffset: CGFloat = 2
+    /// How far the label of a detected language leans (`NSAttributedString.Key.obliqueness`): italics.
+    static let labelObliqueness: CGFloat = 0.2
+}
+
+/// The colours of a code block that the layout manager draws, which is not on the main actor.
+nonisolated enum CodeBlockColors {
+    /// The tint behind the lines of a block: the `CodeBackground` asset, black at 6% in light mode and white at 10% in
+    /// dark mode, as behind inline code.
+    static var background: NSColor {
+        NSColor(named: "CodeBackground") ?? NSColor.labelColor.withAlphaComponent(0.06)
+    }
+
+    /// The colour of the language label.
+    static var label: NSColor { NSColor.secondaryLabelColor }
 }
 
 /// The colours of inline code, from the asset catalog (`CodeText` and `CodeBackground`, each with a light and a dark

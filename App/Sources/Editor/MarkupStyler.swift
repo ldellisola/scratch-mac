@@ -1,4 +1,5 @@
 import AppKit
+import ScratchCode
 import ScratchCore
 
 /// Renders the markers of a note (spec §6.4): bullets, checkboxes, bold, inline code and links. It only sets
@@ -16,6 +17,12 @@ import ScratchCore
 /// - **Markers are hidden unless the caret is at them.** The `**` of a closed bold run get the role `hidden`, which
 ///   `MarkupLayoutManager` turns into null glyphs. While the caret or selection touches the run (its edges included)
 ///   they are `revealed` and show dimmed, so that Backspace never deletes a character the owner cannot see.
+/// - **A fenced block is a block.** Its fence lines are hidden (null glyphs, and a paragraph style that makes the line 6 pt
+///   high) unless the caret or selection touches them, its lines are indented, and every paragraph carries a
+///   `CodeBlockMark` that `MarkupLayoutManager` draws the tint and the label from. The colours of the code are not
+///   this class's: `CodeBlockStyler` highlights each block on a background queue and applies the result when the
+///   block's text is still the text that was highlighted. A keystroke in a block keeps the colours of its paragraph
+///   until the new result replaces them (`resetAttributes`).
 ///
 /// Styling never registers undo: attribute changes made to the text storage directly are not undo steps.
 @MainActor
@@ -54,6 +61,12 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     private var isLoading = false
     /// True while the styler itself edits the text storage, so that none of its own edits is taken for the owner's.
     private var isApplying = false
+    /// Ranges in which the code blocks have to be looked at again once the text has been scanned for fences: the
+    /// paragraphs of a big paste, whose blocks are found by a chunk (`runChunk`).
+    private var blockProbes: [NSRange] = []
+    /// What the last edit moved into or out of a block, outside of the paragraphs it edited: the layout manager makes the
+    /// glyphs of these again when the edit is over (`editDidFinish`), which cannot be done from inside it.
+    private var invalidationAfterEdit: NSRange?
 
     /// True when every paragraph of the text has been styled. False while a note is still being styled in chunks.
     private(set) var isFullyStyled = true
@@ -129,6 +142,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         storage.endEditing()
         isApplying = false
         if let changed = result.changed { invalidate(changed) }
+        // The blocks in what was just styled are coloured first: on the queue, and in the next turns.
+        requestBlocks(intersecting: [NSRange(location: start, length: end - start)], in: storage)
 
         // After what is on screen: the text below it, then the text above it.
         pending = [
@@ -152,6 +167,17 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     func intersectsCodeBlock(_ range: NSRange) -> Bool {
         codeBlocks.intersects(range)
     }
+
+    /// The block that holds `location`, from the start of its opening fence line to the end of its closing one, or nil.
+    func codeBlock(containing location: Int) -> CodeBlockIndex.Block? {
+        let blocks = codeBlocks.blocks
+        let index = Self.firstBlockIndex(endingAtOrAfter: location, in: blocks)
+        guard index < blocks.count, blocks[index].range.location <= location else { return nil }
+        return blocks[index]
+    }
+
+    /// Every block of the note, in order (`CodeBlockStyler` looks for the blocks that a result is for).
+    var codeBlockList: [CodeBlockIndex.Block] { codeBlocks.blocks }
 
     /// The `[?]` of the checkbox that the character at `characterIndex` belongs to, or nil when it is none (the space
     /// after a box and the text of the item are not).
@@ -191,8 +217,10 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             guard !looked.contains(paragraphs) else { continue }
             looked.append(paragraphs)
             changed = Self.union(changed, refreshMarkers(in: paragraphs, text: text, storage: storage))
+            changed = Self.union(changed, refreshFenceLines(in: paragraphs, text: text, storage: storage))
         }
         if let changed { invalidate(changed) }
+        normalizeTypingAttributes()
     }
 
     /// True when `range` has a position in common with the selection, the positions at its two ends included.
@@ -240,6 +268,52 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         return changed
     }
 
+    /// Shows the fence lines in `paragraphs` that the selection touches and hides the others, and returns the range of the
+    /// paragraphs it changed. A hidden fence line is null glyphs in a line of 6 pt; a shown one is in full, in
+    /// `tertiaryLabelColor`, in the paragraph style of the lines of code.
+    private func refreshFenceLines(in paragraphs: NSRange, text: NSString, storage: NSTextStorage) -> NSRange? {
+        let blocks = codeBlocks.blocks
+        guard !blocks.isEmpty else { return nil }
+        var changes: [(line: NSRange, paragraph: NSRange, role: MarkerRole)] = []
+        var index = Self.firstBlockIndex(endingAtOrAfter: paragraphs.location, in: blocks)
+        while index < blocks.count, blocks[index].range.location < NSMaxRange(paragraphs) {
+            let block = blocks[index]
+            let lines = [
+                NSRange(location: block.range.location, length: block.openingLineEnd - block.range.location),
+                NSRange(location: block.closingLineStart, length: NSMaxRange(block.range) - block.closingLineStart),
+            ]
+            for line in lines where NSIntersectionRange(line, paragraphs).length > 0 {
+                let role: MarkerRole = touchesSelection(line) ? .revealed : .fence
+                guard currentRole(at: line.location, in: storage) != role else { continue }
+                changes.append((line, text.paragraphRange(for: NSRange(location: line.location, length: 0)), role))
+            }
+            index += 1
+        }
+        guard !changes.isEmpty else { return nil }
+
+        isApplying = true
+        storage.beginEditing()
+        var changed: NSRange?
+        for change in changes {
+            storage.addAttributes(appearance.markerAttributes(change.role), range: change.line)
+            let style = change.role == .revealed ? MarkupAppearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
+            storage.addAttribute(.paragraphStyle, value: style, range: change.paragraph)
+            changed = Self.union(changed, change.paragraph)
+        }
+        storage.endEditing()
+        isApplying = false
+        return changed
+    }
+
+    /// What is typed next takes the attributes of the text before the caret, which right after a block are the block's:
+    /// the empty line under the closing fence would be 6 pt high. Outside a block the note's own are put back.
+    private func normalizeTypingAttributes() {
+        guard let textView, selection.length == 0, !textView.hasMarkedText(), !codeBlocks.contains(selection.location),
+            textView.typingAttributes[.scratchCodeBlock] != nil
+        else { return }
+        textView.typingAttributes = appearance.base
+    }
+
     private func currentRole(at location: Int, in storage: NSTextStorage) -> MarkerRole? {
         (storage.attribute(.scratchMarker, at: location, effectiveRange: nil) as? String).flatMap(
             MarkerRole.init(rawValue:))
@@ -260,10 +334,13 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     }
 
     private func storageDidEdit(_ edit: EditMapping, in storage: NSTextStorage) {
+        codeBlockStyler.textDidEdit(edit)
         // Carry what was known of the old text over the edit.
         let touchesFence = codeBlocks.touchesFenceLine(edit.replaced)
         codeBlocks.apply(edit)
+        let blocksBeforeRescan = codeBlocks
         pending = pending.map { edit.mapped($0) }.filter { $0.length > 0 }
+        blockProbes = blockProbes.map { edit.mapped($0) }.filter { $0.length > 0 }
 
         let text = storage.string as NSString
         let editedRange = Self.clamp(
@@ -277,6 +354,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             storage.setAttributes(appearance.base, range: paragraphs)
             isApplying = false
             pending.insert(paragraphs, at: 0)
+            blockProbes.append(paragraphs)
             isFullyStyled = false
             scheduleChunk()
             return
@@ -288,12 +366,65 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
 
         isApplying = true
         storage.beginEditing()
-        if paragraphs.length > 0 { storage.setAttributes(appearance.base, range: paragraphs) }
+        resetAttributes(of: paragraphs, batch: batch, keepingCodeOf: blocksBeforeRescan, in: storage)
         _ = styleBatch(batch, in: storage)
         // The paragraphs that moved into or out of a block, other than the ones just styled.
-        _ = restyle(moved.filter { !Self.contains(paragraphs, $0) }, text: text, storage: storage)
+        let movedChanged = restyle(moved.filter { !Self.contains(paragraphs, $0) }, text: text, storage: storage)
         storage.endEditing()
         isApplying = false
+        invalidationAfterEdit = Self.union(invalidationAfterEdit, movedChanged)
+        // The blocks that the edit is in, or that it changed, are coloured again for the text they have now.
+        requestBlocks(intersecting: [paragraphs] + moved, in: storage)
+    }
+
+    /// Called when the edit that `storageDidEdit` styled is over (`NoteTextView.didChangeText`), which is when the layout
+    /// manager knows about it and can be told to generate the glyphs of what moved into or out of a block again: the
+    /// role of a fence line decides whether it has glyphs, and the line did not change.
+    func editDidFinish() {
+        guard let range = invalidationAfterEdit else { return }
+        invalidationAfterEdit = nil
+        invalidate(range)
+    }
+
+    /// Gives the paragraphs that an edit touched the base attributes again, so that what the styler adds comes out as if
+    /// the paragraph had never been styled. The lines of a block that was a block before the edit and still is one keep
+    /// their foreground colours, which are the token colours until `CodeBlockStyler` has the new ones, and the mark of
+    /// the opening fence line, which holds a label that was detected (`openingMark`).
+    private func resetAttributes(
+        of paragraphs: NSRange, batch: ParagraphBatch, keepingCodeOf before: CodeBlockIndex, in storage: NSTextStorage
+    ) {
+        guard paragraphs.length > 0 else { return }
+        var keep: [NSRange] = []
+        if !before.blocks.isEmpty, !codeBlocks.blocks.isEmpty {
+            for paragraph in batch.paragraphs
+            where before.covers(paragraphStart: paragraph.location)
+                && codeBlocks.covers(paragraphStart: paragraph.location)
+            {
+                if let last = keep.last, NSMaxRange(last) == paragraph.location {
+                    keep[keep.count - 1] = NSRange(location: last.location, length: last.length + paragraph.length)
+                } else {
+                    keep.append(paragraph)
+                }
+            }
+        }
+        var cursor = paragraphs.location
+        for run in keep {
+            if run.location > cursor {
+                storage.setAttributes(appearance.base, range: NSRange(location: cursor, length: run.location - cursor))
+            }
+            for key in [
+                NSAttributedString.Key.scratchMarker, .scratchLink, .underlineStyle, .strikethroughStyle,
+                .backgroundColor,
+            ] {
+                storage.removeAttribute(key, range: run)
+            }
+            storage.addAttribute(.font, value: appearance.regularFont, range: run)
+            cursor = NSMaxRange(run)
+        }
+        if cursor < NSMaxRange(paragraphs) {
+            storage.setAttributes(
+                appearance.base, range: NSRange(location: cursor, length: NSMaxRange(paragraphs) - cursor))
+        }
     }
 
     // MARK: Code blocks
@@ -314,7 +445,67 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         let old = codeBlocks
         codeBlocks = scanCodeBlocks(in: storage)
         needsFenceRescan = false
-        return codeBlocks.changedRanges(comparedTo: old)
+        // A paragraph that is in a block before and after can still have been another line of it (the closing fence of one
+        // block is the opening fence of the next when a fence in between goes): a block that is not as it was is styled
+        // again whole.
+        return codeBlocks.changedRanges(comparedTo: old) + Self.ranges(of: codeBlocks.blocks, notIn: old.blocks)
+    }
+
+    /// The ranges of the blocks of `new` that are not in `old` exactly (both are sorted and do not overlap).
+    private static func ranges(of new: [CodeBlockIndex.Block], notIn old: [CodeBlockIndex.Block]) -> [NSRange] {
+        var result: [NSRange] = []
+        var index = 0
+        for block in new {
+            while index < old.count, old[index].range.location < block.range.location { index += 1 }
+            if index < old.count, old[index] == block { continue }
+            result.append(block.range)
+        }
+        return result
+    }
+
+    // MARK: Asking CodeBlockStyler
+
+    /// The index of the first of the sorted `blocks` that ends at or after `location`, or `blocks.count`.
+    private static func firstBlockIndex(endingAtOrAfter location: Int, in blocks: [CodeBlockIndex.Block]) -> Int {
+        var low = 0
+        var high = blocks.count
+        while low < high {
+            let middle = (low + high) / 2
+            if NSMaxRange(blocks[middle].range) < location { low = middle + 1 } else { high = middle }
+        }
+        return low
+    }
+
+    /// Asks `CodeBlockStyler` to colour the blocks that share a character with one of `ranges`.
+    private func requestBlocks(intersecting ranges: [NSRange], in storage: NSTextStorage) {
+        let blocks = codeBlocks.blocks
+        guard !blocks.isEmpty else { return }
+        var found: [NSRange] = []
+        for range in ranges {
+            let end = max(NSMaxRange(range), range.location + 1)
+            var index = Self.firstBlockIndex(endingAtOrAfter: range.location, in: blocks)
+            while index < blocks.count, blocks[index].range.location < end {
+                let block = blocks[index].range
+                if NSMaxRange(block) > range.location, !found.contains(block) { found.append(block) }
+                index += 1
+            }
+        }
+        if !found.isEmpty { codeBlockStyler.blocksDidChange(found, in: storage) }
+    }
+
+    /// Asks `CodeBlockStyler` to colour the blocks that start in one of `ranges` (the paragraphs that a chunk styled).
+    private func requestBlocks(startingIn ranges: [NSRange], in storage: NSTextStorage) {
+        let blocks = codeBlocks.blocks
+        guard !blocks.isEmpty else { return }
+        var found: [NSRange] = []
+        for range in ranges {
+            var index = Self.firstBlockIndex(endingAtOrAfter: range.location, in: blocks)
+            while index < blocks.count, blocks[index].range.location < NSMaxRange(range) {
+                if blocks[index].range.location >= range.location { found.append(blocks[index].range) }
+                index += 1
+            }
+        }
+        if !found.isEmpty { codeBlockStyler.blocksDidChange(found, in: storage) }
     }
 
     // MARK: Styling paragraphs
@@ -342,18 +533,93 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
 
     private func styleBatch(_ batch: ParagraphBatch, in storage: NSTextStorage) -> StyleResult {
         var result = StyleResult()
+        // The lines of code of a block that follow one another are given their attributes in one call.
+        var codeRun: NSRange?
+        func flushCodeRun() {
+            guard let run = codeRun else { return }
+            storage.addAttributes(
+                [.paragraphStyle: MarkupAppearance.codeBodyStyle, .scratchCodeBlock: CodeBlockMark.body], range: run)
+            result.changed = Self.union(result.changed, run)
+            codeRun = nil
+        }
         for index in batch.paragraphs.indices {
             let paragraph = batch.paragraphs[index]
             let line = batch.line(at: index)
-            guard !codeBlocks.covers(paragraphStart: paragraph.location), MarkupParser.mayHaveSpans(in: line) else {
+            if let block = block(coveringParagraphStart: paragraph.location) {
+                let part = Self.part(ofParagraphAt: paragraph.location, in: block)
+                if part == .body {
+                    if let run = codeRun, NSMaxRange(run) == paragraph.location {
+                        codeRun = NSRange(location: run.location, length: run.length + paragraph.length)
+                    } else {
+                        flushCodeRun()
+                        codeRun = paragraph
+                    }
+                } else {
+                    flushCodeRun()
+                    styleFenceLine(of: paragraph, part: part, line: line, in: storage)
+                    result.changed = Self.union(result.changed, paragraph)
+                }
                 continue
             }
+            flushCodeRun()
+            guard MarkupParser.mayHaveSpans(in: line) else { continue }
             let spans = MarkupParser.parseLine(String(decoding: line, as: UTF16.self), at: paragraph.location)
             guard !spans.isEmpty else { continue }
             apply(spans, toParagraph: paragraph, in: storage)
             result.changed = Self.union(result.changed, paragraph)
         }
+        flushCodeRun()
         return result
+    }
+
+    // MARK: Styling code blocks
+
+    /// The block that the paragraph starting at `location` is in, or nil: the same as `CodeBlockIndex.covers`.
+    private func block(coveringParagraphStart location: Int) -> CodeBlockIndex.Block? {
+        let blocks = codeBlocks.blocks
+        let index = Self.firstBlockIndex(endingAtOrAfter: location + 1, in: blocks)
+        guard index < blocks.count, blocks[index].range.location <= location else { return nil }
+        return blocks[index]
+    }
+
+    /// Which line of `block` the paragraph that starts at `location` is.
+    private static func part(ofParagraphAt location: Int, in block: CodeBlockIndex.Block) -> CodeBlockPart {
+        if location == block.range.location { return .opening }
+        if location == block.closingLineStart { return .closing }
+        return .body
+    }
+
+    /// Styles a fence line of a block: its characters are hidden, or shown while the selection touches them, and its
+    /// paragraph is 6 pt high when they are hidden. The opening one carries the label of the block.
+    private func styleFenceLine(
+        of paragraph: NSRange, part: CodeBlockPart, line: ArraySlice<UInt16>, in storage: NSTextStorage
+    ) {
+        let content = NSRange(location: paragraph.location, length: line.count)
+        let isShown = touchesSelection(content)
+        storage.addAttributes(appearance.markerAttributes(isShown ? .revealed : .fence), range: content)
+        let style = isShown ? MarkupAppearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
+        storage.addAttribute(.paragraphStyle, value: style, range: paragraph)
+        let mark = part == .opening ? openingMark(of: line, at: paragraph, in: storage) : CodeBlockMark.closing
+        storage.addAttribute(.scratchCodeBlock, value: mark, range: paragraph)
+    }
+
+    /// The mark of an opening fence line. A fence that names its language says it at once. One that does not has the
+    /// language that was detected last, until a new detection says otherwise, so that the label does not go away while a
+    /// result is on its way; before the first one it has no label.
+    private func openingMark(of line: ArraySlice<UInt16>, at paragraph: NSRange, in storage: NSTextStorage)
+        -> CodeBlockMark
+    {
+        let info = CodeBlockParts.info(ofFenceLine: String(decoding: line, as: UTF16.self))
+        if !info.isEmpty {
+            let language = CodeLanguage.fromFence(info)
+            return CodeBlockMark(part: .opening, language: language, isDetected: false, name: language?.label ?? info)
+        }
+        if let previous = storage.attribute(.scratchCodeBlock, at: paragraph.location, effectiveRange: nil)
+            as? CodeBlockMark, previous.part == .opening, previous.isDetected
+        {
+            return previous
+        }
+        return CodeBlockMark(part: .opening, language: nil, isDetected: true, name: "")
     }
 
     /// Gives the paragraphs of `ranges` the base attributes and styles them: now when they are few, in chunks when
@@ -422,8 +688,10 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
 
     private func cancelJob() {
         pending = []
+        blockProbes = []
         jobGeneration += 1
         isChunkScheduled = false
+        codeBlockStyler.reset()
     }
 
     /// Asks for the next chunk when the main run loop is next about to wait, after the observers that end a signpost
@@ -451,10 +719,11 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         let deadline = ContinuousClock.now + Self.chunkTimeBudget
         var text = storage.string as NSString
         var changed: NSRange?
+        var moved: [NSRange] = []
 
         if needsFenceRescan {
             // After a big paste: which paragraphs moved into or out of a block is known only now.
-            let moved = rescanCodeBlocks(in: storage)
+            moved = rescanCodeBlocks(in: storage)
             isApplying = true
             storage.beginEditing()
             changed = restyle(moved, text: text, storage: storage)
@@ -464,6 +733,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         }
 
         var budget = Self.chunkParagraphs
+        var styled: [NSRange] = []
         isApplying = true
         storage.beginEditing()
         while budget > 0, ContinuousClock.now < deadline, let work = pending.first {
@@ -475,6 +745,9 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             let result = styleParagraphs(
                 from: work.location, upTo: end, maxParagraphs: budget, deadline: deadline, text: text, storage: storage)
             changed = Self.union(changed, result.changed)
+            if result.end > work.location {
+                styled.append(NSRange(location: work.location, length: result.end - work.location))
+            }
             budget -= max(result.count, 1)
             if result.end >= end || result.end <= work.location {
                 pending.removeFirst()
@@ -486,6 +759,12 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         isApplying = false
 
         if let changed { invalidate(changed) }
+        // The blocks that this chunk styled are coloured, and so are those that a big paste changed.
+        requestBlocks(startingIn: styled, in: storage)
+        if !blockProbes.isEmpty || !moved.isEmpty {
+            requestBlocks(intersecting: blockProbes + moved, in: storage)
+            blockProbes = []
+        }
         isFullyStyled = pending.isEmpty
         scheduleChunk()
     }
