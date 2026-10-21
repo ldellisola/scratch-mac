@@ -433,6 +433,42 @@ final class CodeBlockStylerTests: XCTestCase {
         XCTAssertEqual(host.editor.currentText, body)
     }
 
+    func testNothingAboveTheWindowChangesHeightWhenTheRestOfTheNoteIsStyled() {
+        // The position of a note is worked out from the layout of what is above it, so every block above the window must
+        // have its final look (6 pt fence lines, indented lines) before that layout: on the CI the line at the top of a
+        // note shown again was three lines off, because the chunks that styled the blocks above ran after the scroll
+        // position was set.
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        var lines: [String] = []
+        for block in 0..<60 {
+            lines += ["prose \(block) a", "prose \(block) b", "```swift"]
+            lines += (0..<6).map { "let value\($0) = \($0)" }
+            lines.append("```")
+        }
+        let body = lines.joined(separator: "\n")
+        let anchor = (body as NSString).range(of: "prose 55 a").location
+        let note = makeNote(body)
+        let tab = TabState(noteID: note.id, selection: 0, scrollY: 0, scrollAnchor: anchor)
+
+        host.editor.show(note, tab: tab, undoManager: UndoManager(), isReadOnly: false)
+        host.editor.view.layoutSubtreeIfNeeded()
+        let layoutManager = host.editor.textView.layoutManager!
+        func top(of index: Int) -> CGFloat {
+            layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: index + 1))
+            let glyph = layoutManager.glyphIndexForCharacter(at: index)
+            return layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil).minY
+        }
+        let before = top(of: anchor)
+        XCTAssertFalse(host.editor.textView.styler.isFullyStyled, "the rest of the note is styled in chunks")
+
+        spin(until: { host.editor.textView.styler.isFullyStyled })
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: (body as NSString).length))
+
+        XCTAssertTrue(host.editor.textView.styler.isFullyStyled)
+        XCTAssertEqual(top(of: anchor), before, accuracy: 0.5, "the line at the top has not moved")
+    }
+
     // MARK: Several blocks and several notes
 
     func testTwoBlocksWithTheSameCodeAreBothColoured() {

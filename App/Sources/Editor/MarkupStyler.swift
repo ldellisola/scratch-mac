@@ -143,9 +143,11 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         storage.beginEditing()
         let result = styleParagraphs(
             from: start, upTo: end, maxParagraphs: .max, deadline: nil, text: text, storage: storage)
+        // The look of the blocks above the window too, before anything is laid out (see `styleBlocks`).
+        let blocksChanged = styleBlocks(startingBefore: end, text: text, storage: storage)
         storage.endEditing()
         isApplying = false
-        if let changed = result.changed { invalidate(changed) }
+        if let changed = Self.union(result.changed, blocksChanged) { invalidate(changed) }
         // The blocks in what was just styled are coloured first: on the queue, and in the next turns.
         requestBlocks(intersecting: [NSRange(location: start, length: end - start)], in: storage)
 
@@ -549,8 +551,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             guard let run = codeRun else { return }
             // Not in `result.changed`: nothing about the glyphs of a line of code changes, and the attributes' own edit
             // lays the paragraphs out again.
-            storage.addAttributes(
-                [.paragraphStyle: MarkupAppearance.codeBodyStyle, .scratchCodeBlock: CodeBlockMark.body], range: run)
+            styleCodeBody(run, in: storage)
             codeRun = nil
         }
         for index in batch.paragraphs.indices {
@@ -567,8 +568,11 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
                     }
                 } else {
                     flushCodeRun()
-                    styleFenceLine(of: paragraph, part: part, line: line, in: storage)
-                    result.changed = Self.union(result.changed, paragraph)
+                    let info =
+                        part == .opening ? CodeBlockParts.info(ofFenceLine: String(decoding: line, as: UTF16.self)) : ""
+                    if styleFenceLine(of: paragraph, part: part, contentLength: line.count, info: info, in: storage) {
+                        result.changed = Self.union(result.changed, paragraph)
+                    }
                 }
                 continue
             }
@@ -600,27 +604,76 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         return .body
     }
 
+    /// Gives every block that starts before `limit` its look at once: its fence lines and the lines of code. A line's
+    /// height depends on it (a fence line is 6 pt high, a line of code is indented and wraps sooner), and where a note is
+    /// scrolled to is worked out from the layout of what is above that: a block that was styled after the scroll was set
+    /// moved the note under the reader (the line at the top of a note shown again was three lines off, on the CI). The
+    /// styling by paragraph (`styleBatch`) does not wait for the chunks above the window; this does one pass for each
+    /// block, whatever its size, and what it did is not done again. Returns what it changed.
+    private func styleBlocks(startingBefore limit: Int, text: NSString, storage: NSTextStorage) -> NSRange? {
+        var changed: NSRange?
+        for block in codeBlocks.blocks {
+            guard block.range.location < limit else { break }
+            let opening = text.paragraphRange(for: NSRange(location: block.range.location, length: 0))
+            let closing = text.paragraphRange(for: NSRange(location: block.closingLineStart, length: 0))
+            let openingLength = block.openingLineEnd - block.range.location
+            let info = CodeBlockParts.info(
+                ofFenceLine: text.substring(with: NSRange(location: block.range.location, length: openingLength)))
+            if styleFenceLine(of: opening, part: .opening, contentLength: openingLength, info: info, in: storage) {
+                changed = Self.union(changed, opening)
+            }
+            styleCodeBody(
+                NSRange(location: NSMaxRange(opening), length: closing.location - NSMaxRange(opening)), in: storage)
+            let closingLength = NSMaxRange(block.range) - block.closingLineStart
+            if styleFenceLine(of: closing, part: .closing, contentLength: closingLength, info: "", in: storage) {
+                changed = Self.union(changed, closing)
+            }
+        }
+        return changed
+    }
+
+    /// Gives the lines of code in `range` (whole paragraphs, between two fence lines) their indent and their mark, unless
+    /// the first of them has both. Returns true when it wrote them.
+    @discardableResult
+    private func styleCodeBody(_ range: NSRange, in storage: NSTextStorage) -> Bool {
+        guard range.length > 0 else { return false }
+        let style = storage.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle
+        let mark = storage.attribute(.scratchCodeBlock, at: range.location, effectiveRange: nil) as? CodeBlockMark
+        if style == MarkupAppearance.codeBodyStyle, mark == CodeBlockMark.body { return false }
+        storage.addAttributes(
+            [.paragraphStyle: MarkupAppearance.codeBodyStyle, .scratchCodeBlock: CodeBlockMark.body], range: range)
+        return true
+    }
+
     /// Styles a fence line of a block: its characters are hidden, or shown while the selection touches them, and its
-    /// paragraph is 6 pt high when they are hidden. The opening one carries the label of the block.
+    /// paragraph is 6 pt high when they are hidden. The opening one carries the label of the block, and `info` is the name
+    /// on its fence. Returns false, and writes nothing, when the line is as it should be already.
+    @discardableResult
     private func styleFenceLine(
-        of paragraph: NSRange, part: CodeBlockPart, line: ArraySlice<UInt16>, in storage: NSTextStorage
-    ) {
-        let content = NSRange(location: paragraph.location, length: line.count)
+        of paragraph: NSRange, part: CodeBlockPart, contentLength: Int, info: String, in storage: NSTextStorage
+    ) -> Bool {
+        let content = NSRange(location: paragraph.location, length: contentLength)
         let isShown = touchesSelection(content)
-        storage.addAttributes(appearance.markerAttributes(isShown ? .revealed : .fence), range: content)
+        let role: MarkerRole = isShown ? .revealed : .fence
         let style = isShown ? MarkupAppearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
+        let mark = part == .opening ? openingMark(info: info, at: paragraph, in: storage) : CodeBlockMark.closing
+        if currentRole(at: paragraph.location, in: storage) == role,
+            storage.attribute(.paragraphStyle, at: paragraph.location, effectiveRange: nil) as? NSParagraphStyle
+                == style,
+            storage.attribute(.scratchCodeBlock, at: paragraph.location, effectiveRange: nil) as? CodeBlockMark == mark
+        {
+            return false
+        }
+        storage.addAttributes(appearance.markerAttributes(role), range: content)
         storage.addAttribute(.paragraphStyle, value: style, range: paragraph)
-        let mark = part == .opening ? openingMark(of: line, at: paragraph, in: storage) : CodeBlockMark.closing
         storage.addAttribute(.scratchCodeBlock, value: mark, range: paragraph)
+        return true
     }
 
     /// The mark of an opening fence line. A fence that names its language says it at once. One that does not has the
     /// language that was detected last, until a new detection says otherwise, so that the label does not go away while a
     /// result is on its way; before the first one it has no label.
-    private func openingMark(of line: ArraySlice<UInt16>, at paragraph: NSRange, in storage: NSTextStorage)
-        -> CodeBlockMark
-    {
-        let info = CodeBlockParts.info(ofFenceLine: String(decoding: line, as: UTF16.self))
+    private func openingMark(info: String, at paragraph: NSRange, in storage: NSTextStorage) -> CodeBlockMark {
         if !info.isEmpty {
             let language = CodeLanguage.fromFence(info)
             return CodeBlockMark(part: .opening, language: language, isDetected: false, name: language?.label ?? info)
