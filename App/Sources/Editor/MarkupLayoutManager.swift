@@ -58,7 +58,15 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
             // A line of null glyphs only has no height of its own: the typesetter does not look at its paragraph style,
             // so a closing fence that ends the note (no line break after it) was a full line. Its last character keeps its
             // glyph, which is as clear as the other characters of the line, and the line is as high as the style says.
-            if isFence, character == storage.length - 1 { continue }
+            if isFence {
+                switch Self.diagnosticsKeep {
+                case .noteEnd: if character == storage.length - 1 { continue }
+                case .first: if character == runStart { continue }
+                case .last: if character == runEnd - 1 { continue }
+                case .all: continue
+                case .never: break
+                }
+            }
             if modified == nil { modified = Array(UnsafeBufferPointer(start: props, count: glyphRange.length)) }
             modified?[index] = .null
         }
@@ -73,6 +81,8 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
     /// Draws the tinted blocks and their labels behind the text, and then the rest of what is behind it (the tint of
     /// inline code and the selection). AppKit calls this on the main thread, for the glyphs of the area it redraws.
     nonisolated(unsafe) static var diagnosticsDrawsCodeBlocks = true
+    enum DiagnosticsKeep { case noteEnd, first, last, all, never }
+    nonisolated(unsafe) static var diagnosticsKeep = DiagnosticsKeep.noteEnd
     override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
         if Self.diagnosticsDrawsCodeBlocks { drawCodeBlocks(forGlyphRange: glyphsToShow, at: origin) }
         super.drawBackground(forGlyphRange: glyphsToShow, at: origin)

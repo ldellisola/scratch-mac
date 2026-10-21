@@ -60,107 +60,55 @@ final class PerfDiagnosticsTests: XCTestCase {
         return String(format: "median %.2f max %.2f", samples[samples.count / 2], samples.last ?? 0)
     }
 
-    func testReport() {
+    /// The heights of the fence lines of a small note for each way of keeping glyphs of a fence line.
+    func testFenceHeights() {
         var report: [String] = []
-        let editor = EditorViewController()
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600), styleMask: [.titled, .resizable],
-            backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        window.contentViewController = editor
-        window.setContentSize(NSSize(width: 800, height: 600))
-        defer { withExtendedLifetime(window) {} }
-        let text = hugeText()
-        let note = Note(id: NoteID.make(), title: "", body: text, createdAt: Date(), modifiedAt: Date())
-        let tab = TabState(noteID: note.id, selection: 0, scrollY: 0, scrollAnchor: nil)
-        let showMs = milliseconds { editor.show(note, tab: tab, undoManager: UndoManager(), isReadOnly: false) }
-        editor.view.layoutSubtreeIfNeeded()
-        report.append(String(format: "show %.1f ms", showMs))
-
-        let textView = editor.textView
-        let styler = textView.styler.codeBlockStyler
-        let started = DispatchTime.now().uptimeNanoseconds
-        spin(until: { styler.pendingHighlights == 0 && textView.styler.isFullyStyled }, seconds: 60)
-        report.append(
-            String(
-                format: "styled and coloured after %.0f ms, pending %d",
-                Double(DispatchTime.now().uptimeNanoseconds - started) / 1_000_000,
-                styler.pendingHighlights))
-        let layoutManager = textView.layoutManager!
-        let whole = NSRange(location: 0, length: (text as NSString).length)
-        report.append(
-            String(
-                format: "ensureLayout of the whole note: %.0f ms",
-                milliseconds { layoutManager.ensureLayout(forCharacterRange: whole) }))
-
-        // A strip of 60 pt at the top (prose), one over the first block, and one in the middle (prose).
+        let text = "- a\n**b**\n\n```bash\n# note\nls -l\n```"
         let nsText = text as NSString
-        func rect(ofCharacter index: Int) -> NSRect {
-            let glyph = layoutManager.glyphIndexForCharacter(at: index)
-            let fragment = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
-            return NSRect(
-                x: 0, y: fragment.minY + textView.textContainerOrigin.y, width: textView.bounds.width, height: 60)
-        }
-        let proseRect = rect(ofCharacter: 100)
-        let codeRect = rect(ofCharacter: nsText.range(of: "func block1Step1").location)
-        let middleRect = rect(ofCharacter: nsText.range(of: "Paragraph 31, line 3:").location)
-        func draw(_ strip: NSRect) -> String {
-            average(30) {
-                if let rep = textView.bitmapImageRepForCachingDisplay(in: strip) {
-                    textView.cacheDisplay(in: strip, to: rep)
+        for (name, keep) in [
+            ("noteEnd", MarkupLayoutManager.DiagnosticsKeep.noteEnd), ("first", .first), ("last", .last), ("all", .all),
+            ("never", .never),
+        ] {
+            MarkupLayoutManager.diagnosticsKeep = keep
+            for variant in ["fresh", "afterInvalidate", "narrowFirst"] {
+                let editor = EditorViewController()
+                let window = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 800, height: 600), styleMask: [.titled, .resizable],
+                    backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.contentViewController = editor
+                window.setContentSize(NSSize(width: variant == "narrowFirst" ? 40 : 800, height: 600))
+                let note = Note(id: NoteID.make(), title: "", body: text, createdAt: Date(), modifiedAt: Date())
+                let tab = TabState(noteID: note.id, selection: 0, scrollY: 0, scrollAnchor: nil)
+                editor.show(note, tab: tab, undoManager: UndoManager(), isReadOnly: false)
+                editor.view.layoutSubtreeIfNeeded()
+                if variant == "narrowFirst" {
+                    window.setContentSize(NSSize(width: 800, height: 600))
+                    editor.view.layoutSubtreeIfNeeded()
                 }
+                let textView = editor.textView
+                let layoutManager = textView.layoutManager!
+                if variant == "afterInvalidate" {
+                    layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: nsText.length))
+                    layoutManager.invalidateLayout(
+                        forCharacterRange: NSRange(location: 0, length: nsText.length), actualCharacterRange: nil)
+                }
+                layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: nsText.length))
+                func describe(_ index: Int) -> String {
+                    let glyph = layoutManager.glyphIndexForCharacter(at: index)
+                    var range = NSRange()
+                    let rect = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: &range)
+                    return String(
+                        format: "h %.1f y %.1f glyphs %d+%d", rect.height, rect.minY, range.location, range.length)
+                }
+                let blank = nsText.range(of: "\n\n```").location + 1
+                report.append(
+                    "\(name)/\(variant): width \(Int(textView.textContainer?.size.width ?? -1)); blank [\(describe(blank))]; opening [\(describe(nsText.range(of: "```bash").location))]; code [\(describe(nsText.range(of: "# note").location))]; closing [\(describe(nsText.range(of: "```", options: .backwards).location))]"
+                )
+                withExtendedLifetime(window) {}
             }
         }
-        func lookups() -> String {
-            average(20) {
-                for step in 0..<50 {
-                    _ = layoutManager.temporaryAttribute(
-                        .foregroundColor, atCharacterIndex: (step * 13_751) % whole.length, effectiveRange: nil)
-                }
-            }
-        }
-        func typing() -> String {
-            let at = nsText.range(of: "Paragraph 31, line 3:").location + 3
-            textView.setSelectedRange(NSRange(location: at, length: 0))
-            return average(20) { textView.insertText("x", replacementRange: NSRange(location: NSNotFound, length: 0)) }
-        }
-        report.append(
-            "1 coloured, blocks drawn: prose strip \(draw(proseRect)); code strip \(draw(codeRect)); middle \(draw(middleRect))"
-        )
-        report.append("1 temporary attribute lookups (50 per sample): \(lookups())")
-        report.append("1 typing in prose: \(typing())")
-
-        MarkupLayoutManager.diagnosticsDrawsCodeBlocks = false
-        report.append(
-            "2 coloured, blocks NOT drawn: prose strip \(draw(proseRect)); code strip \(draw(codeRect)); middle \(draw(middleRect))"
-        )
-        MarkupLayoutManager.diagnosticsDrawsCodeBlocks = true
-
-        layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: whole)
-        report.append(
-            "3 no temporary attributes, blocks drawn: prose strip \(draw(proseRect)); code strip \(draw(codeRect)); middle \(draw(middleRect))"
-        )
-        report.append("3 temporary attribute lookups (50 per sample): \(lookups())")
-        report.append("3 typing in prose: \(typing())")
-
-        // A few blocks coloured only: 3 blocks' worth of temporary attributes.
-        MarkupLayoutManager.diagnosticsDrawsCodeBlocks = false
-        report.append(
-            "4 no temporary attributes, blocks NOT drawn: prose strip \(draw(proseRect)); code strip \(draw(codeRect)); middle \(draw(middleRect))"
-        )
-        MarkupLayoutManager.diagnosticsDrawsCodeBlocks = true
-
-        let blocks = textView.styler.codeBlockList.map(\.range)
-        let reapply = milliseconds {
-            styler.blocksDidChange(blocks, in: textView.textStorage!)
-            spin(until: { styler.pendingHighlights == 0 }, seconds: 60)
-        }
-        report.append(String(format: "5 colours all %d blocks again (cached results): %.0f ms", blocks.count, reapply))
-        report.append(
-            "5 coloured again: prose strip \(draw(proseRect)); code strip \(draw(codeRect)); middle \(draw(middleRect))"
-        )
-        report.append("5 temporary attribute lookups (50 per sample): \(lookups())")
-        report.append("5 typing in prose: \(typing())")
-        XCTFail("DIAGNOSTICS\n" + report.joined(separator: "\n"))
+        MarkupLayoutManager.diagnosticsKeep = .noteEnd
+        XCTFail("FENCE HEIGHTS\n" + report.joined(separator: "\n"))
     }
 }
