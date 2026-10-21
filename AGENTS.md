@@ -71,11 +71,15 @@ Packages/ScratchCode/             Swift package, no AppKit, builds and tests on 
                                   HighlightToken (UTF-16 ranges), Highlighter (`tokens(in:language:)`, nil over the cap of
                                   5,000 lines or 300,000 units; `errorRate(of:language:)`), CaptureMapping (capture names
                                   to the eight kinds), Grammars (internal: each language's grammar and queries, and the
-                                  compiled-query cache)
-  Sources/ScratchCode/Queries/    `<language>/highlights.scm`, copies of the grammars' queries with their licences; a
-                                  resource bundle, read through `Bundle.module`
+                                  compiled-query cache), QueryInheritance (internal: a `; inherits: <folder>` line at the
+                                  top of a query brings that folder's query in first)
+  Sources/ScratchCode/Queries/    `<folder>/highlights.scm`: the 17 languages' queries, copies of the grammars' with their
+                                  licences and the changes Scratch made (docs/decisions/0007), plus `javascript-jsx`;
+                                  a resource bundle, read through `Bundle.module`
   Sources/GrammarPython/          the Python grammar's generated C, vendored (its README.md says why)
-  Tests/ScratchCodeTests/         Swift Testing, one file per source file
+  Sources/GrammarPowerShell/      the PowerShell grammar's generated C, vendored in the same way
+  Tests/ScratchCodeTests/         Swift Testing, one file per source file, and `Samples/<fence name>.txt`, 15 to 40 lines
+                                  of ordinary code for each of the 17 languages (a test resource)
 App/project.yml                   XcodeGen spec: targets Scratch (app), ScratchAppTests (hosted unit tests),
                                   ScratchUITests, ScratchPerfTests; schemes Scratch and ScratchPerf. The generated
                                   App/Scratch.xcodeproj is never committed.
@@ -194,7 +198,8 @@ Run them from the repository root. `[linux]` means it also runs in the Linux clo
 macOS and runs on GitHub's Macs.
 
 - `make core-test` `[linux]`: build and run the ScratchCore tests, then the ScratchCode tests (the first run fetches
-  tree-sitter and its grammar from GitHub and compiles them).
+  tree-sitter and its 15 grammar packages from GitHub, about 3 minutes with tree-sitter-sql's 150 MB history, and
+  compiles them).
 - `swift test --package-path Packages/ScratchCore --filter <name>` `[linux]`: run matching tests only (the same for
   `Packages/ScratchCode`).
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
@@ -437,8 +442,17 @@ new kind of release file, with no change to the app, ships.
   `src/scanner.c` only when `FileManager.default.fileExists(atPath: "src/scanner.c")`, and SwiftPM evaluates a dependency's
   manifest in the builder's working directory, so linking fails with undefined `*_external_scanner_*` symbols. Such a
   grammar is vendored into `Packages/ScratchCode/Sources/Grammar<Language>/`, compiled with `-w` (Xcode warns about the
-  generated C, and the app builds with no warnings; docs/decisions/0007, which also lists how to add a language). Pin every package in `Package.swift` with `exact:`: the generated Xcode project has no
-  `Package.resolved` of its own.
+  generated C, and the app builds with no warnings; docs/decisions/0007, which also lists how to add a language). Python
+  and PowerShell are vendored. JavaScript, YAML and CSS are pinned to the older tags that list their sources outright,
+  and their queries are from those tags: a query must match the node names of the grammar it runs on. Pin every package
+  in `Package.swift` with `exact:`, because the generated Xcode project has no `Package.resolved` of its own. The one
+  exception is tree-sitter-sql, whose tags have no generated `parser.c`: it is pinned with `revision:` to a commit of its
+  `gh-pages` branch, where the builds of `main` are.
+- **A query that names a node its grammar lacks does not compile, and the language then goes uncoloured.**
+  `QueryCache` turns the error into nil, so only a test notices: `QueryInheritanceTests.everyLanguageHasAGrammarAndItsQueryFiles`
+  compiles all 17. That is why `javascript-jsx` is a folder of its own (TypeScript has no JSX nodes) and why a copy of
+  a query is taken from the tag of the grammar it runs on. A capture with no kind (`@property`, `@variable`) is dropped
+  before overlaps are resolved, so it cannot hide a wider coloured capture: YAML's keys are `@type` for that reason.
 - **ScratchCode's queries are a resource bundle, and a missing one stops the app.** `Grammar.makeQuery` reads
   `Queries/<language>/highlights.scm` through `Bundle.module`, which calls `fatalError` when it cannot find
   `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries

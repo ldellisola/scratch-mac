@@ -1,0 +1,30 @@
+# A workflow for the checks.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  NODE_VERSION: 20
+  DEBUG: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: |
+          npm ci
+          npm run build
+      - name: Test
+        run: npm test
+        env:
+          CI: "true"
+          TOKEN: null
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'linting'

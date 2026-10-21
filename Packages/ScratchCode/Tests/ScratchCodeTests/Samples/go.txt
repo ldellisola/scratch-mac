@@ -1,0 +1,35 @@
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+// Counter counts the words it has seen.
+type Counter struct {
+	words map[string]int
+}
+
+func NewCounter() *Counter {
+	return &Counter{words: make(map[string]int)}
+}
+
+func (c *Counter) Add(text string) {
+	for _, word := range strings.Fields(text) {
+		c.words[strings.ToLower(word)]++
+	}
+}
+
+func main() {
+	counter := NewCounter()
+	counter.Add("the quick brown fox jumps over the lazy dog")
+	for word, n := range counter.words {
+		if n > 1 {
+			fmt.Println(word, n)
+		}
+	}
+	const limit = 3.5
+	var ok bool = true
+	_ = limit
+	_ = ok
+}

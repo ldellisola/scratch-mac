@@ -1,0 +1,38 @@
+use std::collections::HashMap;
+
+/// A counter of words.
+#[derive(Debug, Default)]
+struct Counter {
+    words: HashMap<String, usize>,
+}
+
+impl Counter {
+    fn new() -> Self {
+        Counter::default()
+    }
+
+    // Count every word of the text.
+    fn add(&mut self, text: &str) {
+        for word in text.split_whitespace() {
+            *self.words.entry(word.to_lowercase()).or_insert(0) += 1;
+        }
+    }
+}
+
+enum Shape {
+    Circle(f64),
+    Square(f64),
+}
+
+fn area(shape: &Shape) -> f64 {
+    match shape {
+        Shape::Circle(r) => 3.14 * r * r,
+        Shape::Square(s) => s * s,
+    }
+}
+
+fn main() {
+    let mut counter = Counter::new();
+    counter.add("the quick brown fox");
+    println!("{:?} {}", counter, area(&Shape::Circle(2.0)));
+}

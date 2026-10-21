@@ -1,0 +1,36 @@
+package notes;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** A word counter. */
+public class Counter {
+    private final List<String> words = new ArrayList<>();
+    private final int limit;
+
+    public Counter(int limit) {
+        this.limit = limit;
+    }
+
+    @Override
+    public String toString() {
+        return "Counter(" + words.size() + ")";
+    }
+
+    // Adds a word unless the counter is full.
+    public boolean add(String word) {
+        if (words.size() >= limit) {
+            return false;
+        }
+        words.add(word);
+        return true;
+    }
+
+    public static void main(String[] args) {
+        Counter counter = new Counter(3);
+        for (String arg : args) {
+            counter.add(arg);
+        }
+        System.out.println(counter + " " + 3.5);
+    }
+}

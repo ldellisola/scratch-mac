@@ -16,6 +16,23 @@ let package = Package(
         .package(url: "https://github.com/tree-sitter/tree-sitter", exact: "0.25.10"),
         // The Swift grammar's generated parser.c is on the `-with-generated-files` tags only.
         .package(url: "https://github.com/alex-pinkus/tree-sitter-swift", exact: "0.7.4-with-generated-files"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-javascript", exact: "0.23.1"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-typescript", exact: "0.23.2"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-json", exact: "0.24.8"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-bash", exact: "0.25.1"),
+        // tree-sitter-sql keeps its generated parser.c (43 MB) on the gh-pages branch only, one commit for each build
+        // of main. The pinned commit is the build of 987a64a, the main of 2026-10-17.
+        .package(
+            url: "https://github.com/DerekStride/tree-sitter-sql", revision: "e038788e5d4daba82dea35676bf49a216629e141"),
+        .package(url: "https://github.com/tree-sitter-grammars/tree-sitter-yaml", exact: "0.7.0"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-html", exact: "0.23.2"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-css", exact: "0.23.2"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-c-sharp", exact: "0.23.5"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-go", exact: "0.25.0"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-rust", exact: "0.24.2"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-c", exact: "0.24.2"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-cpp", exact: "0.23.4"),
+        .package(url: "https://github.com/tree-sitter/tree-sitter-java", exact: "0.23.5"),
     ],
     targets: [
         // The Python grammar, vendored: its Package.swift cannot be used as a dependency (Sources/GrammarPython/README.md).
@@ -25,19 +42,40 @@ let package = Package(
             exclude: ["LICENSE", "README.md"],
             cSettings: [.unsafeFlags(["-w"])]
         ),
+        // The PowerShell grammar, vendored for the same reason (Sources/GrammarPowerShell/README.md).
+        .target(
+            name: "GrammarPowerShell",
+            exclude: ["LICENSE", "README.md"],
+            cSettings: [.unsafeFlags(["-w"])]
+        ),
         .target(
             name: "ScratchCode",
             dependencies: [
                 .product(name: "SwiftTreeSitter", package: "swift-tree-sitter"),
                 .product(name: "TreeSitter", package: "tree-sitter"),
                 .product(name: "TreeSitterSwift", package: "tree-sitter-swift"),
+                .product(name: "TreeSitterJavaScript", package: "tree-sitter-javascript"),
+                .product(name: "TreeSitterTypeScript", package: "tree-sitter-typescript"),
+                .product(name: "TreeSitterJSON", package: "tree-sitter-json"),
+                .product(name: "TreeSitterBash", package: "tree-sitter-bash"),
+                .product(name: "TreeSitterSql", package: "tree-sitter-sql"),
+                .product(name: "TreeSitterYAML", package: "tree-sitter-yaml"),
+                .product(name: "TreeSitterHTML", package: "tree-sitter-html"),
+                .product(name: "TreeSitterCSS", package: "tree-sitter-css"),
+                .product(name: "TreeSitterCSharp", package: "tree-sitter-c-sharp"),
+                .product(name: "TreeSitterGo", package: "tree-sitter-go"),
+                .product(name: "TreeSitterRust", package: "tree-sitter-rust"),
+                .product(name: "TreeSitterC", package: "tree-sitter-c"),
+                .product(name: "TreeSitterCPP", package: "tree-sitter-cpp"),
+                .product(name: "TreeSitterJava", package: "tree-sitter-java"),
                 "GrammarPython",
+                "GrammarPowerShell",
             ],
             // One directory per language with its highlights.scm: Bundle.module is the one accessor that works on
             // Linux, under `swift test` on macOS and inside the app, which the grammar packages' own bundles are not.
             resources: [.copy("Queries")]
         ),
-        .testTarget(name: "ScratchCodeTests", dependencies: ["ScratchCode"]),
+        .testTarget(name: "ScratchCodeTests", dependencies: ["ScratchCode"], resources: [.copy("Samples")]),
     ],
     swiftLanguageModes: [.v6]
 )

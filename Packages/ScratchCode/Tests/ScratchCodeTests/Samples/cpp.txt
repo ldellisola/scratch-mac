@@ -1,0 +1,36 @@
+#include <iostream>
+#include <string>
+#include <vector>
+
+namespace notes {
+
+// A word counter.
+class Counter {
+public:
+    explicit Counter(int limit) : limit_(limit) {}
+
+    void add(const std::string &word) {
+        words_.push_back(word);
+    }
+
+    template <typename T>
+    T total(T start) const {
+        return start + static_cast<T>(words_.size());
+    }
+
+    bool full() const { return words_.size() >= limit_; }
+
+private:
+    std::vector<std::string> words_;
+    std::size_t limit_;
+};
+
+}  // namespace notes
+
+int main() {
+    notes::Counter counter(10);
+    counter.add("hello");
+    auto n = counter.total(0);
+    std::cout << "words: " << n << std::endl;
+    return counter.full() ? 1 : 0;
+}

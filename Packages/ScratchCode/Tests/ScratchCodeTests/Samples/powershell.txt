@@ -1,0 +1,24 @@
+# Remove old log files and report what was done.
+param(
+    [string]$Path = "C:\Logs",
+    [int]$Days = 30
+)
+
+function Remove-OldLogs {
+    param([string]$Folder, [int]$Age)
+    $cutoff = (Get-Date).AddDays(-$Age)
+    $files = Get-ChildItem -Path $Folder -Filter "*.log" |
+        Where-Object { $_.LastWriteTime -lt $cutoff }
+    foreach ($file in $files) {
+        Write-Host "Removing $($file.Name)"
+        Remove-Item $file.FullName -Force
+    }
+    return $files.Count
+}
+
+if (Test-Path $Path) {
+    $removed = Remove-OldLogs -Folder $Path -Age $Days
+    Write-Output "Removed $removed files"
+} else {
+    throw "No such folder: $Path"
+}

@@ -1,0 +1,33 @@
+import os
+from dataclasses import dataclass
+
+
+@dataclass
+class Point:
+    x: float = 0.0
+    y: float = 0.0
+
+    def length(self) -> float:
+        # The distance to the origin.
+        return (self.x ** 2 + self.y ** 2) ** 0.5
+
+
+def read_lines(path):
+    """Yield the non-empty lines of a file."""
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                yield line
+
+
+def main():
+    p = Point(3, 4)
+    print(f"length is {p.length()}")
+    names = [name for name in os.listdir(".") if name.endswith(".py")]
+    if p.x > 2 and len(names) > 0:
+        return None
+
+
+if __name__ == "__main__":
+    main()

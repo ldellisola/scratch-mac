@@ -1,0 +1,37 @@
+// A typed todo list.
+interface Todo {
+  id: number;
+  title: string;
+  done?: boolean;
+}
+
+type Filter = "all" | "open" | "done";
+
+enum Priority {
+  Low,
+  High,
+}
+
+const todos: Todo[] = [];
+
+function addTodo(title: string, done = false): Todo {
+  const todo: Todo = { id: todos.length + 1, title, done };
+  todos.push(todo);
+  return todo;
+}
+
+class Store<T extends { id: number }> {
+  private items = new Map<number, T>();
+
+  add(item: T): void {
+    this.items.set(item.id, item);
+  }
+
+  get(id: number): T | undefined {
+    return this.items.get(id);
+  }
+}
+
+export function visible(list: Todo[], filter: Filter): Todo[] {
+  return list.filter((todo) => filter === "all" || todo.done === (filter === "done"));
+}

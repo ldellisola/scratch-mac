@@ -1,0 +1,20 @@
+{
+  "name": "scratch",
+  "version": "0.4.0",
+  "private": true,
+  "description": "A scratchpad for one person",
+  "scripts": {
+    "build": "make app-build",
+    "test": "make core-test"
+  },
+  "languages": ["swift", "python", "json"],
+  "limits": {
+    "lines": 5000,
+    "ratio": 0.75,
+    "offset": -12
+  },
+  "enabled": true,
+  "archived": false,
+  "parent": null,
+  "escaped": "a \"quoted\" word\nand a new line"
+}

@@ -3,8 +3,8 @@ import Testing
 
 @testable import ScratchCode
 
-// Plan 4, "Code highlighting" (spec §6.4, §7): tokens and the error rate, on both grammars of the first release of the
-// package (Swift and Python). docs/features/code.md.
+// Plan 4, "Code highlighting" (spec §6.4, §7): tokens and the error rate, on all seventeen grammars. The first tests
+// use Swift and Python, the grammars the package started with. docs/features/code.md.
 
 private func r(_ location: Int, _ length: Int) -> NSRange {
     NSRange(location: location, length: length)
@@ -63,6 +63,27 @@ private let prose = """
     Thanks for getting back to me so quickly. I have looked at the numbers again and I think we should move the
     meeting to Thursday, because the team will be travelling on Wednesday. Could you let me know if that works for you?
     """
+
+/// The sample of a language: `Tests/ScratchCodeTests/Samples/<fence name>.txt`, 15 to 40 lines of ordinary code.
+private func sample(_ language: CodeLanguage) -> String {
+    guard
+        let url = Bundle.module.url(forResource: language.fenceName, withExtension: "txt", subdirectory: "Samples"),
+        let text = try? String(contentsOf: url, encoding: .utf8)
+    else {
+        Issue.record("no sample for \(language.fenceName)")
+        return ""
+    }
+    return text
+}
+
+private func kinds(of text: String, _ language: CodeLanguage) -> Set<HighlightKind> {
+    Set((Highlighter.shared.tokens(in: text, language: language) ?? []).map(\.kind))
+}
+
+/// Whether some token of `kind` covers exactly `covered`.
+private func has(_ tokens: [HighlightToken], _ text: String, _ covered: String, _ kind: HighlightKind) -> Bool {
+    tokens.contains { slice(text, $0) == covered && $0.kind == kind }
+}
 
 // MARK: Tokens
 
@@ -290,6 +311,15 @@ private func capture(_ start: Int, _ end: Int, _ kind: HighlightKind, pattern: I
     let jobs: [(String, CodeLanguage)] = [
         (swiftSample, .swift), (pythonSample, .python), (#"let s = "hi" // note"#, .swift),
         ("@app.route(\"/\")\ndef index():\n    return 1\n", .python), (prose, .python), ("// 😀\nlet a = 1", .swift),
+        // The others: one that inherits a query (TypeScript, C++), and one of each of the rest of the grammars.
+        ("interface A { b: string }\nconst s = \"x\" // y\n", .typescript), ("#include <x>\nclass A {};\n", .cpp),
+        ("SELECT a, 1 FROM t WHERE b = 'c';", .sql), ("a { color: #fff }\n@media x { }\n", .css),
+        ("a: [1, true]\nb: \"c\"\n", .yaml), ("<p class=\"a\">x</p>\n", .html), ("{\"a\": [1, null]}", .json),
+        ("if true; then echo \"$((1 + 2))\"; fi\n", .bash), ("fn main() { let a = 1; }\n", .rust),
+        ("public class A { int f() { return 1; } }\n", .csharp), ("func main() { x := 1 }\n", .go),
+        ("public class A { }\n", .java), ("function F { return 1 }\n", .powershell),
+        ("const a = <b c=\"d\"/>;\n", .javascript),
+        ("int main(void) { return 0; }\n", .c),
     ]
     // A highlighter of its own, so that the threads also race to compile the queries.
     let highlighter = Highlighter()
@@ -331,5 +361,227 @@ private final class Results: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return count
+    }
+}
+
+// MARK: All seventeen languages (Plan 4, task 3)
+
+@Test(arguments: CodeLanguage.allCases)
+func everyLanguageHighlightsItsSample(language: CodeLanguage) {
+    let text = sample(language)
+    let lines = text.split(separator: "\n", omittingEmptySubsequences: false).count - 1
+    #expect((15...40).contains(lines), "the sample has \(lines) lines")
+    let found = kinds(of: text, language)
+    switch language {
+    case .json:
+        #expect(found.contains(.string))
+    case .yaml:
+        #expect(found.contains(.string) || found.contains(.keyword))
+    default:
+        #expect(found.contains(.keyword), "no keyword in the \(language.fenceName) sample")
+        #expect(found.contains(.string) || found.contains(.comment), "no string or comment")
+    }
+}
+
+@Test(arguments: CodeLanguage.allCases)
+func everySampleParsesWithoutErrors(language: CodeLanguage) {
+    // A grammar wired to the wrong language, or a sample that is not valid code, shows here.
+    #expect(Highlighter.shared.errorRate(of: sample(language), language: language) < 0.05)
+}
+
+/// What a reader expects to see coloured in each sample: the kinds that the sample has and the grammar's query gives.
+private let expectedKinds: [CodeLanguage: Set<HighlightKind>] = [
+    .swift: [.keyword, .string, .comment, .number, .type, .function, .attribute],
+    .python: [.keyword, .string, .comment, .number, .type, .function, .attribute],
+    .javascript: [.keyword, .string, .comment, .number, .type, .function],
+    .typescript: [.keyword, .string, .comment, .number, .type, .function],
+    .json: [.string, .number, .keyword],
+    .bash: [.keyword, .string, .comment, .function],
+    .sql: [.keyword, .string, .comment, .number, .type],
+    .yaml: [.string, .comment, .number, .keyword, .type],
+    .html: [.keyword, .string, .comment, .attribute],
+    .css: [.keyword, .string, .comment, .number, .attribute, .function],
+    .csharp: [.keyword, .string, .comment, .number, .type, .function],
+    .go: [.keyword, .string, .comment, .number, .type, .function],
+    .rust: [.keyword, .string, .comment, .number, .type, .function, .attribute],
+    .c: [.keyword, .string, .comment, .number, .type, .function, .preprocessor],
+    .cpp: [.keyword, .string, .comment, .number, .type, .function, .preprocessor],
+    .java: [.keyword, .string, .comment, .number, .type, .function, .attribute],
+    .powershell: [.keyword, .string, .comment, .number, .type, .function],
+]
+
+@Test(arguments: CodeLanguage.allCases)
+func eachSampleShowsTheKindsAReaderExpects(language: CodeLanguage) {
+    let found = kinds(of: sample(language), language)
+    let expected = expectedKinds[language] ?? []
+    #expect(!expected.isEmpty)
+    let missing = expected.subtracting(found).map(\.rawValue).sorted()
+    #expect(missing.isEmpty, "the \(language.fenceName) sample has no \(missing)")
+}
+
+@Test func cppInheritsC() {
+    // `#include` and `const` come from C's query, `namespace`, `class` and `public` from C++'s own.
+    let text = "#include <x>\nnamespace a { class B { public: int f() const; }; }\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .cpp) ?? []
+    #expect(has(tokens, text, "#include", .preprocessor))
+    #expect(has(tokens, text, "const", .keyword))
+    #expect(has(tokens, text, "namespace", .keyword))
+    #expect(has(tokens, text, "class", .keyword))
+    #expect(has(tokens, text, "public", .keyword))
+    #expect(has(tokens, text, "int", .type))
+    // And C itself.
+    let c = "#include <stdio.h>\n#define N 3\nint main(void) { return N; }\n"
+    let cTokens = Highlighter.shared.tokens(in: c, language: .c) ?? []
+    #expect(has(cTokens, c, "#include", .preprocessor))
+    #expect(has(cTokens, c, "#define", .preprocessor))
+    #expect(has(cTokens, c, "return", .keyword))
+}
+
+@Test func typescriptInheritsJavaScript() {
+    // Strings, comments, `const` and calls are JavaScript's query, the annotation and `interface` TypeScript's.
+    let text = "interface A { n: string }\nconst s: string = \"hi\" // note\nconsole.log(s.length)\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .typescript) ?? []
+    #expect(has(tokens, text, "interface", .keyword))
+    #expect(has(tokens, text, "const", .keyword))
+    #expect(has(tokens, text, "string", .type))
+    #expect(has(tokens, text, "\"hi\"", .string))
+    #expect(has(tokens, text, "// note", .comment))
+    #expect(has(tokens, text, "log", .function))
+    // JavaScript alone knows nothing of annotations, and TypeScript's `interface` is not one of its keywords.
+    let javascript = "const s = \"hi\" // note\n"
+    let javascriptTokens = Highlighter.shared.tokens(in: javascript, language: .javascript) ?? []
+    #expect(has(javascriptTokens, javascript, "const", .keyword))
+    #expect(has(javascriptTokens, javascript, "\"hi\"", .string))
+}
+
+@Test func htmlTagsAreKeywords() {
+    let text = "<div class=\"a\" id=b>hi</div>\n<!-- note -->\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .html) ?? []
+    #expect(tokens.filter { slice(text, $0) == "div" && $0.kind == .keyword }.count == 2)
+    #expect(has(tokens, text, "class", .attribute))
+    #expect(has(tokens, text, "<!-- note -->", .comment))
+    // The quotes belong to the value.
+    #expect(has(tokens, text, "\"a\"", .string))
+}
+
+@Test func bashVariableExpansionIsNotAnError() {
+    let text = """
+        name="world"
+        echo "hello ${name}, today is $(date +%F)"
+        count=$((1 + 2))
+        files=("a" "b" "c")
+        echo "${files[@]} ${#files[@]} ${name:-nobody} ${name%.txt} $1 $@ $?"
+        for f in "${files[@]}"; do
+          echo "$f"
+        done
+        """
+    #expect(Highlighter.shared.errorRate(of: text, language: .bash) < 0.05)
+    let tokens = Highlighter.shared.tokens(in: text, language: .bash) ?? []
+    #expect(has(tokens, text, "for", .keyword))
+    #expect(tokens.contains { $0.kind == .string })
+}
+
+@Test func jsxIsPartOfJavaScript() {
+    let text = "const a = <div className=\"x\">{y}</div>;\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .javascript) ?? []
+    #expect(tokens.filter { slice(text, $0) == "div" && $0.kind == .keyword }.count == 2)
+    #expect(has(tokens, text, "className", .attribute))
+    #expect(has(tokens, text, "\"x\"", .string))
+}
+
+@Test func jsonKeysAndValues() {
+    let text = "{\"a\": [1, -2.5e3, true, null, \"x\\ny\"]}\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .json) ?? []
+    #expect(has(tokens, text, "\"a\"", .string))
+    #expect(has(tokens, text, "1", .number))
+    #expect(has(tokens, text, "-2.5e3", .number))
+    #expect(has(tokens, text, "true", .keyword))
+    #expect(has(tokens, text, "null", .keyword))
+    #expect(has(tokens, text, "\"x\\ny\"", .string))
+}
+
+@Test func yamlKeysAreNotValues() {
+    let text = "name: ci # the workflow\nretries: 3\ndebug: false\nitems:\n  - \"a\"\n  - plain text\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .yaml) ?? []
+    #expect(has(tokens, text, "name", .type))
+    #expect(has(tokens, text, "ci", .string))
+    #expect(has(tokens, text, "# the workflow", .comment))
+    #expect(has(tokens, text, "3", .number))
+    #expect(has(tokens, text, "false", .keyword))
+    #expect(has(tokens, text, "\"a\"", .string))
+    #expect(has(tokens, text, "plain text", .string))
+}
+
+@Test func sqlKeywordsInAnyCaseAndNumbers() {
+    let text = "select name from users where id = 42 and ratio > 0.5 and note = 'x';\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .sql) ?? []
+    for word in ["select", "from", "where", "and"] {
+        #expect(has(tokens, text, word, .keyword), "\(word)")
+    }
+    #expect(has(tokens, text, "42", .number))
+    #expect(has(tokens, text, "0.5", .number))
+    #expect(has(tokens, text, "'x'", .string))
+    let upper = "SELECT name FROM users;\n"
+    #expect(has(Highlighter.shared.tokens(in: upper, language: .sql) ?? [], upper, "SELECT", .keyword))
+}
+
+@Test func rustNumbersAreNumbersAndLiteralsAreKeywords() {
+    let text = "fn main() { let n = 42; let f = 2.5; let b = true; }\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .rust) ?? []
+    #expect(has(tokens, text, "42", .number))
+    #expect(has(tokens, text, "2.5", .number))
+    #expect(has(tokens, text, "true", .keyword))
+    #expect(has(tokens, text, "fn", .keyword))
+}
+
+@Test func cCharacterLiteralsAreStrings() {
+    let text = "char c = 'x';\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .c) ?? []
+    #expect(has(tokens, text, "'x'", .string))
+    #expect(has(tokens, text, "char", .type))
+}
+
+@Test func goLiteralsAndBuiltins() {
+    let text = "func f() { x := make([]int, 3); s := \"a\"; ok := true; _ = nil }\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .go) ?? []
+    #expect(has(tokens, text, "func", .keyword))
+    #expect(has(tokens, text, "make", .function))
+    #expect(has(tokens, text, "3", .number))
+    #expect(has(tokens, text, "\"a\"", .string))
+    #expect(has(tokens, text, "true", .keyword))
+    #expect(has(tokens, text, "nil", .keyword))
+}
+
+@Test func powershellKeywordsInAnyCase() {
+    let text = "Function Get-Thing {\n  param($a)\n  If ($a -eq 1) { Write-Host \"hi\" }\n}\n"
+    let tokens = Highlighter.shared.tokens(in: text, language: .powershell) ?? []
+    #expect(has(tokens, text, "Function", .keyword))
+    #expect(has(tokens, text, "param", .keyword))
+    #expect(has(tokens, text, "If", .keyword))
+    #expect(has(tokens, text, "\"hi\"", .string))
+    #expect(has(tokens, text, "Write-Host", .function))
+    #expect(has(tokens, text, "Get-Thing", .function))
+}
+
+@Test func rangesAreUTF16InEveryGrammar() {
+    // A comment with two emoji (each is two UTF-16 units and one Character), then one line of code.
+    let cases: [(CodeLanguage, comment: String, code: String)] = [
+        (.javascript, "// 😀😀", "const a = 1"), (.typescript, "// 😀😀", "const a = 1"),
+        (.go, "// 😀😀", "var a = 1"), (.rust, "// 😀😀", "let a = 1;"), (.c, "// 😀😀", "int a = 1;"),
+        (.cpp, "// 😀😀", "int a = 1;"), (.java, "// 😀😀", "int a = 1;"), (.csharp, "// 😀😀", "var a = 1;"),
+        (.bash, "# 😀😀", "export A=1"), (.sql, "-- 😀😀", "select 1;"), (.yaml, "# 😀😀", "a: true"),
+        (.powershell, "# 😀😀", "if ($a) { }"), (.css, "/* 😀😀 */", "a { color: red }"),
+        (.html, "<!-- 😀😀 -->", "<p>x</p>"), (.json, "// 😀😀", "{\"a\": 1}"),
+    ]
+    for (language, comment, code) in cases {
+        let text = comment + "\n" + code + "\n"
+        let tokens = Highlighter.shared.tokens(in: text, language: language) ?? []
+        // JSON has no comments in its grammar's standard, but tree-sitter-json accepts them.
+        #expect(tokens.first == token(0, comment.utf16.count, .comment), "\(language.fenceName): \(tokens)")
+        let rest = tokens.dropFirst()
+        #expect(!rest.isEmpty, "\(language.fenceName) has nothing after the comment")
+        #expect(
+            rest.allSatisfy { $0.range.location > comment.utf16.count && NSMaxRange($0.range) <= text.utf16.count },
+            "\(language.fenceName): \(tokens)")
     }
 }
