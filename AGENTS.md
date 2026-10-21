@@ -806,6 +806,14 @@ new kind of release file, with no change to the app, ships.
   (`invalidationAfterEdit`) and `NoteTextView.didChangeText` calls `MarkupStyler.editDidFinish`, before the delegate hears of
   the edit. A rescan that changes a block (not only its length) styles it again whole (`rescanCodeBlocks`): a paragraph can
   stay in a block and still be another line of it.
+- **Blocks above the window are styled whole at load, because a scroll position depends on their height.** `show` sets the
+  scroll position from the layout of everything above it, and the chunks that style a long note run later. A hidden fence
+  line is 6 pt and a line of code is indented, so a block styled by a chunk after the scroll moved the note under the
+  reader (`TitleUITests.testScrollPositionSurvivesRelaunch`: three lines off on the CI). `MarkupStyler.styleBlocks` gives
+  every block that starts above the end of the window its look in one pass per block (a block, not a paragraph, is the
+  unit, so it is cheap for the huge note), and `styleFenceLine` and `styleCodeBody` write nothing, and invalidate nothing,
+  for a line that is as it should be. Anything else that changes the height of a paragraph (a new kind of marker) has the
+  same problem and the same remedy.
 - **Colours are keyed by text, not by place.** `CodeBlockStyler` sends a block's code to a private serial queue, one request
   at a time, and a result is applied to every block that holds the same fence name and code (hash first, then text), where
   the block is by then. A result for text that was edited since matches no block and is dropped (`droppedResults`): the edit
@@ -815,8 +823,8 @@ new kind of release file, with no change to the app, ships.
   being written ends that work (`textDidEdit`). `MarkupStyler.resetAttributes` keeps the opening mark of the paragraphs of
   a block that stays a block.
 - **Code colours are temporary attributes of the layout manager, never attributes of the text.** As `.foregroundColor` of
-  the text storage they made the huge note (100 blocks, about 50,000 colour runs) 10 times slower on the macOS CI (37 ms
-  per scroll frame and per keystroke, from 3): each colour was an edit, an edit invalidates the layout of its range, and the
+  the text storage they made the huge note (100 blocks, about 50,000 colour runs) over 10 times slower on the macOS CI (37 ms
+  per scroll frame and per keystroke, from 0.3 and 3): each colour was an edit, an edit invalidates the layout of its range, and the
   layout manager then laid the whole note out again in the background on the main thread. `addTemporaryAttribute` is
   display only. The layout manager's own bookkeeping is in the edit's coordinates only once `textStorage(_:didProcessEditing:)`
   has returned, so `MarkupStyler` never calls it inside that callback: the ranges to clear are kept

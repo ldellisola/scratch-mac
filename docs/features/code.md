@@ -20,8 +20,8 @@ block (docs/features/formatting.md).
   to the closing one, behind the lines.
 - **The lines.** Each line of the block is 10 pt in from both sides of the tint (head and tail indent), in the note font,
   and nothing in it is formatting (no bullet, bold or link).
-- **The fence lines are padding.** Each is a line of exactly 6 pt with no glyphs, so the top and the bottom of a block have
-  a little space and no text. While the caret or the selection touches a fence line (its two ends included, so the
+- **The fence lines are padding.** Each is a line of exactly 6 pt with nothing drawn on it, so the top and the bottom of a
+  block have a little space and no text. While the caret or the selection touches a fence line (its two ends included, so the
   caret just below the opening fence or just above the closing one does not) the line is shown in full, in
   `tertiaryLabelColor`, and is as high as any line. A selection of more than 20,000 characters shows none.
 - **The label.** At the top right of the block, 2 pt smaller than the note font, in `secondaryLabelColor`: the language
@@ -53,9 +53,14 @@ block (docs/features/formatting.md).
 - **The colours are temporary attributes of the layout manager,** not attributes of the text (a deviation from the
   plan, which says "colours"). They are for display only, so writing them lays nothing out again and adds no run to the
   text storage. As attributes of the text they were several times slower: the macOS CI measured the huge note (10,000
-  lines, 100 blocks) at 37 ms per scroll frame and 37 ms per keystroke, where it had been 3 ms, because every colour was
+  lines, 100 blocks) at 37 ms per scroll frame and 37 ms per keystroke, where it had been 0.3 and 3 ms, because every colour was
   an edit that invalidated the layout of its block and the layout manager laid the note out again in the background, on
   the main thread, a slice of tens of milliseconds at a time.
+- **Every block above the window has its final look before the note is laid out.** The position of a shown note is worked
+  out from the layout of what is above it, and the chunks that style a long note run after that. A fence line is 6 pt
+  and a line of code wraps sooner for its indent, so a block that was styled by a chunk moved the note under the reader
+  (the CI: the top line of the huge note after a relaunch was three lines off). `MarkupStyler.styleBlocks` styles every
+  block that starts above the end of the window in one pass for each block, and the chunks find that done.
 - **A keystroke in a block keeps the colours of its line** until the new result replaces them, so that the line being
   typed does not flash to the text colour (the layout manager carries a temporary attribute along with the text). A
   block whose fences changed (a fence typed or deleted, so that the pairs of fences are not what they were) is styled
@@ -73,6 +78,7 @@ block (docs/features/formatting.md).
 
 - `CodeBlockStylerTests` (hosted, `testExistingFencesRenderAsBlocks`, `testBlockIsColoured`,
   `testFenceRevealedWhenCaretOnIt`, `testStaleHighlightIsNotApplied`, `testUnnamedFenceUsesDetectedLanguage`,
+  `testNothingAboveTheWindowChangesHeightWhenTheRestOfTheNoteIsStyled`,
   `testUnknownFenceNameIsUncoloured`, `testHugeBlockIsNotHighlighted`, `testDarkModeUsesDarkColours` and more): the
   blocks of the `typical` fixture, the `code` fixture's JavaScript block, a 6,000-line block, the colour assets.
 - `CodeBlockPartsTests` (hosted): the name, the code and the fence lines of a block, found from its range.

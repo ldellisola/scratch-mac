@@ -25,7 +25,8 @@ that then renders like typed text.
 - **Inside a fenced block** (a pair of lines that start with three backticks) and **inside inline code**, every
   character is literal: `- ` and `**` in a pasted shell script render as typed. A fence without a partner is not a
   block, so typing three backticks never un-renders the rest of the note. A new fence line, or a changed one, restyles
-  the paragraphs that moved in or out of a block.
+  the paragraphs that moved in or out of a block. What a block looks like (tint, hidden fences, label, colours) is in
+  [code.md](code.md).
 - **An unclosed `**` or backtick is plain text.** Typing `**x` shows the stars; typing the second `**` closes the run.
 - **Bold needs word boundaries** (ADR 0006, the owner's decision of 2026-10-21), so that unfenced code in a note stays
   as typed. An opening `**` counts only at the start of the line or after a character that is not a letter or a digit
