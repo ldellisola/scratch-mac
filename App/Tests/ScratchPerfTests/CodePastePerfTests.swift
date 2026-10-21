@@ -45,7 +45,7 @@ final class CodePastePerfTests: XCTestCase {
 
     /// `paste_code_ms`: the median `paste-code` interval of ten pastes of 500 lines into an empty note. After each paste
     /// the test waits for the colours to be written, and then empties the note for the next one. The first paste after
-    /// the launch is the slowest (the grammars and their queries load then), and the median leaves it out. One more paste
+    /// the launch tends to be the slowest (the grammars and their queries load then), and the median leaves it out. One more paste
     /// after the measurement is for the screenshot `paste-code-after`: the block, its colours and its label.
     func testPasteFiveHundredLinesOfCode() throws {
         continueAfterFailure = false

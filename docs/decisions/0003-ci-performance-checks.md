@@ -92,8 +92,11 @@ again: a slow run is a fact about the runner.
 ## Addendum: `paste_code_ms` (plan 4, task 6)
 
 A sixth metric, for the spec §7 row "Highlight colours appearing after a 500-line code paste: 50 ms". It adds a budget and
-changes no other: the spec's 50 ms is kept as it is, because the other CI budgets that are looser than the spec's are
-the ones the runner cannot meet at all (a launch), and this one is only over it by a little (see the numbers below).
+changes no other: the budget is the spec's 50 ms, the owner's M4's. On CI the metric is over it, 55 to 59 ms, so the report
+says WARN (over budget, inside the 2 x limit) on every run, for the reason that `launch_ms` is a WARN: the runner is
+slower than the owner's machine (this record, above). It is not made a looser budget, because it is within a fifth of the
+real one and the WARN is the right amount of noise. The CI number is not a measurement of the owner's Mac, where the
+budget stays the target and is checked by hand, like the cold-boot number (spec §7).
 
 - **What it measures.** The `paste-code` signpost interval (`Signposts.beginOpenEditorInterval`), from `NoteTextView.paste`
   until the colours of the block that the paste made are on screen: the plain paste and its styling, the detection of the
@@ -106,4 +109,15 @@ the ones the runner cannot meet at all (a launch), and this one is only over it 
   coloured any of them before (it keeps the results of the blocks it has seen). The metric is the median of the ten
   (`scripts/perf-extract.py`), like the others, and the test waits for `debug.state` to say nothing is pending before it
   empties the note for the next paste.
-- **The baseline** is the slowest median of at least three runs of the macOS job, as above. The table is filled in below.
+- **The baseline is 59.4 ms**: the slowest median of three runs of the macOS job on the final tests (the app code was the
+  same in all three: the commits after the first only changed the screenshot of the test and a document). The check
+  fails a result above 71.3 ms (1.2 x the baseline) or above 100 ms (2 x the budget).
+
+  | Run (commit) | `paste_code_ms` | Fastest and slowest of the ten pastes |
+  |---|---|---|
+  | `08a6d61` | 57.2 | 51.3 to 77.0 |
+  | `e30e901` | 55.1 | 51.8 to 58.5 |
+  | `f0a2925` | 59.4 | 50.1 to 81.4 |
+
+  A run has one or two pastes well above the others (the first of the launch in two of the three, where the grammars and
+  their queries load; a slow turn in the third), which is why the metric is the median.
