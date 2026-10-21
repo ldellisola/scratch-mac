@@ -64,7 +64,7 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     }
     #expect(
         Fixture.allCases.map(\.rawValue) == [
-            "empty", "typical", "huge-note", "many-notes", "recently-deleted", "formatting",
+            "empty", "typical", "huge-note", "many-notes", "recently-deleted", "formatting", "code",
         ])
 }
 
