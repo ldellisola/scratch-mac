@@ -888,7 +888,7 @@ struct DetectionFeatures {
     /// Lines that are sentences.
     let sentenceShare: Double
 
-    /// The first line when it is a shebang (`#!/usr/bin/env python3`), without the `#!`.
+    /// The first line when it is a shebang (`#!/usr/bin/env python3`: `#!`, optional spaces and a path), without the `#!`.
     let shebang: String?
     let hasXMLDeclaration: Bool
     let hasPHPTag: Bool
@@ -971,7 +971,7 @@ struct DetectionFeatures {
 
         // Markers.
         let first = lines.first?.bytes ?? []
-        if first.hasPrefix("#!") {
+        if DetectionFeatures.isInterpreterLine(first) {
             self.shebang = String(decoding: first.dropFirst(2), as: UTF8.self)
         } else {
             self.shebang = nil
@@ -1078,6 +1078,14 @@ struct DetectionFeatures {
     }
 
     // MARK: Shapes
+
+    /// A real interpreter line: `#!`, optional spaces, then a path (`#!/bin/bash`, `#! /usr/bin/env python3`).
+    /// `#!important` and a bare `#!` are text that happens to start with those two characters.
+    private static func isInterpreterLine(_ line: [UInt8]) -> Bool {
+        guard line.hasPrefix("#!") else { return false }
+        let rest = line.dropFirst(2).drop { Byte.isSpace($0) }
+        return rest.first == 0x2F
+    }
 
     /// A JSON object or array, with `//` and `/* */` comments (as in settings files) allowed.
     private static func isJSONDocument(_ text: String, lines: [DetectionLine]) -> Bool {

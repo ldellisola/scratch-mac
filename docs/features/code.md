@@ -29,6 +29,8 @@ It is offline and deterministic (the same text always gives the same answer) and
 - **Code of a language Scratch does not know** (Ruby, PHP, Kotlin, XML) is code with no language (`language` is nil): an
   uncoloured block with an unnamed fence. So is code that several grammars read equally well and that has no idiom of
   any of them (`for (int i = 0; i < 3; i++) {`).
+- **A shebang is `#!` and a path** (`#!/bin/bash`, `#! /usr/bin/env python3`) on the first line, and only that is a
+  marker. `#!important remember this` and a bare `#!` are text: they go through the lines like any other paste.
 - **Speed.** Only the first 300 lines (40,000 bytes) are read and the first 50 lines (4,000 bytes) are parsed. 500
   lines take 2 to 12 ms in Release (the budget is 20 ms) and under 100 ms in the Debug test run.
 

@@ -284,6 +284,8 @@ private func fastest(of runs: Int = 3, _ work: () -> Void) -> Duration {
         "- fix login bug (issue #123)\n- update README\n- deploy to staging\n- ask Anna about API keys\n",
         "Plan A -> Plan B\nPlan B -> ask finance\n",
         "Hello {{name}},\nYour code is {{code}}\n",
+        "#!important remember this\nbuy milk tomorrow\n",
+        "#!\nhello\n",
     ]
     for text in texts {
         #expect(answer(text) == "prose", "\(text)")
@@ -389,6 +391,9 @@ private struct SeededGenerator {
 
 @Test func featuresSeeShebangsAndDeclarations() {
     #expect(DetectionFeatures(text: "#!/usr/bin/env python3\nprint(1)\n").shebang == "/usr/bin/env python3")
+    #expect(DetectionFeatures(text: "#! /bin/sh\necho 1\n").shebang == " /bin/sh")
+    #expect(DetectionFeatures(text: "#!todo\nbuy milk\n").shebang == nil)
+    #expect(DetectionFeatures(text: "#!\nhello\n").shebang == nil)
     #expect(DetectionFeatures(text: "<?xml version=\"1.0\"?>\n<a/>\n").hasXMLDeclaration)
     #expect(DetectionFeatures(text: "<?php\necho 1;\n").hasPHPTag)
     #expect(DetectionFeatures(text: "<!DOCTYPE html>\n<html>\n</html>\n").hasDoctype)
