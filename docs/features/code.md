@@ -225,6 +225,17 @@ It is offline and deterministic (the same text always gives the same answer) and
     command, a `$variable`, a `;` or a `}` at the end, `import x`, `const x = 1`
   - prose: a whole sentence, a line of a wrapped paragraph
   - neither: a heading, a list item, a label such as `Subject:`, a URL, a number, a rule of `=====`
+- **`key: value` notes are prose, and YAML needs structure** (Plan 5, task 3). A contact card (`phone: 07700 900 123`,
+  `email: mara@example.org`), a `todo:` and `buy: eggs, flour` list, flight details or a flat's facts are short lowercase
+  keys with words, numbers, phone numbers, emails or comma lists after them, and are as much a note as `Subject: Lunch`.
+  A text of such lines is YAML only with one of these cues (`DetectionFeatures.isYAMLShape`), besides two keys at least:
+  - a `---` document start;
+  - nesting: lines indented under a key that has no value (`server:` and then `  port: 8080`);
+  - a `- ` list under a key (`tags:` and then `- work`, indented or not);
+  - a value that is YAML syntax: `|` or `>` (a block scalar, whose indented lines are its text and are not read as
+    lines), an anchor (`&base`) or a quoted string with a colon in it (`"5432:5432"`).
+  Indentation alone is not nesting (`name: John` and then an indented `age: 30`), and `true`, `false` and `null` are
+  words of a note, not a cue by themselves (with nesting the nesting is the cue).
 - **Inline code is a word.** What is between backticks does not count: ``Call `init()` first`` is a sentence.
 - **A paste of one line is never code**, and neither is a text of comments only.
 - **Which language.** The idioms of each language give it points (`func` with a type, `def f():`, `package main`,
@@ -238,7 +249,9 @@ It is offline and deterministic (the same text always gives the same answer) and
 - **A shebang is `#!` and a path** (`#!/bin/bash`, `#! /usr/bin/env python3`) on the first line, and only that is a
   marker. `#!important remember this` and a bare `#!` are text: they go through the lines like any other paste.
 - **Speed.** Only the first 300 lines (40,000 bytes) are read and the first 50 lines (4,000 bytes) are parsed. 500
-  lines take 2 to 12 ms in Release (the budget is 20 ms) and under 100 ms in the Debug test run.
+  lines take 2 to 12 ms in Release (the budget is 20 ms). The timing tests of `CodeDetectorTests` run in Debug: their
+  bound is the figure a test names on Linux and 4 times it on macOS (the macOS CI took 107 ms for 100 and 498 ms for
+  400), and `paste_code_ms` holds the Release build to its budget.
 
 ### Tests
 
@@ -250,7 +263,9 @@ It is offline and deterministic (the same text always gives the same answer) and
 - `unknown/`: code of languages Scratch does not know. They must come out as code with no language.
 - `prose/`: emails with a signature and a quoted reply, meeting notes with times, lists, a log, a CSV, a note with
   `**bold**`, a recipe, a few lines of verse, a chat, error messages, a two-line "Hi, thanks!". `everyProseSampleStaysProse`
-  wants nil for each. **A prose sample is never deleted to make a test pass.**
+  wants nil for each. **A prose sample is never deleted to make a test pass.** The `key: value` notes are `contact-card`,
+  `todo-idea-buy`, `flight-details` and `rental-viewing`; `flatKeyValueNotesAreProse` and `yamlNeedsAStructuralCue` hold
+  the rule itself.
 
 A paste that is detected wrongly becomes a sample, and the detector is changed until every sample passes. Every sample is
 written for the corpus: no text of someone else's.

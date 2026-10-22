@@ -46,11 +46,11 @@ Scratch is at version 0.4, which does these things:
   default theme, light and dark, for 17 languages: Swift, Python, JavaScript, TypeScript, JSON, Shell, SQL, YAML,
   HTML, CSS, C#, Go, Rust, C, C++, Java and PowerShell. The fence lines shrink to a little padding and come back where
   the caret is. A block you type with no language on its fence gets one from its code (shown in italics, which means
-  "automatic"). Colouring never changes a character, and a block too long to colour (over 5,000 lines) stays tinted
-  and plain.
+  "automatic"). Colouring never changes a character, and a block too long to colour (over 5,000 lines or 300,000 characters)
+  stays tinted and plain.
 - **Pasted code is fenced for you.** Paste two lines or more of code and Scratch puts them in a fence with the language
   it detected, with every pasted character kept as it was. It works offline, and when it is unsure it leaves your text
-  alone: an email, a list, meeting notes with times, a log or a CSV row stay plain text. ⌘Z once gives back exactly the
+  alone: an email, a list, meeting notes with times, a log, a CSV row or a note of `name: value` lines stay plain text. ⌘Z once gives back exactly the
   text you pasted, and ⌘Z again removes it. Click a block's label to choose another language, to show the block as
   plain text, or to take the fence off (Not Code), each one undo step.
 - **Made for macOS 26.** The sidebar, the tab strip and the toolbar buttons are native Liquid Glass, and the app is

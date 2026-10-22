@@ -1,6 +1,7 @@
 import Foundation
 import GrammarPowerShell
 import GrammarPython
+import GrammarSQL
 import SwiftTreeSitter
 import Synchronization
 import TreeSitterBash
@@ -14,7 +15,6 @@ import TreeSitterJSON
 import TreeSitterJava
 import TreeSitterJavaScript
 import TreeSitterRust
-import TreeSitterSql
 import TreeSitterSwift
 import TreeSitterTypeScript
 import TreeSitterYAML

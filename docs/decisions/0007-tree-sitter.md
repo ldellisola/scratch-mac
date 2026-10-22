@@ -1,6 +1,7 @@
 # 0007: tree-sitter, and the packages it comes in
 
-Status: accepted, 2026-10-21. Spec §8.1 names tree-sitter as the highlighting engine and as the one significant
+Status: accepted, 2026-10-21. Amended 2026-10-22 (Plan 5, task 3): the SQL grammar is vendored and no package is pinned with
+`revision:` any more. Spec §8.1 names tree-sitter as the highlighting engine and as the one significant
 third-party dependency. This record fixes the packages, their versions and how they are used, and is the checklist for
 adding a language. The wrapper, the package layout and the vendoring are [builder] calls inside §8.1.
 
@@ -26,15 +27,16 @@ Measured on Linux x86_64, a Release build, 500 lines of ordinary code, best of f
 with its samples repeated to 500 lines). Tokens take 5 to 15 ms (Swift 10, Python 14, JavaScript 15, TypeScript 15,
 SQL 11, Rust 11, Java 7, Go 5, JSON 5, CSS 6, C 9, C++ 7, C# 8, Bash 9, HTML 10, YAML 6, PowerShell 8) and the error rate
 2 to 4 ms. The first use of a language compiles its query, with a first parse of 40 characters: Swift 270 ms (the
-longest), C# 58, SQL 57, C++ 43 (its own query and C's), TypeScript 34 (and JavaScript's), Rust 27, Python 14,
-JavaScript 13, Bash 10, Java 8, YAML 8, C 5, PowerShell 4, Go 3, CSS 1, HTML and JSON under 1. All are far below the
-paste budget (§7: 50 ms) once the query exists, but the first Swift paste after a launch would pay the 270 ms, so the app
-should compile the queries of the languages it expects on its highlight queue before they are needed.
+longest; AGENTS.md has carried 240 ms from another run, so the figure to plan for is 240 to 270 ms), C# 58, SQL 57, C++ 43
+(its own query and C's), TypeScript 34 (and JavaScript's), Rust 27, Python 14, JavaScript 13, Bash 10, Java 8, YAML 8, C 5, PowerShell 4, Go 3, CSS 1, HTML and JSON under 1. All are far below the
+paste budget (§7: 50 ms) once the query exists, but the first Swift paste after a launch would pay the 240 to 270 ms, so
+the app should compile the queries of the languages it expects on its highlight queue before they are needed.
 
 ### Packages
 
-Every package is pinned with `exact:` (tree-sitter-sql, which has no release with generated sources, with `revision:`),
-the tree-sitter runtime included, which swift-tree-sitter would otherwise let float within 0.25.x. The Xcode project is generated and never committed, so a `Package.resolved` next to it would not
+Every package is pinned with `exact:`, the tree-sitter runtime included, which swift-tree-sitter would otherwise let
+float within 0.25.x, and no grammar is pinned to a commit: the three that cannot be dependencies at a version are vendored
+(below). The Xcode project is generated and never committed, so a `Package.resolved` next to it would not
 survive: exact versions in `Packages/ScratchCode/Package.swift` are what keeps the app, CI and `swift test` on the same
 code. `Packages/ScratchCode/Package.resolved` records the revisions.
 
@@ -48,7 +50,7 @@ code. `Packages/ScratchCode/Package.resolved` records the revisions.
 | tree-sitter-typescript (grammar) | https://github.com/tree-sitter/tree-sitter-typescript | 0.23.2 | MIT | dependency (`TreeSitterTypeScript`; the package also builds its TSX grammar, which nothing links) |
 | tree-sitter-json (grammar) | https://github.com/tree-sitter/tree-sitter-json | 0.24.8 | MIT | dependency (`TreeSitterJSON`) |
 | tree-sitter-bash (grammar) | https://github.com/tree-sitter/tree-sitter-bash | 0.25.1 | MIT | dependency (`TreeSitterBash`) |
-| tree-sitter-sql (grammar) | https://github.com/DerekStride/tree-sitter-sql | commit e038788e5d4daba82dea35676bf49a216629e141 of `gh-pages` | MIT | dependency (`TreeSitterSql`), pinned with `revision:` |
+| tree-sitter-sql (grammar) | https://github.com/DerekStride/tree-sitter-sql | commit e038788e5d4daba82dea35676bf49a216629e141 of `gh-pages` (the build of `main` 987a64a) | MIT | vendored (`Sources/GrammarSQL`) |
 | tree-sitter-yaml (grammar) | https://github.com/tree-sitter-grammars/tree-sitter-yaml | 0.7.0 | MIT | dependency (`TreeSitterYAML`) |
 | tree-sitter-html (grammar) | https://github.com/tree-sitter/tree-sitter-html | 0.23.2 | MIT | dependency (`TreeSitterHTML`) |
 | tree-sitter-css (grammar) | https://github.com/tree-sitter/tree-sitter-css | 0.23.2 | MIT | dependency (`TreeSitterCSS`) |
@@ -70,13 +72,21 @@ dependency is pinned to one of those.
 
 tree-sitter-sql is the one grammar whose tags have no generated sources at all (its `.gitignore` lists `src/parser.c`,
 43 MB). The generated files are on the `gh-pages` branch, which has one commit for each build of `main`, with the whole
-grammar next to them and a `Package.swift` that lists its sources outright. The dependency is pinned to the build of
-`987a64a` (the `main` of 2026-10-17, 76 commits after the last release, 0.3.11) with `revision:`, which a local package is
-allowed to use. If that commit ever disappears (the branch is append-only so far, with 129 deploys since February 2026),
-the build fails at resolution, and the generated files of the same commit are then vendored like the other grammars
-below.
+grammar next to them and a `Package.swift` that lists its sources outright. Plan 4 depended on the build of `987a64a`
+(the `main` of 2026-10-17, 76 commits after the last release, 0.3.11) with `revision:`, which a local package is allowed
+to use, and noted that the build would fail at resolution if that commit ever disappeared. It was also the one package
+that was not pinned to a version, and the repository's 150 MB of history made the first fetch of every clean checkout and
+CI run slow. So Plan 5 (task 3) vendored the generated files of the same commit, as the grammars below are:
+`Sources/GrammarSQL` holds `src/parser.c`, `src/scanner.c`, `src/tree_sitter/*.h`, the `LICENSE` and the header
+`include/tree_sitter_sql.h`, unchanged, and a `README.md` that names the commit. The parser is the same bytes as before
+(`cmp` against the checkout), so the highlighting and the detection are as they were, and `highlights.scm` was already a
+copy of that commit's. `GrammarsTests.sqlBuildsFromVendoredSources` fails if `Package.swift` pins a `revision:` again or
+the vendored files go. The repository grows by the 41 MB file (2.8 MB gzipped).
 
-### Grammars whose own `Package.swift` cannot be a dependency are vendored
+### Grammars that cannot be a dependency at a version are vendored
+
+Python and PowerShell, because their `Package.swift` leaves out the scanner (this section), and SQL, because its tags have
+no generated sources (above).
 
 tree-sitter-python's `Package.swift` (the template `tree-sitter init` writes for every grammar with an external scanner)
 adds `src/scanner.c` to the target only when `FileManager.default.fileExists(atPath: "src/scanner.c")`. That is a path

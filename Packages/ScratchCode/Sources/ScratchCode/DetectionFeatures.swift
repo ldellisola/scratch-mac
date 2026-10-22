@@ -793,10 +793,23 @@ struct DetectionLine {
 
     // MARK: A `key: value` line of YAML
 
+    /// A `key: value` line that reads as YAML, and what it says beyond its shape.
+    struct YAMLEntry {
+        let key: String
+        /// The key has no value, so what is indented under it, or listed under it, belongs to it.
+        let hasNoValue: Bool
+        /// The value is YAML syntax that a note does not have: a block scalar (`|`, `>`), an anchor (`&base`) or a quoted
+        /// string with a colon in it (`"5432:5432"`).
+        let hasSyntaxValue: Bool
+        /// The value is `|` or `>`: the lines indented below the key are its text, whatever they look like.
+        let opensBlockScalar: Bool
+    }
+
     /// The key of a `key: value` line, `- key: value` list items included, when it reads as YAML: an identifier that
     /// is not a capitalised word (`Subject:` and `Date:` are labels of prose), with a value that is empty, short,
-    /// quoted or a flow collection. Python's `else:` is no key.
-    var yamlEntry: (key: String, isConfiguration: Bool)? {
+    /// quoted or a flow collection. Python's `else:` is no key. Plenty of notes have such lines (`phone: 07700 900 123`),
+    /// so the shape alone says nothing: `DetectionFeatures.isYAMLShape` asks for a cue.
+    var yamlEntry: YAMLEntry? {
         var start = 0
         if bytes.hasPrefix("- ") {
             start = 2
@@ -831,21 +844,42 @@ struct DetectionLine {
         // A trailing comma or a call is Swift or JavaScript, not YAML: `name: "ScratchCode",`, `files: [.f("a")]`.
         if let tail = value.last, tail == 0x2C || tail == 0x28 || tail == 0x29 { return nil }
         if DetectionLine.findsCall(in: value) { return nil }
-        if value.isEmpty { return (key, false) }
+        if value.isEmpty {
+            return YAMLEntry(key: key, hasNoValue: true, hasSyntaxValue: false, opensBlockScalar: false)
+        }
         if value.contains("=") && !value.hasPrefix("\"") && !value.hasPrefix("'") { return nil }
         // `isEmpty: Bool; hasTitle: Bool` is a pair of declarations: a `;` or a second `: ` is not in a plain value.
         if !value.hasPrefix("\"") && !value.hasPrefix("'") && (value.contains(";") || value.contains(": ")) {
             return nil
         }
+        let blockScalar = DetectionLine.isBlockScalarIndicator(value)
         if let firstValue = value.first, [0x22, 0x27, 0x5B, 0x7B, 0x7C, 0x3E, 0x26, 0x2A, 0x21].contains(firstValue) {
-            return (key, true)
+            let syntax = blockScalar || DetectionLine.isAnchor(value) || DetectionLine.isQuotedWithColon(value)
+            return YAMLEntry(key: key, hasNoValue: false, hasSyntaxValue: syntax, opensBlockScalar: blockScalar)
         }
         let valueTokens = value.split(separator: 0x20).count
         let valueEndsSentence = [0x2E, 0x3F, 0x21].contains(value[value.count - 1])
         guard valueTokens <= 4, !valueEndsSentence else { return nil }
-        // A value that is more than plain words (a number, a version, a path, `true`) reads as configuration.
-        let plainWords = value.allSatisfy { Byte.isLetter($0) || $0 == 0x20 }
-        return (key, !plainWords)
+        // A plain value is words, numbers, a phone number, an email, a path, a comma list, `true`: all of them things a
+        // note says too, so none is a cue.
+        return YAMLEntry(key: key, hasNoValue: false, hasSyntaxValue: false, opensBlockScalar: false)
+    }
+
+    /// `|` or `>`, and the indicators that may follow (`|-`, `>+`, `|2`): a block scalar of YAML.
+    private static func isBlockScalarIndicator(_ value: [UInt8]) -> Bool {
+        guard let first = value.first, first == 0x7C || first == 0x3E else { return false }
+        return value.dropFirst().allSatisfy { $0 == 0x2D || $0 == 0x2B || Byte.isDigit($0) }
+    }
+
+    /// `&base` or `&base debug`: an anchor.
+    private static func isAnchor(_ value: [UInt8]) -> Bool {
+        value.count >= 2 && value[0] == 0x26 && (Byte.isLetter(value[1]) || value[1] == 0x5F)
+    }
+
+    /// `"5432:5432"`, `'a: b'`: a string in quotes with a colon between them.
+    private static func isQuotedWithColon(_ value: [UInt8]) -> Bool {
+        guard let quote = value.first, quote == 0x22 || quote == 0x27 else { return false }
+        return value.dropFirst().contains(0x3A)
     }
 
     /// The key of a `key: value` line of YAML, nil when the line is not one.
@@ -1152,44 +1186,56 @@ struct DetectionFeatures {
         return result
     }
 
-    /// Lines of `key: value` and `- item` with no braces or semicolons, and at least two keys: a YAML file. A key is
-    /// an identifier that is not a capitalised word, so that the headers of an email and the labels of a note are not
-    /// YAML. With three keys it is YAML; with two it takes a `---`, a list or an indented key to say so.
+    /// Lines of `key: value` and `- item` with no braces or semicolons, at least two keys, and a cue that it is YAML and not
+    /// a note. A key is an identifier that is not a capitalised word, so that the headers of an email and the labels of a
+    /// note are not YAML, and lines such as `phone: 07700 900 123` are a note's own (`name: John`, `rent: 950`,
+    /// `buy: eggs, flour`, `draft: false`). The cues are structure: a `---` document start, a key with no value that has
+    /// lines nested under it (indented more) or a `- ` list, or a value that is YAML syntax (`|`, `>`, `&anchor`, a quoted
+    /// string with a colon in it). The text of a block scalar is not read as lines.
     private static func isYAMLShape(_ lines: [DetectionLine]) -> Bool {
         var keys = 0
         var items = 0
         var others = 0
-        var configuration = 0
-        var emptyKeys = 0
-        var minimumIndent = Int.max
-        var maximumIndent = 0
         var documentStart = false
+        var hasCue = false
+        // The entry before this line, for the keys with no value that the next line may nest under.
+        var previous: (indent: Int, hasNoValue: Bool)?
+        // The indent of the key of a block scalar, while its text is being passed.
+        var scalarIndent: Int?
+        // Whether `line` belongs to the entry before it: indented more than a key with no value, or an item of the list
+        // of such a key (YAML lets a list sit at the indent of its key).
+        func nests(_ line: DetectionLine, under before: (indent: Int, hasNoValue: Bool)?) -> Bool {
+            guard let before, before.hasNoValue else { return false }
+            return line.starts("- ") ? line.indent >= before.indent : line.indent > before.indent
+        }
         for line in lines {
+            if let indent = scalarIndent {
+                if line.indent > indent { continue }
+                scalarIndent = nil
+            }
             if line.bytes == [0x2D, 0x2D, 0x2D] {
                 documentStart = true
+                previous = nil
             } else if line.isHashComment {
                 continue
             } else if line.endsWithSemicolon || line.endsWithOpenBrace || line.isCloser {
                 return false
             } else if let entry = line.yamlEntry {
                 keys += 1
-                if entry.isConfiguration { configuration += 1 }
-                if line.bytes.last == 0x3A { emptyKeys += 1 }
-                minimumIndent = min(minimumIndent, line.indent)
-                maximumIndent = max(maximumIndent, line.indent)
+                if nests(line, under: previous) || entry.hasSyntaxValue { hasCue = true }
+                if entry.opensBlockScalar { scalarIndent = line.indent }
+                previous = (line.indent, entry.hasNoValue)
             } else if line.starts("- ") {
                 items += 1
-                minimumIndent = min(minimumIndent, line.indent)
-                maximumIndent = max(maximumIndent, line.indent)
+                if nests(line, under: previous) { hasCue = true }
+                previous = (line.indent, false)
             } else {
                 others += 1
+                previous = nil
             }
         }
         guard keys >= 2, others * 5 <= keys + items + others else { return false }
-        // A document start, keys inside keys, or a list under a key say YAML on their own.
-        if documentStart || maximumIndent > minimumIndent || (items > 0 && emptyKeys > 0) { return true }
-        // Flat `key: value` lines are YAML when one value is more than a word (`age: 30`): `monday: gym` is a note.
-        return keys >= 3 && configuration >= 1
+        return documentStart || hasCue
     }
 
     /// A line that starts a statement of SQL and another one that continues it, with something SQL-like on one of

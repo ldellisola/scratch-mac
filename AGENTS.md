@@ -103,6 +103,8 @@ Packages/ScratchCode/             Swift package, no AppKit, builds and tests on 
                                   a resource bundle, read through `Bundle.module`
   Sources/GrammarPython/          the Python grammar's generated C, vendored (its README.md says why)
   Sources/GrammarPowerShell/      the PowerShell grammar's generated C, vendored in the same way
+  Sources/GrammarSQL/             the SQL grammar's generated C (41 MB parser.c from the gh-pages build of its repository),
+                                  vendored in the same way
   Tests/ScratchCodeTests/         Swift Testing, one file per source file, and `Samples/<fence name>.txt`, 15 to 40 lines
                                   of ordinary code for each of the 17 languages (a test resource), and `Corpus/`: the
                                   samples the detector is tuned against, in `<fence name>/` (code), `unknown/` (code of
@@ -246,8 +248,7 @@ Run them from the repository root. `[linux]` means it also runs in the Linux clo
 macOS and runs on GitHub's Macs.
 
 - `make core-test` `[linux]`: build and run the ScratchCore tests, then the ScratchCode tests (the first run fetches
-  tree-sitter and its 15 grammar packages from GitHub, about 3 minutes with tree-sitter-sql's 150 MB history, and
-  compiles them).
+  tree-sitter and its 14 grammar packages from GitHub, and compiles them and the three vendored grammars, a few minutes).
 - `swift test --package-path Packages/ScratchCore --filter <name>` `[linux]`: run matching tests only (the same for
   `Packages/ScratchCode`).
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
@@ -510,11 +511,12 @@ new kind of release file, with no change to the app, ships.
   manifest in the builder's working directory, so linking fails with undefined `*_external_scanner_*` symbols. Such a
   grammar is vendored into `Packages/ScratchCode/Sources/Grammar<Language>/`, compiled with `-w` (Xcode warns about the
   generated C, and the app builds with no warnings; docs/decisions/0007, which also lists how to add a language). Python
-  and PowerShell are vendored. JavaScript, YAML and CSS are pinned to the older tags that list their sources outright,
+  and PowerShell are vendored, and so is SQL, for another reason: its tags have no generated `parser.c` at all (it is on
+  the `gh-pages` branch, a build for each commit of `main`), and a dependency could only pin a commit of that branch.
+  JavaScript, YAML and CSS are pinned to the older tags that list their sources outright,
   and their queries are from those tags: a query must match the node names of the grammar it runs on. Pin every package
-  in `Package.swift` with `exact:`, because the generated Xcode project has no `Package.resolved` of its own. The one
-  exception is tree-sitter-sql, whose tags have no generated `parser.c`: it is pinned with `revision:` to a commit of its
-  `gh-pages` branch, where the builds of `main` are.
+  in `Package.swift` with `exact:`, because the generated Xcode project has no `Package.resolved` of its own: nothing is
+  pinned with `revision:` (`GrammarsTests.sqlBuildsFromVendoredSources` checks it).
 - **A query that names a node its grammar lacks does not compile, and the language then goes uncoloured.**
   `QueryCache` turns the error into nil, so only a test notices: `QueryInheritanceTests.everyLanguageHasAGrammarAndItsQueryFiles`
   compiles all 17. That is why `javascript-jsx` is a folder of its own (TypeScript has no JSX nodes) and why a copy of
@@ -523,22 +525,28 @@ new kind of release file, with no change to the app, ships.
 - **ScratchCode's queries are a resource bundle, and a missing one stops the app.** `Grammar.makeQuery` reads
   `Queries/<language>/highlights.scm` through `Bundle.module`, which calls `fatalError` when it cannot find
   `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries
-  it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 ms
-  for Swift, Release, on Linux), and `Highlighter` is thread-safe.
+  it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 to
+  270 ms for Swift, Release, on Linux), and `Highlighter` is thread-safe.
 - **Code detection is tuned against `Tests/ScratchCodeTests/Corpus/`, and the corpus only grows.** A paste that is
   detected wrongly becomes a sample first (the folder of its language, `unknown/` for a language Scratch lacks,
   `prose/` for text that must stay plain), then the detector changes until every sample passes. Never delete a prose
   sample to make a test pass, and write every sample fresh: no poems, lyrics, articles or real emails. The rule is the
   spec's, "when unsure, it is prose": a text is code only with a mean line evidence of 0.5 or more and two lines of
   code that are not comments (`DetectionFeatures.evidence`), so a list of `word;` lines, a note that mentions `init()`
-  and a log are prose. A text with no idiom of any language is named only when one grammar parses it better than the
-  others (else it is code of an unknown language), and a language that shares its idioms with another (TypeScript with
-  JavaScript, C++ with C) is settled by the idioms only it has (`CodeDetector.settleScriptFamily`).
+  and a log are prose, and so is a note of short lowercase `key: value` lines (`phone: 07700 900 123`, `buy: eggs, flour`):
+  YAML needs a cue of structure (a `---`, nesting under a key with no value, a `- ` list under one, or a value that is
+  `|`, `>`, an anchor or a quoted string with a colon: `DetectionFeatures.isYAMLShape`). A text with no idiom of any
+  language is named only when one grammar parses it better than the others (else it is code of an unknown language), and
+  a language that shares its idioms with another (TypeScript with JavaScript, C++ with C) is settled by the idioms only
+  it has (`CodeDetector.settleScriptFamily`).
 - **Detection reads text with its inline code masked.** `DetectionLine` turns what is between a pair of backticks into
   letters before it looks at the line, so `call `init()` first` in a Markdown note is a sentence and not a call.
   `JSONShape` is the JSON check, not `JSONSerialization`: Foundation on Linux accepts a trailing comma and the one on
   macOS does not. Only the first 300 lines or 40,000 bytes of a paste are read, the first 50 lines or 4,000 bytes are
-  parsed to compare grammars, and a detection is 3 to 12 ms for 500 lines in Release (the budget is 20).
+  parsed to compare grammars, and a detection is 3 to 12 ms for 500 lines in Release (the budget is 20). The timing tests
+  of `CodeDetectorTests` run in Debug, where the macOS runner took 107 ms for a bound of 100 and 498 ms for 400, so
+  `bound(_:)` allows 4 times the figure a test names on macOS and the figure itself on Linux. The Release budget is held
+  by `paste_code_ms`, not by them.
 - **Do not link Homebrew's SQLite.** `CSQLite` deliberately has no `pkgConfig`, so macOS links the system library.
 - **Never commit `App/Scratch.xcodeproj`.** It is generated from `App/project.yml`.
 - **App tests run inside the app.** `ScratchAppTests` are hosted: Xcode starts the real app, then loads the tests into

@@ -142,6 +142,18 @@ private func repeated(_ unit: String, lines: Int) -> String {
     return text
 }
 
+/// The bound of a timing test. The figure a test names is its Release budget, and a test run is a Debug build: on
+/// macOS the CI runner took 107 ms for the 100 of `fiveHundredLinesIsFast` and 498 ms for the 400 of the test of every
+/// language, so there the bound is 4 times that figure. Linux keeps the figure itself. What is held to the budget is
+/// the Release build, by `paste_code_ms` (AGENTS.md section 4).
+private func bound(_ releaseBudget: Duration) -> Duration {
+    #if os(macOS)
+        return releaseBudget * 4
+    #else
+        return releaseBudget
+    #endif
+}
+
 /// The shortest of a few runs, so that a busy runner does not fail a test of speed.
 private func fastest(of runs: Int = 3, _ work: () -> Void) -> Duration {
     var best = Duration.seconds(1000)
@@ -160,7 +172,7 @@ private func fastest(of runs: Int = 3, _ work: () -> Void) -> Duration {
     #expect(text.split(separator: "\n", omittingEmptySubsequences: false).count >= 500)
     #expect(CodeDetector.detect(text)?.language == .swift)
     let elapsed = fastest { _ = CodeDetector.detect(text) }
-    #expect(elapsed < .milliseconds(100), "took \(elapsed)")
+    #expect(elapsed < bound(.milliseconds(100)), "took \(elapsed)")
 }
 
 @Test func fiveHundredLinesOfEveryLanguageIsFast() {
@@ -169,7 +181,7 @@ private func fastest(of runs: Int = 3, _ work: () -> Void) -> Duration {
         for sample in samples(in: language.fenceName) {
             let text = repeated(sample.text, lines: 500)
             let elapsed = fastest(of: 2) { _ = CodeDetector.detect(text) }
-            #expect(elapsed < .milliseconds(400), "\(sample.path) took \(elapsed)")
+            #expect(elapsed < bound(.milliseconds(400)), "\(sample.path) took \(elapsed)")
         }
     }
 }
@@ -178,13 +190,13 @@ private func fastest(of runs: Int = 3, _ work: () -> Void) -> Duration {
     let log = (0..<50_000).map { "2026-03-02 08:14:\($0 % 60) INFO worker \($0) finished job \($0 * 7) ok" }
     let text = log.joined(separator: "\n")
     let elapsed = fastest(of: 1) { #expect(CodeDetector.detect(text) == nil) }
-    #expect(elapsed < .milliseconds(500), "took \(elapsed)")
+    #expect(elapsed < bound(.milliseconds(500)), "took \(elapsed)")
 
     // One enormous line, and a minified file of a few lines.
     let long = String(repeating: "let value = compute(a, b);", count: 20_000)
     let minified = long + "\n" + long
     let longElapsed = fastest(of: 1) { _ = CodeDetector.detect(minified) }
-    #expect(longElapsed < .milliseconds(1_000), "took \(longElapsed)")
+    #expect(longElapsed < bound(.milliseconds(1_000)), "took \(longElapsed)")
 }
 
 // MARK: The strong signals
@@ -295,7 +307,37 @@ private func fastest(of runs: Int = 3, _ work: () -> Void) -> Duration {
 @Test func labelsOfAPlainNoteAreNotYAML() {
     #expect(answer("monday: gym\ntuesday: dentist\nwednesday: call mum\n") == "prose")
     #expect(answer("Subject: Lunch\nFrom: Dana\nTo: Joel\nDate: Friday\n") == "prose")
-    #expect(answer("name: John\nage: 30\ncity: Paris\n") == "yaml")
+    // Not YAML either: short lowercase keys with words, numbers, phone numbers, emails or a comma list (Plan 5, task 3).
+    #expect(answer("name: John\nage: 30\ncity: Paris\n") == "prose")
+}
+
+// MARK: `key: value` notes and the cues of YAML (Plan 5, task 3; docs/features/code.md, "Detection")
+
+@Test func flatKeyValueNotesAreProse() {
+    #expect(answer("rooms: 2\nrent: 950\ndeposit: 1900\n") == "prose")
+    #expect(answer("phone: 07700 900 123\nemail: jo@example.com\nowner: jo\n") == "prose")
+    #expect(answer("buy: eggs, flour, butter\ntodo: call the vet\nidea: a lamp\n") == "prose")
+    #expect(answer("draft: false\nreviewed: true\nowner: jo\n") == "prose")
+    #expect(answer("version: 2\nbuild: 14\nowner: jo\n") == "prose")
+    // The lines are only "indented", under a key that has a value: that is not nesting.
+    #expect(answer("name: John\n  age: 30\n  city: Paris\n") == "prose")
+    // A list that is not under a key.
+    #expect(answer("name: John\n- age: 30\n- city: Paris\n") == "prose")
+}
+
+@Test func yamlNeedsAStructuralCue() {
+    // Nesting under a key that has no value.
+    #expect(answer("server:\n  host: localhost\n  port: 8080\n") == "yaml")
+    // A list under a key, indented or not.
+    #expect(answer("tags:\n  - work\n  - plan\nowner: jo\n") == "yaml")
+    #expect(answer("tags:\n- work\n- plan\nowner: jo\n") == "yaml")
+    // A document start.
+    #expect(answer("---\nname: build\non: push\n") == "yaml")
+    // A value that is YAML syntax: a block scalar, an anchor, a quoted string with a colon in it.
+    #expect(answer("name: build\nrun: |\n  make test\n  make lint\n") == "yaml")
+    #expect(answer("description: >\n  runs the checks\nowner: jo\n") == "yaml")
+    #expect(answer("base: &base debug\nname: web\nenv: staging\n") == "yaml")
+    #expect(answer("name: db\nports: \"5432:5432\"\nimage: postgres\n") == "yaml")
 }
 
 @Test func inlineCodeIsAWordOfTheSentence() {

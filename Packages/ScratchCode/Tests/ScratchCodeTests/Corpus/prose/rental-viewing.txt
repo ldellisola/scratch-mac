@@ -1,0 +1,5 @@
+rooms: 2
+rent: 950
+deposit: 1900
+available: 1 march
+agent: ines, 07700 900 877

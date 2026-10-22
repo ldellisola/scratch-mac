@@ -1,0 +1,5 @@
+flight: ba 214
+from: lisbon
+to: london
+departs: 18:40
+seat: 14c
