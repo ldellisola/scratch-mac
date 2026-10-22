@@ -1,9 +1,20 @@
 import Foundation
 
-/// The notes and the saved session that one ``Fixture`` seeds.
+/// A file that a fixture's note holds: the row's facts and the bytes of the file.
+struct FixtureAttachment {
+    var id: AttachmentID
+    var noteID: NoteID
+    var fileName: String
+    var typeIdentifier: String
+    var data: Data
+    var pixelSize: (width: Int, height: Int)?
+}
+
+/// The notes, the saved session and the attachments that one ``Fixture`` seeds.
 struct FixtureContent {
     var notes: [Note]
     var session: SessionState?
+    var attachments: [FixtureAttachment] = []
 
     static func make(_ fixture: Fixture, now: Date) -> FixtureContent {
         switch fixture {
@@ -14,6 +25,7 @@ struct FixtureContent {
         case .recentlyDeleted: recentlyDeleted(now: now)
         case .formatting: formatting(now: now)
         case .code: code(now: now)
+        case .attachments: attachments(now: now)
         }
     }
 
@@ -240,6 +252,59 @@ struct FixtureContent {
         let code = note("Code", body, editedAt: now)
         return FixtureContent(notes: [code], session: SessionState(tabs: [tab(on: code)], activeTabIndex: 0))
     }
+
+    // MARK: Attachments
+
+    /// The note "Screenshots", edited at `now` and open in the only tab: a line of text, an image, a line of text and a
+    /// text file. The image is 64 x 40 pixels, so it draws at its own size in a window of any width.
+    private static func attachments(now: Date) -> FixtureContent {
+        let noteID = NoteID.make()
+        let image = FixtureAttachment(
+            id: dashboardID, noteID: noteID, fileName: "dashboard.png", typeIdentifier: "public.png",
+            data: dashboardPNG, pixelSize: (width: 64, height: 40))
+        let plan = FixtureAttachment(
+            id: rollbackPlanID, noteID: noteID, fileName: "rollback-plan.txt",
+            typeIdentifier: "public.plain-text", data: Data(rollbackPlan.utf8), pixelSize: nil)
+        let body = [
+            "The dashboard after the deploy.",
+            AttachmentToken.line(for: image.id),
+            "The steps to roll it back.",
+            AttachmentToken.line(for: plan.id),
+        ].joined(separator: "\n")
+        let screenshots = Note(
+            id: noteID, title: "Screenshots", body: body, createdAt: now, modifiedAt: now)
+        return FixtureContent(
+            notes: [screenshots], session: SessionState(tabs: [tab(on: screenshots)], activeTabIndex: 0),
+            attachments: [image, plan])
+    }
+
+    /// The ids of the two attachments are fixed, so that the note's body is the same on every run (spec §9.4).
+    private static let dashboardID = AttachmentID(rawValue: "5c1f0a7e-3b2d-4c8e-9a41-0d6e7f8a9b01")
+    private static let rollbackPlanID = AttachmentID(rawValue: "5c1f0a7e-3b2d-4c8e-9a41-0d6e7f8a9b02")
+
+    /// The text of "rollback-plan.txt".
+    private static let rollbackPlan = [
+        "Rollback plan",
+        "",
+        "1. Stop the rollout: kubectl rollout pause deploy/api -n prod",
+        "2. Go back one revision: kubectl rollout undo deploy/api -n prod",
+        "3. Check the error rate in grafana for ten minutes",
+        "4. Tell the team in the release channel",
+        "",
+    ].joined(separator: "\n")
+
+    /// A PNG of 64 x 40 pixels (304 bytes): a window with three buttons and a bar chart, on a blue gradient. It is a
+    /// palette image, small enough to keep in the source, and it is the same bytes on every run.
+    private static let dashboardPNG: Data = {
+        let base64 = [
+            "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAoCAMAAAB5EAzbAAAAJFBMVEUYNG4cPXYgRn4kT4YoWI4sYZYwap40c6b////W4Oz1nkIk",
+            "QGiCmUtoAAAAx0lEQVR42uWQ0RLCIAwEq6Vqzv//X0MSLPAgBJzpWPehhUuy02Z5TrJ8RQAUjwMEx+7gMskZBFc/D8EufyEo2jUB",
+            "MsHaQgV5AhHYZUAg4xMCmx8QkACsUwKerwShRItFAiEEna972gLs8Dy5BbYz81C/QFeW5jUBuQX8z7WyFmwlWuSDzdcJ5T0RE7yL",
+            "ti5N4tsnAKqd+wRAWtmWdu4R6Jdn7aAuwU2QeeKDFiWJfE4iu6DZ3hDQ7wrughb5oMXOJGKCcU4geAGbYT0ahNvQBAAAAABJRU5E",
+            "rkJggg==",
+        ].joined()
+        return Data(base64Encoded: base64) ?? Data()
+    }()
 
     // MARK: Building blocks
 

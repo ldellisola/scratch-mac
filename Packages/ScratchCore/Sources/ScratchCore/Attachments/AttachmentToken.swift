@@ -50,6 +50,31 @@ public enum AttachmentToken {
         }
     }
 
+    /// The ids whose token, `[[attachment:<id>]]`, appears anywhere in `text`: on a line of its own, in the middle of a
+    /// sentence, inside a fenced block. This is what keeps a stored file (``AttachmentStore``), and it reads wider than
+    /// ``ids(in:)`` on purpose: a line that holds the token and more is text, not an attachment, but it can become one
+    /// again with one edit, and the file must still be there when it does. Reading wider can only ever keep a file.
+    public static func referencedIDs(in text: String) -> Set<AttachmentID> {
+        let openingBracket: UInt8 = 0x5B
+        var text = text
+        return text.withUTF8 { bytes in
+            var found: Set<AttachmentID> = []
+            let lastStart = bytes.count - lineLength
+            var index = 0
+            while index <= lastStart {
+                if bytes[index] == openingBracket, bytes[index + 1] == openingBracket,
+                    let id = parse(UnsafeBufferPointer(rebasing: bytes[index..<index + lineLength]))
+                {
+                    found.insert(id)
+                    index += lineLength
+                } else {
+                    index += 1
+                }
+            }
+            return found
+        }
+    }
+
     /// The token lines that `range` touches, in order, with their ids. Each range is in UTF-16 units, as `NSTextStorage`
     /// counts, and holds the token without its line break.
     ///

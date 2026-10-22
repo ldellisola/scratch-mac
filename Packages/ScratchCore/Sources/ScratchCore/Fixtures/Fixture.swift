@@ -22,14 +22,29 @@ public enum Fixture: String, CaseIterable, Sendable {
     /// "Code": one note with a `swift`, `python`, `sql`, `json` and `bash` block, a block whose fence has no name (it
     /// holds JavaScript, so the editor detects the language), and prose between them (spec §6.4).
     case code
+    /// "Screenshots": one note with a line of text, a PNG of 64 x 40 pixels, a line of text and a text file
+    /// "rollback-plan.txt", each file an attachment of the note with its copy in place (spec §6.4).
+    case attachments
 
-    /// Writes this fixture's notes and session through the stores. All dates are relative to `now`.
+    /// Writes this fixture's notes and session through the stores, and its attachments' rows and files through
+    /// `attachments`. All dates are relative to `now`.
     ///
     /// The notes go in as one transaction, so a failure leaves none of them behind. Seed into an empty database: this
-    /// adds to what is there and does not remove it.
-    public func seed(notes: NoteStore, session: SessionStore, now: Date) throws {
+    /// adds to what is there and does not remove it. Without an `attachments` store the files of a fixture that has
+    /// some are not written, and its tokens draw as missing attachments: only `ScratchStorage.open` seeds for the app.
+    public func seed(
+        notes: NoteStore, session: SessionStore, attachments: AttachmentStore? = nil, now: Date
+    ) throws {
         let content = FixtureContent.make(self, now: now)
         try notes.saveAll(content.notes)
+        if let attachments {
+            for file in content.attachments {
+                _ = try attachments.register(
+                    id: file.id, noteID: file.noteID, fileName: file.fileName, typeIdentifier: file.typeIdentifier,
+                    byteSize: Int64(file.data.count), pixelSize: file.pixelSize, now: now)
+                try attachments.writeIn(file.id, data: file.data)
+            }
+        }
         if let state = content.session {
             try session.save(state)
         }

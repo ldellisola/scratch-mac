@@ -14,8 +14,9 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
   in progress for 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out and
-  copied; plus the 0.4.0 follow-ups). Its Task 1 is done: titles skip fence and attachment lines, `AttachmentID` and
-  `AttachmentToken` exist, and the schema is version 3. Plan 4, done and released as 0.4.0 (code: highlighting, code
+  copied; plus the 0.4.0 follow-ups). Its Tasks 1 and 2 are done: titles skip fence and attachment lines, `AttachmentID`
+  and `AttachmentToken` exist, the schema is version 3, and `AttachmentStore` keeps the files and removes them only when no
+  note names them. Plan 4, done and released as 0.4.0 (code: highlighting, code
   blocks, paste classification, the language label menu, and bold at word boundaries):
   [`2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
@@ -32,13 +33,19 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   row (`deletedAt` is set for Recently Deleted rows). NoteStore: reads and writes the
                                   notes table (pinned first, newest edit first), searches it (`search`), and pins,
                                   deletes, restores and purges notes (`setPinned`, `delete`, `restore`,
-                                  `deletePermanently`, `deletedSummaries`, `purge`). SearchQuery: typed text to an
+                                  `deletePermanently`, `deletedSummaries`, `purge`), and says which attachments the
+                                  stored bodies name (`referencedAttachmentIDs`). SearchQuery: typed text to an
                                   FTS5 MATCH expression
   Sources/ScratchCore/Attachments/ AttachmentID (a lowercase UUID, like NoteID) and AttachmentToken: the line
                                   `[[attachment:<id>]]` that stands for an attachment in a note (`line(for:)`,
                                   `id(inLine:)`: the whole line and nothing else, `ids(in:)`: every token of a text, in
-                                  order, `lineRanges(in:within:)`: the token lines a UTF-16 range touches). Plan 5
-                                  adds the store (Task 2)
+                                  order, `lineRanges(in:within:)`: the token lines a UTF-16 range touches,
+                                  `referencedIDs(in:)`: every id whose token is anywhere in a text, which is what keeps a
+                                  file). Attachment (a row: the file's name, type, size and whether its copy is in
+                                  place) and AttachmentStore (the `attachments` table and the copied files under
+                                  `<data dir>/attachments/<id>/<file name>`: `register`, `copyIn`, `writeIn`, `attachment`,
+                                  `attachments`, `fileURL`, and the removal by reference `removeUnreferenced` and
+                                  `sweep`)
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores: the tabs, the active one, the
                                   font size, and each tab's cursor and `scrollAnchor`), SessionStore (JSON under key
                                   "state"), TabList (the tab rules: open, close, select, with TabOpening and
@@ -55,7 +62,9 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   SQLValue and Row, Schema (version 3, with the FTS5 index `notes_fts`, the
                                   `attachments` table, the migration rule, and SchemaError for a database from a newer
                                   Scratch), ScratchStorage (opens
-                                  the data directory and its stores; refuses a fixture on the real directory; its
+                                  the data directory and its stores, `notes`, `session` and `attachments`; refuses a
+                                  fixture on the real directory; `deletePermanently` and `purge`, which remove a note
+                                  and then the files nothing names any more; its
                                   `database` is public so that tests can make writes fail, see section 7)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
   Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold at
@@ -72,8 +81,9 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   touches a fence line; `intersects` says whether a range holds a block), EditMapping
                                   (where positions go when text is replaced) and `MarkupParser.mayHaveSpans` (a cheap
                                   test that skips the parse of a line with no marker)
-  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting, code) and
-                                  FixtureContent, their notes and session
+  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting, code,
+                                  attachments) and FixtureContent, their notes, session and attachments (rows and the
+                                  bytes of their files)
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
 Packages/ScratchCode/             Swift package, no AppKit, builds and tests on Linux and macOS. Wraps tree-sitter, the one
                                   third-party dependency (docs/decisions/0007). ScratchCore does not depend on it.
@@ -298,7 +308,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 | Flag | Value | Effect |
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
-| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code` | delete the database in the data directory and seed that fixture |
+| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code`, `attachments` | delete the database and the `attachments` folder in the data directory and seed that fixture |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 
@@ -896,7 +906,28 @@ new kind of release file, with no change to the app, ships.
 - **Adding a fixture means three more places.** `FixtureContent.make`, the `Fixture` case, and ScratchCore's
   `LaunchOptionsTests.parsesEveryFixtureName` (which lists every raw value), and then the launch argument table above and
   `make run`. A core test that lists the cases fails the Linux job and, through `make core-test` on the Mac, the whole
-  macOS job before any app test runs.
+  macOS job before any app test runs. A fixture is the same data every time (`fixtureContentIsTheSameEveryTime`), so
+  its attachments have fixed ids (a body holds them), and it writes its files only when `seed` is given the
+  `AttachmentStore` (`ScratchStorage.open` always gives it).
+- **A stored attachment file goes only when no stored body names its id.** `AttachmentStore.removeUnreferenced` and
+  `sweep` ask `NoteStore.referencedAttachmentIDs()`, which scans every body, live and in Recently Deleted, for the token
+  text anywhere in it (`AttachmentToken.referencedIDs`, wider than the whole-line `ids(in:)` on purpose: a line the owner
+  broke by hand can be fixed again, and a kept file costs nothing). The scan and the removal run in one `Database`
+  transaction, so no save slips in between. The app removes notes through `ScratchStorage.deletePermanently` and
+  `purge`, never through `NoteStore`'s, or their files would stay: they read the ids of the bodies first, remove the
+  notes, and then ask `removeUnreferenced` for those ids only, after the removal has committed, so a failed clean-up of
+  files is not a failed delete (the launch sweep finds the leftover once it is 24 hours old, `sweep(createdBefore:)`).
+  The file goes before its row, because a file with no row would stay for ever. Deleting a token and pressing ⌘Z keeps
+  working because nothing removes a file when a token leaves the text.
+- **A copy into the attachments folder is atomic.** `copyIn` and `writeIn` write `<id>/.copying-<uuid>` and `rename(2)`
+  it onto `<id>/<sanitised file name>` (`sanitisedFileName`: `/` and `:` become `-`, trimmed, empty, `.` and `..` become
+  `file`; the row keeps the name as the owner knows it), and remove the temporary file when anything fails, so the file's
+  name is never a half-written copy. A link is followed (`resolvingSymlinksInPath`): the copy is the file, not another
+  link. `register` does no file work, and `isCopied` is false until a copy finishes. Both belong on the storage queue.
+  A fixture removes the `attachments` folder with the database it replaces.
+- **`Attachment` is ambiguous in a ScratchCore test file.** Swift 6.2's Testing library has an `Attachment` of its own,
+  so `Tests/ScratchCoreTests/AttachmentTestSupport.swift` declares `typealias Attachment = ScratchCore.Attachment` for the
+  test module, which wins over both.
 - **A paste is the plain paste, and its wrap is a second edit on a later turn** (`NoteTextView.beginPaste`, `endPaste`,
   `classifyPaste`). `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` (which the hosted tests call, and which
   Paste runs, a call inside another is the same paste) start and end the paste. Before it, the view works out whether the paste

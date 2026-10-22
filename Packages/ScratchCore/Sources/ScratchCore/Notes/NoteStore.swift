@@ -135,6 +135,47 @@ public final class NoteStore: Sendable {
         return removed.count
     }
 
+    // MARK: Attachments
+
+    /// The ids of every attachment whose token is in the text of any stored note, live or in Recently Deleted
+    /// (``AttachmentToken/referencedIDs(in:)``: the token anywhere in the body counts). This is what keeps an attachment's
+    /// file: ``AttachmentStore`` removes a file only when its id is not in this set.
+    ///
+    /// It reads the bodies that hold the opening of a token and no others, one at a time, so a database of large notes
+    /// is not read into memory whole.
+    public func referencedAttachmentIDs() throws -> Set<AttachmentID> {
+        try database.transaction {
+            try attachmentIDs(selecting: "1 = 1", [])
+        }
+    }
+
+    /// The ids named in the body of the note `id`, when that note is in Recently Deleted. Empty for a note that is not
+    /// deleted and for an unknown id: ``deletePermanently(_:)`` leaves those alone.
+    func attachmentIDsOfDeletedNote(_ id: NoteID) throws -> Set<AttachmentID> {
+        try attachmentIDs(selecting: "id = ? AND deleted_at IS NOT NULL", [.text(id.rawValue)])
+    }
+
+    /// The ids named in the bodies of the notes that ``purge(deletedBefore:)`` removes with this `cutoff`.
+    func attachmentIDsOfNotesDeleted(before cutoff: Date) throws -> Set<AttachmentID> {
+        try attachmentIDs(selecting: "deleted_at IS NOT NULL AND deleted_at < ?", [.date(cutoff)])
+    }
+
+    /// The token ids in the bodies of the notes that match `condition` (SQL written here, never typed text) and hold
+    /// the text `[[attachment:` at all.
+    private func attachmentIDs(selecting condition: String, _ arguments: [SQLValue]) throws -> Set<AttachmentID> {
+        let noteIDs = try database.query(
+            "SELECT id FROM notes WHERE (\(condition)) AND instr(body, '[[attachment:') > 0", arguments
+        ).compactMap { $0.string("id") }
+        var found: Set<AttachmentID> = []
+        for id in noteIDs {
+            guard
+                let body = try database.query("SELECT body FROM notes WHERE id = ?", [.text(id)]).first?.string("body")
+            else { continue }
+            found.formUnion(AttachmentToken.referencedIDs(in: body))
+        }
+        return found
+    }
+
     // MARK: Rows
 
     private static let summaryColumns = "id, display_title, has_title, preview, modified_at, pinned_at, deleted_at"

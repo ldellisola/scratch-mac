@@ -688,12 +688,13 @@ final class SessionCoordinator {
     }
 
     /// Removes the note `id` from Recently Deleted for good, after the sidebar asked the owner. A tab that shows it
-    /// closes. Nothing happens to a note that is not deleted (`NoteStore.deletePermanently`).
+    /// closes. Nothing happens to a note that is not deleted (`NoteStore.deletePermanently`). The files of its
+    /// attachments go with it unless another note names them (`ScratchStorage.deletePermanently`, spec §6.4).
     func deleteNotePermanently(_ id: NoteID) {
         guard tabs != nil, current != nil else { return }
         persistNow()
         do {
-            try storage.notes.deletePermanently(id)
+            try storage.deletePermanently(id)
         } catch {
             report("cannot delete note \(id.rawValue) permanently: \(error)")
             return
@@ -701,9 +702,10 @@ final class SessionCoordinator {
         didRemoveNotes([id])
     }
 
-    /// Removes the notes of Recently Deleted that were deleted more than 30 days ago (`NoteStore.purge`, spec §6.2). It
-    /// runs on the storage queue, at launch one main-queue turn after `restore()` and when the app becomes active, but
-    /// not when the last purge was less than an hour ago. A purged note that is open in a tab closes the tab.
+    /// Removes the notes of Recently Deleted that were deleted more than 30 days ago, and the files of their attachments
+    /// that no other note names (`ScratchStorage.purge`, spec §6.2). It runs on the storage queue, at launch one
+    /// main-queue turn after `restore()` and when the app becomes active, but not when the last purge was less than an
+    /// hour ago. A purged note that is open in a tab closes the tab.
     func purgeExpiredNotes(now: Date) {
         if let last = lastPurge, now.timeIntervalSince(last) < Self.purgeInterval { return }
         lastPurge = now
@@ -711,7 +713,7 @@ final class SessionCoordinator {
         let storage = self.storage
         storageQueue.async { [weak self, storage] in
             do {
-                guard try storage.notes.purge(deletedBefore: cutoff) > 0 else { return }
+                guard try storage.purge(deletedBefore: cutoff) > 0 else { return }
             } catch {
                 report("cannot purge Recently Deleted: \(error)")
                 return

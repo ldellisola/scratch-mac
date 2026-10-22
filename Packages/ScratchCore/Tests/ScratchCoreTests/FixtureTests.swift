@@ -313,3 +313,83 @@ private func note(titled title: String, in notes: NoteStore) throws -> Note {
     let unnamed = text.substring(with: try #require(blocks.last))
     #expect(unnamed.contains("const notes = await fetch"))
 }
+
+// Plan 5, Task 2 (spec §6.4, Attachments): the `attachments` fixture holds the note "Screenshots": a line of text, a
+// PNG of 64 x 40 pixels, a line of text and a text file "rollback-plan.txt". Its two files are written under the
+// attachments directory, which is why seeding it needs an `AttachmentStore`.
+
+private func attachmentsStores() throws -> (NoteStore, SessionStore, AttachmentStore, URL) {
+    let db = try Database(path: ":memory:")
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+        "FixtureTests-\(UUID().uuidString)")
+    return (
+        try NoteStore(database: db), try SessionStore(database: db),
+        AttachmentStore(database: db, directory: directory.appendingPathComponent("attachments")), directory
+    )
+}
+
+@Test func attachmentsFixtureWritesFiles() throws {
+    let (notes, session, attachments, directory) = try attachmentsStores()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try Fixture.attachments.seed(notes: notes, session: session, attachments: attachments, now: now)
+
+    let screenshots = try note(titled: "Screenshots", in: notes)
+    let ids = AttachmentToken.ids(in: screenshots.body)
+    #expect(ids.count == 2)
+    let rows = try attachments.attachments(ids)
+    #expect(rows.count == 2)
+    let png = try #require(rows[ids[0]])
+    let text = try #require(rows[ids[1]])
+    #expect(png.isCopied && text.isCopied)
+    #expect(png.noteID == screenshots.id && text.noteID == screenshots.id)
+    #expect(png.createdAt == now && text.createdAt == now)
+
+    // The image: 64 x 40, public.png, and the file holds exactly the embedded bytes.
+    #expect(png.typeIdentifier == "public.png" && png.isImage)
+    #expect(png.pixelWidth == 64 && png.pixelHeight == 40)
+    let pngBytes = try Data(contentsOf: attachments.fileURL(for: png))
+    #expect(pngBytes.count == Int(png.byteSize))
+    #expect(Array(pngBytes.prefix(8)) == [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+    // IHDR: the width and the height as 32-bit big-endian numbers at offsets 16 and 20.
+    let size = pngBytes.dropFirst(16).prefix(8).map(Int.init)
+    #expect(size == [0, 0, 0, 64, 0, 0, 0, 40])
+    #expect(pngBytes == FixtureContent.make(.attachments, now: now).attachments[0].data)
+
+    // The text file.
+    #expect(text.fileName == "rollback-plan.txt" && !text.isImage)
+    #expect(text.pixelWidth == nil && text.pixelHeight == nil)
+    let textBytes = try Data(contentsOf: attachments.fileURL(for: text))
+    #expect(textBytes.count == Int(text.byteSize))
+    #expect(String(decoding: textBytes, as: UTF8.self).hasPrefix("Rollback plan"))
+    #expect(attachments.fileURL(for: text).lastPathComponent == "rollback-plan.txt")
+}
+
+@Test func attachmentsFixtureNoteIsTextThenImageThenTextThenFile() throws {
+    let (notes, session, attachments, directory) = try attachmentsStores()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try Fixture.attachments.seed(notes: notes, session: session, attachments: attachments, now: now)
+
+    #expect(try notes.summaries().map(\.displayTitle) == ["Screenshots"])
+    #expect(try notes.deletedSummaries().isEmpty)
+    let screenshots = try note(titled: "Screenshots", in: notes)
+    #expect(screenshots.title == "Screenshots")
+    #expect(screenshots.modifiedAt == now && screenshots.pinnedAt == nil && screenshots.deletedAt == nil)
+    let body = lines(of: screenshots.body)
+    #expect(body.count == 4)
+    #expect(AttachmentToken.id(inLine: body[0]) == nil && !body[0].isEmpty)
+    #expect(AttachmentToken.id(inLine: body[1]) != nil)
+    #expect(AttachmentToken.id(inLine: body[2]) == nil && !body[2].isEmpty)
+    #expect(AttachmentToken.id(inLine: body[3]) != nil)
+    let state = try #require(try session.load())
+    #expect(state.tabs.map(\.noteID) == [screenshots.id])
+    #expect(state.activeTabIndex == 0)
+    // The note holds the files, so a sweep that finds them old enough keeps them.
+    #expect(try attachments.sweep(createdBefore: now.addingTimeInterval(1), notes: notes) == 0)
+}
+
+/// The notes alone are seeded when there is no store to write the files with, as in every test that predates it.
+@Test func attachmentsFixtureWithoutAStoreSeedsTheNote() throws {
+    let (notes, session) = try stores()
+    try Fixture.attachments.seed(notes: notes, session: session, now: now)
+    #expect(try notes.summaries().map(\.displayTitle) == ["Screenshots"])
+}

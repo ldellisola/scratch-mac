@@ -100,6 +100,47 @@ private func token(_ id: AttachmentID) -> String { "[[attachment:\(id.rawValue)]
     #expect(AttachmentToken.ids(in: text + token(second)) == [second])
 }
 
+// MARK: referencedIDs(in:)
+
+/// What keeps a stored file is a body that holds the token's text anywhere, not only a line that is a token: the wider
+/// reading can only ever keep a file (Plan 5, "Never lose an attachment").
+@Test func referencedIDsCountsATokenWhereverItIs() {
+    let text = "see \(token(first))\n\(token(second)) done\n \(token(first))\n[x] \(token(second))\nplain"
+    #expect(AttachmentToken.referencedIDs(in: text) == [first, second])
+    #expect(AttachmentToken.referencedIDs(in: token(first)) == [first])
+    #expect(AttachmentToken.referencedIDs(in: "a\n\(token(second))\n\(token(second))") == [second])
+}
+
+@Test func referencedIDsIncludesEveryWholeLineToken() {
+    let text = "intro\n\(token(first))\nmiddle\n\(token(second))\n```\n\(token(first))\n```"
+    #expect(AttachmentToken.referencedIDs(in: text) == Set(AttachmentToken.ids(in: text)))
+}
+
+@Test func referencedIDsIgnoresWhatIsNotAToken() {
+    let id = first.rawValue
+    #expect(AttachmentToken.referencedIDs(in: "").isEmpty)
+    #expect(AttachmentToken.referencedIDs(in: "no tokens here").isEmpty)
+    #expect(AttachmentToken.referencedIDs(in: "[[attachment:\(id.uppercased())]]").isEmpty)
+    #expect(AttachmentToken.referencedIDs(in: "[[attachment:\(id)]").isEmpty)
+    #expect(AttachmentToken.referencedIDs(in: "[attachment:\(id)]]").isEmpty)
+    #expect(AttachmentToken.referencedIDs(in: "[[attachment:\(id.dropLast())]]").isEmpty)
+    #expect(AttachmentToken.referencedIDs(in: "[[attachment:").isEmpty)
+    #expect(AttachmentToken.referencedIDs(in: "[[attachment:\(id)").isEmpty)
+}
+
+@Test func referencedIDsFindsATokenNextToBracketsAndMultibyteText() {
+    #expect(AttachmentToken.referencedIDs(in: "[[[attachment:\(first.rawValue)]]]") == [first])
+    #expect(AttachmentToken.referencedIDs(in: "é日本 \(token(second)) 🙂") == [second])
+    #expect(AttachmentToken.referencedIDs(in: "[[attachment:[[attachment:\(first.rawValue)]]") == [first])
+    #expect(AttachmentToken.referencedIDs(in: token(first) + token(second)) == [first, second])
+}
+
+@Test func referencedIDsOfALargeNote() {
+    let text = String(repeating: "a line of ordinary text, 50 characters long......\n", count: 20_000)
+    #expect(AttachmentToken.referencedIDs(in: text).isEmpty)
+    #expect(AttachmentToken.referencedIDs(in: text + "x" + token(second) + "y") == [second])
+}
+
 // MARK: lineRanges(in:within:)
 
 private func ranges(_ text: String, within range: NSRange? = nil) -> [NSRange] {
