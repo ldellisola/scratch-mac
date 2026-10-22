@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var coordinator: SessionCoordinator?
     /// The window's toolbar keeps its delegate weakly.
     private var toolbarController: ToolbarController?
+    /// What the attachments are: the editor draws the token lines of a note from it (plan 5, task 4). The editor holds it
+    /// too, and the coordinator is told of the copies of new attachments through it (plan 5, task 5).
+    private var attachmentCatalog: AttachmentCatalog?
     /// Only with `-ScratchFrameMonitor` (the performance tests).
     private var frameMonitor: FrameMonitor?
 
@@ -64,6 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let editor = EditorViewController()
         self.editor = editor
+        // The editor draws an attachment line from the catalog, so it has it before the first note is shown.
+        let attachmentCatalog = AttachmentCatalog(store: environment.storage.attachments)
+        self.attachmentCatalog = attachmentCatalog
+        editor.attachmentCatalog = attachmentCatalog
         let sidebar = SidebarViewController()
         let tabStrip = TabStripViewController()
         let editorArea = EditorAreaViewController(tabStrip: tabStrip, editor: editor)

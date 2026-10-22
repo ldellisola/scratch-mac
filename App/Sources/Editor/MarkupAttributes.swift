@@ -1,5 +1,6 @@
 import AppKit
 import ScratchCode
+import ScratchCore
 
 extension NSAttributedString.Key {
     /// What a marker character is for: the value is a `MarkerRole`'s raw value. The characters of a bold run's `**` and
@@ -18,6 +19,12 @@ extension NSAttributedString.Key {
     /// block behind the lines and the language label at its top right, and `CodeBlockStyler.language(ofBlockAt:)` reads
     /// the language off the one on the opening fence line. Only `MarkupStyler` and `CodeBlockStyler` set it.
     nonisolated static let scratchCodeBlock = NSAttributedString.Key("io.github.ldellisola.Scratch.codeBlock")
+
+    /// What an attachment line is: an `AttachmentMark`, on the whole paragraph of a token line `[[attachment:<id>]]` (its line
+    /// break included). `MarkupLayoutManager` reads it to draw the preview or the chip in the line's rectangle, and
+    /// `MarkupStyler` reads it to size the line again when the text width or the attachment changes. Only `MarkupStyler` sets
+    /// it, and only on a line outside a fenced block.
+    nonisolated static let scratchAttachment = NSAttributedString.Key("io.github.ldellisola.Scratch.attachment")
 }
 
 /// The roles a marker character can have (`NSAttributedString.Key.scratchMarker`).
@@ -37,6 +44,10 @@ nonisolated enum MarkerRole: String, Sendable {
     /// task 5). The line break of the line has no role. While the caret or selection touches the line its characters
     /// are `revealed`.
     case fence
+    /// Every character of an attachment's token line but the first (plan 5, task 4): no glyph and no width, so that the
+    /// line holds only what `MarkupLayoutManager` draws over it. The first character has no role and a clear colour: its
+    /// glyph is what gives the line a line fragment of its own, as high as the paragraph style says.
+    case attachment
 }
 
 /// Which line of a fenced block a paragraph is (`CodeBlockMark`).
@@ -120,6 +131,62 @@ nonisolated enum CodeBlockColors {
 
     /// The colour of the language label.
     static var label: NSColor { NSColor.secondaryLabelColor }
+}
+
+/// The value of `NSAttributedString.Key.scratchAttachment`: what an attachment line is drawn as, and how big. Immutable.
+/// The layout manager draws from it alone, because it is not on the main actor and cannot ask the catalog.
+///
+/// Two marks are equal only when they are the same object, so the marks of two lines for the same attachment stay two
+/// runs of the text storage, and `hasSameLook(as:)` tells whether styling a line again would change anything.
+nonisolated final class AttachmentMark: NSObject, @unchecked Sendable {
+    /// What the line is drawn as.
+    nonisolated enum Kind: Equatable, Sendable {
+        /// An image whose file is in place: a preview scaled into the text width, up to 240 pt high.
+        case image
+        /// Any other file whose copy is in place: a chip with the file's icon, name and size.
+        case file
+        /// A file whose copy is still being made: a chip that says "Copying…".
+        case copying
+        /// An id with no row, a file that is gone or an image that cannot be decoded: a chip that says "Missing attachment".
+        case missing
+    }
+
+    let id: AttachmentID
+    let kind: Kind
+    /// The size of what is drawn, in points: the preview, or the chip. The line is 12 pt higher (6 pt above and below).
+    let displaySize: NSSize
+    /// The file's name, which a chip shows. Empty for an id that has no row.
+    let fileName: String
+    /// The file's size in bytes, which a file chip shows. Nil for an id that has no row.
+    let byteSize: Int64?
+    /// Where Scratch's copy of an image is, for the layout manager to ask `AttachmentPreviews` for. Nil for any other kind.
+    let fileURL: URL?
+    /// The size in pixels, of the longer side, that the preview of an image is asked for. Zero for any other kind.
+    let previewPixelSize: Int
+    /// The icon of a chip: the file's Finder icon, or the one of its type while it is being copied. Nil for a missing
+    /// attachment, which draws a symbol.
+    let icon: NSImage?
+
+    init(
+        id: AttachmentID, kind: Kind, displaySize: NSSize, fileName: String, byteSize: Int64?, fileURL: URL? = nil,
+        previewPixelSize: Int = 0, icon: NSImage? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.displaySize = displaySize
+        self.fileName = fileName
+        self.byteSize = byteSize
+        self.fileURL = fileURL
+        self.previewPixelSize = previewPixelSize
+        self.icon = icon
+        super.init()
+    }
+
+    /// True when a line with `other` would be drawn in the same way as one with this mark, and as high.
+    func hasSameLook(as other: AttachmentMark) -> Bool {
+        id == other.id && kind == other.kind && displaySize == other.displaySize && fileName == other.fileName
+            && byteSize == other.byteSize && fileURL == other.fileURL && previewPixelSize == other.previewPixelSize
+    }
 }
 
 /// The colours of inline code, from the asset catalog (`CodeText` and `CodeBackground`, each with a light and a dark

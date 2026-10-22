@@ -12,7 +12,11 @@ public enum AttachmentToken {
     private static let prefix = Array("[[attachment:".utf8)
     private static let suffix = Array("]]".utf8)
     private static let idLength = 36
-    private static let lineLength = 13 + 36 + 2
+
+    /// How many characters a token line has, in UTF-16 units as in UTF-8 (all of them are ASCII): `[[attachment:`, the 36
+    /// characters of the id and `]]`. A line of any other length is not a token, which lets a caller skip the rest of the
+    /// check for most lines.
+    public static let lineLength = 13 + 36 + 2
 
     /// The line that stands for `id`, without a line break.
     public static func line(for id: AttachmentID) -> String {

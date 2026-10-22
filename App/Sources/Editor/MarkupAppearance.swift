@@ -48,7 +48,7 @@ final class MarkupAppearance {
             return [.scratchMarker: role.rawValue, .foregroundColor: NSColor.clear]
         case .revealed:
             return [.scratchMarker: role.rawValue, .foregroundColor: NSColor.tertiaryLabelColor]
-        case .bullet, .checkboxOpen, .checkboxChecked:
+        case .bullet, .checkboxOpen, .checkboxChecked, .attachment:
             return [.scratchMarker: role.rawValue, .foregroundColor: NSColor.clear]
         }
     }
@@ -79,6 +79,15 @@ final class MarkupAppearance {
         style.maximumLineHeight = CodeBlockMetrics.fenceHeight
         return style
     }()
+
+    /// The paragraph style of an attachment's token line: `lineHeight` high, no more and no less, whatever the font, so that the
+    /// line is as high as the preview or chip that is drawn on it and the space above and below it (plan 5, task 4).
+    static func attachmentStyle(lineHeight: CGFloat) -> NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.minimumLineHeight = lineHeight
+        style.maximumLineHeight = lineHeight
+        return style
+    }
 
     /// What a link looks like: the link colour and an underline. The URL is kept for ⌘-click (`MarkupStyler.link(at:)`).
     static func linkAttributes(for url: URL) -> [NSAttributedString.Key: Any] {

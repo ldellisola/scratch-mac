@@ -20,6 +20,12 @@ private func token(_ id: AttachmentID) -> String { "[[attachment:\(id.rawValue)]
     #expect(AttachmentToken.id(inLine: AttachmentToken.line(for: made)) == made)
 }
 
+@Test func lineLengthIsTheLengthOfAToken() {
+    #expect(AttachmentToken.lineLength == 51)
+    #expect(AttachmentToken.line(for: first).utf16.count == AttachmentToken.lineLength)
+    #expect(AttachmentToken.line(for: AttachmentID.make()).utf8.count == AttachmentToken.lineLength)
+}
+
 @Test func tokenMustBeTheWholeLine() {
     let line = token(first)
     #expect(AttachmentToken.id(inLine: " " + line) == nil)

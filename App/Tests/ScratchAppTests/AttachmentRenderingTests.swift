@@ -66,6 +66,8 @@ final class AttachmentRenderingTests: XCTestCase {
         let tab = TabState(noteID: note.id, selection: 0, scrollY: 0, scrollAnchor: nil)
         editor.show(note, tab: tab, undoManager: UndoManager(), isReadOnly: false)
         editor.view.layoutSubtreeIfNeeded()
+        // Whatever the layout asks for a turn later (the lines are sized again when the text view has its width).
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         return Host(
             editor: editor, window: window, storage: storage, catalog: catalog, directory: directory, note: note)
     }

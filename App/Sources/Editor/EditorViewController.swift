@@ -53,6 +53,13 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     private var anchorDeadline = ContinuousClock.now
     private var isReapplyScheduled = false
     private static let anchorSettleTime: Duration = .seconds(5)
+
+    /// What the attachments of the notes are (plan 5, task 4): the editor draws a token line `[[attachment:<id>]]` from it.
+    /// Set it before a note is shown. Without one every attachment line is drawn as a missing attachment.
+    var attachmentCatalog: AttachmentCatalog? {
+        get { textView.styler.catalog }
+        set { textView.styler.catalog = newValue }
+    }
     private var debugStateElement: DebugStateElement?
 
     init() {
@@ -106,6 +113,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         super.viewDidLayout()
         // The text view is at least as tall as the visible area, so that a click below a short note still lands in it.
         textView.minSize = NSSize(width: 0, height: scrollView.contentSize.height)
+        // An image's height depends on the width of the text, and the anchor on the height of what is above it: the
+        // attachment lines are sized for the width the layout gave before the anchor is applied.
+        textView.styler.refreshAttachmentLayout()
         applyPendingScrollAnchor()
     }
 
@@ -310,6 +320,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     }
 
     @objc private func textViewFrameDidChange(_ notification: Notification) {
+        // A width that no layout of this view followed (a scroller appearing) is found here, a turn later: before the
+        // anchor is applied again, which is also a turn later and came second.
+        textView.styler.scheduleAttachmentLayoutRefresh()
         if isAnchorStale { scheduleAnchorReapply() }
     }
 

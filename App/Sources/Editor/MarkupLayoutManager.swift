@@ -1,4 +1,5 @@
 import AppKit
+import ScratchCore
 
 /// The editor's layout manager. It hides markers and draws what stands in for them, without changing a character of
 /// the text (spec §6.4, docs/decisions/0001).
@@ -20,6 +21,11 @@ import AppKit
 ///   fills the rounded, tinted rectangle that they make together, and the label with the block's language at its top
 ///   right, without changing anything in the text.
 ///
+/// - **Attachments are drawn over their token lines.** The characters of a token line `[[attachment:<id>]]` but the first
+///   are null glyphs, like a fence line's, and its paragraph is as high as what is drawn on it. `drawBackground` draws the
+///   preview or the chip in the line's rectangle, from the line's `AttachmentMark`, and the outline of a selected one
+///   (plan 5, task 4). A preview is drawn from `previews` when it is decoded, and a tint stands in for it until then.
+///
 /// `TextViewFactory` makes it the layout manager of the editor and sets it as its own delegate once the text view is
 /// made, because the text view sets its own delegate when it is created. The delegate of a layout manager is weak, so
 /// the manager is its own delegate for free.
@@ -29,6 +35,21 @@ import AppKit
 /// superclass's. So the class is `nonisolated`, and so is everything in it: AppKit lays out and draws on the main
 /// thread, and the text storage, layout manager and drawing calls used here are not main-actor types either.
 nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
+    // MARK: Attachments
+
+    /// The decoded previews of the images in the note. `MarkupStyler` sets it. The layout manager draws what is cached and
+    /// asks for what is not (`AttachmentPreviews.request`), and the styler invalidates the display of the line when the
+    /// answer arrives (`AttachmentPreviews.onChange`).
+    var previews: AttachmentPreviews?
+
+    /// True while the note has an attachment line, which `MarkupStyler` keeps current. A note without one is not looked
+    /// through for them every time a line is drawn.
+    var hasAttachments = false
+
+    /// The range that is selected, which `MarkupStyler` keeps current: an attachment whose token it touches is drawn with
+    /// an outline. Not read from the text view, which is main-actor isolated and this class is not.
+    var attachmentSelection = NSRange(location: 0, length: 0)
+
     // MARK: Glyphs
 
     func layoutManager(
@@ -49,7 +70,9 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
                 var run = NSRange(location: 0, length: 0)
                 let role = storage.attribute(.scratchMarker, at: character, effectiveRange: &run) as? String
                 isFence = role == MarkerRole.fence.rawValue
-                isHidden = role == MarkerRole.hidden.rawValue || isFence
+                // A token line's characters but the first have no glyph either: the first has no role and keeps its (clear)
+                // glyph, which is what gives the line its own line fragment.
+                isHidden = role == MarkerRole.hidden.rawValue || isFence || role == MarkerRole.attachment.rawValue
                 runStart = run.location
                 runEnd = NSMaxRange(run)
             }
@@ -72,11 +95,15 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
 
     // MARK: Drawing
 
-    /// Draws the tinted blocks and their labels behind the text, and then the rest of what is behind it (the tint of
-    /// inline code and the selection). AppKit calls this on the main thread, for the glyphs of the area it redraws.
+    /// Draws the tinted blocks and their labels behind the text, then the rest of what is behind it (the tint of inline
+    /// code and the selection), and over that the previews and chips of the attachments. AppKit calls this on the main
+    /// thread, for the glyphs of the area it redraws.
     override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
         drawCodeBlocks(forGlyphRange: glyphsToShow, at: origin)
         super.drawBackground(forGlyphRange: glyphsToShow, at: origin)
+        // After the superclass, which draws the selection: what the selection highlights of a token line (its first
+        // character, 8 pt wide) is under the preview.
+        drawAttachments(forGlyphRange: glyphsToShow, at: origin)
     }
 
     /// Draws the text as the superclass does, then the bullets and the boxes over the glyphs that `MarkupStyler` made
@@ -98,7 +125,7 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
                 drawCheckbox(isChecked: false, over: range, in: storage, at: origin)
             case .checkboxChecked:
                 drawCheckbox(isChecked: true, over: range, in: storage, at: origin)
-            case .hidden, .revealed, .fence:
+            case .hidden, .revealed, .fence, .attachment:
                 break
             }
         }
@@ -163,6 +190,53 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
             x: origin.x + rect.midX - size.width / 2, y: origin.y + rect.midY - size.height / 2, width: size.width,
             height: size.height)
         symbol.draw(in: target, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+    }
+
+    // MARK: Attachments drawing
+
+    /// Draws the preview or the chip of each attachment line that has a glyph in `glyphsToShow`, in the rectangle that
+    /// `attachmentRect(forTokenAt:)` gives, moved by `origin` (where the text container's origin is in the text view's
+    /// coordinates). An image that is not decoded yet is a tint, and is asked for: whoever set `previews.onChange`
+    /// invalidates the display of its line when it arrives. A line whose token is touched by the selection has the outline.
+    private func drawAttachments(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
+        guard hasAttachments, let storage = textStorage, storage.length > 0, glyphsToShow.length > 0 else { return }
+        let characters = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
+        let text = storage.string as NSString
+        storage.enumerateAttribute(.scratchAttachment, in: characters, options: []) { value, range, _ in
+            guard let mark = value as? AttachmentMark else { return }
+            // A run that is cut to the characters being drawn can start inside the line: the token is where its paragraph
+            // starts.
+            let start = text.paragraphRange(for: NSRange(location: range.location, length: 0)).location
+            guard let rect = attachmentRect(forTokenAt: start) else { return }
+            var preview: NSImage?
+            if mark.kind == .image, let url = mark.fileURL, let previews {
+                preview = previews.cachedImage(forID: mark.id, minPixelSize: 1)
+                if preview == nil { previews.request(for: url, id: mark.id, maxPixelSize: mark.previewPixelSize) }
+            }
+            let token = NSRange(location: start, length: AttachmentToken.lineLength)
+            let isSelected = NSIntersectionRange(attachmentSelection, token).length > 0
+            AttachmentDrawing.draw(
+                mark, in: rect.offsetBy(dx: origin.x, dy: origin.y), preview: preview, isSelected: isSelected)
+        }
+    }
+
+    /// The rectangle that the preview or chip of the attachment whose token line starts at `location` is drawn in, in the
+    /// coordinates of the text container (add the text view's `textContainerOrigin` for the view's): the line fragment's
+    /// width less the padding on the left, and `AttachmentMetrics.verticalPadding` below its top, as big as the line's
+    /// `AttachmentMark` says. Nil when `location` is not in an attachment line.
+    ///
+    /// It lays out the line, and what is above it that has not been laid out yet. `drawAttachments` draws in this rectangle
+    /// and a click on an attachment asks for it, so that what is clicked is what is drawn.
+    func attachmentRect(forTokenAt location: Int) -> NSRect? {
+        guard let storage = textStorage, location >= 0, location < storage.length,
+            let mark = storage.attribute(.scratchAttachment, at: location, effectiveRange: nil) as? AttachmentMark
+        else { return nil }
+        let glyph = glyphIndexForCharacter(at: location)
+        guard let container = textContainer(forGlyphAt: glyph, effectiveRange: nil) else { return nil }
+        let fragment = lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        return NSRect(
+            x: fragment.minX + container.lineFragmentPadding, y: fragment.minY + AttachmentMetrics.verticalPadding,
+            width: mark.displaySize.width, height: mark.displaySize.height)
     }
 
     // MARK: Code blocks

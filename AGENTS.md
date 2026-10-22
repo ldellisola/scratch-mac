@@ -14,9 +14,9 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
   in progress for 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out and
-  copied; plus the 0.4.0 follow-ups). Its Tasks 1 and 2 are done: titles skip fence and attachment lines, `AttachmentID`
-  and `AttachmentToken` exist, the schema is version 3, and `AttachmentStore` keeps the files and removes them only when no
-  note names them. Plan 4, done and released as 0.4.0 (code: highlighting, code
+  copied; plus the 0.4.0 follow-ups). Its Tasks 1 to 4 are done: titles skip fence and attachment lines, `AttachmentID`
+  and `AttachmentToken` exist, the schema is version 3, `AttachmentStore` keeps the files and removes them only when no
+  note names them, the 0.4.0 follow-ups in ScratchCode are in, and a token line is drawn as a preview or a chip. Plan 4, done and released as 0.4.0 (code: highlighting, code
   blocks, paste classification, the language label menu, and bold at word boundaries):
   [`2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
@@ -156,7 +156,18 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   CodeBlockMenu (the menu of a block's language label, with `CodeBlockAction` and
                                   `CodeBlockChoice`, and the edits its items make: `menu`, `edit`; NoteTextView opens it
                                   from a click on a label, `labelHit`, `showCodeBlockMenu`, and applies a choice,
-                                  `applyCodeBlockAction`; `MarkupLayoutManager.labelRect(forBlockAt:)` is where the label is)
+                                  `applyCodeBlockAction`; `MarkupLayoutManager.labelRect(forBlockAt:)` is where the label is).
+                                  Attachments (plan 5): AttachmentCatalog (the rows of the attachments the editor shows,
+                                  read with one query per batch of paragraphs, which files are being copied or cannot be
+                                  decoded: `attachment`, `fileURL`, `preload`, `markCopying`, `markCopied`, `onChange`),
+                                  AttachmentPreviews (ImageIO thumbnails on a serial queue and their cache: `image(for:id:
+                                  maxPixelSize:completion:)`, `request`, `cachedImage`, `onChange`), AttachmentDrawing
+                                  (`AttachmentMetrics`, the sizes, and `AttachmentDrawing`, the preview, the chip and the
+                                  outline), and in MarkupAttributes `AttachmentMark` (what a token line is drawn as: its
+                                  kind, size, file name, icon) with the `scratchAttachment` attribute and `MarkerRole.attachment`.
+                                  MarkupStyler styles a token line (`styleAttachmentLine`) and again when the catalog or the
+                                  text width changes (`attachmentDidChange`, `refreshAttachmentLayout`);
+                                  `MarkupLayoutManager.attachmentRect(forTokenAt:)` is where the preview is drawn
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
                                   `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
                                   (runs work when the main run loop is next about to wait: after the frame is drawn, and
@@ -181,7 +192,10 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   fences, indented lines, colours and a label, CodeBlockPartsTests, CodePasteTests: a
                                   paste of code is wrapped in a fence on the next turn, prose, a paste into code and one
                                   with a fence line stay plain, `PasteClassifier.wrap`, CodeBlockMenuTests: the label
-                                  menu, its edits and undo steps, the label's hit test, a block typed by hand)
+                                  menu, its edits and undo steps, the label's hit test, a block typed by hand,
+                                  AttachmentRenderingTests: a token line's null glyphs and height, an image scaled to the
+                                  width and 240 pt, the file chip, the Copying and Missing attachment chips, the pixels of
+                                  a preview, a change of the text width)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -222,8 +236,8 @@ docs/release-notes-footer.md      the install and update steps (the DMG first, t
                                   top of every release's notes (`scripts/release-notes.sh` replaces its `<version>`
                                   placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
-                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md
-                                  (more as features land)
+                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md,
+                                  attachments.md (more as features land)
 docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, search,
                                   recently-deleted): copies of the `screenshots/` that CI published for a release commit
                                   (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
@@ -911,6 +925,36 @@ new kind of release file, with no change to the app, ships.
   ends the note had no padding at all and the tint ended at the last line of code. A click or the End key on the line above
   would also have landed among the hidden characters. `MarkupLayoutManager.shouldGenerateGlyphs` keeps the glyph of the
   first character of every fence line (the colour of the role `fence` is clear), and the line is a 6 pt fragment of its own.
+- **An attachment line is null glyphs but the first, as high as what is drawn on it, and drawn from its mark alone.**
+  `MarkupStyler.styleAttachmentLine` gives a line that is exactly a token (`AttachmentToken.id(inLine:)`, outside a fenced
+  block) the role `attachment` on characters 1 to 50 (null glyphs in `MarkupLayoutManager.shouldGenerateGlyphs`), a clear
+  first character with no role (its glyph is what gives the line a fragment of its own: the pitfall above), a paragraph
+  style whose minimum and maximum line height are the preview or chip height plus 12 (`MarkupAppearance.attachmentStyle`)
+  and an `AttachmentMark` (`.scratchAttachment`, on the whole paragraph). The layout manager is not on the main actor, so it
+  cannot ask the catalog or the text view: everything it draws is in the mark (kind, size, name, icon, the file's URL),
+  and the selection comes from the styler (`MarkupLayoutManager.attachmentSelection`). Marks are equal only when they are
+  the same object (no `isEqual`), so two lines of one attachment are two attribute runs; `hasSameLook(as:)` is what
+  tells that a line need not be written again.
+- **An image's height is its row's pixel size scaled, never its decoded size, and it depends on the text width.** The line
+  must have its height before the image is decoded (`AttachmentMetrics.imageSize`: as wide as the text up to the image's
+  own width, at most 240 pt high). A note shown at launch is styled before the text view has a width, so the lines are
+  styled for a very wide text then and styled again when the layout arrives: `EditorViewController.viewDidLayout` calls
+  `MarkupStyler.refreshAttachmentLayout()` before `applyPendingScrollAnchor()` (the anchor depends on the height of what is
+  above it), and `textViewFrameDidChange` asks for it a turn later for a width that no layout followed (a scroller). It
+  compares the width with the one the lines were sized for (`attachmentLayoutWidth`, reset by `endLoad`) and writes only
+  a line whose look changes. A note without a token line costs one Boolean test.
+- **A preview that arrives changes the display and nothing else.** `AttachmentPreviews` decodes on its own serial queue,
+  in the order the styler asked (the paragraphs on screen are styled first), and calls `onChange(id, decoded)` on the
+  main thread: `MarkupStyler.previewDidFinish` invalidates the display of the lines of that image
+  (`invalidateDisplay(forCharacterRange:)`, never glyphs or layout, which an attribute edit or `invalidate(_:)` would
+  also do). A failure goes to `AttachmentCatalog.markUndecodable`, which styles the lines again as "Missing attachment"
+  (the one case where a preview changes a height). The layout manager asks again for an image it finds undecoded when it
+  draws (`request`), which is how a thumbnail that the `NSCache` dropped comes back. Until it is there a tint stands in.
+- **A token's state is the catalog's.** A row with no file that nobody copies is "Missing attachment", and only
+  `AttachmentCatalog.markCopying` (called right after `AttachmentStore.register`) makes it "Copying…": a copy that was cut
+  short by a quit shows as missing after the relaunch, and the launch sweep removes the row a day later when no note names
+  it. `markCopying` and `markCopied` forget the row, so that they read the new one, and tell the editor
+  (`onChange`), which styles the lines of that id again.
 - **Adding a fixture means three more places.** `FixtureContent.make`, the `Fixture` case, and ScratchCore's
   `LaunchOptionsTests.parsesEveryFixtureName` (which lists every raw value), and then the launch argument table above and
   `make run`. A core test that lists the cases fails the Linux job and, through `make core-test` on the Mac, the whole
