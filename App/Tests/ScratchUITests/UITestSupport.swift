@@ -54,8 +54,11 @@ enum UITestSupport {
     /// data directory): `fontSize` (points), `scrollAnchor` (the UTF-16 offset of the first visible character),
     /// `readOnly`, `scrollY` (the clip view's origin y, in points) and `topInset` (the scroll view's top content
     /// inset: a note at its top has `scrollY == -topInset`), `pendingHighlights` (code colours that are asked for and not
-    /// written yet) and `pendingPastes` (pastes that are not classified yet): both are zero when a paste is done. The
-    /// app computes it when asked, so it is as current as the app. Empty when the element is missing.
+    /// written yet) and `pendingPastes` (pastes that are not classified yet): both are zero when a paste is done,
+    /// `pendingPreviews` (images that are waiting to be decoded or being decoded: zero when every preview is made), and
+    /// `attachments`, a list with one `{"id": ..., "copied": ..., "fileExists": ...}` for each token in the note's text,
+    /// where `copied` says that the row has the copy in place and `fileExists` that Scratch's own copy is on disk. The app computes it when asked, so it is as current as the app.
+    /// Empty when the element is missing.
     @MainActor
     static func debugState(in app: XCUIApplication) -> [String: Any] {
         let element = app.descendants(matching: .any).matching(identifier: AccessibilityID.debugState).firstMatch
@@ -152,6 +155,14 @@ enum UITestSupport {
     @MainActor
     static func sidebarTitles(in app: XCUIApplication) -> XCUIElementQuery {
         app.staticTexts.matching(identifier: AccessibilityID.sidebarRowTitle)
+    }
+
+    /// The sidebar rows' preview lines from top to bottom.
+    @MainActor
+    static func sidebarPreviewTexts(in app: XCUIApplication) -> [String] {
+        app.staticTexts.matching(identifier: AccessibilityID.sidebarRowPreview).allElementsBoundByIndex
+            .sorted { $0.frame.minY < $1.frame.minY }
+            .map { text(of: $0) }
     }
 
     /// The sidebar rows' titles from top to bottom.

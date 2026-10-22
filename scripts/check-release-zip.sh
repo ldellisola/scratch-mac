@@ -10,10 +10,15 @@
 #   - the executable is arm64 only (spec section 5)
 #   - the signature verifies, and it is an ad-hoc one (docs/decisions/0002-ad-hoc-signing.md)
 #   - the app carries the highlight queries of ScratchCode (its resource bundle, docs/decisions/0007-tree-sitter.md)
+#   - the app carries Contents/Resources/Acknowledgements.rtf, the licences of tree-sitter and its grammars that the
+#     About panel shows (scripts/make-acknowledgements.py, docs/decisions/0007-tree-sitter.md)
 #
 # It also prints the sizes of the zip, the app and its executable, which docs/decisions/0007-tree-sitter.md compares.
 #
 # Exit: 0 all fine, 1 a check failed (every failed check is printed), 64 usage error, 70 cannot run.
+#
+# scripts/tests/test-release-zip.sh runs this against stubs of the macOS tools. PLISTBUDDY names the PlistBuddy to use
+# (for those tests); it is /usr/libexec/PlistBuddy otherwise.
 set -euo pipefail
 
 script=$(basename "$0")
@@ -33,6 +38,8 @@ if [[ ! -f $zip ]]; then
     echo "$script: $zip does not exist" >&2
     exit 70
 fi
+
+plistbuddy=${PLISTBUDDY:-/usr/libexec/PlistBuddy}
 
 problems=0
 problem() {
@@ -56,7 +63,7 @@ fi
 
 # plist_value <key>: a value of the app's Info.plist, or (missing).
 plist_value() {
-    /usr/libexec/PlistBuddy -c "Print :$1" "$app/Contents/Info.plist" 2>/dev/null || echo "(missing)"
+    "$plistbuddy" -c "Print :$1" "$app/Contents/Info.plist" 2>/dev/null || echo "(missing)"
 }
 
 found_version=$(plist_value CFBundleShortVersionString)
@@ -90,6 +97,18 @@ fi
 queries=$(find "$app/Contents/Resources" -type f -path '*Queries/swift/highlights.scm' 2>/dev/null || true)
 if [[ -z $queries ]]; then
     problem "no Queries/swift/highlights.scm under Contents/Resources: ScratchCode's resource bundle is not in the app"
+fi
+
+# The About panel shows the licences of tree-sitter and its grammars from this file (AboutCredits). A release without it
+# would ship their code with no notice of their licences, so a zip that lacks it, or has one that is empty or does not
+# name tree-sitter, must not be released.
+acknowledgements="$app/Contents/Resources/Acknowledgements.rtf"
+if [[ ! -f $acknowledgements ]]; then
+    problem "no Contents/Resources/Acknowledgements.rtf in the app: the licences of tree-sitter and its grammars are missing"
+elif [[ ! -s $acknowledgements ]]; then
+    problem "Contents/Resources/Acknowledgements.rtf is empty"
+elif ! grep -q 'tree-sitter' "$acknowledgements"; then
+    problem "Contents/Resources/Acknowledgements.rtf does not name tree-sitter"
 fi
 
 zip_bytes=$(wc -c <"$zip" | tr -d ' ')

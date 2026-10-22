@@ -95,6 +95,9 @@ public enum ListEditing {
     /// - Otherwise each line that is not a checkbox becomes one: a bullet's `- ` is replaced with `[ ] `, and any other
     ///   line gets `[ ] ` after its indentation. A blank line gets none when the selection has a line with text, so a
     ///   selection over paragraphs leaves the gaps between them empty. A caret on a blank line still gets its box.
+    /// - A token line (`AttachmentToken`, the line of an attachment) is never changed: a box in front of the token would
+    ///   make it text and the picture would be gone. It is not a line with text for the rules above, and it keeps the
+    ///   blank lines around it empty like one. The edit is empty when the selection holds nothing else.
     public static func toggleChecklist(paragraphs: String, start: Int, selection: NSRange) -> TextEdit {
         let text = ParagraphLines(paragraphs, start: start)
         guard let touched = text.touchedLines(by: selection) else {
@@ -102,11 +105,15 @@ public enum ListEditing {
                 range: NSRange(location: selection.location, length: 0), replacement: "", selection: selection)
         }
         let items = touched.map { text.listItem(at: $0) }
-        let withText = touched.filter { !text.isBlank($0) }
+        let isToken = touched.map { text.isAttachmentLine($0) }
+        // The lines that are not blank, a token line included: with one of them there, a blank line keeps to itself.
+        let hasContent = touched.contains { !text.isBlank($0) }
+        let withText = touched.filter { !text.isBlank($0) && !isToken[$0 - touched.lowerBound] }
         let allChecked = !withText.isEmpty && withText.allSatisfy { items[$0 - touched.lowerBound]?.isCheckbox == true }
 
         var changes: [ParagraphLines.Change] = []
         for index in touched {
+            if isToken[index - touched.lowerBound] { continue }
             let item = items[index - touched.lowerBound]
             if allChecked {
                 // `[?]` and the space after it.
@@ -116,7 +123,7 @@ public enum ListEditing {
                 continue
             }
             if item?.isCheckbox == true { continue }
-            if !withText.isEmpty, text.isBlank(index) { continue }
+            if hasContent, text.isBlank(index) { continue }
             let box = Array(checkboxMarker.utf16)
             if let item {
                 // The bullet's `-` and the space after it.

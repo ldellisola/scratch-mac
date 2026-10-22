@@ -24,6 +24,15 @@ import ScratchCore
 ///   block's text is still the text that was highlighted. A keystroke in a block keeps the colours of its paragraph
 ///   until the new result replaces them (`resetAttributes`).
 ///
+/// - **An attachment line is a picture.** A line that is exactly `[[attachment:<id>]]` (outside a fenced block) gets the role
+///   `attachment` on every character but the first (null glyphs, `MarkupLayoutManager`), a clear first character that keeps
+///   the line's own fragment, a paragraph style as high as what is drawn on it, and an `AttachmentMark` that the layout
+///   manager draws the preview or the chip from. What the line shows, and how big, comes from `AttachmentCatalog` and the
+///   text width, so the lines are styled again when either changes (`attachmentDidChange`, `refreshAttachmentLayout`).
+///   Previews are decoded off the main thread (`AttachmentPreviews`), and one that arrives only invalidates the display.
+///   Like the fenced blocks, the attachment lines above the window are styled whole when the note is shown, because the
+///   scroll position depends on their height (`styleAttachmentLines`).
+///
 /// Styling never registers undo: attribute changes made to the text storage directly are not undo steps.
 @MainActor
 final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
@@ -44,6 +53,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     static let selectionRevealLimit = 20_000
     /// The paragraphs one change of the selection looks at, at most.
     static let refreshParagraphLimit = 500
+    /// What every attachment line starts with (`AttachmentToken`), searched for to find the lines above the window.
+    private static let attachmentOpening = "[[attachment:"
 
     // MARK: State
 
@@ -73,6 +84,23 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     /// True when every paragraph of the text has been styled. False while a note is still being styled in chunks.
     private(set) var isFullyStyled = true
 
+    /// What the attachments of the notes are: their rows, whether they are being copied. Set by `EditorViewController`
+    /// before a note is shown. Without it every attachment line is a missing attachment.
+    var catalog: AttachmentCatalog? {
+        didSet { catalog?.onChange = { [weak self] id in self?.attachmentDidChange(id) } }
+    }
+
+    /// The decoded previews of the images that the notes hold, which `MarkupLayoutManager` draws.
+    let previews = AttachmentPreviews()
+    /// True once a line of the note shown has been styled as an attachment, until the next note is loaded. A note without
+    /// one is never looked through for them.
+    private var hasAttachmentLines = false {
+        didSet { (textView?.layoutManager as? MarkupLayoutManager)?.hasAttachments = hasAttachmentLines }
+    }
+    /// The text width that the attachment lines were last sized for by `refreshAttachmentLayout`, or 0 for none yet.
+    private var attachmentLayoutWidth: CGFloat = 0
+    private var isAttachmentRefreshScheduled = false
+
     /// Colours the code of the fenced blocks and says which language each is (Plan 4).
     let codeBlockStyler: CodeBlockStyler
 
@@ -83,6 +111,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             textView: textView,
             queue: DispatchQueue(label: "io.github.ldellisola.Scratch.highlight", qos: .userInitiated))
         super.init()
+        (textView.layoutManager as? MarkupLayoutManager)?.previews = previews
+        previews.onChange = { [weak self] id, decoded in self?.previewDidFinish(id, decoded: decoded) }
     }
 
     private var storage: NSTextStorage? { textView?.textStorage }
@@ -110,6 +140,9 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     func endLoad() {
         isLoading = false
         selection = NSRange(location: 0, length: 0)
+        (textView?.layoutManager as? MarkupLayoutManager)?.attachmentSelection = selection
+        hasAttachmentLines = false
+        attachmentLayoutWidth = 0
         needsFenceRescan = false
         guard let storage else { return }
         let length = storage.length
@@ -143,11 +176,15 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         storage.beginEditing()
         let result = styleParagraphs(
             from: start, upTo: end, maxParagraphs: .max, deadline: nil, text: text, storage: storage)
-        // The look of the blocks above the window too, before anything is laid out (see `styleBlocks`).
+        // The look of the blocks above the window too, before anything is laid out (see `styleBlocks`), and of the
+        // attachment lines above it (see `styleAttachmentLines`).
         let blocksChanged = styleBlocks(startingBefore: end, text: text, storage: storage)
+        let attachmentsChanged = styleAttachmentLines(startingBefore: start, text: text, storage: storage)
         storage.endEditing()
         isApplying = false
-        if let changed = Self.union(result.changed, blocksChanged) { invalidate(changed) }
+        if let changed = Self.union(Self.union(result.changed, blocksChanged), attachmentsChanged) {
+            invalidate(changed)
+        }
         // The blocks in what was just styled are coloured first: on the queue, and in the next turns.
         requestBlocks(intersecting: [NSRange(location: start, length: end - start)], in: storage)
 
@@ -215,6 +252,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         guard newSelection != old else { return }
         selection = newSelection
         guard !isLoading, !isApplying, let storage, storage.length > 0 else { return }
+        attachmentSelectionDidChange(from: old, to: newSelection, in: storage)
         let text = storage.string as NSString
         var changed: NSRange?
         var looked: [NSRange] = []
@@ -312,11 +350,13 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     }
 
     /// What is typed next takes the attributes of the text before the caret, which right after a block are the block's:
-    /// the empty line under the closing fence would be 6 pt high. Outside a block the note's own are put back.
+    /// the empty line under the closing fence would be 6 pt high. Right after a token line they are a clear colour in a
+    /// line as high as a preview. Outside a block the note's own are put back.
     private func normalizeTypingAttributes() {
-        guard let textView, selection.length == 0, !textView.hasMarkedText(), !codeBlocks.contains(selection.location),
-            textView.typingAttributes[.scratchCodeBlock] != nil
+        guard let textView, selection.length == 0, !textView.hasMarkedText(), !codeBlocks.contains(selection.location)
         else { return }
+        let typing = textView.typingAttributes
+        guard typing[.scratchCodeBlock] != nil || typing[.scratchAttachment] != nil else { return }
         textView.typingAttributes = appearance.base
     }
 
@@ -376,6 +416,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         _ = styleBatch(batch, in: storage)
         // The paragraphs that moved into or out of a block, other than the ones just styled.
         let movedChanged = restyle(moved.filter { !Self.contains(paragraphs, $0) }, text: text, storage: storage)
+        refreshFirstCodeLines(near: paragraphs, in: storage)
         storage.endEditing()
         isApplying = false
         invalidationAfterEdit = Self.union(invalidationAfterEdit, movedChanged)
@@ -547,6 +588,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         var result = StyleResult()
         // The lines of code of a block that follow one another are given their attributes in one call.
         var codeRun: NSRange?
+        var didPrefetchAttachments = false
         func flushCodeRun() {
             guard let run = codeRun else { return }
             // Not in `result.changed`: nothing about the glyphs of a line of code changes, and the attributes' own edit
@@ -560,7 +602,12 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             if let block = block(coveringParagraphStart: paragraph.location) {
                 let part = Self.part(ofParagraphAt: paragraph.location, in: block)
                 if part == .body {
-                    if let run = codeRun, NSMaxRange(run) == paragraph.location {
+                    if isFirstCodeLine(at: paragraph.location, of: block, in: storage) {
+                        // The label reaches into this line, so it alone has room kept for it (`firstCodeLineStyle`).
+                        flushCodeRun()
+                        styleCodeBody(
+                            paragraph, style: firstCodeLineStyle(of: block, in: storage), in: storage)
+                    } else if let run = codeRun, NSMaxRange(run) == paragraph.location {
                         codeRun = NSRange(location: run.location, length: run.length + paragraph.length)
                     } else {
                         flushCodeRun()
@@ -577,6 +624,19 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
                 continue
             }
             flushCodeRun()
+            // A line of exactly the length of a token that starts with its bracket is looked at closely: the rest are not.
+            if line.count == AttachmentToken.lineLength, line.first == 0x5B,
+                let id = AttachmentToken.id(inLine: String(decoding: line, as: UTF16.self))
+            {
+                if !didPrefetchAttachments {
+                    didPrefetchAttachments = true
+                    prefetchAttachments(in: batch, from: index)
+                }
+                if styleAttachmentLine(of: paragraph, id: id, in: storage) {
+                    result.changed = Self.union(result.changed, paragraph)
+                }
+                continue
+            }
             guard MarkupParser.mayHaveSpans(in: line) else { continue }
             let spans = MarkupParser.parseLine(String(decoding: line, as: UTF16.self), at: paragraph.location)
             guard !spans.isEmpty else { continue }
@@ -622,8 +682,15 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             if styleFenceLine(of: opening, part: .opening, contentLength: openingLength, info: info, in: storage) {
                 changed = Self.union(changed, opening)
             }
-            styleCodeBody(
-                NSRange(location: NSMaxRange(opening), length: closing.location - NSMaxRange(opening)), in: storage)
+            // The first line of code has room kept for the label, the others do not.
+            let bodyEnd = closing.location
+            if bodyEnd > NSMaxRange(opening) {
+                let first = NSIntersectionRange(
+                    text.paragraphRange(for: NSRange(location: NSMaxRange(opening), length: 0)),
+                    NSRange(location: NSMaxRange(opening), length: bodyEnd - NSMaxRange(opening)))
+                styleCodeBody(first, style: firstCodeLineStyle(of: block, in: storage), in: storage)
+                styleCodeBody(NSRange(location: NSMaxRange(first), length: bodyEnd - NSMaxRange(first)), in: storage)
+            }
             let closingLength = NSMaxRange(block.range) - block.closingLineStart
             if styleFenceLine(of: closing, part: .closing, contentLength: closingLength, info: "", in: storage) {
                 changed = Self.union(changed, closing)
@@ -632,17 +699,113 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         return changed
     }
 
-    /// Gives the lines of code in `range` (whole paragraphs, between two fence lines) their indent and their mark, unless
-    /// the first of them has both. Returns true when it wrote them.
+    /// Gives the lines of code in `range` (whole paragraphs, between two fence lines) their indent, `style`, and their mark,
+    /// unless the first of them has both. Returns true when it wrote them. `style` is the style of a line of code, and for
+    /// the first line of a block with a label the one that keeps the line clear of the label (`firstCodeLineStyle`).
     @discardableResult
-    private func styleCodeBody(_ range: NSRange, in storage: NSTextStorage) -> Bool {
+    private func styleCodeBody(
+        _ range: NSRange, style: NSParagraphStyle = MarkupAppearance.codeBodyStyle, in storage: NSTextStorage
+    ) -> Bool {
         guard range.length > 0 else { return false }
-        let style = storage.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle
+        let current = storage.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle
         let mark = storage.attribute(.scratchCodeBlock, at: range.location, effectiveRange: nil) as? CodeBlockMark
-        if style == MarkupAppearance.codeBodyStyle, mark == CodeBlockMark.body { return false }
-        storage.addAttributes(
-            [.paragraphStyle: MarkupAppearance.codeBodyStyle, .scratchCodeBlock: CodeBlockMark.body], range: range)
+        if current == style, mark == CodeBlockMark.body { return false }
+        storage.addAttributes([.paragraphStyle: style, .scratchCodeBlock: CodeBlockMark.body], range: range)
         return true
+    }
+
+    // MARK: The first line of code
+
+    /// True when the paragraph that starts at `location`, a line of code of `block`, is the first of them: the one right
+    /// after the opening fence line. Only a paragraph that starts within a line break of the end of that line is looked at.
+    private func isFirstCodeLine(at location: Int, of block: CodeBlockIndex.Block, in storage: NSTextStorage) -> Bool {
+        guard location > block.openingLineEnd, location - block.openingLineEnd <= 2 else { return false }
+        let text = storage.string as NSString
+        return NSMaxRange(text.paragraphRange(for: NSRange(location: block.range.location, length: 0))) == location
+    }
+
+    /// What the label of `block` says: the name on its opening fence line's mark, which is what `CodeBlockStyler` and
+    /// `styleFenceLine` write, or, for a fence line that is not styled yet (a long note is styled in chunks), what its fence
+    /// names. Empty for a block with no label.
+    private func labelName(of block: CodeBlockIndex.Block, in storage: NSTextStorage) -> String {
+        if let mark = storage.attribute(.scratchCodeBlock, at: block.range.location, effectiveRange: nil)
+            as? CodeBlockMark, mark.part == .opening
+        {
+            return mark.name
+        }
+        let text = storage.string as NSString
+        let info = CodeBlockParts.info(
+            ofFenceLine: text.substring(
+                with: NSRange(location: block.range.location, length: block.openingLineEnd - block.range.location)))
+        return CodeLanguage.fromFence(info)?.label ?? info
+    }
+
+    /// The paragraph style of the first line of code of `block`: the room that its label takes from the right is kept clear
+    /// (`MarkupAppearance.firstCodeLineStyle`), so that the label never covers code and a click on the code never opens its
+    /// menu (plan 5 task 7, a 0.4.0 follow-up).
+    private func firstCodeLineStyle(of block: CodeBlockIndex.Block, in storage: NSTextStorage) -> NSParagraphStyle {
+        appearance.firstCodeLineStyle(labelName: labelName(of: block, in: storage))
+    }
+
+    /// Gives the first line of code of `block` the style it must have, and the lines after it that the edit can have moved
+    /// the first line's style onto the style of any other line of code. The second line is always looked at: the line that
+    /// was the first can have become the second (a line was split or inserted above it). With a `window` (the range of the
+    /// paragraphs that an edit changed and the two after them), every line of code in it is looked at too, one by one: an
+    /// edit that inserts several lines, or splits the first line in two, leaves the old first line's style on a line that
+    /// is the third, the fourth, or further down. Nothing is written for a line that is as it should be.
+    private func refreshFirstCodeLines(
+        of block: CodeBlockIndex.Block, restyling window: NSRange? = nil, in storage: NSTextStorage
+    ) {
+        let text = storage.string as NSString
+        let opening = text.paragraphRange(for: NSRange(location: block.range.location, length: 0))
+        let bodyStart = NSMaxRange(opening)
+        guard bodyStart < block.closingLineStart else { return }
+        let first = text.paragraphRange(for: NSRange(location: bodyStart, length: 0))
+        styleCodeBody(first, style: firstCodeLineStyle(of: block, in: storage), in: storage)
+        guard NSMaxRange(first) < block.closingLineStart else { return }
+        let second = text.paragraphRange(for: NSRange(location: NSMaxRange(first), length: 0))
+        styleCodeBody(second, in: storage)
+        guard let window else { return }
+        // The lines before the window were not touched, so they are as they were: only one line ever has the first line's style.
+        var location = max(NSMaxRange(second), window.location)
+        let limit = min(NSMaxRange(window), block.closingLineStart)
+        while location < limit {
+            let paragraph = text.paragraphRange(for: NSRange(location: location, length: 0))
+            styleCodeBody(paragraph, in: storage)
+            location = NSMaxRange(paragraph)
+        }
+    }
+
+    /// Does `refreshFirstCodeLines(of:restyling:in:)` for the blocks that `range`, and a character on each side of it,
+    /// touches, with a window of `range` and the two paragraphs after it. Called inside `beginEditing()` and `endEditing()`,
+    /// after an edit has been styled, with the paragraphs the edit changed: an edit that splits the first line of code or
+    /// takes it away leaves its style on a paragraph that is no longer the first, which `range` does not always include. What
+    /// is left of the old first line sits right after the text that came in: in the paragraph that starts at the end of
+    /// `range` or, when the edit was in the opening fence line (whose tail is a paragraph of its own), in the one after that.
+    private func refreshFirstCodeLines(near range: NSRange, in storage: NSTextStorage) {
+        let blocks = codeBlocks.blocks
+        guard !blocks.isEmpty else { return }
+        let text = storage.string as NSString
+        var end = NSMaxRange(range)
+        for _ in 0..<2 {
+            guard end < text.length else { break }
+            end = NSMaxRange(text.paragraphRange(for: NSRange(location: end, length: 0)))
+        }
+        let window = NSRange(location: range.location, length: end - range.location)
+        let limit = NSMaxRange(range) + 1
+        var index = Self.firstBlockIndex(endingAtOrAfter: max(range.location - 1, 0), in: blocks)
+        while index < blocks.count, blocks[index].range.location <= limit {
+            refreshFirstCodeLines(of: blocks[index], restyling: window, in: storage)
+            index += 1
+        }
+    }
+
+    /// `CodeBlockStyler` wrote the label of the block that opens at `location` (a language that was detected, or none any
+    /// more): the first line of code is given the room for it, or loses it. Call it inside `beginEditing()` and
+    /// `endEditing()`, after the label is written.
+    func labelDidChange(inBlockAt location: Int, in storage: NSTextStorage) {
+        guard let block = codeBlock(containing: location), block.range.location == location else { return }
+        refreshFirstCodeLines(of: block, in: storage)
     }
 
     /// Styles a fence line of a block: its characters are hidden, or shown while the selection touches them, and its
@@ -746,6 +909,229 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     private func setRunMarkers(of span: MarkupSpan, in storage: NSTextStorage) {
         let role: MarkerRole = touchesSelection(span.range) ? .revealed : .hidden
         for marker in span.markers { storage.addAttributes(appearance.markerAttributes(role), range: marker) }
+    }
+
+    // MARK: Attachments
+
+    /// The text width that an attachment line is sized for: the text container's less its padding on each side, or
+    /// `AttachmentMetrics.unknownWidth` before the text view has a width (a note shown at launch is styled first).
+    private func currentAttachmentWidth() -> CGFloat {
+        guard let container = textView?.textContainer else { return AttachmentMetrics.unknownWidth }
+        let width = container.size.width - 2 * container.lineFragmentPadding
+        return width > 1 ? width : AttachmentMetrics.unknownWidth
+    }
+
+    /// Reads the attachments of the token lines of `batch`, from the paragraph at `start` on, with one query, so that
+    /// styling them does not make one read each.
+    private func prefetchAttachments(in batch: ParagraphBatch, from start: Int) {
+        guard let catalog else { return }
+        var ids: [AttachmentID] = []
+        for index in start..<batch.paragraphs.count {
+            let line = batch.line(at: index)
+            guard line.count == AttachmentToken.lineLength, line.first == 0x5B,
+                let id = AttachmentToken.id(inLine: String(decoding: line, as: UTF16.self))
+            else { continue }
+            ids.append(id)
+        }
+        catalog.preload(ids)
+    }
+
+    /// What the attachment line of `id` is drawn as and how big: a missing attachment for an id with no row, a file that is
+    /// not there or an image that cannot be decoded, "Copying…" while the copy runs, a preview scaled into the text width
+    /// for an image, and a chip for any other file.
+    private func makeAttachmentMark(for id: AttachmentID) -> AttachmentMark {
+        let available = currentAttachmentWidth()
+        let chip = AttachmentMetrics.chipSize(availableWidth: available)
+        guard let catalog, let attachment = catalog.attachment(id), let url = catalog.fileURL(id) else {
+            return AttachmentMark(id: id, kind: .missing, displaySize: chip, fileName: "", byteSize: nil)
+        }
+        if catalog.isCopying(id) {
+            return AttachmentMark(
+                id: id, kind: .copying, displaySize: chip, fileName: attachment.fileName, byteSize: attachment.byteSize,
+                icon: catalog.icon(for: attachment, fileURL: nil))
+        }
+        guard FileManager.default.fileExists(atPath: url.path), !catalog.isUndecodable(id) else {
+            return AttachmentMark(
+                id: id, kind: .missing, displaySize: chip, fileName: attachment.fileName, byteSize: attachment.byteSize)
+        }
+        if attachment.isImage, let width = attachment.pixelWidth, let height = attachment.pixelHeight, width > 0,
+            height > 0
+        {
+            let size = AttachmentMetrics.imageSize(pixelWidth: width, pixelHeight: height, availableWidth: available)
+            let scale = textView?.window?.backingScaleFactor ?? 2
+            return AttachmentMark(
+                id: id, kind: .image, displaySize: size, fileName: attachment.fileName, byteSize: attachment.byteSize,
+                fileURL: url, previewPixelSize: AttachmentMetrics.previewPixelSize(for: size, scale: scale))
+        }
+        return AttachmentMark(
+            id: id, kind: .file, displaySize: chip, fileName: attachment.fileName, byteSize: attachment.byteSize,
+            icon: catalog.icon(for: attachment, fileURL: url))
+    }
+
+    /// Gives the token line at `paragraph` (the line and its line break) its look: the role `attachment` on every character
+    /// but the first, a clear first character, a paragraph style as high as what is drawn on it, and the mark that the
+    /// layout manager draws from. An image's preview is asked for, so that it is on its way before the line is drawn.
+    /// Returns false, and writes nothing, when the line looks as it should already, so that a change of the width that
+    /// leaves the size of every preview alone styles nothing. Call it inside `beginEditing()` and `endEditing()`.
+    @discardableResult
+    private func styleAttachmentLine(of paragraph: NSRange, id: AttachmentID, in storage: NSTextStorage) -> Bool {
+        let mark = makeAttachmentMark(for: id)
+        if let current = storage.attribute(.scratchAttachment, at: paragraph.location, effectiveRange: nil)
+            as? AttachmentMark, current.hasSameLook(as: mark)
+        {
+            return false
+        }
+        let lineHeight = AttachmentMetrics.lineHeight(forDisplayHeight: mark.displaySize.height)
+        storage.addAttributes(
+            [
+                .scratchAttachment: mark,
+                .paragraphStyle: MarkupAppearance.attachmentStyle(lineHeight: lineHeight),
+            ], range: paragraph)
+        // The first character keeps its glyph, clear, which makes the line a fragment of its own (null glyphs have none).
+        storage.addAttribute(
+            .foregroundColor, value: NSColor.clear, range: NSRange(location: paragraph.location, length: 1))
+        storage.addAttributes(
+            appearance.markerAttributes(.attachment),
+            range: NSRange(location: paragraph.location + 1, length: AttachmentToken.lineLength - 1))
+        if !hasAttachmentLines { hasAttachmentLines = true }
+        if mark.kind == .image, let url = mark.fileURL {
+            previews.request(for: url, id: id, maxPixelSize: mark.previewPixelSize)
+        }
+        return true
+    }
+
+    /// Gives every attachment line that starts before `limit`, which is where the paragraphs styled at load begin, its look
+    /// at once, with the one read of the catalog that they need. A line's height depends on it (a preview is up to 252 pt
+    /// high, a line of text 17), and where a note is scrolled to is worked out from the layout of what is above it: a token
+    /// line that a chunk styled after the scroll was set, and the chunks style the text above the window last, moved the
+    /// note under the reader, and nothing applied the anchor again. The same remedy as for the blocks (`styleBlocks`), and
+    /// the same cheapness: a note with no token is one search of its text, and what this did is not done again by the
+    /// chunks (`styleAttachmentLine` writes nothing for a line that looks as it should). Call it inside `beginEditing()` and
+    /// `endEditing()`. Returns what it changed.
+    private func styleAttachmentLines(startingBefore limit: Int, text: NSString, storage: NSTextStorage) -> NSRange? {
+        guard limit > 0 else { return nil }
+        var lines: [(paragraph: NSRange, id: AttachmentID)] = []
+        var searchStart = 0
+        while searchStart < limit {
+            let found = text.range(
+                of: Self.attachmentOpening, options: [],
+                range: NSRange(location: searchStart, length: limit - searchStart))
+            guard found.location != NSNotFound else { break }
+            searchStart = NSMaxRange(found)
+            // A token is a whole line: it starts its paragraph, nothing follows it but the line break, and it is not in a
+            // block (the same tests as `styleBatch` makes).
+            var paragraphStart = 0
+            var paragraphEnd = 0
+            var contentsEnd = 0
+            text.getParagraphStart(
+                &paragraphStart, end: &paragraphEnd, contentsEnd: &contentsEnd,
+                for: NSRange(location: found.location, length: 0))
+            guard paragraphStart == found.location, contentsEnd - paragraphStart == AttachmentToken.lineLength,
+                block(coveringParagraphStart: paragraphStart) == nil,
+                let id = AttachmentToken.id(
+                    inLine: text.substring(with: NSRange(location: paragraphStart, length: AttachmentToken.lineLength)))
+            else { continue }
+            lines.append((NSRange(location: paragraphStart, length: paragraphEnd - paragraphStart), id))
+        }
+        guard !lines.isEmpty else { return nil }
+        catalog?.preload(lines.map { $0.id })
+        var changed: NSRange?
+        for line in lines {
+            if styleAttachmentLine(of: line.paragraph, id: line.id, in: storage) {
+                changed = Self.union(changed, line.paragraph)
+            }
+        }
+        return changed
+    }
+
+    /// Styles the attachment lines again (those of `id`, or all of them), for a change of what they show or of the text
+    /// width. Only a line that would look different is written, and that is a change of its paragraph style, which the text
+    /// storage lays out again by itself.
+    private func restyleAttachmentLines(matching id: AttachmentID?) {
+        guard hasAttachmentLines, !isLoading, !isApplying, let storage, storage.length > 0 else { return }
+        let text = storage.string as NSString
+        var lines: [(paragraph: NSRange, id: AttachmentID)] = []
+        storage.enumerateAttribute(
+            .scratchAttachment, in: NSRange(location: 0, length: storage.length), options: []
+        ) { value, run, _ in
+            guard let mark = value as? AttachmentMark, id == nil || mark.id == id else { return }
+            lines.append((text.paragraphRange(for: NSRange(location: run.location, length: 0)), mark.id))
+        }
+        guard !lines.isEmpty else { return }
+        isApplying = true
+        storage.beginEditing()
+        for line in lines { styleAttachmentLine(of: line.paragraph, id: line.id, in: storage) }
+        storage.endEditing()
+        isApplying = false
+    }
+
+    /// The catalog says that `id` changed (its copy started or ended, or its image cannot be decoded): its lines are styled
+    /// again, and what was decoded for it before is forgotten, unless it is the decoding that failed.
+    private func attachmentDidChange(_ id: AttachmentID) {
+        if catalog?.isUndecodable(id) != true { previews.discard(id) }
+        restyleAttachmentLines(matching: id)
+    }
+
+    /// A request to `previews` is done. A preview that arrived invalidates the display of the lines of its image, which
+    /// lays nothing out again. One that could not be decoded makes the image a missing attachment (`AttachmentCatalog`),
+    /// which styles its lines again at the height of a chip.
+    private func previewDidFinish(_ id: AttachmentID, decoded: Bool) {
+        guard decoded else {
+            catalog?.markUndecodable(id)
+            return
+        }
+        guard hasAttachmentLines, let storage, storage.length > 0, let layoutManager = textView?.layoutManager else {
+            return
+        }
+        storage.enumerateAttribute(
+            .scratchAttachment, in: NSRange(location: 0, length: storage.length), options: []
+        ) { value, run, _ in
+            if let mark = value as? AttachmentMark, mark.id == id {
+                layoutManager.invalidateDisplay(forCharacterRange: run)
+            }
+        }
+    }
+
+    /// The text view has a width that it did not have when the attachment lines were last sized: they are styled again,
+    /// because the height of a preview depends on it. `EditorViewController` calls it from `viewDidLayout`, before it
+    /// applies the scroll anchor, which depends on the height of everything above it. Does nothing when the width is the
+    /// one the lines were sized for, and for a note without attachment lines.
+    func refreshAttachmentLayout() {
+        guard hasAttachmentLines, !isLoading, !isApplying else { return }
+        let width = currentAttachmentWidth()
+        guard abs(width - attachmentLayoutWidth) > 0.5 else { return }
+        attachmentLayoutWidth = width
+        restyleAttachmentLines(matching: nil)
+    }
+
+    /// `refreshAttachmentLayout()` once the call stack, which is AppKit resizing the text view, has unwound. A width that
+    /// changes without a layout of the editor's view (a scroller that appears) is found this way.
+    func scheduleAttachmentLayoutRefresh() {
+        guard hasAttachmentLines, !isAttachmentRefreshScheduled else { return }
+        isAttachmentRefreshScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.isAttachmentRefreshScheduled = false
+                self.refreshAttachmentLayout()
+            }
+        }
+    }
+
+    /// The selection moved: the outline of the attachments that it touched or touches is drawn or taken away. The layout
+    /// manager is told the selection (it is not on the main actor and cannot ask the text view), and the display of the
+    /// attachment lines in the paragraphs of the old and the new selection is invalidated, which lays nothing out.
+    private func attachmentSelectionDidChange(from old: NSRange, to new: NSRange, in storage: NSTextStorage) {
+        guard let layoutManager = textView?.layoutManager as? MarkupLayoutManager else { return }
+        layoutManager.attachmentSelection = new
+        guard hasAttachmentLines else { return }
+        let text = storage.string as NSString
+        for range in [old, new] where range.length > 0 {
+            let paragraphs = text.paragraphRange(for: Self.clamp(range, toLength: text.length))
+            storage.enumerateAttribute(.scratchAttachment, in: paragraphs, options: []) { value, run, _ in
+                if value is AttachmentMark { layoutManager.invalidateDisplay(forCharacterRange: run) }
+            }
+        }
     }
 
     // MARK: The job

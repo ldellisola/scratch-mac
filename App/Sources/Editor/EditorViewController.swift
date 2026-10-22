@@ -53,6 +53,19 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     private var anchorDeadline = ContinuousClock.now
     private var isReapplyScheduled = false
     private static let anchorSettleTime: Duration = .seconds(5)
+
+    /// What the attachments of the notes are (plan 5, task 4): the editor draws a token line `[[attachment:<id>]]` from it.
+    /// Set it before a note is shown. Without one every attachment line is drawn as a missing attachment.
+    var attachmentCatalog: AttachmentCatalog? {
+        get { textView.styler.catalog }
+        set { textView.styler.catalog = newValue }
+    }
+    /// What makes attachments of what is pasted, dropped or chosen (plan 5, task 5): the session coordinator. Without one the
+    /// editor pastes and drops text only.
+    var attachmentImporter: (any AttachmentImporting)? {
+        get { textView.attachmentImporter }
+        set { textView.attachmentImporter = newValue }
+    }
     private var debugStateElement: DebugStateElement?
 
     init() {
@@ -106,6 +119,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         super.viewDidLayout()
         // The text view is at least as tall as the visible area, so that a click below a short note still lands in it.
         textView.minSize = NSSize(width: 0, height: scrollView.contentSize.height)
+        // An image's height depends on the width of the text, and the anchor on the height of what is above it: the
+        // attachment lines are sized for the width the layout gave before the anchor is applied.
+        textView.styler.refreshAttachmentLayout()
         applyPendingScrollAnchor()
     }
 
@@ -130,6 +146,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         textView.breakUndoCoalescing()
         textView.noteUndoManager = undoManager
 
+        textView.noteID = note.id
         undoManager.disableUndoRegistration()
         textView.load(note.body)
         undoManager.enableUndoRegistration()
@@ -157,6 +174,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         isReadOnly = readOnly
         textView.isEditable = !readOnly
         titleField.isEditable = !readOnly
+    }
+
+    /// File > Attach File… and the paperclip: the files that the open panel gives go into the note at the caret (plan 5, task 5).
+    func attachFiles() {
+        textView.attachFiles()
     }
 
     /// Makes the text view the first responder, so typing goes into the note.
@@ -246,13 +268,40 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
                 // that have not been classified, so a test can wait for a block to be done.
                 "pendingHighlights": self.textView.styler.codeBlockStyler.pendingHighlights,
                 "pendingPastes": self.textView.pendingPasteClassifications,
+                // The attachments of the note: for each token in its text, the id and whether the copy is in place, and
+                // the previews that are waiting to be decoded, so a screenshot is taken when the images are drawn.
+                "attachments": self.attachmentStates(),
+                "pendingPreviews": self.textView.styler.previews.pendingCount,
             ]
         }
         view.addSubview(element)
         debugStateElement = element
     }
 
+    /// The tokens in the note's text, for `debug.state`: each one's id, whether its row says that the copy is in place
+    /// (`copied`) and whether Scratch's copy of the file is on disk (`fileExists`, which a UI test cannot look at itself: its
+    /// sandbox may keep it out of the data directory). Reads the text, the catalog and the disk when asked, so a UI test sees
+    /// what the app knows now.
+    private func attachmentStates() -> [[String: Any]] {
+        guard let catalog = attachmentCatalog else { return [] }
+        return AttachmentToken.ids(in: textView.string).map { id in
+            [
+                "id": id.rawValue, "copied": catalog.attachment(id)?.isCopied ?? false,
+                "fileExists": catalog.fileURL(id).map { FileManager.default.fileExists(atPath: $0.path) } ?? false,
+            ]
+        }
+    }
+
     // MARK: NSTextViewDelegate
+
+    /// The caret never stops inside an attachment's token, and a selection never starts or ends inside one: the selection is
+    /// made whole before it changes (`NoteTextView.snappedSelection(from:to:)`, plan 5 task 5).
+    func textView(
+        _ textView: NSTextView, willChangeSelectionFromCharacterRange oldSelectedCharRange: NSRange,
+        toCharacterRange newSelectedCharRange: NSRange
+    ) -> NSRange {
+        self.textView.snappedSelection(from: oldSelectedCharRange, to: newSelectedCharRange)
+    }
 
     func textDidChange(_ notification: Notification) {
         guard !isLoadingNote else { return }
@@ -310,6 +359,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
     }
 
     @objc private func textViewFrameDidChange(_ notification: Notification) {
+        // A width that no layout of this view followed (a scroller appearing) is found here, a turn later: before the
+        // anchor is applied again, which is also a turn later and came second.
+        textView.styler.scheduleAttachmentLayoutRefresh()
         if isAnchorStale { scheduleAnchorReapply() }
     }
 

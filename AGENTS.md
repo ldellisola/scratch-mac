@@ -12,9 +12,18 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
-- Latest plan: [`docs/superpowers/plans/2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md),
-  done and released as 0.4.0 (code: highlighting, code blocks, paste classification, the language label menu, and bold
-  at word boundaries). Plan 3, released as 0.3.0 (the formatting):
+- Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
+  done and released as 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
+  and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
+  and `AttachmentToken` exist, the schema is version 3, `AttachmentStore` keeps the files and removes them only when no
+  note names them, the 0.4.0 follow-ups in ScratchCode are in, a token line is drawn as a preview or a chip, files and
+  images are pasted, dropped or attached with the paperclip and kept whole when selected or deleted, and an attachment is
+  selected with a click, opened with a double-click, dragged out as its file and copied as its name (and, alone, as its
+  file), and the 0.4.0 follow-ups in the app are in (the licences in the About panel, the query warm-up, a first line of
+  code that keeps clear of the language label, and a 50,000-line JSON paste that is held to the paste budget), and the
+  screenshots, the decision record 0008 and the README are in. Plan 4, done and released as 0.4.0 (code: highlighting, code
+  blocks, paste classification, the language label menu, and bold at word boundaries):
+  [`2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
   [`2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md). Plan 1, released
   as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md).
@@ -24,12 +33,31 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 ```
 Packages/ScratchCore/             Foundation-only Swift package. Builds and tests on Linux and macOS.
   Sources/CSQLite/                module map for the system SQLite library (no pkgConfig, on purpose)
-  Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview. NoteSummary: a sidebar
+  Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview (a title and a preview skip
+                                  blank lines, fence lines and attachment lines). NoteSummary: a sidebar
                                   row (`deletedAt` is set for Recently Deleted rows). NoteStore: reads and writes the
                                   notes table (pinned first, newest edit first), searches it (`search`), and pins,
                                   deletes, restores and purges notes (`setPinned`, `delete`, `restore`,
-                                  `deletePermanently`, `deletedSummaries`, `purge`). SearchQuery: typed text to an
+                                  `deletePermanently`, `deletedSummaries`, `purge`), and says which attachments the
+                                  stored bodies name (`referencedAttachmentIDs`). SearchQuery: typed text to an
                                   FTS5 MATCH expression
+  Sources/ScratchCore/Attachments/ AttachmentID (a lowercase UUID, like NoteID) and AttachmentToken: the line
+                                  `[[attachment:<id>]]` that stands for an attachment in a note (`line(for:)`,
+                                  `id(inLine:)`: the whole line and nothing else, `ids(in:)`: every token of a text, in
+                                  order, `lineRanges(in:within:)`: the token lines a UTF-16 range touches,
+                                  `referencedIDs(in:)`: every id whose token is anywhere in a text, which is what keeps a
+                                  file). Attachment (a row: the file's name, type, size and whether its copy is in
+                                  place) and AttachmentStore (the `attachments` table and the copied files under
+                                  `<data dir>/attachments/<id>/<file name>`: `register`, `copyIn`, `writeIn`, `attachment`,
+                                  `attachments`, `fileURL`, and the removal by reference `removeUnreferenced` and
+                                  `sweep`) and AttachmentEditing (what the keys and the pasteboard do around a token line,
+                                  as `TextEdit`s and `KeyAction`s: `snappedSelection` keeps the caret and a selection from
+                                  ending inside a token, `deletion` is Backspace and Delete next to one, `removal`,
+                                  `insertion`: the token lines of a paste, each on a line of its own; `token(touching:)`
+                                  reads at most 51 units each way of a position) and AttachmentCopying (what Copy puts on
+                                  the pasteboard: `text(of:in:name:ignoring:)` is the text with the file's name in place of
+                                  each token, `soleAttachment(in:of:ignoring:)` says that a selection is exactly one token,
+                                  which is the one that also copies the file)
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores: the tabs, the active one, the
                                   font size, and each tab's cursor and `scrollAnchor`), SessionStore (JSON under key
                                   "state"), TabList (the tab rules: open, close, select, with TabOpening and
@@ -43,9 +71,12 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   UnsavedNotes (the notes whose write failed, kept with the owner's text until a write
                                   succeeds: thread-safe, the newest copy of a note wins)
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
-                                  SQLValue and Row, Schema (version 2, with the FTS5 index `notes_fts`, the migration
-                                  rule, and SchemaError for a database from a newer Scratch), ScratchStorage (opens
-                                  the data directory and its stores; refuses a fixture on the real directory; its
+                                  SQLValue and Row, Schema (version 3, with the FTS5 index `notes_fts`, the
+                                  `attachments` table, the migration rule, and SchemaError for a database from a newer
+                                  Scratch), ScratchStorage (opens
+                                  the data directory and its stores, `notes`, `session` and `attachments`; refuses a
+                                  fixture on the real directory; `deletePermanently` and `purge`, which remove a note
+                                  and then the files nothing names any more; its
                                   `database` is public so that tests can make writes fail, see section 7)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
   Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold at
@@ -55,21 +86,25 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   nothing is formatting), TextLines (internal: line splitting and white space over UTF-16
                                   units). The editing rules answer an action with a `TextEdit` (a range, its
                                   replacement and the selection afterwards): ListEditing (Return, Tab, ⇧Tab, ⇧⌘L and a
-                                  click on a checkbox) and InlineEditing (⌘B). They read only the paragraphs that cover
-                                  the selection (`ParagraphLines`, internal: those lines with document offsets, and how
-                                  a selection moves when they change). The editor's styling reads CodeBlockIndex (the
-                                  fenced blocks of a note, carried over each edit and scanned again only when an edit
+                                  click on a checkbox) and InlineEditing (⌘B, and `touchesAttachment`: whether the
+                                  selection touches a token line, which ⌘B must not wrap). They read only the paragraphs
+                                  that cover the selection (`ParagraphLines`, internal: those lines with document offsets,
+                                  and how a selection moves when they change; `isAttachmentLine`, which ⇧⌘L
+                                  skips). The editor's styling reads CodeBlockIndex (the fenced blocks of a note, carried
+                                  over each edit and scanned again only when an edit
                                   touches a fence line; `intersects` says whether a range holds a block), EditMapping
                                   (where positions go when text is replaced) and `MarkupParser.mayHaveSpans` (a cheap
                                   test that skips the parse of a line with no marker)
-  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting, code) and
-                                  FixtureContent, their notes and session
+  Sources/ScratchCore/Fixtures/   Fixture (empty, typical, huge-note, many-notes, recently-deleted, formatting, code,
+                                  attachments) and FixtureContent, their notes, session and attachments (rows and the
+                                  bytes of their files)
   Tests/ScratchCoreTests/         Swift Testing, one test file per source file
 Packages/ScratchCode/             Swift package, no AppKit, builds and tests on Linux and macOS. Wraps tree-sitter, the one
                                   third-party dependency (docs/decisions/0007). ScratchCore does not depend on it.
   Sources/ScratchCode/            CodeLanguage (the 17 languages: fence names, aliases, labels), HighlightKind and
                                   HighlightToken (UTF-16 ranges), Highlighter (`tokens(in:language:)`, nil over the cap of
-                                  5,000 lines or 300,000 units; `errorRate(of:language:)`), CaptureMapping (capture names
+                                  5,000 lines or 300,000 units; `errorRate(of:language:)`; `prepare(_:)` compiles a
+                                  language's query before a text needs it, `isPrepared(_:)`), CaptureMapping (capture names
                                   to the eight kinds), Grammars (internal: each language's grammar and queries, and the
                                   compiled-query cache), QueryInheritance (internal: a `; inherits: <folder>` line at the
                                   top of a query brings that folder's query in first), CodeDetector (`detect(_:)`: a
@@ -83,6 +118,8 @@ Packages/ScratchCode/             Swift package, no AppKit, builds and tests on 
                                   a resource bundle, read through `Bundle.module`
   Sources/GrammarPython/          the Python grammar's generated C, vendored (its README.md says why)
   Sources/GrammarPowerShell/      the PowerShell grammar's generated C, vendored in the same way
+  Sources/GrammarSQL/             the SQL grammar's generated C (41 MB parser.c from the gh-pages build of its repository),
+                                  vendored in the same way
   Tests/ScratchCodeTests/         Swift Testing, one file per source file, and `Samples/<fence name>.txt`, 15 to 40 lines
                                   of ordinary code for each of the 17 languages (a test resource), and `Corpus/`: the
                                   samples the detector is tuned against, in `<fence name>/` (code), `unknown/` (code of
@@ -96,8 +133,11 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
                                   sidebar item + editor area item), EditorAreaViewController (the tab strip above the
                                   editor), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
-                                  menu), AppCommands (the target of the app's own menu items: the tabs, pinning,
-                                  searching and the font size), ToolbarController (sidebar button, pin button, new note button), TitlebarPocket (hides
+                                  menu), AppCommands (the target of the app's own menu items: About Scratch, the tabs,
+                                  pinning, attaching a file, searching and the font size), AboutCredits (the About
+                                  panel's credits: the licences in `Acknowledgements.rtf`, in `labelColor`; `credits(in:)`,
+                                  `panelOptions(in:)`), ToolbarController (sidebar button,
+                                  paperclip, pin button, new note button), TitlebarPocket (hides
                                   the line macOS 26 draws under the toolbar, section 7)
 App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
                                   `TabStripLayout`, `TabStripContentView`, `TabItemView`)
@@ -108,9 +148,12 @@ App/Sources/Sidebar/              SidebarViewController (the search field and th
                                   SidebarTableView (Return, ⌘⌫, the click on the Recently Deleted header, the row's
                                   context menu)
 App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore, new note, close,
-                                  pinning, delete, restore and purge, the tab titles; the one place that writes to
-                                  storage), NoteListModel (the sidebar's data: reads the note list, the search results
-                                  and Recently Deleted on the storage queue, builds the sections)
+                                  pinning, delete, restore and purge, the tab titles, the launch sweep of the attachments
+                                  that no note names; the one place that writes to storage; it is the editor's
+                                  `AttachmentImporting`), NoteListModel (the sidebar's data: reads the note list, the
+                                  search results and Recently Deleted on the storage queue, builds the sections),
+                                  AttachmentImporter (makes the attachments of what is pasted, dropped or chosen: the row
+                                  at once on the main thread, the copy on the storage queue, `pendingCopies`)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
                                   TitleField (the optional title above the text), EditorViewController (the title field
@@ -128,27 +171,56 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   (whole paragraphs read in one call), CodeBlockStyler (colours the code of the fenced
                                   blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
                                   language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`,
-                                  `whenHighlighted`), CodeBlockParts (a block's name, code and fence lines from its range)
+                                  `whenHighlighted`; the query warm-up: `warmUp(languagesNamedIn:using:)`,
+                                  `languages(namedIn:)`, `pendingWarmUps`, `warmedLanguages`), CodeBlockParts (a block's name, code and fence lines from its range)
                                   PasteClassifier (whether a paste is code, and the edit that wraps it in a fence:
                                   `wrap`; NoteTextView asks it after every paste, `readSelection(from:)`) and
                                   CodeBlockMenu (the menu of a block's language label, with `CodeBlockAction` and
                                   `CodeBlockChoice`, and the edits its items make: `menu`, `edit`; NoteTextView opens it
                                   from a click on a label, `labelHit`, `showCodeBlockMenu`, and applies a choice,
-                                  `applyCodeBlockAction`; `MarkupLayoutManager.labelRect(forBlockAt:)` is where the label is)
+                                  `applyCodeBlockAction`; `MarkupLayoutManager.labelRect(forBlockAt:)` is where the label is).
+                                  Attachments (plan 5): AttachmentCatalog (the rows of the attachments the editor shows,
+                                  read with one query per batch of paragraphs, which files are being copied or cannot be
+                                  decoded: `attachment`, `fileURL`, `preload`, `markCopying`, `markCopied`, `onChange`),
+                                  AttachmentPreviews (ImageIO thumbnails on a serial queue and their cache: `image(for:id:
+                                  maxPixelSize:completion:)`, `request`, `cachedImage`, `onChange`), AttachmentDrawing
+                                  (`AttachmentMetrics`, the sizes, and `AttachmentDrawing`, the preview, the chip and the
+                                  outline), and in MarkupAttributes `AttachmentMark` (what a token line is drawn as: its
+                                  kind, size, file name, icon) with the `scratchAttachment` attribute and `MarkerRole.attachment`.
+                                  MarkupStyler styles a token line (`styleAttachmentLine`) and again when the catalog or the
+                                  text width changes (`attachmentDidChange`, `refreshAttachmentLayout`);
+                                  `MarkupLayoutManager.attachmentRect(forTokenAt:)` is where the preview is drawn.
+                                  AttachmentImporting (`AttachmentSource`: a file or the bytes of an image, and the
+                                  `AttachmentImporting` protocol that NoteTextView asks to make attachments, `noteID`).
+                                  NoteTextView reads a paste or a drop in the order of spec §6.5 (`readSelection(from:)`,
+                                  `paste`, `attachmentSources(from:)`, `insertAttachments`, `acceptsDrop`, `performDrop`),
+                                  opens the paperclip's panel (`attachFiles`, `presentOpenPanel`), keeps a token whole
+                                  (`snappedSelection`, which the editor's selection delegate asks, and `deleteBackward` and
+                                  `deleteForward`), takes a click on a preview or a chip (`attachmentHit`: the drawn rect,
+                                  `pressAttachment`: a click selects, a double-click opens through `openURL`, `mouseDragged`
+                                  past 3 pt drags the file out, `attachmentDragPresenter`) and writes an attachment copy
+                                  (`writeSelection`). AttachmentDrag (`pasteboardWriter(for:)`, the stored file's NSURL, the
+                                  drag item and its picture, `AttachmentDragSource`: copy only) and AttachmentPasteboard
+                                  (the one item of a copy of one attachment: its name, its file's URL, and for an image
+                                  its PNG and TIFF, which `AttachmentImageProvider` makes when an application asks)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
                                   `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
                                   (runs work when the main run loop is next about to wait: after the frame is drawn, and
                                   with `order: afterMeasurementsOrder` after the signposts end), FrameMonitor
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
-                                  size, scroll anchor, scroll offset and pending paste work from, in isolated launches
+                                  size, scroll anchor, scroll offset, pending paste work, the previews still to decode and
+                                  the attachments of the note (id, `copied` and `fileExists`) from, in isolated launches
                                   only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
-                                  light and a dark variant)
+                                  light and a dark variant), Acknowledgements.rtf (the licences of tree-sitter and of every
+                                  grammar, generated by `scripts/make-acknowledgements.py`: never edit it by hand)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
-                                  50,000-line paste returns within 500 ms, FrameMonitorTests, EditorViewControllerTests:
+                                  50,000-line paste returns within 500 ms, and a 50,000-line JSON paste and its wrap do too,
+                                  AboutCreditsTests: the About credits list tree-sitter and every grammar,
+                                  SessionWarmUpTests: the open tabs' languages are warmed up, FrameMonitorTests, EditorViewControllerTests:
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
                                   reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
@@ -159,7 +231,14 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   fences, indented lines, colours and a label, CodeBlockPartsTests, CodePasteTests: a
                                   paste of code is wrapped in a fence on the next turn, prose, a paste into code and one
                                   with a fence line stay plain, `PasteClassifier.wrap`, CodeBlockMenuTests: the label
-                                  menu, its edits and undo steps, the label's hit test, a block typed by hand)
+                                  menu, its edits and undo steps, the label's hit test, a block typed by hand,
+                                  AttachmentRenderingTests: a token line's null glyphs and height, an image scaled to the
+                                  width and 240 pt, the file chip, the Copying and Missing attachment chips, the pixels of
+                                  a preview, a change of the text width, AttachmentPasteTests: files, images and text
+                                  pasted in the order of spec §6.5, one undo step, a 50 MB file, drops,
+                                  AttachmentEditingTests: the caret and a selection around a token, Backspace and Delete,
+                                  ⇧⌘L and ⌘B around a token, the paperclip, AttachmentCopyTests: Copy's text and files, a click, a double-click and a
+                                  drag on an attachment, pasting what was copied; AttachmentTestHost is what they share)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -167,7 +246,8 @@ App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an
                                   Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
                                   FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
                                   CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
-                                  ScreenshotTests (one test per screenshot, section 3)
+                                  AttachmentUITests (⌘V of an image survives a relaunch, Backspace twice and ⌘Z bring it
+                                  back), ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), CodePastePerfTests (a paste of
                                   500 lines of code until its colours are on screen), PerfSupport. They share
@@ -184,9 +264,12 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   perf-check.py (numbers against baseline and budgets), check-version-bump.sh (a change
                                   to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
                                   release notes footer with the version filled in), check-release-zip.sh (unpacks a
-                                  release zip, checks the app in it and prints its sizes), check-release-dmg.sh (attaches a release DMG
-                                  read-only and checks the window and the app in it), tests/ (their tests, the DMG
-                                  check's against stubs of hdiutil, codesign and lipo)
+                                  release zip, checks the app in it, Acknowledgements.rtf too, and prints its sizes),
+                                  check-release-dmg.sh (attaches a release DMG
+                                  read-only and checks the window and the app in it), make-acknowledgements.py (writes
+                                  App/Resources/Acknowledgements.rtf from Package.resolved, the LICENSE files and the vendored
+                                  grammars; `--check` says whether the file is current), tests/ (their tests, the
+                                  zip and DMG checks' against stubs of ditto, hdiutil, codesign and lipo)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests, version bump check. Job `macos`:
                                   XcodeGen, core tests on macOS, app build and app tests, screenshots, performance tests
                                   and their check, the release zip and the release DMG. Both publish to `ci-results`.
@@ -200,12 +283,12 @@ docs/release-notes-footer.md      the install and update steps (the DMG first, t
                                   top of every release's notes (`scripts/release-notes.sh` replaces its `<version>`
                                   placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
-                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md
-                                  (more as features land)
-docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, search,
-                                  recently-deleted): copies of the `screenshots/` that CI published for a release commit
-                                  (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
-                                  code-light, search-light, recently-deleted-light). They
+                                  title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md,
+                                  attachments.md (more as features land)
+docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, attachments,
+                                  search, recently-deleted): copies of the `screenshots/` that CI published for a release
+                                  commit (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
+                                  code-light, attachments-light, search-light, recently-deleted-light). They
                                   change only when someone replaces them, so refresh them when a plan visibly changes
                                   the UI
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
@@ -213,7 +296,8 @@ docs/decisions/                   numbered decision records: 0001 (the editor us
                                   performance check compares), 0004 (a new note opens at the end of the tab strip, and
                                   a note the owner empties is kept), 0005 (every release carries a DMG next to the zip),
                                   0006 (bold needs word boundaries), 0007 (tree-sitter: the packages, their versions and
-                                  licences, and how to add a language)
+                                  licences, and how to add a language), 0008 (attachments: the token line, the files kept
+                                  by reference, the own-line layout and the copy rules)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -226,15 +310,20 @@ Run them from the repository root. `[linux]` means it also runs in the Linux clo
 macOS and runs on GitHub's Macs.
 
 - `make core-test` `[linux]`: build and run the ScratchCore tests, then the ScratchCode tests (the first run fetches
-  tree-sitter and its 15 grammar packages from GitHub, about 3 minutes with tree-sitter-sql's 150 MB history, and
-  compiles them).
+  tree-sitter and its 14 grammar packages from GitHub, and compiles them and the three vendored grammars, a few minutes).
 - `swift test --package-path Packages/ScratchCore --filter <name>` `[linux]`: run matching tests only (the same for
   `Packages/ScratchCode`).
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
 - `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py`,
-  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh` and `check-release-dmg.sh`). Each test file ends with an
-  `all ... passed` line.
+  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh`, `check-release-dmg.sh`, `check-release-zip.sh` and
+  `make-acknowledgements.py`, whose test also holds the checked-in `Acknowledgements.rtf` to `Package.resolved`). Each test
+  file ends with an `all ... passed` line.
+- `python3 scripts/make-acknowledgements.py [--check]` `[linux]`: write `App/Resources/Acknowledgements.rtf`, the licences of
+  tree-sitter and every grammar (from `Packages/ScratchCode/Package.resolved`, SwiftPM's checkouts in
+  `Packages/ScratchCode/.build/checkouts`, which `make core-test` fetches, and the vendored `Sources/Grammar*/LICENSE`), or with
+  `--check` say whether the checked-in file is current. Run it whenever a grammar is added or a version changes
+  (docs/decisions/0007, "Adding a language"), and check the file in.
 - `scripts/check-version-bump.sh <base-ref>` `[linux]`: exit 1 when the branch changed App/ or Packages/ since
   `<base-ref>` without a `VERSION` that is greater than `<base-ref>`'s (compared number by number: 0.10.0 is greater than
   0.9.0), or when `VERSION` is not MAJOR.MINOR.PATCH. CI runs it with `origin/main`.
@@ -254,7 +343,8 @@ macOS and runs on GitHub's Macs.
   `typical-dark`, `empty-light`, `huge-note-light`, `search-light` (typical, with "kube" typed in the search field),
   `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), `formatting-light` and
   `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note), and `code-light` and
-  `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured). These are the
+  `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured), and
+  `attachments-light` and `attachments-dark` (the `attachments` fixture: an image and a file chip). These are the
   names in the Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
@@ -268,7 +358,8 @@ macOS and runs on GitHub's Macs.
 
 - `make release-zip` `[macOS]`: build the Release app into `build/release/Scratch.app`, zip it to
   `build/release/Scratch-<VERSION>.zip`, and check what is in the zip (`scripts/check-release-zip.sh`: version and build
-  version, bundle identifier, arm64 only, valid ad-hoc signature, ScratchCode's highlight queries in the app; it prints the
+  version, bundle identifier, arm64 only, valid ad-hoc signature, ScratchCode's highlight queries and
+  `Acknowledgements.rtf` in the app; it prints the
   sizes of the zip, the app and the executable). CI runs it on every push, and the release workflow runs it to make the
   file it publishes.
 - `make release-dmg` `[macOS]`: after `make release-zip` (it runs that first when `build/release/Scratch.app` is not
@@ -288,7 +379,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 | Flag | Value | Effect |
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
-| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code` | delete the database in the data directory and seed that fixture |
+| `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code`, `attachments` | delete the database and the `attachments` folder in the data directory and seed that fixture |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 
@@ -452,6 +543,17 @@ new kind of release file, with no change to the app, ships.
   an old step, because it has already run on real databases. Dates are stored as REAL `timeIntervalSinceReferenceDate`.
   `Schema.migrate` refuses a database whose `user_version` is newer than `currentVersion`
   (`SchemaError.newerThanSupported`, whose message is the "cannot start" alert) and changes nothing in it.
+- **A change to how a note's title or preview is derived needs a migration step that works them out again.** The sidebar
+  columns `display_title`, `has_title` and `preview` are written on every save and never recomputed, so the rows of notes
+  nobody edits keep the old rule. Schema v3 does it for the rule "skip fence and attachment lines": it builds a `Note` from
+  each row's title and body (the same code `NoteStore.save` runs), and writes only those three columns, and only when they
+  differ, so `modified_at`, the list order and the search index stay as they were. A note that holds only fences and
+  attachments has an empty `display_title` and is still not `isEmpty`: a note with an attachment is never an unused note.
+- **An attachment line is judged as typed, a fence line too.** `Note` looks at a line before it trims it, as the styler will:
+  `AttachmentToken.id(inLine:)` accepts exactly `[[attachment:<lowercase UUID>]]` and nothing else on the line, so
+  `" [[attachment:…]]"` is text and a title. `AttachmentToken.ids(in:)` counts a token inside a fenced block too, because
+  counting one more reference only keeps a file. `lineRanges(in:within:)` splits lines at `\n`, `\r\n` and `\r` only, like the
+  core, not at `NSString`'s paragraph separators, and says a caret touches the token line it is on, both edges included.
 - **Never `VACUUM` the database.** The search index `notes_fts` is keyed on the `notes` table's implicit `rowid`, which
   `VACUUM` may renumber, and every hit would then point at the wrong note. `notes_fts` is an external-content table: it
   holds no text of its own, and three triggers keep it current, so never write to it by hand. `NoteStore.save` uses
@@ -479,11 +581,12 @@ new kind of release file, with no change to the app, ships.
   manifest in the builder's working directory, so linking fails with undefined `*_external_scanner_*` symbols. Such a
   grammar is vendored into `Packages/ScratchCode/Sources/Grammar<Language>/`, compiled with `-w` (Xcode warns about the
   generated C, and the app builds with no warnings; docs/decisions/0007, which also lists how to add a language). Python
-  and PowerShell are vendored. JavaScript, YAML and CSS are pinned to the older tags that list their sources outright,
+  and PowerShell are vendored, and so is SQL, for another reason: its tags have no generated `parser.c` at all (it is on
+  the `gh-pages` branch, a build for each commit of `main`), and a dependency could only pin a commit of that branch.
+  JavaScript, YAML and CSS are pinned to the older tags that list their sources outright,
   and their queries are from those tags: a query must match the node names of the grammar it runs on. Pin every package
-  in `Package.swift` with `exact:`, because the generated Xcode project has no `Package.resolved` of its own. The one
-  exception is tree-sitter-sql, whose tags have no generated `parser.c`: it is pinned with `revision:` to a commit of its
-  `gh-pages` branch, where the builds of `main` are.
+  in `Package.swift` with `exact:`, because the generated Xcode project has no `Package.resolved` of its own: nothing is
+  pinned with `revision:` (`GrammarsTests.sqlBuildsFromVendoredSources` checks it).
 - **A query that names a node its grammar lacks does not compile, and the language then goes uncoloured.**
   `QueryCache` turns the error into nil, so only a test notices: `QueryInheritanceTests.everyLanguageHasAGrammarAndItsQueryFiles`
   compiles all 17. That is why `javascript-jsx` is a folder of its own (TypeScript has no JSX nodes) and why a copy of
@@ -492,22 +595,55 @@ new kind of release file, with no change to the app, ships.
 - **ScratchCode's queries are a resource bundle, and a missing one stops the app.** `Grammar.makeQuery` reads
   `Queries/<language>/highlights.scm` through `Bundle.module`, which calls `fatalError` when it cannot find
   `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries
-  it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 ms
-  for Swift, Release, on Linux), and `Highlighter` is thread-safe.
+  it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 to
+  270 ms for Swift, Release, on Linux), and `Highlighter` is thread-safe. `SessionCoordinator.warmUpHighlighting()` (after
+  the first frame, from `AppDelegate`) has `CodeBlockStyler.warmUp(languagesNamedIn:)` compile the queries of the languages
+  that the notes in the open tabs name, through `Highlighter.prepare(_:)`: one language at a time, each a block of its own on
+  the highlight queue, so a block that is shown meanwhile waits for one compile at most. It prepares `Highlighter.shared`, the
+  cache that every request reads; a test passes a `Highlighter()` of its own, because the shared one may be warm already.
+- **`Acknowledgements.rtf` is generated, and the About panel and the release depend on it.** `scripts/make-acknowledgements.py`
+  writes it from `Package.resolved`, the checkouts' `LICENSE` files and the vendored grammars, and `make script-test`
+  (`--check`) fails when a grammar or a version was added or changed and the file was not made again, so a new grammar is
+  never shipped without its licence. A vendored grammar's `README.md` must say where it is from (an `https://github.com/` URL)
+  and its tag or commit, which the script reads. `scripts/check-release-zip.sh` fails a zip without the file in
+  `Contents/Resources`, and `AboutCredits` gives the text `labelColor`, because the file has no colour of its own and black
+  RTF text is unreadable in a dark panel. swift-tree-sitter is BSD 3-Clause, the rest are MIT.
+- **The first line of code of a block with a label is further in from the right than the others.** The label is drawn at the
+  top right and reaches into that line, so its paragraph style has a tail indent of `inset + label width + 12 pt`
+  (`MarkupAppearance.firstCodeLineStyle`, `CodeBlockMetrics.labelReserve`, at most 240 pt, none without a label); every other
+  line of a block is 10 pt in (`codeBodyStyle`). Whatever writes a label or changes which line is first must restyle that
+  line: `CodeBlockStyler.advance` calls `MarkupStyler.labelDidChange(inBlockAt:in:)` in the editing session that writes a
+  label, `storageDidEdit` calls `refreshFirstCodeLines(near:in:)` (an edit that splits or removes the first line, or inserts
+  several lines above it or inside it, leaves its style on a paragraph that is no longer the first, and the edit's own
+  paragraphs do not always include it: it styles the first line as the first, and the second line, every line of the edit's
+  paragraphs and the two paragraphs after them as any other line of code), and `styleBatch`
+  and `styleBlocks` style the first line apart from the run of lines after it. The label's width is measured in the font it is
+  drawn in (`CodeBlockMetrics.labelFont`), so the two cannot disagree. A test of a block's lines asks for `-10` of every line
+  but the first, whose tail indent is `-(10 + width + 12)`.
 - **Code detection is tuned against `Tests/ScratchCodeTests/Corpus/`, and the corpus only grows.** A paste that is
   detected wrongly becomes a sample first (the folder of its language, `unknown/` for a language Scratch lacks,
   `prose/` for text that must stay plain), then the detector changes until every sample passes. Never delete a prose
   sample to make a test pass, and write every sample fresh: no poems, lyrics, articles or real emails. The rule is the
   spec's, "when unsure, it is prose": a text is code only with a mean line evidence of 0.5 or more and two lines of
   code that are not comments (`DetectionFeatures.evidence`), so a list of `word;` lines, a note that mentions `init()`
-  and a log are prose. A text with no idiom of any language is named only when one grammar parses it better than the
-  others (else it is code of an unknown language), and a language that shares its idioms with another (TypeScript with
-  JavaScript, C++ with C) is settled by the idioms only it has (`CodeDetector.settleScriptFamily`).
+  and a log are prose, and so is a note of short lowercase `key: value` lines (`phone: 07700 900 123`, `buy: eggs, flour`):
+  YAML needs a cue of structure (a `---`, nesting under a key with no value, a `- ` list under one, or a value that is
+  `|`, `>`, an anchor or a quoted string with a colon: `DetectionFeatures.isYAMLShape`). A text with no idiom of any
+  language is named only when one grammar parses it better than the others (else it is code of an unknown language), and
+  a language that shares its idioms with another (TypeScript with JavaScript, C++ with C) is settled by the idioms only
+  it has (`CodeDetector.settleScriptFamily`).
+- **A debug build is the slow case of detection, and a JSON document of up to 1,000,000 bytes is validated whole.**
+  `DetectionFeatures.isJSONDocument` runs `JSONShape.isDocument` over every byte of such a paste: 760 KB (50,000 lines of
+  `LargeInsertTests`) took 242 ms in a debug build while `skipSpace` asked an array literal for every byte, and takes 79 ms
+  now. Keep that loop free of allocations: the paste step and the wrap step of a 50,000-line JSON paste are each held to 500 ms.
 - **Detection reads text with its inline code masked.** `DetectionLine` turns what is between a pair of backticks into
   letters before it looks at the line, so `call `init()` first` in a Markdown note is a sentence and not a call.
   `JSONShape` is the JSON check, not `JSONSerialization`: Foundation on Linux accepts a trailing comma and the one on
   macOS does not. Only the first 300 lines or 40,000 bytes of a paste are read, the first 50 lines or 4,000 bytes are
-  parsed to compare grammars, and a detection is 3 to 12 ms for 500 lines in Release (the budget is 20).
+  parsed to compare grammars, and a detection is 3 to 12 ms for 500 lines in Release (the budget is 20). The timing tests
+  of `CodeDetectorTests` run in Debug, where the macOS runner took 107 ms for a bound of 100 and 498 ms for 400, so
+  `bound(_:)` allows 4 times the figure a test names on macOS and the figure itself on Linux. The Release budget is held
+  by `paste_code_ms`, not by them.
 - **Do not link Homebrew's SQLite.** `CSQLite` deliberately has no `pkgConfig`, so macOS links the system library.
 - **Never commit `App/Scratch.xcodeproj`.** It is generated from `App/project.yml`.
 - **App tests run inside the app.** `ScratchAppTests` are hosted: Xcode starts the real app, then loads the tests into
@@ -569,8 +705,9 @@ new kind of release file, with no change to the app, ships.
 - **UI tests read the font size, the scroll anchor and the scroll offset from `debug.state`.** `DebugStateElement` is a
   1 x 1 point view in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its
   accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY`, `topInset`, and
-  `pendingHighlights` and `pendingPastes`, which are zero when a paste is done): `UITestSupport.debugState(in:)` reads
-  it. It draws nothing and takes no clicks, so it is not in a screenshot.
+  `pendingHighlights` and `pendingPastes`, which are zero when a paste is done, `pendingPreviews`, which is zero when
+  every image is decoded, and `attachments`): `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no
+  clicks, so it is not in a screenshot.
 - **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
   `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
   equivalents needs two items.
@@ -701,6 +838,20 @@ new kind of release file, with no change to the app, ships.
   picture (the request is made in `show`, before the window is visible, so zero means done). The `code` fixture's note is
   44 lines and fits the 1024 x 674 window whole: a line added to it can push the last block, the one with no fence name
   and the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
+- **A screenshot of attachments waits for its files and its previews.** `ScreenshotTests.testAttachmentsLight` and
+  `testAttachmentsDark` wait until `debug.state` reports both attachments of the `attachments` fixture in place
+  (`attachments`: `copied` and `fileExists`) and `pendingPreviews` at zero (an image is decoded on its own queue), then
+  assert the sidebar's title and preview (`UITestSupport.sidebarPreviewTexts`: a preview with no token in it). The
+  fixture's image is 64 x 40 pixels and is drawn at that size, because an image is never made bigger than it is, so the
+  picture shows the rounded corners and the chip but not the scaling, which
+  `AttachmentRenderingTests.testImageIsScaledToWidthAndCap` checks. The README's `attachments.png` is
+  `attachments-light`.
+- **A UI test cannot make a file for the app to read: it pastes image data.** The UI test runner is sandboxed (its
+  environment has `APP_SANDBOX_CONTAINER_ID`): it cannot create a directory in /tmp (`Operation not permitted`, CI of plan 5
+  task 5), and what it writes in its own container the app is not allowed to use. So `AttachmentUITests` put PNG data
+  (`.png`, what a screenshot is) on `NSPasteboard.general` and not a file's URL, and ask the app, through `debug.state`'s
+  `attachments` (`copied`, `fileExists`), whether the copy is on disk, because the runner cannot look in the data directory
+  either. Pasting file URLs is covered by the hosted `AttachmentPasteTests`, which run inside the app.
 - **UI tests type without clicking the editor first** (`editor.typeText`): the editor is first responder at launch, and a
   click would move the cursor that `testCursorRestoredAfterRelaunch` checks. `typeText` and `typeKey` need keyboard focus.
   Kill the app with `NSRunningApplication.forceTerminate()`, never `XCUIApplication.terminate()`, which may quit
@@ -806,6 +957,16 @@ new kind of release file, with no change to the app, ships.
 - **A command that edits whole paragraphs asks `styler.intersectsCodeBlock` for the paragraphs it will change**, not
   `isInCodeBlock` for the caret: a selection can start and end outside a block and hold it. ⇧⌘L beeps there, and in a
   read-only note.
+- **A rule that edits whole paragraphs, or wraps the selection, must leave token lines alone.** A token line is a line of
+  text to `ParagraphLines`, so a rule that gives "every line that is not a list line" a marker, or puts stars around the
+  selection, rewrites `[[attachment:<id>]]` as `[ ] [[attachment:<id>]]` or `**[[attachment:<id>]]**`: the line is text, the
+  picture is gone (⌘Z brings it back, and the file is kept: a stored file goes only when no body names it). So
+  `ListEditing.toggleChecklist` skips a line for which `ParagraphLines.isAttachmentLine` is true (it is not "a line with
+  text", and it keeps the blank lines around it empty like one), and `NoteTextView.toggleBoldMarkers` beeps when
+  `InlineEditing.touchesAttachment` says the selection touches a token line (`AttachmentToken.lineRanges`: a selected
+  attachment, a selection that holds one, and a caret at either edge of the line, which is where a click beside a chip puts
+  it). Return, Tab and ⇧Tab act on list lines only, and a token line is none. A new command of this kind needs the same
+  two things and a hosted test in `AttachmentEditingTests` with a token in the note.
 - **Return, Tab and ⇧Tab are `NoteTextView` overrides that ask the core and fall back to `super`.** `listEdit(_:)` gives
   the rule (`ListEditing.newline`, `indent`, `outdent`) the paragraphs under the selection and answers nil, so that
   `super` runs, when the view is read-only, text is being composed, there is more than one selection, or
@@ -850,7 +1011,12 @@ new kind of release file, with no change to the app, ships.
   every block that starts above the end of the window its look in one pass per block (a block, not a paragraph, is the
   unit, so it is cheap for the huge note), and `styleFenceLine` and `styleCodeBody` write nothing, and invalidate nothing,
   for a line that is as it should be. Anything else that changes the height of a paragraph (a new kind of marker) has the
-  same problem and the same remedy.
+  same problem and the same remedy: an attachment line is 252 pt high where a line of text is 17, so
+  `MarkupStyler.styleAttachmentLines` styles every token line above the paragraphs that `noteDidLoad` styles at once
+  (it searches the text above them for `[[attachment:`, keeps the matches that are a whole line outside a block, reads their
+  rows with one `catalog.preload`, and the chunks find that done), and
+  `AttachmentRenderingTests.testTokenLineFarAboveTheAnchorIsStyledBeforeTheScroll` holds it to that. A token line below the
+  window needs none of it: it moves nothing that is above it.
 - **Colours are keyed by text, not by place.** `CodeBlockStyler` sends a block's code to a private serial queue, one request
   at a time, and a result is applied to every block that holds the same fence name and code (hash first, then text), where
   the block is by then. A result for text that was edited since matches no block and is dropped (`droppedResults`): the edit
@@ -872,10 +1038,61 @@ new kind of release file, with no change to the app, ships.
   ends the note had no padding at all and the tint ended at the last line of code. A click or the End key on the line above
   would also have landed among the hidden characters. `MarkupLayoutManager.shouldGenerateGlyphs` keeps the glyph of the
   first character of every fence line (the colour of the role `fence` is clear), and the line is a 6 pt fragment of its own.
+- **An attachment line is null glyphs but the first, as high as what is drawn on it, and drawn from its mark alone.**
+  `MarkupStyler.styleAttachmentLine` gives a line that is exactly a token (`AttachmentToken.id(inLine:)`, outside a fenced
+  block) the role `attachment` on characters 1 to 50 (null glyphs in `MarkupLayoutManager.shouldGenerateGlyphs`), a clear
+  first character with no role (its glyph is what gives the line a fragment of its own: the pitfall above), a paragraph
+  style whose minimum and maximum line height are the preview or chip height plus 12 (`MarkupAppearance.attachmentStyle`)
+  and an `AttachmentMark` (`.scratchAttachment`, on the whole paragraph). The layout manager is not on the main actor, so it
+  cannot ask the catalog or the text view: everything it draws is in the mark (kind, size, name, icon, the file's URL),
+  and the selection comes from the styler (`MarkupLayoutManager.attachmentSelection`). Marks are equal only when they are
+  the same object (no `isEqual`), so two lines of one attachment are two attribute runs; `hasSameLook(as:)` is what
+  tells that a line need not be written again.
+- **An image's height is its row's pixel size scaled, never its decoded size, and it depends on the text width.** The line
+  must have its height before the image is decoded (`AttachmentMetrics.imageSize`: as wide as the text up to the image's
+  own width, at most 240 pt high). A note shown at launch is styled before the text view has a width, so the lines are
+  styled for a very wide text then and styled again when the layout arrives: `EditorViewController.viewDidLayout` calls
+  `MarkupStyler.refreshAttachmentLayout()` before `applyPendingScrollAnchor()` (the anchor depends on the height of what is
+  above it), and `textViewFrameDidChange` asks for it a turn later for a width that no layout followed (a scroller). It
+  compares the width with the one the lines were sized for (`attachmentLayoutWidth`, reset by `endLoad`) and writes only
+  a line whose look changes. A note without a token line costs one Boolean test.
+- **A preview that arrives changes the display and nothing else.** `AttachmentPreviews` decodes on its own serial queue,
+  in the order the styler asked (the paragraphs on screen are styled first), and calls `onChange(id, decoded)` on the
+  main thread: `MarkupStyler.previewDidFinish` invalidates the display of the lines of that image
+  (`invalidateDisplay(forCharacterRange:)`, never glyphs or layout, which an attribute edit or `invalidate(_:)` would
+  also do). A failure goes to `AttachmentCatalog.markUndecodable`, which styles the lines again as "Missing attachment"
+  (the one case where a preview changes a height). The layout manager asks again for an image it finds undecoded when it
+  draws (`request`), which is how a thumbnail that the `NSCache` dropped comes back. Until it is there a tint stands in.
+- **A token's state is the catalog's.** A row with no file that nobody copies is "Missing attachment", and only
+  `AttachmentCatalog.markCopying` (called right after `AttachmentStore.register`) makes it "Copying…": a copy that was cut
+  short by a quit shows as missing after the relaunch, and the launch sweep removes the row a day later when no note names
+  it. `markCopying` and `markCopied` forget the row, so that they read the new one, and tell the editor
+  (`onChange`), which styles the lines of that id again.
 - **Adding a fixture means three more places.** `FixtureContent.make`, the `Fixture` case, and ScratchCore's
   `LaunchOptionsTests.parsesEveryFixtureName` (which lists every raw value), and then the launch argument table above and
   `make run`. A core test that lists the cases fails the Linux job and, through `make core-test` on the Mac, the whole
-  macOS job before any app test runs.
+  macOS job before any app test runs. A fixture is the same data every time (`fixtureContentIsTheSameEveryTime`), so
+  its attachments have fixed ids (a body holds them), and it writes its files only when `seed` is given the
+  `AttachmentStore` (`ScratchStorage.open` always gives it).
+- **A stored attachment file goes only when no stored body names its id.** `AttachmentStore.removeUnreferenced` and
+  `sweep` ask `NoteStore.referencedAttachmentIDs()`, which scans every body, live and in Recently Deleted, for the token
+  text anywhere in it (`AttachmentToken.referencedIDs`, wider than the whole-line `ids(in:)` on purpose: a line the owner
+  broke by hand can be fixed again, and a kept file costs nothing). The scan and the removal run in one `Database`
+  transaction, so no save slips in between. The app removes notes through `ScratchStorage.deletePermanently` and
+  `purge`, never through `NoteStore`'s, or their files would stay: they read the ids of the bodies first, remove the
+  notes, and then ask `removeUnreferenced` for those ids only, after the removal has committed, so a failed clean-up of
+  files is not a failed delete (the launch sweep finds the leftover once it is 24 hours old, `sweep(createdBefore:)`).
+  The file goes before its row, because a file with no row would stay for ever. Deleting a token and pressing ⌘Z keeps
+  working because nothing removes a file when a token leaves the text.
+- **A copy into the attachments folder is atomic.** `copyIn` and `writeIn` write `<id>/.copying-<uuid>` and `rename(2)`
+  it onto `<id>/<sanitised file name>` (`sanitisedFileName`: `/` and `:` become `-`, trimmed, empty, `.` and `..` become
+  `file`; the row keeps the name as the owner knows it), and remove the temporary file when anything fails, so the file's
+  name is never a half-written copy. A link is followed (`resolvingSymlinksInPath`): the copy is the file, not another
+  link. `register` does no file work, and `isCopied` is false until a copy finishes. Both belong on the storage queue.
+  A fixture removes the `attachments` folder with the database it replaces.
+- **`Attachment` is ambiguous in a ScratchCore test file.** Swift 6.2's Testing library has an `Attachment` of its own,
+  so `Tests/ScratchCoreTests/AttachmentTestSupport.swift` declares `typealias Attachment = ScratchCore.Attachment` for the
+  test module, which wins over both.
 - **A paste is the plain paste, and its wrap is a second edit on a later turn** (`NoteTextView.beginPaste`, `endPaste`,
   `classifyPaste`). `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` (which the hosted tests call, and which
   Paste runs, a call inside another is the same paste) start and end the paste. Before it, the view works out whether the paste
@@ -909,3 +1126,82 @@ new kind of release file, with no change to the app, ships.
   through the edit (`EditMapping`): a caret in the code stays in the same place of the code. Choosing the name that is there
   is an edit of nothing, which `apply` does not register as an undo step. The menu items have `NoteTextView` as their target and
   the menu has `autoenablesItems = false`, as the Format menu does.
+- **A paste or a drop is read in the order of the spec, by the code and not by AppKit** (`NoteTextView.readSelection(from:)`,
+  `paste(_:)`, `pasteAsPlainText(_:)`, `performDragOperation(_:)`): file URLs first (`attachmentSources(from:)`,
+  `readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])`, files that exist), then any text, then
+  an image with no text. `readablePasteboardTypes` lists `.fileURL`, `.png` and `.tiff` only because AppKit offers Paste
+  and a drop, and validates the Paste menu item, only for a pasteboard that has a type of the list. It does not choose:
+  `paste(_:)` and `pasteAsPlainText(_:)` make the attachments before they call `super`, the text path reads `.string`
+  explicitly (`super.readSelection(from:type:)`), and `preferredPasteboardType(from:restrictedToTypesFrom:)` answers
+  `.string` whenever there is text, so that an image next to the text (Excel, Word, browsers) can never be what AppKit reads
+  (Review Focus 3). A paste that made attachments sets `attachmentPasteWasInserted`, and `endPaste` then skips the code
+  classification: its text is token lines. Nothing of a picture is decoded or encoded on the main thread: `imageSource(on:)`
+  hands over the pasteboard's PNG, or else its TIFF, as the bytes they are (`AttachmentSource.image` with `public.png` or
+  `public.tiff`), `AttachmentImporter.describeImage` reads only the header, for the pixel size, and registers a TIFF as
+  `public.png` with a `.png` name, and `startCopy` makes the PNG of a TIFF (`CGImageSource` to `CGImageDestination`, the
+  orientation applied) on the storage queue, before `writeIn` (which then sets the row's size to the file's). A TIFF that
+  has no readable header is no attachment. A file costs a few attributes and the header of an image, and is copied on the
+  storage queue.
+- **A drag is judged by the types on its pasteboard and never by its data.** `draggingEntered`, `draggingUpdated` (on every
+  move of the mouse), `prepareForDragOperation`, `performDragOperation` and `acceptsDrop(of:)` ask
+  `NoteTextView.wouldMakeAttachments(from:)`: `availableType(from:)` for the file types (`.fileURL` and
+  `NSFilenamesPboardType`: not `canReadObject(forClasses: [NSURL.self])`, which can say yes for a plain string that looks
+  like a URL), then for `.png` and `.tiff` together with "no text" (the one data read: `.string`, and only when an image
+  is there). The bytes are read once, by `performDrop(of:atViewPoint:)`, so a drag of a full-size picture over the note
+  costs nothing per move; a type that has no bytes behind it is a drop that finds nothing (`testDragIsJudgedByItsTypesAndNotByItsData`).
+- **An attachment that is pasted is a line of its own, and the caret goes below it.** `AttachmentEditing.insertion` adds a
+  line break before the first token unless the paste starts a line, and one after the last token unless one follows already
+  (so a token at the end of the note is followed by a line break, which deviates from the plan's literal rule: the caret
+  would otherwise be at the end of the token's line, where typing breaks the token). The caret ends at the start of the
+  line after the last token, which is where the Backspace rule selects the token. Typing at an end of a token line still
+  breaks the token (it is text then, and ⌘Z takes it back); nothing guards that.
+- **A token is kept whole by the selection delegate and two key overrides, and the rules are in Core.**
+  `EditorViewController.textView(_:willChangeSelectionFromCharacterRange:toCharacterRange:)` is asked for every change of
+  the selection, by a key, the mouse or code, and answers `AttachmentEditing.snappedSelection` (through
+  `NoteTextView.snappedSelection(from:to:)`): a caret inside a token goes to its end, or its start when it came from the
+  right, and a click always to the end; a range grows to hold the whole token at either end, except that an end that is
+  moved back with the other one fixed (⇧ and an arrow key, a drag back) gives the token up whole: the end of the range goes
+  to the token's start and the start to its end, or the selection could never be made smaller than the token
+  (`testShiftRightOverATokenAndShiftLeftShrinksBackOutOfIt` and its mirror). A range whose start and end both changed is a
+  new selection and grows. `deleteBackward` and
+  `deleteForward` ask `AttachmentEditing.deletion` first: next to a token the first press selects it, the second removes it
+  with one line break (`apply`, one undo step), and where a key would join a text line and a token line the caret only moves
+  over the line break. Tokens in a fenced block are text for all of it (`isLiteral` is `styler.isInCodeBlock`). `token(touching:)`
+  reads at most 51 units each way, so a selection change in a note with one huge line costs nothing. Word and line deletions
+  (⌥⌫, ⌘⌫) are built on selection changes and so are snapped. A plain click on a token's drawn rect is `NoteTextView`'s
+  (next pitfall), so a hosted test may send one there, after `attachmentHit` says it is on the attachment; a click on a token
+  line anywhere else, and any click with ⇧, ⌘, ⌥ or ⌃ held, is AppKit's and ends in `super.mouseDown`.
+- **A click on an attachment is handled in `NoteTextView.mouseDown`, never by `super`, and the drag is not a tracking
+  loop.** `attachmentHit(atViewPoint:)` is the rectangle that `MarkupLayoutManager.attachmentRect(forTokenAt:)` draws in
+  (the padding round a preview and the room beside a chip are not the attachment; the line is found from the character
+  under the point and again from the start of the line at the same height, because a token has one glyph and the layout
+  manager's answer for a point beside it is not to be relied on). A plain click there takes the keyboard and selects the token
+  whole, a double-click (`clickCount == 2`: a third click does not open again) opens the stored file through `openURL`,
+  and a missing, copying or gone file beeps and opens nothing. This works in a note that cannot be edited too: nothing
+  changes the note. No `super.mouseDown` means no tracking loop, so `mouseDragged(with:)` and `mouseUp(with:)` are what the
+  view gets while the button is down: `attachmentPress` holds the press, and a move of 3 pt (`AttachmentDrag.threshold`)
+  begins `beginDraggingSession` once, with the stored file's `NSURL` and the preview or the chip as its picture and
+  `AttachmentDragSource`, which allows copy only (a move would let Finder take the file out of Scratch's storage).
+  `attachmentDragPresenter` replaces the session in a hosted test, so none starts a real drag.
+- **A hosted test must not leave a mouse event as `NSApp.currentEvent`.** `NoteTextView.snappedSelection(from:to:)` reads
+  `NSApplication.shared.currentEvent?.type` to tell a click from a key, and the last event that `NSApp.nextEvent(...)`
+  returned stays the current one for the rest of the test run. `LinkTests.click` queues a mouse up and takes it out again,
+  which leaves one: `AttachmentCopyTests` first did the same, ran before `AttachmentEditingTests`, and
+  `testCaretPutInsideATokenGoesToItsEdge` then saw its programmatic move backwards as a click and put the caret at the end
+  of the token (CI of plan 5 task 6). The attachment tests send their events straight to the view's `mouseDown`,
+  `mouseDragged` and `mouseUp`, which is safe because they click only where `attachmentHit` says an attachment is.
+- **Copy writes names, and one attachment alone writes its file too.** `writeSelection(to:types:)` is the one place
+  (`writablePasteboardTypes` stays `[.string]`): the text is `AttachmentCopying.text`, which puts the file's name (the row's,
+  "Missing attachment" for an id with no row) where a token line was and leaves a token in a fenced block as typed. A
+  selection that is exactly one token (`AttachmentCopying.soleAttachment`, line break excluded) whose file is there writes one
+  `NSPasteboardItem` with `.string`, `.fileURL` and, for an image, `.png` and `.tiff`. The two image types are promised
+  (`AttachmentImageProvider`, a data provider that reads the stored file and runs ImageIO when an application asks, a PNG
+  file as its own bytes) because decoding and encoding a full-size picture must never make Copy wait; the view keeps the
+  provider of the last copy alive (`attachmentImageProvider`), since the pasteboard may ask after Copy has returned.
+  Pasting what was copied finds the file URL first (spec §6.5 order) and makes a new attachment with its own copy.
+- **A copy runs on the storage queue, so `persistNow()` waits for it.** `AttachmentImporter` registers the row on the main
+  thread, calls `AttachmentCatalog.markCopying`, and queues `copyIn` or `writeIn` on the coordinator's storage queue, then
+  `markCopied` on the main queue. A copy that is under way when the app quits or the tab changes is waited for, which is
+  the point: the file is there after a relaunch. A very large copy therefore delays a tab switch (`persistNow()`); the
+  alternative is a queue of its own, which would not be waited for. The launch sweep (`sweepUnreferencedAttachments`) is
+  queued after the purge in the same main-queue turn, and removes only attachments created more than 24 hours ago.

@@ -65,6 +65,15 @@ final class CodeBlockStyler {
     /// How many results were dropped because no block held their text any more. The tests read it.
     private(set) var droppedResults = 0
 
+    /// How many requests to look for the languages of some texts are on the queue (`warmUp`).
+    private var warmUpScans = 0
+    /// The languages whose queries are to be compiled, first in first out.
+    private var warmUpTodo: [CodeLanguage] = []
+    /// True while the queue is compiling the query of one language.
+    private var isWarmingUp = false
+    /// The languages whose queries the warm-up has compiled, or tried to. The tests read it.
+    private(set) var warmedLanguages: Set<CodeLanguage> = []
+
     init(textView: NoteTextView, queue: DispatchQueue) {
         self.textView = textView
         self.queue = queue
@@ -104,6 +113,89 @@ final class CodeBlockStyler {
         highlightedHandlers = []
         for handler in handlers { RunLoopIdle.onNext(handler) }
         CFRunLoopWakeUp(CFRunLoopGetMain())
+    }
+
+    // MARK: Warming up (plan 5 task 7)
+
+    /// The warm-up that is still to be done: texts that wait to be read for the names on their fences, and languages whose
+    /// queries wait to be compiled, or are being. A test waits for zero.
+    var pendingWarmUps: Int {
+        warmUpScans + warmUpTodo.count + (isWarmingUp ? 1 : 0)
+    }
+
+    /// The languages that the fences of the blocks of `text` name, each once, in the order they are first named. A name that
+    /// is not one of the languages (`ruby`), a fence with no name and a fence with no partner give nothing.
+    nonisolated static func languages(namedIn text: String) -> [CodeLanguage] {
+        guard text.contains("```") else { return [] }
+        let nsText = text as NSString
+        var found: [CodeLanguage] = []
+        for block in FenceScanner.codeBlocks(in: text) {
+            var lineStart = 0
+            var lineEnd = 0
+            var contentsEnd = 0
+            nsText.getParagraphStart(
+                &lineStart, end: &lineEnd, contentsEnd: &contentsEnd,
+                for: NSRange(location: block.location, length: 0))
+            let line = nsText.substring(with: NSRange(location: lineStart, length: contentsEnd - lineStart))
+            if let language = CodeLanguage.fromFence(CodeBlockParts.info(ofFenceLine: line)), !found.contains(language)
+            {
+                found.append(language)
+            }
+        }
+        return found
+    }
+
+    /// The languages that the fences of any of `texts` name, each once, in order.
+    nonisolated static func languages(namedInAny texts: [String]) -> [CodeLanguage] {
+        var found: [CodeLanguage] = []
+        for text in texts {
+            for language in languages(namedIn: text) where !found.contains(language) { found.append(language) }
+        }
+        return found
+    }
+
+    /// Compiles, on the highlight queue, the queries of the languages that the fences in `texts` (the notes that are open in
+    /// tabs) name, so that the first block in one of them is coloured at once and not after its query is compiled (240 to
+    /// 270 ms for Swift, docs/decisions/0007-tree-sitter.md). `highlighter` is `Highlighter.shared` in the app, the cache that
+    /// every request reads, so a later request finds the queries compiled. The texts are read on the queue, and the queries
+    /// are compiled one language at a time, each as a block of its own on the queue, so that a block that is shown while
+    /// this runs waits for one compile at most.
+    func warmUp(languagesNamedIn texts: [String], using highlighter: Highlighter = .shared) {
+        guard !texts.isEmpty else { return }
+        warmUpScans += 1
+        queue.async { [weak self] in
+            let languages = Self.languages(namedInAny: texts)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.warmUpScanDidFinish(languages, using: highlighter) }
+            }
+        }
+    }
+
+    private func warmUpScanDidFinish(_ languages: [CodeLanguage], using highlighter: Highlighter) {
+        warmUpScans -= 1
+        for language in languages where !warmedLanguages.contains(language) && !warmUpTodo.contains(language) {
+            warmUpTodo.append(language)
+        }
+        pumpWarmUp(using: highlighter)
+    }
+
+    /// Sends the next language to the queue, when it is not compiling one.
+    private func pumpWarmUp(using highlighter: Highlighter) {
+        guard !isWarmingUp, !warmUpTodo.isEmpty else { return }
+        let language = warmUpTodo.removeFirst()
+        isWarmingUp = true
+        queue.async { [weak self] in
+            highlighter.prepare(language)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.warmUpDidFinish(language, using: highlighter) }
+            }
+        }
+    }
+
+    private func warmUpDidFinish(_ language: CodeLanguage, using highlighter: Highlighter) {
+        isWarmingUp = false
+        warmedLanguages.insert(language)
+        pumpWarmUp(using: highlighter)
     }
 
     // MARK: What MarkupStyler tells it
@@ -337,6 +429,8 @@ final class CodeBlockStyler {
             if (current as? CodeBlockMark) != mark {
                 storage.beginEditing()
                 storage.addAttribute(.scratchCodeBlock, value: mark, range: parts.openingParagraph)
+                // The label reaches into the first line of code, which keeps clear of it (or no longer has to).
+                textView?.styler.labelDidChange(inBlockAt: work.block.location, in: storage)
                 storage.endEditing()
                 // The label reaches into the first line of code, so the whole block is drawn again.
                 layoutManager.invalidateDisplay(forCharacterRange: work.block)

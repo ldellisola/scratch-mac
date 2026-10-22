@@ -39,6 +39,19 @@ public enum InlineEditing {
             selection: NSRange(location: target.location + width, length: target.length))
     }
 
+    /// True when `selection` touches the token line of an attachment (``AttachmentToken/lineRanges(in:within:)``): it
+    /// holds a character of one (a click on an attachment selects exactly that), or it is a caret on one, at the start
+    /// or the end of the line too, where a click beside a chip puts it. `paragraphs` and `start` are as for
+    /// ``toggleBold(paragraphs:start:selection:)``.
+    ///
+    /// ⌘B must not change the text then: `**[[attachment:…]]**` is no token, the picture would be gone, and `****` on the
+    /// token's line does the same. A caller beeps and leaves the text alone. A selection that ends where a token line
+    /// starts, or starts where one ends, holds none of it.
+    public static func touchesAttachment(paragraphs: String, start: Int, selection: NSRange) -> Bool {
+        let local = NSRange(location: selection.location - start, length: selection.length)
+        return !AttachmentToken.lineRanges(in: NSString(string: paragraphs), within: local).isEmpty
+    }
+
     /// The bold run whose content, or whose content and markers, are exactly `target`.
     private static func boldRun(in text: ParagraphLines, matching target: NSRange) -> MarkupSpan? {
         for index in text.lines.indices {

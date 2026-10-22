@@ -1,6 +1,7 @@
 import Foundation
 import GrammarPowerShell
 import GrammarPython
+import GrammarSQL
 import SwiftTreeSitter
 import Synchronization
 import TreeSitterBash
@@ -14,7 +15,6 @@ import TreeSitterJSON
 import TreeSitterJava
 import TreeSitterJavaScript
 import TreeSitterRust
-import TreeSitterSql
 import TreeSitterSwift
 import TreeSitterTypeScript
 import TreeSitterYAML
@@ -139,6 +139,15 @@ final class QueryCache: Sendable {
             slots[language] = Slot()
         }
         self.slots = slots
+    }
+
+    /// True when the query for `language` has been compiled (and did compile).
+    func isBuilt(_ language: CodeLanguage) -> Bool {
+        guard let slot = slots[language] else { return false }
+        return slot.entry.withLock { state in
+            if case .built = state { return true }
+            return false
+        }
     }
 
     /// The compiled query for `language`, or nil when its query does not compile (a bug that the highlighter tests

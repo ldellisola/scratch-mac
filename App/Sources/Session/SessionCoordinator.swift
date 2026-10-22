@@ -35,8 +35,13 @@ import ScratchCore
 /// (`purgeExpiredNotes`), and its tab, if it has one, closes. The writes of deleting, restoring and deleting for good run
 /// on the main thread, after `persistNow()` has emptied the storage queue: they are one statement each, the owner just
 /// asked for them, and a tab only closes when the write worked. The purge runs on the storage queue.
+///
+/// **Attachments.** The coordinator is the editor's `AttachmentImporting`: a file that is pasted, dropped or chosen is
+/// registered on the main thread (`AttachmentImporter`) and copied on the storage queue, so `persistNow()` and quitting wait
+/// for the copy, and a copy never runs beside the purge or the sweep. The sweep at launch (`sweepUnreferencedAttachments`)
+/// removes the rows and files that no stored note names and that are more than a day old.
 @MainActor
-final class SessionCoordinator {
+final class SessionCoordinator: AttachmentImporting {
     private let storage: ScratchStorage
     private let editor: EditorViewController
     private let tabStrip: TabStripViewController
@@ -45,6 +50,8 @@ final class SessionCoordinator {
     private let noteList: NoteListModel
     /// Calls `saveNow()` 300 ms after the last change and at most 1 s after the first one. Set at the end of `init`.
     private var autosaver: Autosaver!
+    /// Makes the attachments of what is pasted, dropped or chosen: the row at once, the copy on `storageQueue`.
+    private let attachmentImporter: AttachmentImporter
 
     /// The open tabs and the active one. Nil until `restore()` has run.
     private var tabs: TabList?
@@ -71,6 +78,10 @@ final class SessionCoordinator {
     /// How long after a purge the next one may run: the app becoming active asks for one each time.
     private static let purgeInterval: TimeInterval = 60 * 60
 
+    /// The texts of the notes that were open in tabs when the session was restored, which `warmUpHighlighting()` hands to the
+    /// highlighter once the first frame is out, and then forgets.
+    private var warmUpTexts: [String] = []
+
     /// Every live note as of the last read of the note list, whatever the search field says. The pin button and the
     /// menu item read the pin of the active note from it.
     private var latestLive: [NoteSummary] = []
@@ -89,6 +100,8 @@ final class SessionCoordinator {
         self.tabStrip = tabStrip
         self.storageQueue = queue
         self.noteList = NoteListModel(storage: storage, storageQueue: queue, sidebar: sidebar)
+        self.attachmentImporter = AttachmentImporter(
+            store: storage.attachments, queue: queue, catalog: editor.attachmentCatalog)
 
         // The autosaver fires on the main queue, where `assumeIsolated` is valid. It calls `flush` from the main
         // thread too (`persistNow`).
@@ -109,6 +122,47 @@ final class SessionCoordinator {
         tabStrip.onSelect = { [weak self] index in self?.selectTab(at: index) }
         tabStrip.onClose = { [weak self] index in self?.closeTab(at: index) }
         tabStrip.onNewTab = { [weak self] in self?.newNoteInNewTab() }
+        editor.attachmentImporter = self
+    }
+
+    // MARK: Attachments
+
+    /// How old an attachment must be before the launch sweep may remove it when no stored note names it: a file whose token
+    /// is in text that was never saved (a crash within the second of autosave) is kept for a day, so that nothing the owner
+    /// can still get back is taken (plan 5, "Never lose an attachment").
+    static let attachmentSweepAge: TimeInterval = 24 * 60 * 60
+
+    /// The editor pasted, dropped or chose `sources` for the note `noteID`: each is registered and copied
+    /// (`AttachmentImporter`), and the ids come back in order for the editor to put their tokens in the text.
+    func importAttachments(_ sources: [AttachmentSource], into noteID: NoteID) -> [AttachmentID] {
+        attachmentImporter.importAttachments(sources, into: noteID)
+    }
+
+    /// The launch sweep: on the storage queue, after the purge that was asked for before it, removes the rows and files of the
+    /// attachments created more than a day before `now` that no stored note, in Recently Deleted too, names
+    /// (`AttachmentStore.sweep`). A file that something names is never removed.
+    func sweepUnreferencedAttachments(now: Date) {
+        let cutoff = now.addingTimeInterval(-Self.attachmentSweepAge)
+        let storage = self.storage
+        storageQueue.async { [storage] in
+            do {
+                try storage.attachments.sweep(createdBefore: cutoff, notes: storage.notes)
+            } catch {
+                report("cannot sweep the attachments: \(error)")
+            }
+        }
+    }
+
+    // MARK: Warming up
+
+    /// Has the highlight queue compile the queries of the languages that the fences of the notes in the open tabs name, so
+    /// that the first block in such a language, in the note that is shown or in one that a tab switch shows, is coloured
+    /// without waiting for its query (plan 5 task 7). `AppDelegate` calls it once the first frame is out. The texts are read
+    /// and the queries compiled on the highlight queue (`CodeBlockStyler.warmUp`), and a second call has nothing to do.
+    func warmUpHighlighting() {
+        let texts = warmUpTexts
+        warmUpTexts = []
+        editor.textView.styler.codeBlockStyler.warmUp(languagesNamedIn: texts)
     }
 
     // MARK: Restoring
@@ -152,6 +206,8 @@ final class SessionCoordinator {
                 }
                 if !kept.isEmpty {
                     let list = TabList(tabs: kept, activeIndex: activeKept ?? 0)
+                    // The notes of all the tabs are read here already: their fences say which queries to compile.
+                    warmUpTexts = kept.compactMap { notes[$0.noteID]?.body }
                     for note in notes.values {
                         tabItems[note.id] = Self.item(for: note)
                         if Self.isNeverUsed(note) { untouchedNoteIDs.insert(note.id) }
@@ -688,12 +744,13 @@ final class SessionCoordinator {
     }
 
     /// Removes the note `id` from Recently Deleted for good, after the sidebar asked the owner. A tab that shows it
-    /// closes. Nothing happens to a note that is not deleted (`NoteStore.deletePermanently`).
+    /// closes. Nothing happens to a note that is not deleted (`NoteStore.deletePermanently`). The files of its
+    /// attachments go with it unless another note names them (`ScratchStorage.deletePermanently`, spec §6.4).
     func deleteNotePermanently(_ id: NoteID) {
         guard tabs != nil, current != nil else { return }
         persistNow()
         do {
-            try storage.notes.deletePermanently(id)
+            try storage.deletePermanently(id)
         } catch {
             report("cannot delete note \(id.rawValue) permanently: \(error)")
             return
@@ -701,9 +758,10 @@ final class SessionCoordinator {
         didRemoveNotes([id])
     }
 
-    /// Removes the notes of Recently Deleted that were deleted more than 30 days ago (`NoteStore.purge`, spec §6.2). It
-    /// runs on the storage queue, at launch one main-queue turn after `restore()` and when the app becomes active, but
-    /// not when the last purge was less than an hour ago. A purged note that is open in a tab closes the tab.
+    /// Removes the notes of Recently Deleted that were deleted more than 30 days ago, and the files of their attachments
+    /// that no other note names (`ScratchStorage.purge`, spec §6.2). It runs on the storage queue, at launch one
+    /// main-queue turn after `restore()` and when the app becomes active, but not when the last purge was less than an
+    /// hour ago. A purged note that is open in a tab closes the tab.
     func purgeExpiredNotes(now: Date) {
         if let last = lastPurge, now.timeIntervalSince(last) < Self.purgeInterval { return }
         lastPurge = now
@@ -711,7 +769,7 @@ final class SessionCoordinator {
         let storage = self.storage
         storageQueue.async { [weak self, storage] in
             do {
-                guard try storage.notes.purge(deletedBefore: cutoff) > 0 else { return }
+                guard try storage.purge(deletedBefore: cutoff) > 0 else { return }
             } catch {
                 report("cannot purge Recently Deleted: \(error)")
                 return

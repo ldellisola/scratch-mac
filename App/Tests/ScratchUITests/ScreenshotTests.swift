@@ -10,8 +10,8 @@ import XCTest
 /// that the screenshots are taken once per CI job.
 ///
 /// The names are `typical-light`, `typical-dark`, `empty-light`, `huge-note-light`, `search-light`,
-/// `recently-deleted-light`, `formatting-light`, `formatting-dark`, `code-light` and `code-dark`. The Makefile's
-/// `SCREENSHOT_NAMES` lists them and must stay in step with this class.
+/// `recently-deleted-light`, `formatting-light`, `formatting-dark`, `code-light`, `code-dark`, `attachments-light` and
+/// `attachments-dark`. The Makefile's `SCREENSHOT_NAMES` lists them and must stay in step with this class.
 @MainActor
 final class ScreenshotTests: XCTestCase {
     func testTypicalLight() {
@@ -95,6 +95,48 @@ final class ScreenshotTests: XCTestCase {
         capture("code-dark", fixture: "code", appearance: "dark", sidebarRows: 1) { app in
             waitForColours(in: app)
         }
+    }
+
+    /// The attachments fixture (plan 5, task 8): the note "Screenshots" holds a line of text, an image, a line of text and
+    /// the file "rollback-plan.txt". The test waits until both attachments are in place and every preview is decoded, and
+    /// a person (or an agent that opens the PNG) checks: the image drawn with rounded corners and a hairline, scaled as
+    /// the rules say (as wide as the text up to its own width, at most 240 pt high), a chip with the text file's Finder
+    /// icon, "rollback-plan.txt" and its size, no token text anywhere, and in the sidebar the title "Screenshots" with
+    /// a preview line that has no token in it. The caret is at the top of the note, so no attachment is selected.
+    func testAttachmentsLight() {
+        capture("attachments-light", fixture: "attachments", appearance: "light", sidebarRows: 1) { app in
+            waitForAttachments(in: app)
+        }
+    }
+
+    /// The same note in dark mode: the chip's tint, the preview's hairline and the icon on a dark background.
+    func testAttachmentsDark() {
+        capture("attachments-dark", fixture: "attachments", appearance: "dark", sidebarRows: 1) { app in
+            waitForAttachments(in: app)
+        }
+    }
+
+    /// Waits until the app has both attachments of the note in place (`debug.state`: each one `copied`, with its file on
+    /// disk) and no preview is waiting to be decoded, then checks what the sidebar says about the note: the title
+    /// "Screenshots" and a preview line without a token (titles and previews skip attachment lines).
+    private func waitForAttachments(in app: XCUIApplication) {
+        func attachments() -> [[String: Any]] {
+            UITestSupport.debugState(in: app)["attachments"] as? [[String: Any]] ?? []
+        }
+        XCTAssertTrue(
+            UITestSupport.wait(timeout: 20) {
+                let rows = attachments()
+                return rows.count == 2
+                    && rows.allSatisfy { ($0["copied"] as? Bool) == true && ($0["fileExists"] as? Bool) == true }
+                    && UITestSupport.debugState(in: app)["pendingPreviews"] as? Int == 0
+            },
+            "the attachments were not in place and decoded: \(UITestSupport.debugState(in: app))")
+        XCTAssertEqual(UITestSupport.sidebarTitleTexts(in: app), ["Screenshots"])
+        let previews = UITestSupport.sidebarPreviewTexts(in: app)
+        XCTAssertEqual(previews.count, 1, "the sidebar previews: \(previews)")
+        XCTAssertTrue(
+            previews.allSatisfy { $0.contains("The dashboard after the deploy.") && !$0.contains("[[attachment:") },
+            "the sidebar preview shows a token or lacks the text: \(previews)")
     }
 
     /// Waits until the app has written the colours and the labels of every block (`debug.state`: `pendingHighlights` is

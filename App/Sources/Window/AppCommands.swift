@@ -1,8 +1,8 @@
 import AppKit
 
 /// The target of the menu items that belong to the app and not to a view: the font size (⌘+ and ⌘= Bigger, ⌘− Smaller,
-/// ⌘0 Actual Size), the tabs (⌘N and ⌘T new note, ⌘W Close Tab, ⌃Tab and ⌃⇧Tab, ⌘1 to ⌘9), pinning (⇧⌘P) and the
-/// sidebar's search (⌥⌘F). Each item sends its action here, and `AppDelegate` sets the closures that carry it out.
+/// ⌘0 Actual Size), the tabs (⌘N and ⌘T new note, ⌘W Close Tab, ⌃Tab and ⌃⇧Tab, ⌘1 to ⌘9), pinning (⇧⌘P), attaching a
+/// file (⇧⌘A) and the sidebar's search (⌥⌘F). Each item sends its action here, and `AppDelegate` sets the closures that carry it out.
 ///
 /// A menu item holds its target weakly, so whoever creates this object must keep it for as long as the menu lives
 /// (`AppDelegate` does).
@@ -13,6 +13,9 @@ final class AppCommands: NSObject, NSMenuItemValidation {
     var onSmaller: (() -> Void)?
     /// Called by View > Actual Size (⌘0).
     var onActualSize: (() -> Void)?
+
+    /// Called by Scratch > About Scratch, which shows the About panel with the licences of tree-sitter as its credits.
+    var onShowAbout: (() -> Void)?
 
     /// Called by File > New Note (⌘N) and File > New Tab (⌘T): both open a new empty note in a new tab.
     var onNewNote: (() -> Void)?
@@ -29,11 +32,14 @@ final class AppCommands: NSObject, NSMenuItemValidation {
     var onTogglePin: (() -> Void)?
     /// Called by Edit > Search Notes (⌥⌘F), which puts the cursor in the sidebar's search field.
     var onFocusSearch: (() -> Void)?
+    /// Called by File > Attach File… (⇧⌘A), which asks for files to attach to the note of the active tab (spec §6.4).
+    var onAttachFile: (() -> Void)?
 
     /// Whether the note of the active tab is pinned, which decides the title of the pin item: "Pin Note" or "Unpin
     /// Note". Set with `setActiveNotePin`.
     private var activeNoteIsPinned = false
-    /// Whether the note of the active tab can be pinned. The item is disabled while it cannot.
+    /// Whether the note of the active tab can be pinned. The item is disabled while it cannot. A note that can be pinned
+    /// can take attachments too: both are true for every note but one in Recently Deleted.
     private var activeNoteCanBePinned = true
 
     /// Records what the pin item of the File menu shows. The menu reads it when it is opened, and when ⇧⌘P is typed.
@@ -43,9 +49,14 @@ final class AppCommands: NSObject, NSMenuItemValidation {
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(attachFile(_:)) { return activeNoteCanBePinned }
         guard menuItem.action == #selector(togglePin(_:)) else { return true }
         menuItem.title = activeNoteIsPinned ? "Unpin Note" : "Pin Note"
         return activeNoteCanBePinned
+    }
+
+    @objc func showAbout(_ sender: Any?) {
+        onShowAbout?()
     }
 
     @objc func bigger(_ sender: Any?) {
@@ -74,6 +85,10 @@ final class AppCommands: NSObject, NSMenuItemValidation {
 
     @objc func focusSearch(_ sender: Any?) {
         onFocusSearch?()
+    }
+
+    @objc func attachFile(_ sender: Any?) {
+        onAttachFile?()
     }
 
     @objc func nextTab(_ sender: Any?) {

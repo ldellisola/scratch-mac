@@ -4,8 +4,8 @@ What the editor does with text that comes in and text that goes out, and what it
 Spec: [§6.5 Clipboard](../superpowers/specs/2026-10-19-scratchpad-design.md) and §6.4 (one font, no smart
 substitutions), guarding the anti-goals "Font contamination", "Rich-text leakage" and "Mangled code" (§4).
 
-Status: plan 1 (walking skeleton), and since plan 4 code detection on paste. Later plans add attachments and file
-references (plan 5), and may add rich copy-out.
+Status: plan 1 (walking skeleton), since plan 4 code detection on paste, and since plan 5 file references and images on
+paste and the names and files of attachments on copy. Later plans may add rich copy-out.
 
 ## Behaviour
 
@@ -17,9 +17,13 @@ references (plan 5), and may add rich copy-out.
   turn of the run loop, text of two lines or more that looks like code is wrapped in a fence with its language, an edit of
   its own: ⌘Z once gives back the plain pasted text, and ⌘Z again removes it. Prose, a single line, a paste into code and a
   paste that holds a fence line are left as pasted. The rules are in docs/features/code.md ("Pasting code"). File
-  references and images (plan 5) will come before the text in this order, and an image with no text after it.
+  references come before the text in this order and become attachments, and an image with no text comes after it and
+  becomes an image attachment, stored as PNG (plan 5; the rules are in docs/features/attachments.md, "Pasting and
+  dropping"). Text that comes with an image (Excel, Word, browsers) is pasted as text.
 - **Copy and Cut put plain text only on the pasteboard.** No RTF, RTFD or HTML. Nothing of the note's font or colours
-  reaches Slack, mail or a terminal. The text is exactly what the editor holds.
+  reaches Slack, mail or a terminal. The text is exactly what the editor holds, except for attachments (plan 5, spec
+  §6.5): each token line is written as the name of its file, and a selection that is exactly one attachment also puts the
+  file's URL there, and for an image its PNG and TIFF (docs/features/attachments.md, "Copying").
 - **Nothing is substituted while typing or pasting.** Smart quotes, smart dashes, text replacement, auto-correct,
   spell and grammar checking, link and data detection, text completion and smart insert/delete are all off. A straight
   quote stays straight, `--` stays two hyphens, and the characters of pasted code are never changed.
@@ -31,12 +35,15 @@ All of it is in `App/Sources/Editor/NoteTextView.swift`:
 
 - `applyScratchConfiguration()` makes the view a plain-text editor and turns every substitution off.
   `TextViewFactory.makeEditor()` calls it.
-- `readablePasteboardTypes` is `[.string]`: the one place that decides what a paste takes.
+- `readablePasteboardTypes` is `[.string, .fileURL, .png, .tiff]`: AppKit offers Paste, and accepts a drag, only for a
+  pasteboard that has one of them. The order of preference is not this list's: `readSelection(from:)` reads the files
+  first (`attachmentSources(from:)`), then text as `.string` and nothing else, then an image, and
+  `preferredPasteboardType(from:restrictedToTypesFrom:)` makes AppKit's own choice `.string` whenever there is text.
 - `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` start and end a paste (`beginPaste`, `endPaste`), and the
   wrap of a paste of code is `PasteClassifier` (`App/Sources/Editor/PasteClassifier.swift`).
 - `writablePasteboardTypes` is `[.string]` and `writeSelection(to:types:)` writes the selected text as `.string` and
-  nothing else: the one place that decides what Copy, Cut, drags and Services put out. Rich copy-out would be added
-  here (spec §6.5, "for now").
+  nothing else, except the one attachment that is selected whole (`AttachmentCopying`, `AttachmentPasteboard`): the one
+  place that decides what Copy, Cut, drags and Services put out. Rich copy-out would be added here (spec §6.5, "for now").
 
 ## Tests
 

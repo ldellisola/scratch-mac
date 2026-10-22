@@ -1,5 +1,6 @@
 import AppKit
 import ScratchCore
+import UniformTypeIdentifiers
 
 /// The editor's text view: plain text in one font, whatever is pasted, and plain text only on the pasteboard
 /// (spec §6.4, §6.5). `applyScratchConfiguration()` sets it up. `TextViewFactory` calls it.
@@ -62,23 +63,68 @@ final class NoteTextView: NSTextView {
     /// `writeSelection(to:types:)` below. Keep copy-out in these two places: rich copy-out would be added here.
     override var writablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string] }
 
-    /// Writes the selected text, exactly as it is stored, as the only thing on the pasteboard. Several selections
-    /// (a rectangular selection) are joined by line breaks. Returns false, and writes nothing, when no text is
-    /// selected or `types` does not ask for plain text. AppKit's own implementation is not used: it writes the types
-    /// it prefers, which are not the same on every SDK.
+    /// Writes the selected text, as it is stored, as the only thing on the pasteboard, except for attachments (spec §6.5): a
+    /// token line is written as the name of its file, and a selection that is exactly one attachment also writes the stored
+    /// file's URL and, for an image, the image as PNG and TIFF (`AttachmentCopying`, `AttachmentPasteboard`). Several
+    /// selections (a rectangular selection) are joined by line breaks. Returns false, and writes nothing, when no text is
+    /// selected or `types` does not ask for plain text. AppKit's own implementation is not used: it writes the types it
+    /// prefers, which are not the same on every SDK. Copy, Cut, drags and Services all end here.
     override func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
         guard types.contains(.string), let storage = textStorage else { return false }
         let ranges = selectedRanges.map(\.rangeValue).filter { $0.length > 0 }
         guard !ranges.isEmpty else { return false }
-        let text = ranges.map { storage.attributedSubstring(from: $0).string }.joined(separator: "\n")
+        let text = storage.string as NSString
+        // A token in a fenced block is text, and is copied as it was typed.
+        let isLiteral: (NSRange) -> Bool = { self.styler?.isInCodeBlock($0.location) ?? false }
+        let catalog = styler?.catalog
+        let name: (AttachmentID) -> String = { catalog?.attachment($0)?.fileName ?? Self.missingAttachmentName }
+        let copied = ranges.map { AttachmentCopying.text(of: $0, in: text, name: name, ignoring: isLiteral) }
+            .joined(separator: "\n")
+
+        if ranges.count == 1, let id = AttachmentCopying.soleAttachment(in: ranges[0], of: text, ignoring: isLiteral),
+            let attachment = catalog?.attachment(id), let url = catalog?.fileURL(id),
+            FileManager.default.fileExists(atPath: url.path)
+        {
+            let made = AttachmentPasteboard.item(name: copied, fileURL: url, isImage: attachment.isImage)
+            // The pasteboard asks the provider when an application wants the image, which is after this returns.
+            attachmentImageProvider = made.provider
+            _ = pboard.clearContents()
+            return pboard.writeObjects([made.item])
+        }
         _ = pboard.declareTypes([.string], owner: nil)
-        return pboard.setString(text, forType: .string)
+        return pboard.setString(copied, forType: .string)
     }
 
-    /// Plain text is the only thing that enters the editor. A paste takes the text of whatever was copied and drops
-    /// its font, size and colours, so pasted text always looks like the note (spec §6.5, "Paste and Match Style" is
-    /// the same as Paste). Attachments (plan 4) extend this.
-    override var readablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string] }
+    /// What the text of a copy has where the token of an attachment that no row knows was (spec §6.5).
+    private static let missingAttachmentName = "Missing attachment"
+
+    /// The provider of the image of the attachment that was copied last, kept for as long as the pasteboard may ask it: an
+    /// application that pastes the image asks when it pastes, after Copy has returned.
+    private var attachmentImageProvider: AttachmentImageProvider?
+
+    /// What a paste or a drop takes: text first, which is plain text whatever was copied and drops its font, size and
+    /// colours, so pasted text always looks like the note (spec §6.5, "Paste and Match Style" is the same as Paste), and
+    /// then what makes an attachment (spec §6.5, plan 5 task 5): file references and images. AppKit offers Paste, and
+    /// accepts a drag, only when the pasteboard holds one of these types. What is done with each is decided in
+    /// `readSelection(from:)`, in the order of the spec, and not by the order of this list.
+    override var readablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string, .fileURL, .png, .tiff] }
+
+    /// What the view registers for dragging: what a paste takes, so that a file or an image can be dropped on the note.
+    override var acceptableDragTypes: [NSPasteboard.PasteboardType] {
+        var types = super.acceptableDragTypes
+        for type in [NSPasteboard.PasteboardType.fileURL, .png, .tiff] where !types.contains(type) {
+            types.append(type)
+        }
+        return types
+    }
+
+    /// AppKit registers the drag types again whenever the view becomes editable or not editable, which is for every note
+    /// that is shown. The types of an attachment are registered here too, in case its own registration is not made of
+    /// `acceptableDragTypes`. A note that cannot be edited registers nothing: it takes no drop.
+    override func updateDragTypeRegistration() {
+        super.updateDragTypeRegistration()
+        if isEditable { registerForDraggedTypes(acceptableDragTypes) }
+    }
 
     /// A text view that is not editable (a note in Recently Deleted, spec §6.2) takes no text from anywhere. AppKit
     /// already refuses it in most paths, and this makes sure of the rest.
@@ -126,6 +172,7 @@ final class NoteTextView: NSTextView {
 
         applyFontSize(fontSize)
         textContainerInset = NSSize(width: Self.horizontalInset, height: Self.verticalInset)
+        updateDragTypeRegistration()
     }
 
     /// Gives all the text, and what is typed or pasted next, the note font at `size` points (limited to what
@@ -192,26 +239,62 @@ final class NoteTextView: NSTextView {
     /// decides.
     override func paste(_ sender: Any?) {
         let start = beginPaste()
-        super.paste(sender)
+        if !readAttachments(from: NSPasteboard.general) { super.paste(sender) }
         endPaste(start)
     }
 
     /// "Paste and Match Style" is the same as Paste (spec §6.5).
     override func pasteAsPlainText(_ sender: Any?) {
         let start = beginPaste()
-        super.pasteAsPlainText(sender)
+        if !readAttachments(from: NSPasteboard.general) { super.pasteAsPlainText(sender) }
         endPaste(start)
     }
 
-    /// What Paste runs: reads the pasteboard's text over the selection. The hosted tests call it with a pasteboard of their
-    /// own. A note that cannot be edited takes no text, as in `insertText(_:replacementRange:)`.
+    /// Which type of a pasteboard AppKit reads when it pastes or accepts a drop: any text wins over every other type, with
+    /// an image next to it or not (spec §6.5, Excel, Word and browsers put both on the pasteboard). Files and images are
+    /// made into attachments before AppKit is asked (`paste(_:)`, `readSelection(from:)`, `performDragOperation(_:)`), so
+    /// what is left for it is text, and what it does with a pasteboard of an image and no text is not asked of it.
+    override func preferredPasteboardType(
+        from availableTypes: [NSPasteboard.PasteboardType],
+        restrictedToTypesFrom allowedTypes: [NSPasteboard.PasteboardType]?
+    ) -> NSPasteboard.PasteboardType? {
+        if availableTypes.contains(.string), allowedTypes?.contains(.string) ?? true { return .string }
+        return super.preferredPasteboardType(from: availableTypes, restrictedToTypesFrom: allowedTypes)
+    }
+
+    /// What Paste runs: reads the pasteboard over the selection, in the order of spec §6.5. File references come first and
+    /// become attachments, then any text, which is pasted as plain text (and is classified as code or not on the next turn,
+    /// below), then an image with no text, which becomes an image attachment. The hosted tests call it with a pasteboard
+    /// of their own. A note that cannot be edited takes nothing, as in `insertText(_:replacementRange:)`.
     override func readSelection(from pboard: NSPasteboard) -> Bool {
         guard isEditable else { return false }
         let start = beginPaste()
-        let didRead = super.readSelection(from: pboard)
+        let didRead = readAttachmentsOrText(from: pboard)
         endPaste(start)
         return didRead
     }
+
+    /// The order of a paste (spec §6.5): files, then text, then an image. Text is read as `.string` and nothing else, so
+    /// that the image types that `readablePasteboardTypes` lists for the sake of Paste never come between the text of a
+    /// pasteboard and the note: Excel, Word and browsers put an image of the selection next to its text, and the text wins.
+    private func readAttachmentsOrText(from pboard: NSPasteboard) -> Bool {
+        readAttachments(from: pboard) || super.readSelection(from: pboard, type: .string)
+    }
+
+    /// Makes attachments of the files, or the image with no text, on `pboard` and puts them in the note, which is what a
+    /// paste does first (`attachmentSources(from:)`). Returns false, and changes nothing, when there are none or they cannot
+    /// be put in (`insertAttachments`).
+    private func readAttachments(from pboard: NSPasteboard) -> Bool {
+        guard isEditable, let sources = attachmentSources(from: pboard), insertAttachments(sources) else {
+            return false
+        }
+        attachmentPasteWasInserted = true
+        return true
+    }
+
+    /// True while the paste that is being read has put attachments, or the names of files, in the note. Such a paste is not
+    /// looked at for code on the next turn: its text is token lines.
+    private var attachmentPasteWasInserted = false
 
     /// How many times the text has been edited or replaced. A paste that is waiting to be classified is dropped when it
     /// is not the same any more (`PendingPaste`): the owner typed, or another note was loaded, in the meantime.
@@ -274,6 +357,10 @@ final class NoteTextView: NSTextView {
     private func endPaste(_ start: PasteStart?) {
         pasteDepth -= 1
         guard let start else { return }
+        if attachmentPasteWasInserted {
+            attachmentPasteWasInserted = false
+            return start.interval.endWhenIdle()
+        }
 
         // The text that came in is where the selection was and ends where the caret is. Anything else (nothing was pasted,
         // or AppKit did something else with the text) is left alone.
@@ -351,6 +438,385 @@ final class NoteTextView: NSTextView {
     /// A line longer than this many UTF-16 units is not looked at for inline code when something is pasted into it.
     private static let inlineCodeLookLimit = 20_000
 
+    // MARK: Attachments
+
+    /// Makes attachments of what is pasted, dropped or chosen (the session coordinator, through `AttachmentImporter`). Nil in a
+    /// view that is not wired to the app's storage, which then pastes and drops text only. Held weakly: the coordinator
+    /// owns it.
+    weak var attachmentImporter: (any AttachmentImporting)?
+
+    /// The note that the view shows, which an attachment is added to (`EditorViewController.show` sets it).
+    var noteID: NoteID?
+
+    /// What a paste or a drop would make of `pboard`, in the order of spec §6.5, or nil when it is text (or nothing that can
+    /// be pasted): file references first, then, when there is no text, an image. A file that is not there is left out, and a
+    /// pasteboard whose files are all gone has none. An image is the pasteboard's own bytes, PNG or TIFF, exactly as they are
+    /// (`imageSource(on:)`): the importer reads the header for the size and stores a TIFF as PNG on the storage queue, so
+    /// nothing here decodes a picture (spec §4, "Visible lag"). Excel, Word and browsers put an image of the selection next
+    /// to the text, and then the text wins, so there are no sources.
+    ///
+    /// This reads the pasteboard's data: it is for the paste and the drop themselves, and never for a drag that is still
+    /// moving over the note (`wouldMakeAttachments(from:)` answers that from the types).
+    func attachmentSources(from pboard: NSPasteboard) -> [AttachmentSource]? {
+        let files = Self.fileURLs(on: pboard)
+        if !files.isEmpty { return files.map { .file($0) } }
+        if Self.hasText(on: pboard) { return nil }
+        return Self.imageSource(on: pboard).map { [$0] }
+    }
+
+    /// Whether `pboard` is a paste or a drag that makes attachments, decided from the types that are on it and nothing else:
+    /// files, or an image and no text. No image is read, decoded or converted. A drag asks this from `draggingEntered(_:)`,
+    /// `draggingUpdated(_:)` (on every move of the mouse, and again while it waits), `prepareForDragOperation(_:)` and
+    /// `performDragOperation(_:)`, so it has to cost nothing whatever the size of the picture. The data is read once, by
+    /// `performDrop(of:atViewPoint:)`.
+    ///
+    /// It can say yes for a pasteboard that `attachmentSources(from:)` finds nothing on: a file that went away since, or an
+    /// image whose bytes do not come. The drop then does nothing.
+    func wouldMakeAttachments(from pboard: NSPasteboard) -> Bool {
+        if pboard.availableType(from: Self.fileTypes) != nil { return true }
+        return pboard.availableType(from: Self.imageTypes) != nil && !Self.hasText(on: pboard)
+    }
+
+    /// The types that a file reference is on a pasteboard as: the file URL of every item, and the property list of paths that
+    /// older applications still put there.
+    private static let fileTypes: [NSPasteboard.PasteboardType] = [
+        .fileURL, NSPasteboard.PasteboardType("NSFilenamesPboardType"),
+    ]
+
+    /// The types that an image is on a pasteboard as: PNG, which is stored as it is, and TIFF, which is stored as PNG.
+    private static let imageTypes: [NSPasteboard.PasteboardType] = [.png, .tiff]
+
+    /// True when `pboard` holds text: any text wins over an image (spec §6.5), and an image is what Excel, Word and browsers
+    /// put next to a few cells or a few words. A drag asks only when an image is there to lose to the text
+    /// (`wouldMakeAttachments(from:)`), so what is read is the text that came with a picture, never the picture.
+    private static func hasText(on pboard: NSPasteboard) -> Bool {
+        guard let text = pboard.string(forType: .string) else { return false }
+        return !text.isEmpty
+    }
+
+    /// The file URLs of `pboard` that exist, as plain paths (a file reference URL, which Finder may put there, is turned
+    /// into one), in the order they are on it.
+    private static func fileURLs(on pboard: NSPasteboard) -> [URL] {
+        let objects = pboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) ?? []
+        return objects.compactMap { object -> URL? in
+            guard let url = object as? NSURL, url.isFileURL else { return nil }
+            let resolved = url.filePathURL ?? (url as URL)
+            return FileManager.default.fileExists(atPath: resolved.path) ? resolved : nil
+        }
+    }
+
+    /// The image on `pboard`, as the bytes it is there in: its PNG, or else its TIFF (a screenshot, or a picture copied from
+    /// Preview or another Cocoa application, which put a TIFF there). Nothing is decoded or converted here, on the main thread:
+    /// a TIFF of a full-size picture takes hundreds of milliseconds to decode and encode again. The importer reads its size
+    /// from the header, and makes the PNG that the row says it is on the storage queue (`AttachmentImporter`). Nil when the
+    /// pasteboard has no image data.
+    private static func imageSource(on pboard: NSPasteboard) -> AttachmentSource? {
+        if let png = pboard.data(forType: .png), !png.isEmpty {
+            return .image(png, typeIdentifier: UTType.png.identifier)
+        }
+        if let tiff = pboard.data(forType: .tiff), !tiff.isEmpty {
+            return .image(tiff, typeIdentifier: UTType.tiff.identifier)
+        }
+        return nil
+    }
+
+    /// Puts `sources` into the note over the selection (spec §6.4): an attachment each, as token lines of their own and one
+    /// undo step, with the caret on the line after the last of them (`AttachmentEditing.insertion`). Inside code, a fenced
+    /// block or inline code, a block is literal, so the names of the files go in as text instead and an image, which has
+    /// none, goes in nowhere. Returns false, and changes nothing, when the note cannot be edited, the selection is not one
+    /// range, nothing could be made of the sources, or there is no importer to make attachments.
+    @discardableResult
+    private func insertAttachments(_ sources: [AttachmentSource]) -> Bool {
+        guard isEditable, selectedRanges.count == 1, styler != nil else { return false }
+        let selection = selectedRange()
+        if isPastingIntoCode(selection) { return insertNames(of: sources, over: selection) }
+        guard let attachmentImporter, let noteID else { return false }
+        let ids = attachmentImporter.importAttachments(sources, into: noteID)
+        guard !ids.isEmpty else { return false }
+        applyAndReveal(AttachmentEditing.insertion(of: ids, over: selection, in: string as NSString))
+        return true
+    }
+
+    /// The names of the files among `sources`, one on each line, over `selection`: what a file is pasted as inside code.
+    private func insertNames(of sources: [AttachmentSource], over selection: NSRange) -> Bool {
+        let names = sources.compactMap { source -> String? in
+            guard case .file(let url) = source else { return nil }
+            return url.lastPathComponent
+        }
+        guard !names.isEmpty else { return false }
+        let text = names.joined(separator: "\n")
+        applyAndReveal(
+            TextEdit(
+                range: selection, replacement: text,
+                selection: NSRange(location: selection.location + text.utf16.count, length: 0)))
+        return true
+    }
+
+    // MARK: The paperclip
+
+    /// The completion of the open panel, with the files that were chosen (none when it was cancelled).
+    typealias OpenPanelCompletion = @MainActor @Sendable ([URL]) -> Void
+
+    /// Shows the panel that chooses the files to attach, and calls the completion with them. The default shows an
+    /// `NSOpenPanel` as a sheet of the window that allows several files: the hosted tests replace it, so that none of them
+    /// shows a real panel.
+    lazy var presentOpenPanel: @MainActor (@escaping OpenPanelCompletion) -> Void = { [weak self] completion in
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.prompt = "Attach"
+        panel.message = "Choose the files to attach to the note."
+        if let window = self?.window {
+            panel.beginSheetModal(for: window) { response in
+                MainActor.assumeIsolated { completion(response == .OK ? panel.urls : []) }
+            }
+        } else {
+            panel.begin { response in
+                MainActor.assumeIsolated { completion(response == .OK ? panel.urls : []) }
+            }
+        }
+    }
+
+    /// File > Attach File… and the paperclip: asks which files to attach, then puts them in at the caret, as a paste of
+    /// files does. Beeps when the note cannot take attachments (Recently Deleted, or a view with no importer).
+    func attachFiles() {
+        guard isEditable, attachmentImporter != nil, noteID != nil else { return NSSound.beep() }
+        presentOpenPanel { [weak self] urls in
+            guard let self, !urls.isEmpty else { return }
+            if self.window?.firstResponder !== self { self.window?.makeFirstResponder(self) }
+            self.insertAttachments(urls.map { .file($0) })
+        }
+    }
+
+    // MARK: Drops
+
+    /// True when a drop of `pboard` would make attachments: the note can be edited and the pasteboard holds files, or an image
+    /// and no text (`wouldMakeAttachments(from:)`, which looks at the types and never at the data). Any other drop, text
+    /// included, is the text view's own.
+    func acceptsDrop(of pboard: NSPasteboard) -> Bool {
+        isEditable && wouldMakeAttachments(from: pboard)
+    }
+
+    /// Makes attachments of what was dropped at `point` (in the coordinates of this view): the caret goes there, and the
+    /// attachments are inserted as a paste of them is. This is where the data of the drop is read, once. Returns false when
+    /// the drop is not an attachment drop, or when nothing could be read from it.
+    func performDrop(of pboard: NSPasteboard, atViewPoint point: NSPoint) -> Bool {
+        guard acceptsDrop(of: pboard), let sources = attachmentSources(from: pboard) else { return false }
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        let length = textStorage?.length ?? 0
+        setSelectedRange(NSRange(location: min(max(characterIndexForInsertion(at: point), 0), length), length: 0))
+        return insertAttachments(sources)
+    }
+
+    /// A drag of files, or of an image with no text, over the note: copy, when it can be dropped, and nothing when it cannot
+    /// (a note in Recently Deleted). Any other drag is the text view's own. The four callbacks decide from the types of the
+    /// drag pasteboard (`wouldMakeAttachments(from:)`) and read no data: `draggingUpdated(_:)` runs on every move of the
+    /// mouse.
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        guard wouldMakeAttachments(from: sender.draggingPasteboard) else { return super.draggingEntered(sender) }
+        return isEditable ? .copy : []
+    }
+
+    override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        guard wouldMakeAttachments(from: sender.draggingPasteboard) else { return super.draggingUpdated(sender) }
+        return isEditable ? .copy : []
+    }
+
+    override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        guard wouldMakeAttachments(from: sender.draggingPasteboard) else {
+            return super.prepareForDragOperation(sender)
+        }
+        return isEditable
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        guard wouldMakeAttachments(from: sender.draggingPasteboard) else {
+            return super.performDragOperation(sender)
+        }
+        return performDrop(of: sender.draggingPasteboard, atViewPoint: convert(sender.draggingLocation, from: nil))
+    }
+
+    // MARK: Selecting and deleting a token
+
+    /// The selection that the text view should have when it is about to change from `old` to `new` (the delegate asks, for
+    /// every change of the selection, by the user or by code): the caret never stops inside an attachment's token line, and a
+    /// selection never starts or ends inside one (`AttachmentEditing.snappedSelection`). A click puts the caret at the end of
+    /// the token; a move in the text's direction steps over it. A token in a fenced block is text and is left alone.
+    func snappedSelection(from old: NSRange, to new: NSRange) -> NSRange {
+        guard let styler, let storage = textStorage, storage.length > 0 else { return new }
+        let eventType = NSApplication.shared.currentEvent?.type
+        let isClick = eventType == .leftMouseDown || eventType == .leftMouseUp || eventType == .leftMouseDragged
+        return AttachmentEditing.snappedSelection(
+            from: old, to: new, in: storage.string as NSString, isClick: isClick,
+            ignoring: { styler.isInCodeBlock($0.location) })
+    }
+
+    /// Backspace next to a token selects it, and with it selected deletes it and its line break (`AttachmentEditing`), so
+    /// that a key meant for the character beside a picture does not delete the picture. Anywhere else it is the text view's.
+    override func deleteBackward(_ sender: Any?) {
+        guard let action = attachmentDeletion(.backward) else { return super.deleteBackward(sender) }
+        carryOut(action)
+    }
+
+    /// Delete (forward) next to a token: the mirror of `deleteBackward(_:)`.
+    override func deleteForward(_ sender: Any?) {
+        guard let action = attachmentDeletion(.forward) else { return super.deleteForward(sender) }
+        carryOut(action)
+    }
+
+    /// What Backspace or Delete does around a token at the selection, or nil when the key is the text view's own: the note
+    /// cannot be edited, text is being composed, there is more than one selection, or no token is involved.
+    private func attachmentDeletion(_ direction: AttachmentEditing.DeletionDirection) -> AttachmentEditing.KeyAction? {
+        guard isEditable, !hasMarkedText(), selectedRanges.count == 1, let styler, let storage = textStorage else {
+            return nil
+        }
+        return AttachmentEditing.deletion(
+            direction, selection: selectedRange(), in: storage.string as NSString,
+            ignoring: { styler.isInCodeBlock($0.location) })
+    }
+
+    private func carryOut(_ action: AttachmentEditing.KeyAction) {
+        switch action {
+        case .selectToken(let range):
+            setSelectedRange(range)
+        case .moveCaret(let location):
+            setSelectedRange(NSRange(location: location, length: 0))
+        case .removeToken(let edit):
+            apply(edit)
+        }
+        if frame.width > 0 { scrollRangeToVisible(selectedRange()) }
+    }
+
+    // MARK: Opening an attachment and dragging it out
+
+    /// A click on an attachment that `mouseDown` took, until its mouse button comes up (`mouseUp(with:)`), or the drag that it
+    /// became has begun. Nil the rest of the time.
+    private struct AttachmentPress {
+        /// What the attachment's token line is drawn as.
+        let mark: AttachmentMark
+        /// Where its preview or chip is drawn, in the coordinates of this view, and where the mouse went down in them.
+        let rect: NSRect
+        let location: NSPoint
+        /// True while moving the mouse far enough can start a drag: for a file that is there, until one has started.
+        var canDrag: Bool
+    }
+
+    private var attachmentPress: AttachmentPress?
+
+    /// Says what happens when a drag of an attachment starts. Nil, the default, begins an `NSDraggingSession`, which runs
+    /// until the mouse button is released (the window server drives it): a hosted test replaces this, so that no drag session is
+    /// started on a runner, and receives the item and the event that start it.
+    var attachmentDragPresenter: ((NSDraggingItem, NSEvent) -> Void)?
+
+    /// The source of the drags that begin here: copy only (`AttachmentDragSource`). The drag session does not keep it.
+    private let attachmentDragSource = AttachmentDragSource()
+
+    /// What the layout manager draws for the token line that `point` is on, in the coordinates of this view: the token's
+    /// range, the mark it is drawn from and the rectangle of the preview or chip. The point must be inside that rectangle, so
+    /// the padding above and below a picture and the room beside a chip are not the attachment. Nil anywhere else.
+    ///
+    /// The line is found from the character that the layout manager puts under the point, and again from the start of the
+    /// line at the same height: the characters of a token but the first have no glyph, and which character the layout
+    /// manager names for a point beside the one glyph that is left is not something to rely on. The rectangle decides.
+    private func attachmentTarget(atViewPoint point: NSPoint) -> (range: NSRange, mark: AttachmentMark, rect: NSRect)? {
+        guard let layoutManager = layoutManager as? MarkupLayoutManager, layoutManager.hasAttachments,
+            let container = textContainer, let storage = textStorage, storage.length > 0
+        else { return nil }
+        let origin = textContainerOrigin
+        let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+        let text = storage.string as NSString
+        for probe in [local, NSPoint(x: container.lineFragmentPadding, y: local.y)] {
+            let found = layoutManager.characterIndex(
+                for: probe, in: container, fractionOfDistanceBetweenInsertionPoints: nil)
+            guard found != NSNotFound else { continue }
+            let start = text.paragraphRange(for: NSRange(location: min(found, storage.length - 1), length: 0)).location
+            guard let mark = storage.attribute(.scratchAttachment, at: start, effectiveRange: nil) as? AttachmentMark,
+                let rect = layoutManager.attachmentRect(forTokenAt: start), rect.contains(local)
+            else { continue }
+            return (
+                NSRange(location: start, length: AttachmentToken.lineLength), mark,
+                rect.offsetBy(dx: origin.x, dy: origin.y)
+            )
+        }
+        return nil
+    }
+
+    /// The attachment whose preview or chip is drawn at `point` (in the coordinates of this view): the range of its token and
+    /// its id, or nil when `point` is anywhere else. It is the rectangle that `MarkupLayoutManager` draws in
+    /// (`attachmentRect(forTokenAt:)`), like `labelHit(atViewPoint:)` for the label of a code block.
+    func attachmentHit(atViewPoint point: NSPoint) -> (NSRange, AttachmentID)? {
+        attachmentTarget(atViewPoint: point).map { ($0.range, $0.mark.id) }
+    }
+
+    /// A plain click on an attachment, which goes no further (never to `super.mouseDown`: AppKit would run a tracking loop
+    /// and put the caret inside the token). The view takes the keyboard and the attachment is selected whole, which draws
+    /// its outline. A double-click then opens its file, and when the mouse moves on with the button down a drag begins
+    /// (`mouseDragged(with:)`). Returns false and does nothing when there is no attachment at `point`.
+    private func pressAttachment(with event: NSEvent, atViewPoint point: NSPoint) -> Bool {
+        guard let target = attachmentTarget(atViewPoint: point) else { return false }
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        setSelectedRange(target.range)
+        let isDouble = event.clickCount == 2
+        if isDouble { openAttachment(target.mark) }
+        attachmentPress = AttachmentPress(
+            mark: target.mark, rect: target.rect, location: point,
+            canDrag: !isDouble && storedFile(of: target.mark) != nil)
+        return true
+    }
+
+    /// The stored file of the attachment drawn as `mark`, when there is one to open or take out: the line is a preview or a
+    /// chip of a file, and the file is there. A missing attachment, one that is still being copied and one whose file went
+    /// away have none.
+    private func storedFile(of mark: AttachmentMark) -> URL? {
+        guard mark.kind == .image || mark.kind == .file, let url = styler?.catalog?.fileURL(mark.id),
+            FileManager.default.fileExists(atPath: url.path)
+        else { return nil }
+        return url
+    }
+
+    /// Opens the file of the attachment drawn as `mark` with its default application (`openURL`), or beeps and opens nothing
+    /// when there is no file to open (a missing attachment).
+    private func openAttachment(_ mark: AttachmentMark) {
+        guard let url = storedFile(of: mark) else { return NSSound.beep() }
+        openURL(url)
+    }
+
+    /// The mouse moved with the button down. After a press on an attachment, once it has moved `AttachmentDrag.threshold`
+    /// points from where it went down, the attachment's stored file is dragged out of the note, and that is the one drag of
+    /// the press. Nothing else moves while the button is down on an attachment: the view never began a selection.
+    override func mouseDragged(with event: NSEvent) {
+        guard let press = attachmentPress else { return super.mouseDragged(with: event) }
+        guard press.canDrag else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        guard hypot(point.x - press.location.x, point.y - press.location.y) >= AttachmentDrag.threshold else { return }
+        attachmentPress?.canDrag = false
+        beginAttachmentDrag(of: press.mark, in: press.rect, event: event)
+    }
+
+    /// The button came up: the press on an attachment is over. A mouse up that follows any other mouse down is the text
+    /// view's.
+    override func mouseUp(with event: NSEvent) {
+        guard attachmentPress != nil else { return super.mouseUp(with: event) }
+        attachmentPress = nil
+    }
+
+    /// Starts the drag of the stored file of the attachment drawn as `mark` in `rect`. The picture that follows the mouse is
+    /// the preview, or the chip, as it is drawn in the note. Copy is the only thing a drop may do (`AttachmentDragSource`).
+    private func beginAttachmentDrag(of mark: AttachmentMark, in rect: NSRect, event: NSEvent) {
+        guard let url = storedFile(of: mark) else { return }
+        let preview =
+            mark.kind == .image
+            ? (layoutManager as? MarkupLayoutManager)?.previews?.cachedImage(forID: mark.id, minPixelSize: 1) : nil
+        let item = AttachmentDrag.draggingItem(for: url, mark: mark, preview: preview, frame: rect)
+        if let attachmentDragPresenter {
+            attachmentDragPresenter(item, event)
+        } else {
+            let session = beginDraggingSession(with: [item], event: event, source: attachmentDragSource)
+            session.animatesToStartingPositionsOnCancelOrFail = true
+        }
+    }
+
     // MARK: Edits the owner asks for
 
     /// Applies an edit that one of the editing rules (`ListEditing`, `InlineEditing`) answered with, as one undo step:
@@ -426,16 +892,20 @@ final class NoteTextView: NSTextView {
 
     /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
     /// it was, so the box can be clicked while typing somewhere else. A plain click on the language label of a code block
-    /// opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A ⌘-click on a
+    /// opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A plain click on
+    /// the preview or the chip of an attachment selects it, and a double-click opens its file (`pressAttachment`), in a note
+    /// that cannot be edited as well: a drag from it then takes the file out (`mouseDragged(with:)`). A ⌘-click on a
     /// link opens it (`openURL`) and goes no further: it places no caret, and it also works in a note that cannot be
-    /// edited. Any other click, also one on a box or a label with a modifier key held (⇧ extends the selection) or in a
-    /// note that cannot be edited, is the text view's own: a plain click on a link places the caret and never opens
-    /// anything.
+    /// edited. Any other click, also one on a box, a label or an attachment with a modifier key held (⇧ extends the
+    /// selection) or in a note that cannot be edited, is the text view's own: a plain click on a link places the caret and
+    /// never opens anything.
     override func mouseDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
+        attachmentPress = nil
         if modifiers.isDisjoint(with: [.shift, .command, .option, .control]),
             toggleCheckbox(atViewPoint: point) || showCodeBlockMenu(atViewPoint: point)
+                || pressAttachment(with: event, atViewPoint: point)
         {
             return
         }
@@ -640,26 +1110,34 @@ final class NoteTextView: NSTextView {
 
     /// ⇧⌘L (Format > Checklist): the lines of the selection (the caret's line when there is none) become a checklist,
     /// or, when every one of them already is one, plain lines again (`ListEditing.toggleChecklist`). One undo step. It
-    /// does nothing but beep when the note cannot be edited, or when a fenced block is among the lines: inside a block
-    /// nothing is formatting, so no marker is put there.
+    /// does nothing but beep when the note cannot be edited, when a fenced block is among the lines (inside a block
+    /// nothing is formatting, so no marker is put there) and when the lines hold nothing it may change. The token line
+    /// of an attachment is never one of them: a box in front of it would make it text.
     @objc func toggleChecklist(_ sender: Any?) {
         guard isEditable else { return NSSound.beep() }
         let paragraphs = coveringParagraphs()
         guard !styler.intersectsCodeBlock(paragraphs.range) else { return NSSound.beep() }
-        apply(
-            ListEditing.toggleChecklist(
-                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))
+        let edit = ListEditing.toggleChecklist(
+            paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
+        guard edit.range.length > 0 || !edit.replacement.isEmpty else { return NSSound.beep() }
+        apply(edit)
     }
 
     /// ⌘B (Format > Bold): the selection becomes `**selection**`, or loses its stars when it is a bold run, or, with no
     /// selection, `****` goes in with the caret between the pairs (`InlineEditing.toggleBold`). One undo step. It does
     /// nothing but beep when the note cannot be edited, when a fenced block is under the selection (inside a block
-    /// every character is literal) and for a rectangular selection. The name is not `toggleBold`: that is AppKit's
-    /// action for the font panel, which a plain-text view must not answer.
+    /// every character is literal), for a rectangular selection and when the selection touches the token line of an
+    /// attachment (a selected attachment, a selection that holds one, or a caret at either end of its line: stars
+    /// there would make the token text, `InlineEditing.touchesAttachment`). The name is not `toggleBold`: that is
+    /// AppKit's action for the font panel, which a plain-text view must not answer.
     @objc func toggleBoldMarkers(_ sender: Any?) {
         guard isEditable, selectedRanges.count == 1 else { return NSSound.beep() }
         let paragraphs = coveringParagraphs()
         guard !styler.intersectsCodeBlock(paragraphs.range) else { return NSSound.beep() }
+        guard
+            !InlineEditing.touchesAttachment(
+                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
+        else { return NSSound.beep() }
         applyAndReveal(
             InlineEditing.toggleBold(
                 paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))

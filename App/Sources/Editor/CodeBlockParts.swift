@@ -50,7 +50,7 @@ struct CodeBlockParts: Equatable {
 
     /// The text after the backticks of a fence line, trimmed: `"  ```swift "` is `"swift"`, and a bare fence is `""`.
     /// A fence line is what `FenceScanner` finds: spaces, then three backticks or more.
-    static func info(ofFenceLine line: String) -> String {
+    nonisolated static func info(ofFenceLine line: String) -> String {
         var rest = Substring(line)
         rest = rest.drop { $0 == " " }
         rest = rest.drop { $0 == "`" }

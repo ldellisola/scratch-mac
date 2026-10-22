@@ -16,7 +16,8 @@ Status: plan 2, task 6. Sessions, scroll and the rest of the persistence are in
 - **The title is saved like the text.** Each edit marks the note changed, so it is written within about a second and
   the note goes to the top of the sidebar (a changed note is the most recently edited). A note whose only content is a
   title is not empty, so it is listed and is not discarded when left. The title is not part of the text: copying the
-  note's text does not include it. The sidebar and the tabs show the title when there is one, else the first line.
+  note's text does not include it. The sidebar and the tabs show the title when there is one, else the first line (not
+  a fence line or an attachment line: [sidebar.md](sidebar.md)).
 - **One font size for every note.** 13 pt by default, 9 to 32 pt in steps of 1 pt (`FontSize`). View > Bigger is ⌘+ (and
   ⌘=, which needs no Shift), Smaller is ⌘−, Actual Size is ⌘0. The title follows the text (size + 3). What is typed and
   what is pasted takes the size too, so a paste never brings its own size (spec §6.5). The line at the top of the

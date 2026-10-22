@@ -26,10 +26,14 @@ enum AccessibilityID {
     /// The toolbar's pin button (plan 2, task 8). Like the new note button it is a view-less toolbar item, so this is
     /// its item identifier, and UI tests also find it by its label, "Pin" or "Unpin".
     static let pinButton = "toolbar.pin"
+    /// The toolbar's paperclip, which attaches files to the note (plan 5, task 5). Like the pin button it is a view-less
+    /// toolbar item, so this is its item identifier, and UI tests also find it by its label, "Attach File".
+    static let attachButton = "toolbar.attach"
     /// The title field above the editor's text (plan 2, task 6). Its value is the note's title.
     static let titleField = "editor.titleField"
     /// A 1 x 1 point element that exists only in an isolated data directory (`DebugStateElement`). Its value is JSON
-    /// with the editor's `fontSize`, `scrollAnchor` and `readOnly`, which UI tests read because they cannot see them.
+    /// with the editor's `fontSize`, `scrollAnchor`, `readOnly` and `attachments`, which UI tests read because they cannot
+    /// see them.
     static let debugState = "debug.state"
     /// A tab of the tab strip (plan 2, task 7): a button whose label is the tab's title and which is selected when the
     /// tab is the active one. There is one per open tab.

@@ -29,8 +29,13 @@ enum JSONShape {
             self.bytes = bytes
         }
 
+        /// White space is a space, a tab, a line feed and a carriage return. Compared byte by byte: an array literal to ask
+        /// `contains` of is made again for every byte, which took 240 ms of a debug build for a document of 760 KB (the
+        /// 50,000-line paste of `LargeInsertTests`).
         mutating func skipSpace() {
-            while index < bytes.count, [0x20, 0x09, 0x0A, 0x0D].contains(bytes[index]) {
+            while index < bytes.count {
+                let byte = bytes[index]
+                guard byte == 0x20 || byte == 0x0A || byte == 0x0D || byte == 0x09 else { return }
                 index += 1
             }
         }

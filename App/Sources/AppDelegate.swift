@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var coordinator: SessionCoordinator?
     /// The window's toolbar keeps its delegate weakly.
     private var toolbarController: ToolbarController?
+    /// What the attachments are: the editor draws the token lines of a note from it (plan 5, task 4). The editor holds it
+    /// too, and the coordinator is told of the copies of new attachments through it (plan 5, task 5).
+    private var attachmentCatalog: AttachmentCatalog?
     /// Only with `-ScratchFrameMonitor` (the performance tests).
     private var frameMonitor: FrameMonitor?
 
@@ -64,6 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let editor = EditorViewController()
         self.editor = editor
+        // The editor draws an attachment line from the catalog, so it has it before the first note is shown.
+        let attachmentCatalog = AttachmentCatalog(store: environment.storage.attachments)
+        self.attachmentCatalog = attachmentCatalog
+        editor.attachmentCatalog = attachmentCatalog
         let sidebar = SidebarViewController()
         let tabStrip = TabStripViewController()
         let editorArea = EditorAreaViewController(tabStrip: tabStrip, editor: editor)
@@ -80,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let toolbarController = ToolbarController()
         toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
         toolbarController.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
+        toolbarController.onAttach = { [weak editor] in editor?.attachFiles() }
         self.toolbarController = toolbarController
         windowController.window?.toolbar = toolbarController.makeToolbar()
 
@@ -93,11 +101,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // note in the active tab.
         commands.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
         commands.onFocusSearch = { [weak sidebar] in sidebar?.focusSearch() }
+        // File > Attach File… (⇧⌘A) and the paperclip (spec §6.4): the editor asks for the files and puts them in at the caret.
+        commands.onAttachFile = { [weak editor] in editor?.attachFiles() }
         let appCommands = commands
         coordinator.onActiveNotePinChange = { [weak toolbarController, weak appCommands] pinned, enabled in
             toolbarController?.setPinned(pinned, enabled: enabled)
+            // A note in Recently Deleted can be neither pinned nor attached to.
+            toolbarController?.setAttachEnabled(enabled)
             appCommands?.setActiveNotePin(pinned: pinned, enabled: enabled)
         }
+        // Scratch > About Scratch shows the licences of tree-sitter and its grammars as its credits (plan 5 task 7).
+        commands.onShowAbout = { NSApp.orderFrontStandardAboutPanel(options: AboutCredits.panelOptions()) }
         // View > Bigger, Smaller and Actual Size (spec §6.4).
         commands.onBigger = { [weak coordinator] in coordinator?.changeFontSize(FontSize.larger) }
         commands.onSmaller = { [weak coordinator] in coordinator?.changeFontSize(FontSize.smaller) }
@@ -110,8 +124,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editor.focus()
         // Notes that were deleted more than 30 days ago are removed once the window is up (spec §6.2): one turn of the
         // main queue after the restore, so that it is not part of what the first frame waits for.
+        // The sweep of the attachments that no note names comes after the purge, on the same queue, because the purge may
+        // leave some (plan 5, "Never lose an attachment").
         DispatchQueue.main.async { [weak coordinator] in
-            MainActor.assumeIsolated { coordinator?.purgeExpiredNotes(now: Date()) }
+            MainActor.assumeIsolated {
+                coordinator?.purgeExpiredNotes(now: Date())
+                coordinator?.sweepUnreferencedAttachments(now: Date())
+            }
+        }
+
+        // The queries of the languages in the open tabs are compiled on the highlight queue once the first frame is out, so that
+        // the first block in one of them is not coloured late (plan 5 task 7). After the signpost intervals of the frame, like
+        // the chunks that style a long note.
+        RunLoopIdle.onNext(order: RunLoopIdle.afterMeasurementsOrder) { [weak coordinator] in
+            coordinator?.warmUpHighlighting()
         }
 
         if let file = environment.options.frameMonitorFile {

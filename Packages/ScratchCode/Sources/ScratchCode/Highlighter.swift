@@ -62,6 +62,22 @@ public final class Highlighter: Sendable {
         return Self.resolve(captures)
     }
 
+    /// Compiles the query of `language` now, when it would otherwise be compiled by the first text that is highlighted in it
+    /// (240 to 270 ms for Swift, 58 for C#, docs/decisions/0007-tree-sitter.md). The app calls it on its highlight queue for the
+    /// languages it expects, so that the first block in one of them is coloured without that wait (Plan 5, task 7). It is the
+    /// same cache that `tokens(in:language:)` reads, so a later request finds the query compiled. Returns false for a language
+    /// with no grammar, and for one whose query does not compile (a bug that the tests of the queries catch).
+    @discardableResult
+    public func prepare(_ language: CodeLanguage) -> Bool {
+        guard let grammar = Grammar.grammar(for: language) else { return false }
+        return queries.compiledQuery(for: language, grammar: grammar) != nil
+    }
+
+    /// True when the query of `language` is compiled: `prepare(_:)` did it, or a text in that language was highlighted.
+    public func isPrepared(_ language: CodeLanguage) -> Bool {
+        queries.isBuilt(language)
+    }
+
     /// The share of the syntax tree that tree-sitter could not make sense of, 0 to 1: the UTF-16 units under ERROR
     /// nodes (the outermost of each), plus one for each MISSING node, over the length of the text. It is 0 for text
     /// that parses cleanly and near 1 for text that is not in the language at all, which is what `CodeDetector` uses

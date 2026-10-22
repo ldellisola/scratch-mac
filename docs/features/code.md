@@ -6,7 +6,9 @@ Code blocks, their colours and the detection of code in a paste. Spec:
 (`Packages/ScratchCode`, no AppKit).
 
 Status: plan 4, done and released as 0.4.0: the languages, the highlighter, the detection, the rendering, the paste wrap,
-the label menu, the blocks typed by hand, and the screenshots and the performance numbers below.
+the label menu, the blocks typed by hand, and the screenshots and the performance numbers below. Plan 5 (0.5.0) added the
+room that the first line of code keeps for the label, the query warm-up and the licences (the last three sections of
+"Rendering"), a quicker check of a JSON paste, and the 50,000-line paste test.
 
 ## Rendering
 
@@ -29,6 +31,8 @@ block (docs/features/formatting.md).
   was detected, which is when the fence has no name, is in italics: it means "automatic". A fence with no name whose
   code is not code, or of a language Scratch does not know, has no label. A block that is too long to colour shows its
   name only.
+- **The label never covers code.** It is drawn at the top right and reaches into the first line of code, so that line, and
+  what it wraps into, keeps clear of it (below, "The label keeps clear of the code").
 - **The colours** are Xcode's default themes (spec §6.4, plan 4 "Colours"), assets named `Code<Kind>` with a light and a
   dark variant: keyword `#9B2393` / `#FC5FA3`, string `#C41A16` / `#FC6A5D`, comment `#5D6C79` / `#7F8C98`, number
   `#1C00CF` / `#D0BF69`, type `#0B4F79` / `#5DD8FF`, function `#326D74` / `#67B7A4`, attribute `#815F03` / `#BF8555`,
@@ -74,6 +78,54 @@ block (docs/features/formatting.md).
   the note, with no line break after it, had no padding at all. With one glyph the line is a fragment of its own, 6 pt
   high, which is also where a click on the padding puts the caret (and shows the fence).
 
+### The label keeps clear of the code
+
+Plan 5, task 7 (a 0.4.0 follow-up: the label overlapped the end of a long first line, and a click on that line opened the
+label's menu). The first line of code of a block that has a label gets a **tail indent** of `inset + the label's width + 12 pt`
+(`CodeBlockMetrics.labelReserve`, `MarkupAppearance.firstCodeLineStyle`), where every other line has 10 pt. The label's width
+is measured in the font it is drawn in (`CodeBlockMetrics.labelFont`: monospaced, 2 pt smaller than the note font), so the
+code ends 12 pt before the label's left edge, wraps there, and a click on its end is outside the label's 3 pt margin
+(`NoteTextView.labelHit`). A tail indent is for the whole paragraph, so the wrapped lines of that first line keep clear of the
+label too. The room is at most 240 pt, whatever the name (a fence name of a hundred characters leaves room for code), and
+nothing at all for a block with no label.
+
+- **Which line it is.** The paragraph right after the opening fence line. `MarkupStyler` styles it apart from the lines of
+  code after it (`styleBatch`, `styleBlocks`), reading the label from the mark on the opening fence line, or from the name on
+  the fence when that line is not styled yet.
+- **It follows the label.** `CodeBlockStyler` writes a detected label when its result comes in and calls
+  `MarkupStyler.labelDidChange(inBlockAt:in:)` in the same editing session, so the line gains (or loses) its room with the
+  label. Typing a name on a fence, a change of the font size and the label menu restyle the block, and the first line is
+  styled with it.
+- **It follows the first line.** An edit that splits the first line, or takes it away, or inserts one or several lines above
+  it or inside it, leaves its style on a paragraph that is no longer the first: the second, the third or a line further down.
+  After every edit `MarkupStyler.refreshFirstCodeLines(near:in:)` gives the first line of the blocks that the edit touched its
+  room, and the second line, the lines that the edit changed and the two lines after them the style of any other line of code
+  (`CodeBlockStylerTests`: a split, lines inserted above the first line, lines inserted inside it).
+
+### Late first colours
+
+Plan 5, task 7 (a 0.4.0 follow-up). The first text in a language compiles that language's query, which takes 240 to 270 ms for
+Swift (docs/decisions/0007-tree-sitter.md), so the first colours in a launch came that much late. After the first frame
+(`RunLoopIdle`, after the signpost intervals of the frame) `AppDelegate` calls `SessionCoordinator.warmUpHighlighting()`, which
+hands the texts of the notes that were open in tabs at the launch (read by `restoredTabs` already) to
+`CodeBlockStyler.warmUp(languagesNamedIn:)`.
+
+- On the highlight queue, the fences of those texts are read (`CodeBlockStyler.languages(namedIn:)`: the blocks, by fence name
+  or alias, each language once; a name that is not a language, a fence with no name and a fence with no partner give nothing),
+  and `Highlighter.prepare(_:)` compiles each language's query, one language at a time, each as a block of its own on the queue.
+  A block that is shown meanwhile waits for one compile at most.
+- It is the same cache that every request reads (`Highlighter.shared`), so a later request finds the query compiled.
+  `Highlighter.isPrepared(_:)` says so, and the styler's `warmedLanguages` and `pendingWarmUps` are what the tests read.
+- A language that nothing in the open tabs names is compiled by the first text in it, as before. A note with no fence costs
+  one search of its text on the queue.
+
+### Licences
+
+The About panel shows the licences of tree-sitter and of every grammar as its credits (`AboutCredits`, from
+`Acknowledgements.rtf` in the app's resources). The file is generated from `Package.resolved`, the `LICENSE` files and the
+vendored grammars by `scripts/make-acknowledgements.py`, so a new grammar adds itself, and a release that lacks it fails
+`scripts/check-release-zip.sh` (docs/decisions/0007-tree-sitter.md, "Licences").
+
 ### What it costs (the macOS CI, the huge note: 10,000 lines, 100 `swift` blocks)
 
 `keystroke_ms` 3.2 to 5.7 (baseline 6.3), `switch_huge_ms` 25 to 31 (baseline 65.9), `scroll_frame_ms` 0.3 to 7.1 (baseline
@@ -88,6 +140,18 @@ kind of runner: a run over 6.96 ms on a slow runner is a rerun before it is a re
   `testNothingAboveTheWindowChangesHeightWhenTheRestOfTheNoteIsStyled`,
   `testUnknownFenceNameIsUncoloured`, `testHugeBlockIsNotHighlighted`, `testDarkModeUsesDarkColours` and more): the
   blocks of the `typical` fixture, the `code` fixture's JavaScript block, a 6,000-line block, the colour assets.
+- `CodeBlockStylerTests`, plan 5 task 7: `testFirstLineOfCodeWrapsBeforeLabel` (the lines of a 300-character first line end
+  before the label and a click on the end of the first is not on the label), `testOnlyTheFirstLineOfCodeReservesRoomForTheLabel`,
+  `testBlockWithNoLabelHasNoReserve`, `testReserveIsForTheNameAsWrittenWhenItIsNotALanguage`,
+  `testReserveFollowsTheDetectedLabel`, `testNamingTheFenceGivesTheFirstLineItsReserve`,
+  `testSplittingTheFirstLineLeavesTheReserveOnTheFirstPartOnly`, `testDeletingTheFirstLineGivesTheReserveToTheNextOne`,
+  `testTypingInTheFirstLineKeepsItsReserve`, `testReserveFollowsTheFontSize`, and the warm-up:
+  `testFenceNamesGiveTheLanguagesToWarmUp`, `testWarmUpCompilesOpenLanguages`, `testWarmUpOfALanguageThatIsReadyDoesNothingTwice`,
+  `testWarmUpNeverBlocksTheNoteThatIsShown`.
+- `SessionWarmUpTests` (hosted): the coordinator hands the notes of the open tabs, and only those, to the warm-up, once.
+- `AboutCreditsTests` (hosted): `testAboutCreditsListTreeSitter` and that every component of the build is credited.
+- ScratchCode's `HighlighterTests`: `Highlighter.prepare(_:)` and `isPrepared(_:)`.
+- `scripts/tests/test-acknowledgements.sh` and `scripts/tests/test-release-zip.sh` (`make script-test`).
 - `CodeBlockPartsTests` (hosted): the name, the code and the fence lines of a block, found from its range.
 - `MarkupStylerTests.testFencedBlockIsNotStyled`: nothing in a block is formatting, and its lines are indented.
 - ScratchCore's `FixtureTests` (`codeFixtureHasABlockForEachLanguageAndOneWithoutAName`): the `code` fixture.
@@ -191,6 +255,11 @@ runs, with the fastest and the slowest of the ten pastes of each.
 - `CodePasteUITests` (real keys and the real pasteboard): `testUndoAfterCodePasteRestoresPlainText` (Review Focus 2),
   `testPastingAnEmailStaysPlain` (Review Focus 1) and a paste in the middle of a line.
 - `CodePastePerfTests.testPasteFiveHundredLinesOfCode`: `paste_code_ms`.
+- `LargeInsertTests.testFiftyThousandLineJSONPasteIsWrappedQuickly` (plan 5 task 7): 50,000 lines of JSON (760 KB, which the
+  detector validates whole, the slowest way to find JSON) go in within the 500 ms of a plain paste, and so does the wrap, the
+  turn that reads them, finds `json` and puts them between the fences; then the block is styled in chunks. The validator was
+  3 times too slow for that in a debug build until `JSONShape.skipSpace` stopped making an array for every byte (242 ms to 79 ms
+  for this document, on Linux).
 
 ## Screenshots
 
@@ -225,6 +294,17 @@ It is offline and deterministic (the same text always gives the same answer) and
     command, a `$variable`, a `;` or a `}` at the end, `import x`, `const x = 1`
   - prose: a whole sentence, a line of a wrapped paragraph
   - neither: a heading, a list item, a label such as `Subject:`, a URL, a number, a rule of `=====`
+- **`key: value` notes are prose, and YAML needs structure** (Plan 5, task 3). A contact card (`phone: 07700 900 123`,
+  `email: mara@example.org`), a `todo:` and `buy: eggs, flour` list, flight details or a flat's facts are short lowercase
+  keys with words, numbers, phone numbers, emails or comma lists after them, and are as much a note as `Subject: Lunch`.
+  A text of such lines is YAML only with one of these cues (`DetectionFeatures.isYAMLShape`), besides two keys at least:
+  - a `---` document start;
+  - nesting: lines indented under a key that has no value (`server:` and then `  port: 8080`);
+  - a `- ` list under a key (`tags:` and then `- work`, indented or not);
+  - a value that is YAML syntax: `|` or `>` (a block scalar, whose indented lines are its text and are not read as
+    lines), an anchor (`&base`) or a quoted string with a colon in it (`"5432:5432"`).
+  Indentation alone is not nesting (`name: John` and then an indented `age: 30`), and `true`, `false` and `null` are
+  words of a note, not a cue by themselves (with nesting the nesting is the cue).
 - **Inline code is a word.** What is between backticks does not count: ``Call `init()` first`` is a sentence.
 - **A paste of one line is never code**, and neither is a text of comments only.
 - **Which language.** The idioms of each language give it points (`func` with a type, `def f():`, `package main`,
@@ -238,7 +318,9 @@ It is offline and deterministic (the same text always gives the same answer) and
 - **A shebang is `#!` and a path** (`#!/bin/bash`, `#! /usr/bin/env python3`) on the first line, and only that is a
   marker. `#!important remember this` and a bare `#!` are text: they go through the lines like any other paste.
 - **Speed.** Only the first 300 lines (40,000 bytes) are read and the first 50 lines (4,000 bytes) are parsed. 500
-  lines take 2 to 12 ms in Release (the budget is 20 ms) and under 100 ms in the Debug test run.
+  lines take 2 to 12 ms in Release (the budget is 20 ms). The timing tests of `CodeDetectorTests` run in Debug: their
+  bound is the figure a test names on Linux and 4 times it on macOS (the macOS CI took 107 ms for 100 and 498 ms for
+  400), and `paste_code_ms` holds the Release build to its budget.
 
 ### Tests
 
@@ -250,7 +332,9 @@ It is offline and deterministic (the same text always gives the same answer) and
 - `unknown/`: code of languages Scratch does not know. They must come out as code with no language.
 - `prose/`: emails with a signature and a quoted reply, meeting notes with times, lists, a log, a CSV, a note with
   `**bold**`, a recipe, a few lines of verse, a chat, error messages, a two-line "Hi, thanks!". `everyProseSampleStaysProse`
-  wants nil for each. **A prose sample is never deleted to make a test pass.**
+  wants nil for each. **A prose sample is never deleted to make a test pass.** The `key: value` notes are `contact-card`,
+  `todo-idea-buy`, `flight-details` and `rental-viewing`; `flatKeyValueNotesAreProse` and `yamlNeedsAStructuralCue` hold
+  the rule itself.
 
 A paste that is detected wrongly becomes a sample, and the detector is changed until every sample passes. Every sample is
 written for the corpus: no text of someone else's.
