@@ -119,6 +119,28 @@ nonisolated enum CodeBlockMetrics {
     static let labelTopOffset: CGFloat = 2
     /// How far the label of a detected language leans (`NSAttributedString.Key.obliqueness`): italics.
     static let labelObliqueness: CGFloat = 0.2
+    /// The space between the end of the first line of code and the label that reaches into it (plan 5 task 7).
+    static let labelGap: CGFloat = 12
+    /// The most that a label takes from the first line of code, whatever its name: a fence name of a hundred characters
+    /// would otherwise leave no room for the code.
+    static let maximumLabelReserve: CGFloat = 240
+
+    /// The font of a label, for text at `noteSize` points: monospaced, `labelSizeReduction` smaller, and never below 7 pt.
+    /// `MarkupLayoutManager` draws the label in it and `labelReserve(name:noteSize:)` measures it, so that the room that is
+    /// kept is the room that the label takes.
+    static func labelFont(noteSize: CGFloat) -> NSFont {
+        NSFont.monospacedSystemFont(ofSize: max(noteSize - labelSizeReduction, 7), weight: .regular)
+    }
+
+    /// How far in from the right, beyond the `inset` that every line has, the first line of code of a block whose label says
+    /// `name` must end: the width of the label and `labelGap`, at most `maximumLabelReserve`. The label is drawn at the top
+    /// right of the block and reaches into that line, so a line that ended under it would be covered, and a click on its end
+    /// would open the label's menu. Zero for a block with no label.
+    static func labelReserve(name: String, noteSize: CGFloat) -> CGFloat {
+        guard !name.isEmpty else { return 0 }
+        let width = (name as NSString).size(withAttributes: [.font: labelFont(noteSize: noteSize)]).width
+        return min(width + labelGap, maximumLabelReserve)
+    }
 }
 
 /// The colours of a code block that the layout manager draws, which is not on the main actor.

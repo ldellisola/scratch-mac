@@ -14,12 +14,13 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
   in progress for 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out and
-  copied; plus the 0.4.0 follow-ups). Its Tasks 1 to 6 are done: titles skip fence and attachment lines, `AttachmentID`
+  copied; plus the 0.4.0 follow-ups). Its Tasks 1 to 7 are done: titles skip fence and attachment lines, `AttachmentID`
   and `AttachmentToken` exist, the schema is version 3, `AttachmentStore` keeps the files and removes them only when no
   note names them, the 0.4.0 follow-ups in ScratchCode are in, a token line is drawn as a preview or a chip, files and
   images are pasted, dropped or attached with the paperclip and kept whole when selected or deleted, and an attachment is
   selected with a click, opened with a double-click, dragged out as its file and copied as its name (and, alone, as its
-  file). Plan 4, done and released as 0.4.0 (code: highlighting, code
+  file), and the 0.4.0 follow-ups in the app are in (the licences in the About panel, the query warm-up, a first line of
+  code that keeps clear of the language label, and a 50,000-line JSON paste that is held to the paste budget). Plan 4, done and released as 0.4.0 (code: highlighting, code
   blocks, paste classification, the language label menu, and bold at word boundaries):
   [`2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
@@ -99,7 +100,8 @@ Packages/ScratchCode/             Swift package, no AppKit, builds and tests on 
                                   third-party dependency (docs/decisions/0007). ScratchCore does not depend on it.
   Sources/ScratchCode/            CodeLanguage (the 17 languages: fence names, aliases, labels), HighlightKind and
                                   HighlightToken (UTF-16 ranges), Highlighter (`tokens(in:language:)`, nil over the cap of
-                                  5,000 lines or 300,000 units; `errorRate(of:language:)`), CaptureMapping (capture names
+                                  5,000 lines or 300,000 units; `errorRate(of:language:)`; `prepare(_:)` compiles a
+                                  language's query before a text needs it, `isPrepared(_:)`), CaptureMapping (capture names
                                   to the eight kinds), Grammars (internal: each language's grammar and queries, and the
                                   compiled-query cache), QueryInheritance (internal: a `; inherits: <folder>` line at the
                                   top of a query brings that folder's query in first), CodeDetector (`detect(_:)`: a
@@ -128,8 +130,10 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
                                   sidebar item + editor area item), EditorAreaViewController (the tab strip above the
                                   editor), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
-                                  menu), AppCommands (the target of the app's own menu items: the tabs, pinning,
-                                  attaching a file, searching and the font size), ToolbarController (sidebar button,
+                                  menu), AppCommands (the target of the app's own menu items: About Scratch, the tabs,
+                                  pinning, attaching a file, searching and the font size), AboutCredits (the About
+                                  panel's credits: the licences in `Acknowledgements.rtf`, in `labelColor`; `credits(in:)`,
+                                  `panelOptions(in:)`), ToolbarController (sidebar button,
                                   paperclip, pin button, new note button), TitlebarPocket (hides
                                   the line macOS 26 draws under the toolbar, section 7)
 App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
@@ -164,7 +168,8 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   (whole paragraphs read in one call), CodeBlockStyler (colours the code of the fenced
                                   blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
                                   language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`,
-                                  `whenHighlighted`), CodeBlockParts (a block's name, code and fence lines from its range)
+                                  `whenHighlighted`; the query warm-up: `warmUp(languagesNamedIn:using:)`,
+                                  `languages(namedIn:)`, `pendingWarmUps`, `warmedLanguages`), CodeBlockParts (a block's name, code and fence lines from its range)
                                   PasteClassifier (whether a paste is code, and the edit that wraps it in a fence:
                                   `wrap`; NoteTextView asks it after every paste, `readSelection(from:)`) and
                                   CodeBlockMenu (the menu of a block's language label, with `CodeBlockAction` and
@@ -206,9 +211,12 @@ App/Sources/Support/              AccessibilityID (also compiled into the UI tes
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
-                                  light and a dark variant)
+                                  light and a dark variant), Acknowledgements.rtf (the licences of tree-sitter and of every
+                                  grammar, generated by `scripts/make-acknowledgements.py`: never edit it by hand)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
-                                  50,000-line paste returns within 500 ms, FrameMonitorTests, EditorViewControllerTests:
+                                  50,000-line paste returns within 500 ms, and a 50,000-line JSON paste and its wrap do too,
+                                  AboutCreditsTests: the About credits list tree-sitter and every grammar,
+                                  SessionWarmUpTests: the open tabs' languages are warmed up, FrameMonitorTests, EditorViewControllerTests:
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
                                   reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
@@ -252,9 +260,12 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   perf-check.py (numbers against baseline and budgets), check-version-bump.sh (a change
                                   to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
                                   release notes footer with the version filled in), check-release-zip.sh (unpacks a
-                                  release zip, checks the app in it and prints its sizes), check-release-dmg.sh (attaches a release DMG
-                                  read-only and checks the window and the app in it), tests/ (their tests, the DMG
-                                  check's against stubs of hdiutil, codesign and lipo)
+                                  release zip, checks the app in it, Acknowledgements.rtf too, and prints its sizes),
+                                  check-release-dmg.sh (attaches a release DMG
+                                  read-only and checks the window and the app in it), make-acknowledgements.py (writes
+                                  App/Resources/Acknowledgements.rtf from Package.resolved, the LICENSE files and the vendored
+                                  grammars; `--check` says whether the file is current), tests/ (their tests, the
+                                  zip and DMG checks' against stubs of ditto, hdiutil, codesign and lipo)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests, version bump check. Job `macos`:
                                   XcodeGen, core tests on macOS, app build and app tests, screenshots, performance tests
                                   and their check, the release zip and the release DMG. Both publish to `ci-results`.
@@ -300,8 +311,14 @@ macOS and runs on GitHub's Macs.
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
 - `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py`,
-  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh` and `check-release-dmg.sh`). Each test file ends with an
-  `all ... passed` line.
+  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh`, `check-release-dmg.sh`, `check-release-zip.sh` and
+  `make-acknowledgements.py`, whose test also holds the checked-in `Acknowledgements.rtf` to `Package.resolved`). Each test
+  file ends with an `all ... passed` line.
+- `python3 scripts/make-acknowledgements.py [--check]` `[linux]`: write `App/Resources/Acknowledgements.rtf`, the licences of
+  tree-sitter and every grammar (from `Packages/ScratchCode/Package.resolved`, SwiftPM's checkouts in
+  `Packages/ScratchCode/.build/checkouts`, which `make core-test` fetches, and the vendored `Sources/Grammar*/LICENSE`), or with
+  `--check` say whether the checked-in file is current. Run it whenever a grammar is added or a version changes
+  (docs/decisions/0007, "Adding a language"), and check the file in.
 - `scripts/check-version-bump.sh <base-ref>` `[linux]`: exit 1 when the branch changed App/ or Packages/ since
   `<base-ref>` without a `VERSION` that is greater than `<base-ref>`'s (compared number by number: 0.10.0 is greater than
   0.9.0), or when `VERSION` is not MAJOR.MINOR.PATCH. CI runs it with `origin/main`.
@@ -335,7 +352,8 @@ macOS and runs on GitHub's Macs.
 
 - `make release-zip` `[macOS]`: build the Release app into `build/release/Scratch.app`, zip it to
   `build/release/Scratch-<VERSION>.zip`, and check what is in the zip (`scripts/check-release-zip.sh`: version and build
-  version, bundle identifier, arm64 only, valid ad-hoc signature, ScratchCode's highlight queries in the app; it prints the
+  version, bundle identifier, arm64 only, valid ad-hoc signature, ScratchCode's highlight queries and
+  `Acknowledgements.rtf` in the app; it prints the
   sizes of the zip, the app and the executable). CI runs it on every push, and the release workflow runs it to make the
   file it publishes.
 - `make release-dmg` `[macOS]`: after `make release-zip` (it runs that first when `build/release/Scratch.app` is not
@@ -572,7 +590,28 @@ new kind of release file, with no change to the app, ships.
   `Queries/<language>/highlights.scm` through `Bundle.module`, which calls `fatalError` when it cannot find
   `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries
   it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 to
-  270 ms for Swift, Release, on Linux), and `Highlighter` is thread-safe.
+  270 ms for Swift, Release, on Linux), and `Highlighter` is thread-safe. `SessionCoordinator.warmUpHighlighting()` (after
+  the first frame, from `AppDelegate`) has `CodeBlockStyler.warmUp(languagesNamedIn:)` compile the queries of the languages
+  that the notes in the open tabs name, through `Highlighter.prepare(_:)`: one language at a time, each a block of its own on
+  the highlight queue, so a block that is shown meanwhile waits for one compile at most. It prepares `Highlighter.shared`, the
+  cache that every request reads; a test passes a `Highlighter()` of its own, because the shared one may be warm already.
+- **`Acknowledgements.rtf` is generated, and the About panel and the release depend on it.** `scripts/make-acknowledgements.py`
+  writes it from `Package.resolved`, the checkouts' `LICENSE` files and the vendored grammars, and `make script-test`
+  (`--check`) fails when a grammar or a version was added or changed and the file was not made again, so a new grammar is
+  never shipped without its licence. A vendored grammar's `README.md` must say where it is from (an `https://github.com/` URL)
+  and its tag or commit, which the script reads. `scripts/check-release-zip.sh` fails a zip without the file in
+  `Contents/Resources`, and `AboutCredits` gives the text `labelColor`, because the file has no colour of its own and black
+  RTF text is unreadable in a dark panel. swift-tree-sitter is BSD 3-Clause, the rest are MIT.
+- **The first line of code of a block with a label is further in from the right than the others.** The label is drawn at the
+  top right and reaches into that line, so its paragraph style has a tail indent of `inset + label width + 12 pt`
+  (`MarkupAppearance.firstCodeLineStyle`, `CodeBlockMetrics.labelReserve`, at most 240 pt, none without a label); every other
+  line of a block is 10 pt in (`codeBodyStyle`). Whatever writes a label or changes which line is first must restyle that
+  line: `CodeBlockStyler.advance` calls `MarkupStyler.labelDidChange(inBlockAt:in:)` in the editing session that writes a
+  label, `storageDidEdit` calls `refreshFirstCodeLines(near:in:)` (an edit that splits or removes the first line leaves its
+  style on a paragraph that is no longer the first, and the edit's own paragraphs do not always include it), and `styleBatch`
+  and `styleBlocks` style the first line apart from the run of lines after it. The label's width is measured in the font it is
+  drawn in (`CodeBlockMetrics.labelFont`), so the two cannot disagree. A test of a block's lines asks for `-10` of every line
+  but the first, whose tail indent is `-(10 + width + 12)`.
 - **Code detection is tuned against `Tests/ScratchCodeTests/Corpus/`, and the corpus only grows.** A paste that is
   detected wrongly becomes a sample first (the folder of its language, `unknown/` for a language Scratch lacks,
   `prose/` for text that must stay plain), then the detector changes until every sample passes. Never delete a prose
@@ -585,6 +624,10 @@ new kind of release file, with no change to the app, ships.
   language is named only when one grammar parses it better than the others (else it is code of an unknown language), and
   a language that shares its idioms with another (TypeScript with JavaScript, C++ with C) is settled by the idioms only
   it has (`CodeDetector.settleScriptFamily`).
+- **A debug build is the slow case of detection, and a JSON document of up to 1,000,000 bytes is validated whole.**
+  `DetectionFeatures.isJSONDocument` runs `JSONShape.isDocument` over every byte of such a paste: 760 KB (50,000 lines of
+  `LargeInsertTests`) took 242 ms in a debug build while `skipSpace` asked an array literal for every byte, and takes 79 ms
+  now. Keep that loop free of allocations: the paste step and the wrap step of a 50,000-line JSON paste are each held to 500 ms.
 - **Detection reads text with its inline code masked.** `DetectionLine` turns what is between a pair of backticks into
   letters before it looks at the line, so `call `init()` first` in a Markdown note is a sentence and not a call.
   `JSONShape` is the JSON check, not `JSONSerialization`: Foundation on Linux accepts a trailing comma and the one on

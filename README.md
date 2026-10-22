@@ -120,7 +120,8 @@ To update, do the same with the new release and choose Replace. Your notes live 
 Scratch is developed only by AI agents. The app is a thin AppKit shell (a TextKit 1 editor, and a Liquid Glass sidebar
 and tab strip) over two Swift packages that build and test on Linux as well as on macOS: `ScratchCore`, which is
 Foundation-only and holds the rules and the SQLite storage, and `ScratchCode`, which wraps
-[tree-sitter](https://tree-sitter.github.io/) (the one third-party dependency) to colour code and to detect it.
+[tree-sitter](https://tree-sitter.github.io/) (the one third-party dependency) to colour code and to detect it. The
+licences of tree-sitter and its grammars are in the About panel.
 Everything that needs a Mac runs on GitHub's Macs, and each merge that changes the app publishes a release.
 
 - [AGENTS.md](AGENTS.md): the entry point for anyone working on the repository: commands, how to verify a change, and

@@ -78,6 +78,10 @@ final class SessionCoordinator: AttachmentImporting {
     /// How long after a purge the next one may run: the app becoming active asks for one each time.
     private static let purgeInterval: TimeInterval = 60 * 60
 
+    /// The texts of the notes that were open in tabs when the session was restored, which `warmUpHighlighting()` hands to the
+    /// highlighter once the first frame is out, and then forgets.
+    private var warmUpTexts: [String] = []
+
     /// Every live note as of the last read of the note list, whatever the search field says. The pin button and the
     /// menu item read the pin of the active note from it.
     private var latestLive: [NoteSummary] = []
@@ -149,6 +153,18 @@ final class SessionCoordinator: AttachmentImporting {
         }
     }
 
+    // MARK: Warming up
+
+    /// Has the highlight queue compile the queries of the languages that the fences of the notes in the open tabs name, so
+    /// that the first block in such a language, in the note that is shown or in one that a tab switch shows, is coloured
+    /// without waiting for its query (plan 5 task 7). `AppDelegate` calls it once the first frame is out. The texts are read
+    /// and the queries compiled on the highlight queue (`CodeBlockStyler.warmUp`), and a second call has nothing to do.
+    func warmUpHighlighting() {
+        let texts = warmUpTexts
+        warmUpTexts = []
+        editor.textView.styler.codeBlockStyler.warmUp(languagesNamedIn: texts)
+    }
+
     // MARK: Restoring
 
     /// Shows the tabs of the saved session, with the active note, its cursor and scroll position, and starts loading
@@ -190,6 +206,8 @@ final class SessionCoordinator: AttachmentImporting {
                 }
                 if !kept.isEmpty {
                     let list = TabList(tabs: kept, activeIndex: activeKept ?? 0)
+                    // The notes of all the tabs are read here already: their fences say which queries to compile.
+                    warmUpTexts = kept.compactMap { notes[$0.noteID]?.body }
                     for note in notes.values {
                         tabItems[note.id] = Self.item(for: note)
                         if Self.isNeverUsed(note) { untouchedNoteIDs.insert(note.id) }

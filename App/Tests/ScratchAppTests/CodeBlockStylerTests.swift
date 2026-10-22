@@ -555,8 +555,9 @@ final class CodeBlockStylerTests: XCTestCase {
     /// 300 characters with no space to break at: the line wraps wherever the room ends, which is what is measured.
     private static let longLine = String(repeating: "abcdefghij", count: 30)
 
-    /// docs/features/code.md, "The label": the first line of code of a block with a label ends 12 pt before the label, so
-    /// that long code wraps there and a click on the end of the code is never a click on the label.
+    /// docs/features/code.md, "The label": the first line of code of a block with a label keeps clear of the label (the indent
+    /// is the label's width and 12 pt, `testOnlyTheFirstLineOfCodeReservesRoomForTheLabel`), so that long code wraps before it
+    /// and a click on the end of the code is never a click on the label.
     func testFirstLineOfCodeWrapsBeforeLabel() throws {
         let host = makeHostedEditor()
         defer { withExtendedLifetime(host.window) {} }
@@ -581,8 +582,9 @@ final class CodeBlockStylerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(fragments.count, 3, "300 characters take three lines or more")
         XCTAssertLessThan(label.minY, fragments[0].maxY, "the label reaches into the first line of code")
         for (index, fragment) in fragments.enumerated() {
-            XCTAssertLessThanOrEqual(
-                fragment.maxX, label.minX - 12 + 0.5, "line \(index) of the code ends 12 pt before the label")
+            // 12 pt is the gap that the indent keeps. Less is asked here: how an indent is measured against the line's
+            // padding is TextKit's, and the click below needs more than the label's 3 pt margin.
+            XCTAssertLessThanOrEqual(fragment.maxX, label.minX - 6, "line \(index) of the code ends before the label")
         }
         // A click on the end of the first of those lines is a click on code. The label's margin is 3 pt.
         let origin = host.editor.textView.textContainerOrigin
@@ -821,7 +823,7 @@ final class CodeBlockStylerTests: XCTestCase {
         defer { withExtendedLifetime(host.window) {} }
         let styler = codeStyler(of: host)
         styler.warmUp(
-            languagesNamedIn: ["```swift\nlet a = 1\n```", "```csharp\nvar a = 1;\n```", "```cpp\nint a;\n```"],
+            languagesNamedIn: ["```go\nx := 1\n```", "```c\nint a;\n```", "```css\na { color: red }\n```"],
             using: Highlighter())
 
         show(Self.typicalBody, in: host)

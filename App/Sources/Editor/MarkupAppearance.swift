@@ -15,6 +15,8 @@ final class MarkupAppearance {
     /// The width of one character of the monospaced note font, which is what a list's hanging indent counts in.
     let spaceWidth: CGFloat
     private var indentStyles: [Int: NSParagraphStyle] = [:]
+    /// The styles of the first line of code, by the name on the label of the block (`firstCodeLineStyle(labelName:)`).
+    private var firstCodeLineStyles: [String: NSParagraphStyle] = [:]
 
     init(fontSize: Double) {
         self.fontSize = fontSize
@@ -67,6 +69,33 @@ final class MarkupAppearance {
         style.tailIndent = -CodeBlockMetrics.inset
         return style
     }()
+
+    /// The paragraph style of the first line of code of a block whose label takes `labelReserve` points of the right side of
+    /// that line (`CodeBlockMetrics.labelReserve`): the style of a line of code with its tail indent pulled in by that much,
+    /// so that the line, and what it wraps into, ends before the label that reaches into it (plan 5 task 7). The style of any
+    /// other line of code, `codeBodyStyle`, for a block with no label.
+    static func firstCodeLineStyle(labelReserve: CGFloat) -> NSParagraphStyle {
+        guard labelReserve > 0 else { return codeBodyStyle }
+        let style = NSMutableParagraphStyle()
+        style.firstLineHeadIndent = CodeBlockMetrics.inset
+        style.headIndent = CodeBlockMetrics.inset
+        style.tailIndent = -(CodeBlockMetrics.inset + labelReserve)
+        return style
+    }
+
+    /// The style of the first line of code of a block whose label says `name`, at this font size: measuring a label is not free,
+    /// and a note of 100 blocks styles 100 first lines when it is shown, so the styles are kept by name. Empty `name`: no label.
+    func firstCodeLineStyle(labelName name: String) -> NSParagraphStyle {
+        if let style = firstCodeLineStyles[name] { return style }
+        let style = Self.firstCodeLineStyle(
+            labelReserve: CodeBlockMetrics.labelReserve(name: name, noteSize: CGFloat(fontSize)))
+        // A note can have any number of fence names, each a label of its own: the table stays small.
+        if firstCodeLineStyles.count >= Self.firstCodeLineStyleLimit { firstCodeLineStyles.removeAll() }
+        firstCodeLineStyles[name] = style
+        return style
+    }
+
+    private static let firstCodeLineStyleLimit = 64
 
     /// The paragraph style of a fence line while it is hidden: a line of exactly `CodeBlockMetrics.fenceHeight`, so that
     /// the top and the bottom of the block have a little padding and no text.

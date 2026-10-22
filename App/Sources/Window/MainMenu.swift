@@ -11,7 +11,7 @@ enum MainMenu {
         let menuBar = NSMenu()
         let windowMenu = windowMenu(commands: commands)
         for menu in [
-            appMenu(), fileMenu(commands: commands), editMenu(commands: commands), formatMenu(),
+            appMenu(commands: commands), fileMenu(commands: commands), editMenu(commands: commands), formatMenu(),
             viewMenu(commands: commands), windowMenu,
         ] {
             let item = NSMenuItem()
@@ -64,11 +64,11 @@ enum MainMenu {
     /// Shift+Tab's character, `NSBackTabCharacter`.
     private static let backTab = "\u{19}"
 
-    private static func appMenu() -> NSMenu {
+    /// About Scratch is the app's own item, so that the panel can show the licences of tree-sitter as its credits
+    /// (`AboutCredits`).
+    private static func appMenu(commands: AppCommands) -> NSMenu {
         let menu = NSMenu(title: "Scratch")
-        menu.addItem(
-            withTitle: "About Scratch", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
-            keyEquivalent: "")
+        menu.addItem(commandItem("About Scratch", #selector(AppCommands.showAbout(_:)), key: "", target: commands))
         menu.addItem(.separator())
         menu.addItem(withTitle: "Hide Scratch", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = menu.addItem(

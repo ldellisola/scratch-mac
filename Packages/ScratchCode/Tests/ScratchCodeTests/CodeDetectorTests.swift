@@ -199,6 +199,26 @@ private func fastest(of runs: Int = 3, _ work: () -> Void) -> Duration {
     #expect(longElapsed < bound(.milliseconds(1_000)), "took \(longElapsed)")
 }
 
+@Test func aFiftyThousandLineJSONDocumentIsFoundQuickly() {
+    // Plan 5 task 7, the "large code paste" follow-up: 50,000 lines of pretty-printed JSON, 760 KB, which is under the size
+    // up to which a JSON document is validated whole, so every byte goes through `JSONShape`. The app's paste test
+    // (`LargeInsertTests`) holds the detection and the wrap that follows it to 500 ms together, in a debug build.
+    let objects = 16_666
+    var lines = ["["]
+    for index in 1...objects {
+        lines.append("  {")
+        lines.append("    \"id\": \(index), \"name\": \"item \(index)\"")
+        lines.append(index == objects ? "  }" : "  },")
+    }
+    lines.append("]")
+    let text = lines.joined(separator: "\n")
+    #expect(lines.count == 50_000)
+    #expect(text.utf8.count < 1_000_000)
+    #expect(answer(text) == "json")
+    let elapsed = fastest(of: 2) { _ = CodeDetector.detect(text) }
+    #expect(elapsed < bound(.milliseconds(250)), "took \(elapsed)")
+}
+
 // MARK: The strong signals
 
 @Test func aShebangNamesTheLanguage() {

@@ -83,6 +83,12 @@ key press
   A colour is never a character and never an attribute of the text, so storage, copy and search never see it, and a
   keystroke in a block keeps the colours of its line until the new result replaces them. A result is for a text, not a
   place, so a result for text that was edited since is dropped and never lands on newer text.
+- **The queries are warmed up after the first frame, and the label has its room.** `AppDelegate` asks
+  `SessionCoordinator.warmUpHighlighting()` once the frame is out, which hands the notes that were open in tabs to
+  `CodeBlockStyler.warmUp`: on the same highlight queue, one language at a time, `Highlighter.prepare` compiles the query of
+  each language that their fences name, so the first block in it is not coloured 240 to 270 ms late. The first line of code of
+  a block with a label has a tail indent for the label (`MarkupAppearance.firstCodeLineStyle`), which `MarkupStyler` keeps
+  current (`CodeBlockStyler` tells it when a label is written), so the label never covers code.
 - **A paste is a plain paste first, and a second edit wraps code in a fence.** `NoteTextView.paste` inserts the
   pasteboard's text as always. On a later turn of the main run loop, once the undo group of the paste has closed,
   `PasteClassifier.wrap` asks `CodeDetector` about it (never for one line, a paste into code, or one with a fence line in

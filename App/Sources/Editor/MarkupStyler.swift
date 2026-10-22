@@ -416,6 +416,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         _ = styleBatch(batch, in: storage)
         // The paragraphs that moved into or out of a block, other than the ones just styled.
         let movedChanged = restyle(moved.filter { !Self.contains(paragraphs, $0) }, text: text, storage: storage)
+        refreshFirstCodeLines(near: paragraphs, in: storage)
         storage.endEditing()
         isApplying = false
         invalidationAfterEdit = Self.union(invalidationAfterEdit, movedChanged)
@@ -601,7 +602,12 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             if let block = block(coveringParagraphStart: paragraph.location) {
                 let part = Self.part(ofParagraphAt: paragraph.location, in: block)
                 if part == .body {
-                    if let run = codeRun, NSMaxRange(run) == paragraph.location {
+                    if isFirstCodeLine(at: paragraph.location, of: block, in: storage) {
+                        // The label reaches into this line, so it alone has room kept for it (`firstCodeLineStyle`).
+                        flushCodeRun()
+                        styleCodeBody(
+                            paragraph, style: firstCodeLineStyle(of: block, in: storage), in: storage)
+                    } else if let run = codeRun, NSMaxRange(run) == paragraph.location {
                         codeRun = NSRange(location: run.location, length: run.length + paragraph.length)
                     } else {
                         flushCodeRun()
@@ -676,8 +682,15 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             if styleFenceLine(of: opening, part: .opening, contentLength: openingLength, info: info, in: storage) {
                 changed = Self.union(changed, opening)
             }
-            styleCodeBody(
-                NSRange(location: NSMaxRange(opening), length: closing.location - NSMaxRange(opening)), in: storage)
+            // The first line of code has room kept for the label, the others do not.
+            let bodyEnd = closing.location
+            if bodyEnd > NSMaxRange(opening) {
+                let first = NSIntersectionRange(
+                    text.paragraphRange(for: NSRange(location: NSMaxRange(opening), length: 0)),
+                    NSRange(location: NSMaxRange(opening), length: bodyEnd - NSMaxRange(opening)))
+                styleCodeBody(first, style: firstCodeLineStyle(of: block, in: storage), in: storage)
+                styleCodeBody(NSRange(location: NSMaxRange(first), length: bodyEnd - NSMaxRange(first)), in: storage)
+            }
             let closingLength = NSMaxRange(block.range) - block.closingLineStart
             if styleFenceLine(of: closing, part: .closing, contentLength: closingLength, info: "", in: storage) {
                 changed = Self.union(changed, closing)
@@ -686,17 +699,91 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         return changed
     }
 
-    /// Gives the lines of code in `range` (whole paragraphs, between two fence lines) their indent and their mark, unless
-    /// the first of them has both. Returns true when it wrote them.
+    /// Gives the lines of code in `range` (whole paragraphs, between two fence lines) their indent, `style`, and their mark,
+    /// unless the first of them has both. Returns true when it wrote them. `style` is the style of a line of code, and for
+    /// the first line of a block with a label the one that keeps the line clear of the label (`firstCodeLineStyle`).
     @discardableResult
-    private func styleCodeBody(_ range: NSRange, in storage: NSTextStorage) -> Bool {
+    private func styleCodeBody(
+        _ range: NSRange, style: NSParagraphStyle = MarkupAppearance.codeBodyStyle, in storage: NSTextStorage
+    ) -> Bool {
         guard range.length > 0 else { return false }
-        let style = storage.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle
+        let current = storage.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle
         let mark = storage.attribute(.scratchCodeBlock, at: range.location, effectiveRange: nil) as? CodeBlockMark
-        if style == MarkupAppearance.codeBodyStyle, mark == CodeBlockMark.body { return false }
-        storage.addAttributes(
-            [.paragraphStyle: MarkupAppearance.codeBodyStyle, .scratchCodeBlock: CodeBlockMark.body], range: range)
+        if current == style, mark == CodeBlockMark.body { return false }
+        storage.addAttributes([.paragraphStyle: style, .scratchCodeBlock: CodeBlockMark.body], range: range)
         return true
+    }
+
+    // MARK: The first line of code
+
+    /// True when the paragraph that starts at `location`, a line of code of `block`, is the first of them: the one right
+    /// after the opening fence line. Only a paragraph that starts within a line break of the end of that line is looked at.
+    private func isFirstCodeLine(at location: Int, of block: CodeBlockIndex.Block, in storage: NSTextStorage) -> Bool {
+        guard location > block.openingLineEnd, location - block.openingLineEnd <= 2 else { return false }
+        let text = storage.string as NSString
+        return NSMaxRange(text.paragraphRange(for: NSRange(location: block.range.location, length: 0))) == location
+    }
+
+    /// What the label of `block` says: the name on its opening fence line's mark, which is what `CodeBlockStyler` and
+    /// `styleFenceLine` write, or, for a fence line that is not styled yet (a long note is styled in chunks), what its fence
+    /// names. Empty for a block with no label.
+    private func labelName(of block: CodeBlockIndex.Block, in storage: NSTextStorage) -> String {
+        if let mark = storage.attribute(.scratchCodeBlock, at: block.range.location, effectiveRange: nil)
+            as? CodeBlockMark, mark.part == .opening
+        {
+            return mark.name
+        }
+        let text = storage.string as NSString
+        let info = CodeBlockParts.info(
+            ofFenceLine: text.substring(
+                with: NSRange(location: block.range.location, length: block.openingLineEnd - block.range.location)))
+        return CodeLanguage.fromFence(info)?.label ?? info
+    }
+
+    /// The paragraph style of the first line of code of `block`: the room that its label takes from the right is kept clear
+    /// (`MarkupAppearance.firstCodeLineStyle`), so that the label never covers code and a click on the code never opens its
+    /// menu (plan 5 task 7, a 0.4.0 follow-up).
+    private func firstCodeLineStyle(of block: CodeBlockIndex.Block, in storage: NSTextStorage) -> NSParagraphStyle {
+        appearance.firstCodeLineStyle(labelName: labelName(of: block, in: storage))
+    }
+
+    /// Gives the first line of code of `block` the style it must have, and the line after it the style of any other line of
+    /// code: the line that was the first can have become the second (a line was split or inserted above it). Nothing is
+    /// written for a line that is as it should be.
+    private func refreshFirstCodeLines(of block: CodeBlockIndex.Block, in storage: NSTextStorage) {
+        let text = storage.string as NSString
+        let opening = text.paragraphRange(for: NSRange(location: block.range.location, length: 0))
+        let bodyStart = NSMaxRange(opening)
+        guard bodyStart < block.closingLineStart else { return }
+        let first = text.paragraphRange(for: NSRange(location: bodyStart, length: 0))
+        styleCodeBody(first, style: firstCodeLineStyle(of: block, in: storage), in: storage)
+        let secondStart = NSMaxRange(first)
+        if secondStart < block.closingLineStart {
+            styleCodeBody(text.paragraphRange(for: NSRange(location: secondStart, length: 0)), in: storage)
+        }
+    }
+
+    /// Does `refreshFirstCodeLines(of:in:)` for the blocks that `range`, and a character on each side of it, touches. Called
+    /// inside `beginEditing()` and `endEditing()`, after an edit has been styled: an edit that splits the first line of code or
+    /// takes it away leaves its style on a paragraph that is no longer the first, which the paragraphs of the edit do not
+    /// always include.
+    private func refreshFirstCodeLines(near range: NSRange, in storage: NSTextStorage) {
+        let blocks = codeBlocks.blocks
+        guard !blocks.isEmpty else { return }
+        let limit = NSMaxRange(range) + 1
+        var index = Self.firstBlockIndex(endingAtOrAfter: max(range.location - 1, 0), in: blocks)
+        while index < blocks.count, blocks[index].range.location <= limit {
+            refreshFirstCodeLines(of: blocks[index], in: storage)
+            index += 1
+        }
+    }
+
+    /// `CodeBlockStyler` wrote the label of the block that opens at `location` (a language that was detected, or none any
+    /// more): the first line of code is given the room for it, or loses it. Call it inside `beginEditing()` and
+    /// `endEditing()`, after the label is written.
+    func labelDidChange(inBlockAt location: Int, in storage: NSTextStorage) {
+        guard let block = codeBlock(containing: location), block.range.location == location else { return }
+        refreshFirstCodeLines(of: block, in: storage)
     }
 
     /// Styles a fence line of a block: its characters are hidden, or shown while the selection touches them, and its

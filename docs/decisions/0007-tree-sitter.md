@@ -1,7 +1,9 @@
 # 0007: tree-sitter, and the packages it comes in
 
 Status: accepted, 2026-10-21. Amended 2026-10-22 (Plan 5, task 3): the SQL grammar is vendored and no package is pinned with
-`revision:` any more. Spec §8.1 names tree-sitter as the highlighting engine and as the one significant
+`revision:` any more. Amended 2026-10-22 (Plan 5, task 7): the licences are shown in the About panel and checked in a release,
+swift-tree-sitter's licence is BSD 3-Clause (the table said MIT), and the app compiles the queries of the languages in the open
+tabs before they are needed. Spec §8.1 names tree-sitter as the highlighting engine and as the one significant
 third-party dependency. This record fixes the packages, their versions and how they are used, and is the checklist for
 adding a language. The wrapper, the package layout and the vendoring are [builder] calls inside §8.1.
 
@@ -30,7 +32,12 @@ SQL 11, Rust 11, Java 7, Go 5, JSON 5, CSS 6, C 9, C++ 7, C# 8, Bash 9, HTML 10,
 longest; AGENTS.md has carried 240 ms from another run, so the figure to plan for is 240 to 270 ms), C# 58, SQL 57, C++ 43
 (its own query and C's), TypeScript 34 (and JavaScript's), Rust 27, Python 14, JavaScript 13, Bash 10, Java 8, YAML 8, C 5, PowerShell 4, Go 3, CSS 1, HTML and JSON under 1. All are far below the
 paste budget (§7: 50 ms) once the query exists, but the first Swift paste after a launch would pay the 240 to 270 ms, so
-the app should compile the queries of the languages it expects on its highlight queue before they are needed.
+the app should compile the queries of the languages it expects on its highlight queue before they are needed. Plan 5 (task 7)
+does: `Highlighter.prepare(_:)` compiles one language's query into the cache that `tokens(in:language:)` reads, and after the
+first frame `SessionCoordinator.warmUpHighlighting()` has `CodeBlockStyler.warmUp(languagesNamedIn:)` call it, one language at
+a time on the highlight queue, for the languages that the fences of the notes in the open tabs name. A block that is shown
+while that runs waits for one compile at most. The query of a language that nothing in the open tabs names is still compiled
+by the first text in it.
 
 ### Packages
 
@@ -42,7 +49,7 @@ code. `Packages/ScratchCode/Package.resolved` records the revisions.
 
 | Package | URL | Version | Licence | Used as |
 |---|---|---|---|---|
-| swift-tree-sitter | https://github.com/tree-sitter/swift-tree-sitter | 0.25.0 | MIT | dependency (`SwiftTreeSitter`) |
+| swift-tree-sitter | https://github.com/tree-sitter/swift-tree-sitter | 0.25.0 | BSD 3-Clause | dependency (`SwiftTreeSitter`) |
 | tree-sitter (the C runtime) | https://github.com/tree-sitter/tree-sitter | 0.25.10 | MIT | dependency (`TreeSitter`) |
 | tree-sitter-swift (grammar) | https://github.com/alex-pinkus/tree-sitter-swift | 0.7.4-with-generated-files | MIT | dependency (`TreeSitterSwift`) |
 | tree-sitter-python (grammar) | https://github.com/tree-sitter/tree-sitter-python | v0.25.0 | MIT | vendored (`Sources/GrammarPython`) |
@@ -82,6 +89,25 @@ CI run slow. So Plan 5 (task 3) vendored the generated files of the same commit,
 (`cmp` against the checkout), so the highlighting and the detection are as they were, and `highlights.scm` was already a
 copy of that commit's. `GrammarsTests.sqlBuildsFromVendoredSources` fails if `Package.swift` pins a `revision:` again or
 the vendored files go. The repository grows by the 41 MB file (2.8 MB gzipped).
+
+### Licences
+
+Every component is under the MIT licence but swift-tree-sitter (BSD 3-Clause), and both licences ask that the notice travel
+with the software. `App/Resources/Acknowledgements.rtf` carries them, a heading with the name, the version and the
+repository of each component and then the text of its `LICENSE` file, and the About panel shows it as its credits
+(`AboutCredits`, passed to `NSApplication.orderFrontStandardAboutPanel(options:)` by `AppCommands.showAbout`). The text is
+`labelColor`, so it is readable in a dark window. The file is generated and checked in, so that a new grammar adds itself:
+
+- `scripts/make-acknowledgements.py` reads `Packages/ScratchCode/Package.resolved` (every package that SwiftPM resolves, with
+  its exact version), the `LICENSE` of each in SwiftPM's checkouts (`.build/checkouts/<identity>/`, there after `make
+  core-test`), and the vendored grammars (`Sources/Grammar*/LICENSE`, whose `README.md` names the repository and the tag or
+  the commit). It writes the file in alphabetical order with nothing in it that depends on the day or the machine.
+- `scripts/make-acknowledgements.py --check` exits 1 when the checked-in file is not what it would write. `make script-test`
+  runs it (`scripts/tests/test-acknowledgements.sh`), so the `linux` job fails when a grammar is added, or a version is
+  changed, and the file is not made again. Without the checkouts it can only compare the names and versions.
+- `scripts/check-release-zip.sh` fails a zip whose app has no `Contents/Resources/Acknowledgements.rtf`, an empty one, or
+  one that does not name tree-sitter (`scripts/tests/test-release-zip.sh`).
+- The copies of the grammars' `highlights.scm` are under the licence of their grammar, which the file says.
 
 ### Grammars that cannot be a dependency at a version are vendored
 
@@ -190,6 +216,10 @@ its parents', so they win when captures overlap (below). `Grammar.queryFolders` 
 4. Add `Tests/ScratchCodeTests/Samples/<fence name>.txt` (15 to 40 lines of ordinary code that parses cleanly), its kinds
    in `expectedKinds` of `HighlighterTests`, and a test of what is special about the language.
 5. Add the package, its URL, its exact version and its licence to the table above, and the app size to the table below.
+6. Run `swift package --package-path Packages/ScratchCode resolve` and `python3 scripts/make-acknowledgements.py`, and check
+   in the new `App/Resources/Acknowledgements.rtf`: the language's licence is part of the app. A vendored grammar's
+   `README.md` must name its repository (an `https://github.com/` URL) and its tag (``at tag `v1.2.3` ``) or its commit
+   (``at commit `abc...` ``), which the script reads.
 
 ## App size
 

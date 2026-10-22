@@ -110,6 +110,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             toolbarController?.setAttachEnabled(enabled)
             appCommands?.setActiveNotePin(pinned: pinned, enabled: enabled)
         }
+        // Scratch > About Scratch shows the licences of tree-sitter and its grammars as its credits (plan 5 task 7).
+        commands.onShowAbout = { NSApp.orderFrontStandardAboutPanel(options: AboutCredits.panelOptions()) }
         // View > Bigger, Smaller and Actual Size (spec §6.4).
         commands.onBigger = { [weak coordinator] in coordinator?.changeFontSize(FontSize.larger) }
         commands.onSmaller = { [weak coordinator] in coordinator?.changeFontSize(FontSize.smaller) }
@@ -129,6 +131,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 coordinator?.purgeExpiredNotes(now: Date())
                 coordinator?.sweepUnreferencedAttachments(now: Date())
             }
+        }
+
+        // The queries of the languages in the open tabs are compiled on the highlight queue once the first frame is out, so that
+        // the first block in one of them is not coloured late (plan 5 task 7). After the signpost intervals of the frame, like
+        // the chunks that style a long note.
+        RunLoopIdle.onNext(order: RunLoopIdle.afterMeasurementsOrder) { [weak coordinator] in
+            coordinator?.warmUpHighlighting()
         }
 
         if let file = environment.options.frameMonitorFile {

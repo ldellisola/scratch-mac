@@ -585,3 +585,54 @@ func eachSampleShowsTheKindsAReaderExpects(language: CodeLanguage) {
             "\(language.fenceName): \(tokens)")
     }
 }
+
+// MARK: Warm-up
+
+// Plan 5, task 7 (the "late first colours" follow-up of 0.4.0): the app compiles the queries of the languages it expects on
+// its highlight queue, before a text needs them. docs/features/code.md, "Late first colours".
+
+@Test func aQueryIsCompiledOnlyWhenAskedFor() {
+    let highlighter = Highlighter()
+    for language in CodeLanguage.allCases { #expect(!highlighter.isPrepared(language), "\(language.fenceName)") }
+
+    #expect(highlighter.prepare(.go))
+    #expect(highlighter.isPrepared(.go))
+    #expect(!highlighter.isPrepared(.rust), "preparing one language leaves the others alone")
+    #expect(!highlighter.isPrepared(.swift))
+}
+
+@Test func preparingTwiceIsHarmless() {
+    let highlighter = Highlighter()
+    #expect(highlighter.prepare(.python))
+    #expect(highlighter.prepare(.python))
+    #expect(highlighter.isPrepared(.python))
+}
+
+@Test func aLanguageThatInheritsAQueryIsPrepared() {
+    // TypeScript's query is JavaScript's and its own (`QueryInheritance`): one compile.
+    let highlighter = Highlighter()
+    #expect(highlighter.prepare(.typescript))
+    #expect(highlighter.isPrepared(.typescript))
+}
+
+@Test func tokensAreTheSameWhetherOrNotTheQueryWasPrepared() {
+    let prepared = Highlighter()
+    let cold = Highlighter()
+    #expect(prepared.prepare(.swift))
+    #expect(prepared.tokens(in: swiftSample, language: .swift) == cold.tokens(in: swiftSample, language: .swift))
+    #expect(cold.isPrepared(.swift), "a text in a language compiles its query, as before")
+}
+
+@Test func theSharedHighlighterIsTheOneThatIsPrepared() {
+    // `CodeBlockStyler`'s warm-up prepares `Highlighter.shared`, and its requests use it: "the same cache".
+    #expect(Highlighter.shared.prepare(.json))
+    #expect(Highlighter.shared.isPrepared(.json))
+}
+
+@Test func preparingEveryLanguageSucceeds() {
+    let highlighter = Highlighter()
+    for language in CodeLanguage.allCases {
+        #expect(highlighter.prepare(language), "\(language.fenceName)")
+        #expect(highlighter.isPrepared(language), "\(language.fenceName)")
+    }
+}

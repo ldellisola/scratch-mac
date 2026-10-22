@@ -372,9 +372,8 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         -> [NSAttributedString.Key: Any]
     {
         let noteSize = (storage.attribute(.font, at: characterIndex, effectiveRange: nil) as? NSFont)?.pointSize ?? 13
-        let size = max(noteSize - CodeBlockMetrics.labelSizeReduction, 7)
         var attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: size, weight: .regular),
+            .font: CodeBlockMetrics.labelFont(noteSize: noteSize),
             .foregroundColor: CodeBlockColors.label,
         ]
         if mark.isDetected { attributes[.obliqueness] = CodeBlockMetrics.labelObliqueness }

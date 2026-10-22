@@ -141,6 +141,15 @@ final class QueryCache: Sendable {
         self.slots = slots
     }
 
+    /// True when the query for `language` has been compiled (and did compile).
+    func isBuilt(_ language: CodeLanguage) -> Bool {
+        guard let slot = slots[language] else { return false }
+        return slot.entry.withLock { state in
+            if case .built = state { return true }
+            return false
+        }
+    }
+
     /// The compiled query for `language`, or nil when its query does not compile (a bug that the highlighter tests
     /// catch). Holds the language's own lock while it compiles, so that two threads asking at once compile it once.
     func compiledQuery(for language: CodeLanguage, grammar: Grammar) -> CompiledQuery? {

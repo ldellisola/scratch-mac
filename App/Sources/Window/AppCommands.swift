@@ -14,6 +14,9 @@ final class AppCommands: NSObject, NSMenuItemValidation {
     /// Called by View > Actual Size (⌘0).
     var onActualSize: (() -> Void)?
 
+    /// Called by Scratch > About Scratch, which shows the About panel with the licences of tree-sitter as its credits.
+    var onShowAbout: (() -> Void)?
+
     /// Called by File > New Note (⌘N) and File > New Tab (⌘T): both open a new empty note in a new tab.
     var onNewNote: (() -> Void)?
     /// Called by File > Close Tab (⌘W).
@@ -50,6 +53,10 @@ final class AppCommands: NSObject, NSMenuItemValidation {
         guard menuItem.action == #selector(togglePin(_:)) else { return true }
         menuItem.title = activeNoteIsPinned ? "Unpin Note" : "Pin Note"
         return activeNoteCanBePinned
+    }
+
+    @objc func showAbout(_ sender: Any?) {
+        onShowAbout?()
     }
 
     @objc func bigger(_ sender: Any?) {
