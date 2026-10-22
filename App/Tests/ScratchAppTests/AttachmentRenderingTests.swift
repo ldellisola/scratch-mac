@@ -568,7 +568,7 @@ final class AttachmentRenderingTests: XCTestCase {
             storage: storage, directory: directory, note: try saveNote(body, id: noteID, in: storage),
             scrollAnchor: anchor, settles: false)
         defer { host.cleanUp() }
-        let styler = host.editor.textView.styler
+        let styler: MarkupStyler = host.editor.textView.styler
         XCTAssertFalse(styler.isFullyStyled, "the text above the window is still to be styled in chunks")
         XCTAssertEqual(
             lineNumber(ofOffset: host.editor.currentScrollAnchor, in: body), 1_400, "the note is at its anchor")
