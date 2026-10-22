@@ -12,9 +12,12 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
-- Latest plan: [`docs/superpowers/plans/2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md),
-  done and released as 0.4.0 (code: highlighting, code blocks, paste classification, the language label menu, and bold
-  at word boundaries). Plan 3, released as 0.3.0 (the formatting):
+- Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
+  in progress for 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out and
+  copied; plus the 0.4.0 follow-ups). Its Task 1 is done: titles skip fence and attachment lines, `AttachmentID` and
+  `AttachmentToken` exist, and the schema is version 3. Plan 4, done and released as 0.4.0 (code: highlighting, code
+  blocks, paste classification, the language label menu, and bold at word boundaries):
+  [`2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
   [`2026-10-20-plan-2-notes-and-tabs.md`](docs/superpowers/plans/2026-10-20-plan-2-notes-and-tabs.md). Plan 1, released
   as 0.1.0: [`2026-10-19-plan-1-walking-skeleton.md`](docs/superpowers/plans/2026-10-19-plan-1-walking-skeleton.md).
@@ -24,12 +27,18 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 ```
 Packages/ScratchCore/             Foundation-only Swift package. Builds and tests on Linux and macOS.
   Sources/CSQLite/                module map for the system SQLite library (no pkgConfig, on purpose)
-  Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview. NoteSummary: a sidebar
+  Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview (a title and a preview skip
+                                  blank lines, fence lines and attachment lines). NoteSummary: a sidebar
                                   row (`deletedAt` is set for Recently Deleted rows). NoteStore: reads and writes the
                                   notes table (pinned first, newest edit first), searches it (`search`), and pins,
                                   deletes, restores and purges notes (`setPinned`, `delete`, `restore`,
                                   `deletePermanently`, `deletedSummaries`, `purge`). SearchQuery: typed text to an
                                   FTS5 MATCH expression
+  Sources/ScratchCore/Attachments/ AttachmentID (a lowercase UUID, like NoteID) and AttachmentToken: the line
+                                  `[[attachment:<id>]]` that stands for an attachment in a note (`line(for:)`,
+                                  `id(inLine:)`: the whole line and nothing else, `ids(in:)`: every token of a text, in
+                                  order, `lineRanges(in:within:)`: the token lines a UTF-16 range touches). Plan 5
+                                  adds the store (Task 2)
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores: the tabs, the active one, the
                                   font size, and each tab's cursor and `scrollAnchor`), SessionStore (JSON under key
                                   "state"), TabList (the tab rules: open, close, select, with TabOpening and
@@ -43,8 +52,9 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   UnsavedNotes (the notes whose write failed, kept with the owner's text until a write
                                   succeeds: thread-safe, the newest copy of a note wins)
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
-                                  SQLValue and Row, Schema (version 2, with the FTS5 index `notes_fts`, the migration
-                                  rule, and SchemaError for a database from a newer Scratch), ScratchStorage (opens
+                                  SQLValue and Row, Schema (version 3, with the FTS5 index `notes_fts`, the
+                                  `attachments` table, the migration rule, and SchemaError for a database from a newer
+                                  Scratch), ScratchStorage (opens
                                   the data directory and its stores; refuses a fixture on the real directory; its
                                   `database` is public so that tests can make writes fail, see section 7)
   Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
@@ -452,6 +462,17 @@ new kind of release file, with no change to the app, ships.
   an old step, because it has already run on real databases. Dates are stored as REAL `timeIntervalSinceReferenceDate`.
   `Schema.migrate` refuses a database whose `user_version` is newer than `currentVersion`
   (`SchemaError.newerThanSupported`, whose message is the "cannot start" alert) and changes nothing in it.
+- **A change to how a note's title or preview is derived needs a migration step that works them out again.** The sidebar
+  columns `display_title`, `has_title` and `preview` are written on every save and never recomputed, so the rows of notes
+  nobody edits keep the old rule. Schema v3 does it for the rule "skip fence and attachment lines": it builds a `Note` from
+  each row's title and body (the same code `NoteStore.save` runs), and writes only those three columns, and only when they
+  differ, so `modified_at`, the list order and the search index stay as they were. A note that holds only fences and
+  attachments has an empty `display_title` and is still not `isEmpty`: a note with an attachment is never an unused note.
+- **An attachment line is judged as typed, a fence line too.** `Note` looks at a line before it trims it, as the styler will:
+  `AttachmentToken.id(inLine:)` accepts exactly `[[attachment:<lowercase UUID>]]` and nothing else on the line, so
+  `" [[attachment:…]]"` is text and a title. `AttachmentToken.ids(in:)` counts a token inside a fenced block too, because
+  counting one more reference only keeps a file. `lineRanges(in:within:)` splits lines at `\n`, `\r\n` and `\r` only, like the
+  core, not at `NSString`'s paragraph separators, and says a caret touches the token line it is on, both edges included.
 - **Never `VACUUM` the database.** The search index `notes_fts` is keyed on the `notes` table's implicit `rowid`, which
   `VACUUM` may renumber, and every hit would then point at the wrong note. `notes_fts` is an external-content table: it
   holds no text of its own, and three triggers keep it current, so never write to it by hand. `NoteStore.save` uses

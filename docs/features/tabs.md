@@ -54,7 +54,8 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
 - **The tab strip.** A Liquid Glass bar (`NSGlassEffectView`, corner radius 14, 32 pt tall) below the toolbar, 12 pt from
   the left. It is as wide as its tabs, and no wider than the editor area less 12 pt on each side.
   - A tab is 120 to 200 pt wide, and shares the strip when they do not all fit. Its title is the note's title, or else
-    the first line of the note, or else "Untitled". A titled tab is bold, an untitled one is in the note font.
+    the first line of the note that is not a fence line or an attachment line, or else "Untitled". A titled tab is
+    bold, an untitled one is in the note font.
   - The active tab is raised: a white pill (a lighter one in dark mode) with a soft shadow. The other tabs have no
     background.
   - A tab's title follows the note's about as fast as the sidebar row does: after the autosave.

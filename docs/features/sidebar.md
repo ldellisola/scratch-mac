@@ -25,6 +25,11 @@ Status: plan 2, tasks 8 and 9. Deleting, restoring and the Recently Deleted sect
 - **A row** has the title (bold) or else the first line (in the note font), the edit time on the right
   (`sidebar.row.time`) and a preview line below, in the system font. A pinned note has a small orange pin before its
   title, and a group's header starts at the same left edge as the titles under it (mockup B).
+  - **A row never takes its title or its preview from a fence line or an attachment line** (from 0.5.0, plan 5 task 1).
+    A note that starts with a fenced block is listed by its first line of code, not by "```swift", and a line
+    `[[attachment:<id>]]` is a picture or a file, not words. A note that holds nothing else is listed as "Untitled"
+    (dimmed): a note with only an image has no title and is still a note. The sidebar columns of the notes that were saved
+    before 0.5.0 are worked out again by the migration to schema version 3, without touching a note's edit time.
   - The time is the time of day for Today and Yesterday (`10:42`, or `10:42 AM` in a 12-hour locale), the month and the
     day for earlier this year (`Oct 14`) and the year too before that (`Oct 14, 2025`): the locale's own formats
     (`NoteTimeLabel`).
@@ -84,6 +89,8 @@ UI tests in `App/Tests/ScratchUITests/SidebarUITests.swift`, on the `typical` fi
 | Search finds a word in the text, and a title in any case | `SidebarUITests.testSearchFiltersByBodyText`, `testSearchMatchesTitlesCaseInsensitively` |
 | Clearing the field, or Escape, brings the whole list back | `SidebarUITests.testClearingSearchRestoresList`, `testEscapeClearsSearch` |
 | The sidebar lists the fixture's notes, pinned first | `SidebarUITests.testSidebarListsFixtureNotesPinnedFirst` |
+| A title and a preview skip fence lines and attachment lines; an image-only note has no title | `NoteTests.titleSkipsFenceLines`, `titleSkipsAttachmentLines`, `imageOnlyNoteHasEmptyTitle`, `previewSkipsFenceAndAttachmentLines` |
+| The migration to schema version 3 works the titles out again, keeps every note, and leaves `modified_at` alone | `SchemaTests.migratingV2RecomputesTitles`, `migratingV2KeepsEveryNoteAndEveryOtherColumn` |
 
 The rules under these have unit tests in ScratchCore: the groups by calendar day, also across a clock change
 (`SidebarSectionsTests`), the time labels (`NoteTimeLabelTests`), the search expression and the search itself

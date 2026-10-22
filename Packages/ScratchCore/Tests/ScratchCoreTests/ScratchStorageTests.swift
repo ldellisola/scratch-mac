@@ -134,12 +134,12 @@ private func fileNames(in directory: URL) throws -> [String] {
         _ = try storage.notes.create(now: Date(timeIntervalSinceReferenceDate: 1000))
     }
     let path = directory.appendingPathComponent(ScratchStorage.databaseFileName).path
-    try Database(path: path).execute("PRAGMA user_version = 3")
+    try Database(path: path).execute("PRAGMA user_version = 4")
 
-    #expect(throws: SchemaError.newerThanSupported(found: 3, supported: 2)) {
+    #expect(throws: SchemaError.newerThanSupported(found: 4, supported: 3)) {
         try ScratchStorage.open(options(directory: directory))
     }
-    #expect(try Database(path: path).userVersion() == 3)
+    #expect(try Database(path: path).userVersion() == 4)
     #expect(try Database(path: path).query("SELECT COUNT(*) AS n FROM notes").first?.int("n") == 1)
 }
 
