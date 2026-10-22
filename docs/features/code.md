@@ -96,9 +96,11 @@ nothing at all for a block with no label.
   `MarkupStyler.labelDidChange(inBlockAt:in:)` in the same editing session, so the line gains (or loses) its room with the
   label. Typing a name on a fence, a change of the font size and the label menu restyle the block, and the first line is
   styled with it.
-- **It follows the first line.** An edit that splits the first line, or takes it away, or inserts a line above it, leaves its
-  style on a paragraph that is no longer the first. After every edit `MarkupStyler.refreshFirstCodeLines(near:in:)` gives
-  the first line of the blocks that the edit touched its room, and the line after it the style of any other line of code.
+- **It follows the first line.** An edit that splits the first line, or takes it away, or inserts one or several lines above
+  it or inside it, leaves its style on a paragraph that is no longer the first: the second, the third or a line further down.
+  After every edit `MarkupStyler.refreshFirstCodeLines(near:in:)` gives the first line of the blocks that the edit touched its
+  room, and the second line, the lines that the edit changed and the two lines after them the style of any other line of code
+  (`CodeBlockStylerTests`: a split, lines inserted above the first line, lines inserted inside it).
 
 ### Late first colours
 

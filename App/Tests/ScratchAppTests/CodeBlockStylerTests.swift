@@ -698,6 +698,49 @@ final class CodeBlockStylerTests: XCTestCase {
         XCTAssertEqual(tailIndent(ofLineWith: "let second", in: after, host: host), -10)
     }
 
+    func testInsertingLinesAboveTheFirstLineMovesItsReserveToTheNewFirstLine() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```swift\nlet first = 1\nlet second = 2\n```"
+        show(body, in: host)
+        let start = (body as NSString).range(of: "let first").location
+        host.editor.textView.setSelectedRange(NSRange(location: start, length: 0))
+
+        insert("a\nb\n", into: host)
+
+        let after = "```swift\na\nb\nlet first = 1\nlet second = 2\n```"
+        XCTAssertEqual(host.editor.currentText, after)
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "a\nb", in: after, host: host) ?? 0, firstLineTail(label: "Swift"), accuracy: 0.01,
+            "the new first line")
+        XCTAssertEqual(tailIndent(ofLineWith: "b\nlet", in: after, host: host), -10)
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "let first", in: after, host: host), -10,
+            "the old first line is the third now, and a line like any")
+        XCTAssertEqual(tailIndent(ofLineWith: "let second", in: after, host: host), -10)
+    }
+
+    func testInsertingLinesInTheFirstLineLeavesItsReserveOnTheFirstPartOnly() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```swift\nlet first = 1\nlet second = 2\n```"
+        show(body, in: host)
+        let middle = (body as NSString).range(of: "let first").upperBound
+        host.editor.textView.setSelectedRange(NSRange(location: middle, length: 0))
+
+        insert("x\ny\n", into: host)
+
+        let after = "```swift\nlet firstx\ny\n = 1\nlet second = 2\n```"
+        XCTAssertEqual(host.editor.currentText, after)
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "let firstx", in: after, host: host) ?? 0, firstLineTail(label: "Swift"),
+            accuracy: 0.01)
+        XCTAssertEqual(tailIndent(ofLineWith: "y\n", in: after, host: host), -10)
+        XCTAssertEqual(
+            tailIndent(ofLineWith: " = 1", in: after, host: host), -10, "what was left of the first line is the third")
+        XCTAssertEqual(tailIndent(ofLineWith: "let second", in: after, host: host), -10)
+    }
+
     func testDeletingTheFirstLineGivesTheReserveToTheNextOne() {
         let host = makeHostedEditor()
         defer { withExtendedLifetime(host.window) {} }

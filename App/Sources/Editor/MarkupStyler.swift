@@ -747,33 +747,55 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         appearance.firstCodeLineStyle(labelName: labelName(of: block, in: storage))
     }
 
-    /// Gives the first line of code of `block` the style it must have, and the line after it the style of any other line of
-    /// code: the line that was the first can have become the second (a line was split or inserted above it). Nothing is
-    /// written for a line that is as it should be.
-    private func refreshFirstCodeLines(of block: CodeBlockIndex.Block, in storage: NSTextStorage) {
+    /// Gives the first line of code of `block` the style it must have, and the lines after it that the edit can have moved
+    /// the first line's style onto the style of any other line of code. The second line is always looked at: the line that
+    /// was the first can have become the second (a line was split or inserted above it). With a `window` (the range of the
+    /// paragraphs that an edit changed and the two after them), every line of code in it is looked at too, one by one: an
+    /// edit that inserts several lines, or splits the first line in two, leaves the old first line's style on a line that
+    /// is the third, the fourth, or further down. Nothing is written for a line that is as it should be.
+    private func refreshFirstCodeLines(
+        of block: CodeBlockIndex.Block, restyling window: NSRange? = nil, in storage: NSTextStorage
+    ) {
         let text = storage.string as NSString
         let opening = text.paragraphRange(for: NSRange(location: block.range.location, length: 0))
         let bodyStart = NSMaxRange(opening)
         guard bodyStart < block.closingLineStart else { return }
         let first = text.paragraphRange(for: NSRange(location: bodyStart, length: 0))
         styleCodeBody(first, style: firstCodeLineStyle(of: block, in: storage), in: storage)
-        let secondStart = NSMaxRange(first)
-        if secondStart < block.closingLineStart {
-            styleCodeBody(text.paragraphRange(for: NSRange(location: secondStart, length: 0)), in: storage)
+        guard NSMaxRange(first) < block.closingLineStart else { return }
+        let second = text.paragraphRange(for: NSRange(location: NSMaxRange(first), length: 0))
+        styleCodeBody(second, in: storage)
+        guard let window else { return }
+        // The lines before the window were not touched, so they are as they were: only one line ever has the first line's style.
+        var location = max(NSMaxRange(second), window.location)
+        let limit = min(NSMaxRange(window), block.closingLineStart)
+        while location < limit {
+            let paragraph = text.paragraphRange(for: NSRange(location: location, length: 0))
+            styleCodeBody(paragraph, in: storage)
+            location = NSMaxRange(paragraph)
         }
     }
 
-    /// Does `refreshFirstCodeLines(of:in:)` for the blocks that `range`, and a character on each side of it, touches. Called
-    /// inside `beginEditing()` and `endEditing()`, after an edit has been styled: an edit that splits the first line of code or
-    /// takes it away leaves its style on a paragraph that is no longer the first, which the paragraphs of the edit do not
-    /// always include.
+    /// Does `refreshFirstCodeLines(of:restyling:in:)` for the blocks that `range`, and a character on each side of it,
+    /// touches, with a window of `range` and the two paragraphs after it. Called inside `beginEditing()` and `endEditing()`,
+    /// after an edit has been styled, with the paragraphs the edit changed: an edit that splits the first line of code or
+    /// takes it away leaves its style on a paragraph that is no longer the first, which `range` does not always include. What
+    /// is left of the old first line sits right after the text that came in: in the paragraph that starts at the end of
+    /// `range` or, when the edit was in the opening fence line (whose tail is a paragraph of its own), in the one after that.
     private func refreshFirstCodeLines(near range: NSRange, in storage: NSTextStorage) {
         let blocks = codeBlocks.blocks
         guard !blocks.isEmpty else { return }
+        let text = storage.string as NSString
+        var end = NSMaxRange(range)
+        for _ in 0..<2 {
+            guard end < text.length else { break }
+            end = NSMaxRange(text.paragraphRange(for: NSRange(location: end, length: 0)))
+        }
+        let window = NSRange(location: range.location, length: end - range.location)
         let limit = NSMaxRange(range) + 1
         var index = Self.firstBlockIndex(endingAtOrAfter: max(range.location - 1, 0), in: blocks)
         while index < blocks.count, blocks[index].range.location <= limit {
-            refreshFirstCodeLines(of: blocks[index], in: storage)
+            refreshFirstCodeLines(of: blocks[index], restyling: window, in: storage)
             index += 1
         }
     }

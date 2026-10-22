@@ -607,8 +607,10 @@ new kind of release file, with no change to the app, ships.
   (`MarkupAppearance.firstCodeLineStyle`, `CodeBlockMetrics.labelReserve`, at most 240 pt, none without a label); every other
   line of a block is 10 pt in (`codeBodyStyle`). Whatever writes a label or changes which line is first must restyle that
   line: `CodeBlockStyler.advance` calls `MarkupStyler.labelDidChange(inBlockAt:in:)` in the editing session that writes a
-  label, `storageDidEdit` calls `refreshFirstCodeLines(near:in:)` (an edit that splits or removes the first line leaves its
-  style on a paragraph that is no longer the first, and the edit's own paragraphs do not always include it), and `styleBatch`
+  label, `storageDidEdit` calls `refreshFirstCodeLines(near:in:)` (an edit that splits or removes the first line, or inserts
+  several lines above it or inside it, leaves its style on a paragraph that is no longer the first, and the edit's own
+  paragraphs do not always include it: it styles the first line as the first, and the second line, every line of the edit's
+  paragraphs and the two paragraphs after them as any other line of code), and `styleBatch`
   and `styleBlocks` style the first line apart from the run of lines after it. The label's width is measured in the font it is
   drawn in (`CodeBlockMetrics.labelFont`), so the two cannot disagree. A test of a block's lines asks for `-10` of every line
   but the first, whose tail indent is `-(10 + width + 12)`.
