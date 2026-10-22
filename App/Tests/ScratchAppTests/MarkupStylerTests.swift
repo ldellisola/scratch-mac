@@ -335,7 +335,12 @@ final class MarkupStylerTests: XCTestCase {
         // The line has the indent of a line of a block (plan 4, task 5) and not the hanging indent of a list line.
         let blockStyle = attribute(.paragraphStyle, at: notBullet.location, in: host) as? NSParagraphStyle
         XCTAssertEqual(blockStyle?.headIndent, 10)
-        XCTAssertEqual(blockStyle?.tailIndent, -10)
+        // It is the first line of a block that has a label (`Shell`), so it is also kept clear of the label: 10 pt, the width
+        // of the label and 12 pt (plan 5 task 7). Any other line of the block is 10 pt in from the right.
+        XCTAssertGreaterThan(blockStyle.map { -$0.tailIndent } ?? 0, 10 + 12, "room for the label")
+        let notBoldStyle = attribute(.paragraphStyle, at: notBold.location, in: host) as? NSParagraphStyle
+        XCTAssertEqual(notBoldStyle?.headIndent, 10)
+        XCTAssertEqual(notBoldStyle?.tailIndent, -10)
         XCTAssertEqual(attribute(.foregroundColor, at: notBullet.location, in: host) as? NSColor, NSColor.textColor)
 
         let styler = host.editor.textView.styler!

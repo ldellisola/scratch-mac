@@ -62,6 +62,20 @@ final class CodeBlockStylerTests: XCTestCase {
         attribute(.paragraphStyle, at: index, in: host) as? NSParagraphStyle
     }
 
+    /// The tail indent of the first line of code of a block whose label says `name`: the 10 pt that every line is in from the
+    /// right, the width of the label (a monospaced font 2 pt smaller than the note's) and 12 pt of space. Worked out here, in
+    /// the test, and not by the code it tests.
+    private func firstLineTail(label name: String, noteSize: CGFloat = CGFloat(FontSize.standard)) -> CGFloat {
+        let font = NSFont.monospacedSystemFont(ofSize: noteSize - 2, weight: .regular)
+        let width = (name as NSString).size(withAttributes: [.font: font]).width
+        return -(10 + width + 12)
+    }
+
+    /// The tail indent of the line that starts with `needle` in `text`.
+    private func tailIndent(ofLineWith needle: String, in text: String, host: Host) -> CGFloat? {
+        paragraphStyle(at: (text as NSString).range(of: needle).location, in: host)?.tailIndent
+    }
+
     private func isNullGlyph(at index: Int, in host: Host) -> Bool {
         guard let layoutManager = host.editor.textView.layoutManager else { return false }
         let glyph = layoutManager.glyphIndexForCharacter(at: index)
@@ -180,13 +194,15 @@ final class CodeBlockStylerTests: XCTestCase {
         XCTAssertEqual(
             lineHeight(at: opening.location - 1, in: host), 16, accuracy: 1, "the blank line above is a line")
 
-        // The lines of the block are 10 points in from both sides, and keep the note font.
+        // The lines of the block are 10 points in from both sides, and keep the note font. The first one is further in from
+        // the right: the label reaches into it (`testFirstLineOfCodeWrapsBeforeLabel`).
         for needle in ["# watch the rollout", "kubectl rollout status", "kubectl logs"] {
             let index = text.range(of: needle).location
             let style = paragraphStyle(at: index, in: host)
             XCTAssertEqual(style?.headIndent, 10, needle)
             XCTAssertEqual(style?.firstLineHeadIndent, 10, needle)
-            XCTAssertEqual(style?.tailIndent, -10, needle)
+            let tail = needle == "# watch the rollout" ? firstLineTail(label: "Shell") : -10
+            XCTAssertEqual(style?.tailIndent ?? 0, tail, accuracy: 0.01, needle)
             XCTAssertNil(role(at: index, in: host), "nothing in a block is a marker")
             XCTAssertGreaterThan(lineHeight(at: index, in: host), 10, "a line of code is a line of text")
             XCTAssertEqual((attribute(.font, at: index, in: host) as? NSFont)?.pointSize, CGFloat(FontSize.standard))
@@ -532,6 +548,289 @@ final class CodeBlockStylerTests: XCTestCase {
         XCTAssertNil(paragraphStyle(at: comment, in: host), "and so did the indent")
         XCTAssertNil(role(at: text.range(of: "```bash").location, in: host), "the fence line is text again")
         XCTAssertFalse(isNullGlyph(at: text.range(of: "```bash").location + 1, in: host))
+    }
+
+    // MARK: The label never covers code (plan 5 task 7)
+
+    /// 300 characters with no space to break at: the line wraps wherever the room ends, which is what is measured.
+    private static let longLine = String(repeating: "abcdefghij", count: 30)
+
+    /// docs/features/code.md, "The label": the first line of code of a block with a label ends 12 pt before the label, so
+    /// that long code wraps there and a click on the end of the code is never a click on the label.
+    func testFirstLineOfCodeWrapsBeforeLabel() throws {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```swift\n" + Self.longLine + "\nlet a = 1\n```"
+        let text = body as NSString
+        show(body, in: host)
+        let layoutManager = try XCTUnwrap(host.editor.textView.layoutManager as? MarkupLayoutManager)
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: text.length))
+        let label = try XCTUnwrap(layoutManager.labelRect(forBlockAt: 0), "the block says Swift")
+        let line = text.range(of: Self.longLine)
+
+        // The line fragments of the first line of code.
+        var fragments: [NSRect] = []
+        var glyph = layoutManager.glyphIndexForCharacter(at: line.location)
+        let lastGlyph = layoutManager.glyphIndexForCharacter(at: NSMaxRange(line) - 1)
+        while glyph <= lastGlyph {
+            var glyphs = NSRange(location: 0, length: 0)
+            fragments.append(layoutManager.lineFragmentUsedRect(forGlyphAt: glyph, effectiveRange: &glyphs))
+            glyph = max(NSMaxRange(glyphs), glyph + 1)
+        }
+
+        XCTAssertGreaterThanOrEqual(fragments.count, 3, "300 characters take three lines or more")
+        XCTAssertLessThan(label.minY, fragments[0].maxY, "the label reaches into the first line of code")
+        for (index, fragment) in fragments.enumerated() {
+            XCTAssertLessThanOrEqual(
+                fragment.maxX, label.minX - 12 + 0.5, "line \(index) of the code ends 12 pt before the label")
+        }
+        // A click on the end of the first of those lines is a click on code. The label's margin is 3 pt.
+        let origin = host.editor.textView.textContainerOrigin
+        let click = NSPoint(x: origin.x + fragments[0].maxX - 1, y: origin.y + fragments[0].minY + 4)
+        XCTAssertNil(host.editor.textView.labelHit(atViewPoint: click), "the end of the code is not the label")
+        XCTAssertEqual(host.editor.currentText, body, "the note is as it was")
+    }
+
+    func testOnlyTheFirstLineOfCodeReservesRoomForTheLabel() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let text = Self.typicalBody as NSString
+        show(Self.typicalBody, in: host)
+
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "# watch the rollout", in: Self.typicalBody, host: host) ?? 0,
+            firstLineTail(label: "Shell"), accuracy: 0.01, "the first line")
+        XCTAssertEqual(tailIndent(ofLineWith: "kubectl rollout status", in: Self.typicalBody, host: host), -10)
+        XCTAssertEqual(tailIndent(ofLineWith: "kubectl logs", in: Self.typicalBody, host: host), -10)
+        XCTAssertEqual(paragraphStyle(at: text.range(of: "```bash").location, in: host)?.tailIndent, -10)
+        XCTAssertEqual(
+            paragraphStyle(at: text.range(of: "```", options: .backwards).location, in: host)?.tailIndent, -10)
+
+        // Nothing else about the line changes: it is a line of the block, with the head indent of one.
+        let first = text.range(of: "# watch the rollout").location
+        XCTAssertEqual(paragraphStyle(at: first, in: host)?.headIndent, 10)
+        XCTAssertEqual(paragraphStyle(at: first, in: host)?.firstLineHeadIndent, 10)
+        XCTAssertEqual((attribute(.scratchCodeBlock, at: first, in: host) as? CodeBlockMark)?.part, .body)
+        XCTAssertNil(role(at: first, in: host))
+        XCTAssertEqual(host.editor.currentText, Self.typicalBody)
+    }
+
+    func testBlockWithNoLabelHasNoReserve() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```\nhello there\nand this\n```"
+        show(body, in: host)
+
+        waitForHighlights(in: host)
+
+        XCTAssertEqual(codeStyler(of: host).language(ofBlockAt: 5)?.name, "", "prose in a fence has no label")
+        XCTAssertEqual(tailIndent(ofLineWith: "hello there", in: body, host: host), -10)
+        XCTAssertEqual(tailIndent(ofLineWith: "and this", in: body, host: host), -10)
+    }
+
+    func testReserveIsForTheNameAsWrittenWhenItIsNotALanguage() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```ruby\nputs 'hello'\nclass Note; end\n```"
+        show(body, in: host)
+
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "puts", in: body, host: host) ?? 0, firstLineTail(label: "ruby"), accuracy: 0.01)
+        XCTAssertEqual(tailIndent(ofLineWith: "class Note", in: body, host: host), -10)
+    }
+
+    func testReserveFollowsTheDetectedLabel() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show(Self.unnamedBody, in: host)
+
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "const notes", in: Self.unnamedBody, host: host), -10,
+            "no label yet, so no room kept")
+
+        waitForHighlights(in: host)
+
+        XCTAssertEqual(
+            codeStyler(of: host).language(ofBlockAt: (Self.unnamedBody as NSString).range(of: "const notes").location)?
+                .name, "JavaScript")
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "const notes", in: Self.unnamedBody, host: host) ?? 0,
+            firstLineTail(label: "JavaScript"), accuracy: 0.01, "the detected label has its room")
+        XCTAssertEqual(tailIndent(ofLineWith: "// the newest", in: Self.unnamedBody, host: host), -10)
+        XCTAssertEqual(host.editor.currentText, Self.unnamedBody)
+    }
+
+    func testNamingTheFenceGivesTheFirstLineItsReserve() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("```\nhello there\nand this\n```", in: host)
+        waitForHighlights(in: host)
+
+        host.editor.textView.setSelectedRange(NSRange(location: 3, length: 0))
+        insert("python", into: host)
+
+        let body = "```python\nhello there\nand this\n```"
+        XCTAssertEqual(host.editor.currentText, body)
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "hello there", in: body, host: host) ?? 0, firstLineTail(label: "Python"),
+            accuracy: 0.01)
+        XCTAssertEqual(tailIndent(ofLineWith: "and this", in: body, host: host), -10)
+    }
+
+    func testSplittingTheFirstLineLeavesTheReserveOnTheFirstPartOnly() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```swift\nlet first = 1\nlet second = 2\n```"
+        show(body, in: host)
+        let split = (body as NSString).range(of: "let first").upperBound
+        host.editor.textView.setSelectedRange(NSRange(location: split, length: 0))
+
+        insert("\n", into: host)
+
+        let after = "```swift\nlet first\n = 1\nlet second = 2\n```"
+        XCTAssertEqual(host.editor.currentText, after)
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "let first", in: after, host: host) ?? 0, firstLineTail(label: "Swift"),
+            accuracy: 0.01)
+        XCTAssertEqual(tailIndent(ofLineWith: " = 1", in: after, host: host), -10, "the rest of it is a line like any")
+        XCTAssertEqual(tailIndent(ofLineWith: "let second", in: after, host: host), -10)
+    }
+
+    func testDeletingTheFirstLineGivesTheReserveToTheNextOne() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```swift\nlet first = 1\nlet second = 2\nlet third = 3\n```"
+        show(body, in: host)
+        host.editor.textView.setSelectedRange((body as NSString).range(of: "let first = 1\n"))
+
+        host.editor.textView.deleteBackward(nil)
+
+        let after = "```swift\nlet second = 2\nlet third = 3\n```"
+        XCTAssertEqual(host.editor.currentText, after)
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "let second", in: after, host: host) ?? 0, firstLineTail(label: "Swift"),
+            accuracy: 0.01)
+        XCTAssertEqual(tailIndent(ofLineWith: "let third", in: after, host: host), -10)
+    }
+
+    func testTypingInTheFirstLineKeepsItsReserve() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```swift\nlet first = 1\nlet second = 2\n```"
+        show(body, in: host)
+        host.editor.textView.setSelectedRange(
+            NSRange(location: (body as NSString).range(of: "= 1").upperBound, length: 0))
+
+        insert("23", into: host)
+
+        let after = "```swift\nlet first = 123\nlet second = 2\n```"
+        XCTAssertEqual(host.editor.currentText, after)
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "let first", in: after, host: host) ?? 0, firstLineTail(label: "Swift"),
+            accuracy: 0.01)
+        XCTAssertEqual(tailIndent(ofLineWith: "let second", in: after, host: host), -10)
+    }
+
+    func testReserveFollowsTheFontSize() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show(Self.typicalBody, in: host)
+
+        host.editor.setFontSize(20)
+        spin(until: { host.editor.textView.styler.isFullyStyled })
+
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "# watch the rollout", in: Self.typicalBody, host: host) ?? 0,
+            firstLineTail(label: "Shell", noteSize: 20), accuracy: 0.01, "the label is bigger, so its room is")
+        XCTAssertEqual(tailIndent(ofLineWith: "kubectl logs", in: Self.typicalBody, host: host), -10)
+    }
+
+    func testTheOnlyLineOfABlockIsItsFirstAndAnEmptyBlockHasNone() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "```swift\n```\ntext\n```go\nx := 1\n```"
+        show(body, in: host)
+
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "x := 1", in: body, host: host) ?? 0, firstLineTail(label: "Go"), accuracy: 0.01,
+            "the one line of a block is its first")
+        XCTAssertEqual(paragraphStyle(at: 0, in: host)?.tailIndent, -10, "the fence line of the empty block")
+        XCTAssertNil(tailIndent(ofLineWith: "text", in: body, host: host), "text between blocks is not code")
+        XCTAssertEqual(host.editor.currentText, body)
+    }
+
+    // MARK: Late first colours (plan 5 task 7)
+
+    func testFenceNamesGiveTheLanguagesToWarmUp() {
+        let text = [
+            "intro", "```py", "a = 1", "```", "```JS", "b", "```", "```py", "c", "```", "```ruby", "d", "```", "```",
+            "e", "```",
+            "```go", "f",
+        ].joined(separator: "\n")
+
+        XCTAssertEqual(
+            CodeBlockStyler.languages(namedIn: text), [.python, .javascript], "in order, once each, blocks only")
+        XCTAssertEqual(CodeBlockStyler.languages(namedIn: "no fence at all"), [])
+        XCTAssertEqual(CodeBlockStyler.languages(namedIn: ""), [])
+        XCTAssertEqual(CodeBlockStyler.languages(namedIn: "  ```  Rust  \nfn main() {}\n```"), [.rust])
+    }
+
+    func testWarmUpCompilesOpenLanguages() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let styler = codeStyler(of: host)
+        // A highlighter of its own: the shared one may have compiled these before.
+        let highlighter = Highlighter()
+        XCTAssertFalse(highlighter.isPrepared(.go))
+        XCTAssertFalse(highlighter.isPrepared(.rust))
+
+        styler.warmUp(
+            languagesNamedIn: [
+                "alpha\n```go\nx := 1\n```\n", "```Rust\nfn main() {}\n```", "```ruby\n1\n```", "no fences here",
+                "```go\ny := 2\n```",
+            ], using: highlighter)
+
+        XCTAssertGreaterThan(styler.pendingWarmUps, 0, "it is asked for and done on the highlight queue")
+        spin(until: { styler.pendingWarmUps == 0 })
+        XCTAssertEqual(styler.pendingWarmUps, 0, "the warm-up is done within seconds")
+        XCTAssertEqual(styler.warmedLanguages, [.go, .rust], "the languages that the fences name, once each")
+        XCTAssertTrue(highlighter.isPrepared(.go))
+        XCTAssertTrue(highlighter.isPrepared(.rust))
+        XCTAssertFalse(highlighter.isPrepared(.swift), "no other language is compiled")
+    }
+
+    func testWarmUpOfALanguageThatIsReadyDoesNothingTwice() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let styler = codeStyler(of: host)
+        let highlighter = Highlighter()
+
+        styler.warmUp(languagesNamedIn: ["```go\nx := 1\n```"], using: highlighter)
+        spin(until: { styler.pendingWarmUps == 0 })
+        styler.warmUp(languagesNamedIn: ["```go\nx := 1\n```", "```c\nint a;\n```"], using: highlighter)
+        spin(until: { styler.pendingWarmUps == 0 })
+
+        XCTAssertEqual(styler.warmedLanguages, [.go, .c])
+        XCTAssertEqual(styler.pendingWarmUps, 0)
+    }
+
+    func testWarmUpNeverBlocksTheNoteThatIsShown() {
+        // The warm-up shares the highlight queue with the colours of the note on screen, and goes one language at a time, so
+        // a block that is shown while it runs waits for one compile at most and is coloured.
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let styler = codeStyler(of: host)
+        styler.warmUp(
+            languagesNamedIn: ["```swift\nlet a = 1\n```", "```csharp\nvar a = 1;\n```", "```cpp\nint a;\n```"],
+            using: Highlighter())
+
+        show(Self.typicalBody, in: host)
+        waitForHighlights(in: host)
+
+        let command = (Self.typicalBody as NSString).range(of: "kubectl rollout").location
+        XCTAssertTrue(isAsset("CodeFunction", colour(at: command, in: host)), "the block on screen is coloured")
+        spin(until: { styler.pendingWarmUps == 0 }, seconds: 20)
+        XCTAssertEqual(styler.pendingWarmUps, 0)
     }
 
     // MARK: The colours

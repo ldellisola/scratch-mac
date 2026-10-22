@@ -26,7 +26,7 @@ format:
 	swift format format --in-place --recursive Packages App
 
 # [linux] Run the tests for the scripts in scripts/ (the ci-results loop, the performance scripts, the version bump
-# check, the release notes and the release DMG check). Needs bash, git and python3.
+# check, the release notes, the release DMG and zip checks and the acknowledgements). Needs bash, git and python3.
 script-test:
 	bash scripts/tests/test-ci-scripts.sh
 	bash scripts/tests/test-perf-check.sh
@@ -34,6 +34,8 @@ script-test:
 	bash scripts/tests/test-version-bump.sh
 	bash scripts/tests/test-release-notes.sh
 	bash scripts/tests/test-release-dmg.sh
+	bash scripts/tests/test-release-zip.sh
+	bash scripts/tests/test-acknowledgements.sh
 
 # [linux] Wait for CI results on the ci-results branch: make ci-wait SHA=<sha> [JOBS="linux macos"].
 # CI_WAIT_TIMEOUT (seconds) bounds one wait. make exits 2 on any failure, so read the last line of output to tell a
