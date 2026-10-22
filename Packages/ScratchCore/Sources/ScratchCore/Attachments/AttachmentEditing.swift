@@ -82,7 +82,11 @@ public enum AttachmentEditing {
     /// - A caret inside a token goes to the token's end, or to its start when it came from further on in the text (an arrow
     ///   key or a word move to the left, or up), so that the caret steps over the token. A click (`isClick`) goes to the end.
     /// - A range whose start is inside a token starts at the token's start, and one whose end is inside a token ends at the
-    ///   token's end, so a part of a token is the whole of it.
+    ///   token's end, so a part of a token is the whole of it. This is how a selection grows over a token.
+    /// - A range that is made smaller by moving one end back, the other end staying where it was (⇧ and an arrow key, a drag
+    ///   of the mouse back), gives the token up whole: an end that is moved back to a place inside a token goes to the side of
+    ///   the token that it came from, the token's start for the end of the range and its end for the start. Without this the
+    ///   end would be pulled to the far side again and the selection could never be made smaller than the token.
     ///
     /// Anything else, and a selection that is not in the text, is returned as it is.
     public static func snappedSelection(
@@ -92,16 +96,25 @@ public enum AttachmentEditing {
         guard new.location != NSNotFound, new.location >= 0, new.length >= 0, NSMaxRange(new) <= text.length else {
             return new
         }
+        let oldIsKnown = old.location != NSNotFound && old.location >= 0 && old.length >= 0
         if new.length == 0 {
             guard let token = token(strictlyInside: new.location, in: text, ignoring: isLiteral) else { return new }
-            let steppedBack = !isClick && old.location != NSNotFound && new.location < old.location
+            let steppedBack = !isClick && oldIsKnown && new.location < old.location
             return NSRange(location: steppedBack ? token.range.location : NSMaxRange(token.range), length: 0)
         }
+        // One end moved and the other stayed: a selection made smaller from one side, or longer.
+        let endMovedBack = oldIsKnown && new.location == old.location && NSMaxRange(new) < NSMaxRange(old)
+        let startMovedOn = oldIsKnown && NSMaxRange(new) == NSMaxRange(old) && new.location > old.location
+
         var start = new.location
         var end = NSMaxRange(new)
-        if let token = token(strictlyInside: start, in: text, ignoring: isLiteral) { start = token.range.location }
-        if let token = token(strictlyInside: end, in: text, ignoring: isLiteral) { end = NSMaxRange(token.range) }
-        return NSRange(location: start, length: end - start)
+        if let token = token(strictlyInside: start, in: text, ignoring: isLiteral) {
+            start = startMovedOn ? NSMaxRange(token.range) : token.range.location
+        }
+        if let token = token(strictlyInside: end, in: text, ignoring: isLiteral) {
+            end = endMovedBack ? token.range.location : NSMaxRange(token.range)
+        }
+        return NSRange(location: start, length: max(end - start, 0))
     }
 
     // MARK: Backspace and Delete

@@ -54,8 +54,9 @@ final class AttachmentImporter: AttachmentImporting {
         return ids
     }
 
-    /// Copies the file, or writes the image, on the queue, and tells the catalog when that is over. A copy that fails is
-    /// reported, and leaves a row with no file, which the line draws as a missing attachment.
+    /// Copies the file, or writes the image, on the queue, and tells the catalog when that is over. A TIFF is made into the PNG
+    /// that its row says it is here, on the queue, with the rest of the work on the picture: the main thread never decodes or
+    /// encodes one. A copy that fails is reported, and leaves a row with no file, which the line draws as a missing attachment.
     private func startCopy(of source: AttachmentSource, as id: AttachmentID) {
         pendingCopies += 1
         let store = self.store
@@ -64,8 +65,12 @@ final class AttachmentImporter: AttachmentImporting {
                 switch source {
                 case .file(let url):
                     try store.copyIn(id, from: url)
-                case .image(let data, _):
-                    try store.writeIn(id, data: data)
+                case .image(let data, let typeIdentifier):
+                    if let stored = AttachmentImporter.imageDataToStore(data, typeIdentifier: typeIdentifier) {
+                        try store.writeIn(id, data: stored)
+                    } else {
+                        report("cannot convert the image of attachment \(id.rawValue) to PNG")
+                    }
                 }
             } catch {
                 report("cannot copy attachment \(id.rawValue): \(error)")
@@ -122,16 +127,58 @@ final class AttachmentImporter: AttachmentImporting {
     }
 
     /// An image that has no file, such as a screenshot: named for the moment it came, "Image 2026-10-22 at 10.42.13.png".
+    /// Only its header is read here, for the pixel size. A TIFF is stored as PNG (`imageDataToStore(_:typeIdentifier:)`, on the
+    /// queue), so its row and its name say PNG from the start, and a TIFF whose header cannot be read, which the conversion
+    /// could not decode either, is no attachment.
     private static func describeImage(_ data: Data, typeIdentifier: String) -> Description? {
         guard !data.isEmpty else { return nil }
-        let type = UTType(typeIdentifier) ?? .png
+        let size = pixelSize(of: CGImageSourceCreateWithData(data as CFData, nil))
+        let storedAsPNG = isTIFF(typeIdentifier)
+        if storedAsPNG, size == nil { return nil }
+        let type = storedAsPNG ? UTType.png : (UTType(typeIdentifier) ?? .png)
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
         let name = "Image \(formatter.string(from: Date())).\(type.preferredFilenameExtension ?? "png")"
         return Description(
             fileName: name, typeIdentifier: previewTypeIdentifier(of: type), byteSize: Int64(data.count),
-            pixelSize: pixelSize(of: CGImageSourceCreateWithData(data as CFData, nil)))
+            pixelSize: size)
+    }
+
+    // MARK: What an image is stored as
+
+    private nonisolated static func isTIFF(_ typeIdentifier: String) -> Bool {
+        UTType(typeIdentifier)?.conforms(to: .tiff) ?? false
+    }
+
+    /// The bytes that are written for an image that came from the pasteboard: the bytes as they are, except for a TIFF, which
+    /// is stored as PNG (spec §6.4). Nil when a TIFF cannot be converted. Runs on the queue: decoding and encoding a full-size
+    /// picture takes hundreds of milliseconds.
+    nonisolated static func imageDataToStore(_ data: Data, typeIdentifier: String) -> Data? {
+        isTIFF(typeIdentifier) ? pngData(from: data) : data
+    }
+
+    /// `imageData`, any image that ImageIO reads, as PNG (`CGImageSource` to `CGImageDestination`): its first image at its own
+    /// size with its orientation applied, which is the size that the row was given from the header (`pixelSize(of:)`).
+    private nonisolated static func pngData(from imageData: Data) -> Data? {
+        guard let source = CGImageSourceCreateWithData(imageData as CFData, nil),
+            let size = pixelSize(of: source)
+        else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(size.width, size.height),
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        let output = NSMutableData()
+        guard
+            let destination = CGImageDestinationCreateWithData(
+                output as CFMutableData, UTType.png.identifier as CFString, 1, nil)
+        else { return nil }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return output as Data
     }
 
     /// The identifier that an image of `type` is stored with: its own when a note knows how to draw it (PNG, JPEG, HEIC, TIFF,
@@ -142,7 +189,7 @@ final class AttachmentImporter: AttachmentImporting {
 
     /// The size of the image in `source` as it is shown: the pixel size of its first image, with the sides swapped when its
     /// orientation turns it on its side. Reads the header only. Nil for a source that is not an image.
-    private static func pixelSize(of source: CGImageSource?) -> (width: Int, height: Int)? {
+    private nonisolated static func pixelSize(of source: CGImageSource?) -> (width: Int, height: Int)? {
         guard let source, CGImageSourceGetCount(source) > 0,
             let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
             let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,

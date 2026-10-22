@@ -39,8 +39,12 @@ final class AttachmentTestHost {
     var text: String { editor.currentText }
 
     /// Shows `text` as a note, with the caret at `caret` (the start by default). `isReadOnly` shows it as a note of
-    /// Recently Deleted.
-    init(text: String = "", caret: Int = 0, isReadOnly: Bool = false) throws {
+    /// Recently Deleted. `copyQueue` is the queue that the copies run on, which a test can hold to see what has not been done
+    /// yet.
+    init(
+        text: String = "", caret: Int = 0, isReadOnly: Bool = false,
+        copyQueue: DispatchQueue = DispatchQueue(label: "ScratchAttachmentTests.copies")
+    ) throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
             "ScratchAttachmentTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(
@@ -49,9 +53,7 @@ final class AttachmentTestHost {
             dataDirectory: directory.appendingPathComponent("data", isDirectory: true), isIsolated: true)
         let storage = try ScratchStorage.open(options)
         let catalog = AttachmentCatalog(store: storage.attachments)
-        let importer = AttachmentImporter(
-            store: storage.attachments, queue: DispatchQueue(label: "ScratchAttachmentTests.copies"),
-            catalog: catalog)
+        let importer = AttachmentImporter(store: storage.attachments, queue: copyQueue, catalog: catalog)
 
         let noteID = NoteID.make()
         let undo = UndoManager()

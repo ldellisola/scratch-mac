@@ -204,6 +204,69 @@ final class AttachmentPasteTests: XCTestCase {
         XCTAssertEqual(Array(stored.prefix(4)), Self.pngSignature, "the stored file is a PNG")
     }
 
+    /// A TIFF reaches the importer as it came: the editor decodes and encodes nothing on the main thread, where a full-size
+    /// picture would take hundreds of milliseconds (spec §4, "Visible lag"). The importer makes the PNG on the storage queue.
+    func testTIFFPasteHandsTheImporterTheBytesUnconverted() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let spy = SpyImporter()
+        host.textView.attachmentImporter = spy
+        let tiff = try AttachmentTestHost.imageData(width: 50, height: 30, type: .tiff)
+        let pasteboard = host.pasteboard(tiff: tiff)
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(spy.calls.count, 1)
+        guard case .image(let data, let typeIdentifier)? = spy.calls.first?.first else {
+            return XCTFail("no image source: \(spy.calls)")
+        }
+        XCTAssertEqual(typeIdentifier, UTType.tiff.identifier)
+        XCTAssertEqual(data, tiff, "the pasteboard's own bytes")
+        XCTAssertNotEqual(Array(data.prefix(4)), Self.pngSignature, "not a PNG made on the way")
+    }
+
+    /// The row of a TIFF says PNG from the start, and nothing of the copy is done by the paste: with the copy queue held, the
+    /// paste has returned, the file is not there, and when the queue runs the file that is written is a PNG of the same size
+    /// whose size the row then holds.
+    func testTIFFIsConvertedOnTheCopyQueue() throws {
+        let queue = DispatchQueue(label: "ScratchAttachmentTests.heldCopies")
+        let host = try AttachmentTestHost(copyQueue: queue)
+        defer { host.cleanUp() }
+        let release = DispatchSemaphore(value: 0)
+        queue.async { release.wait() }
+        defer { release.signal() }  // before `cleanUp()`, which waits for the copies
+        let tiff = try AttachmentTestHost.imageData(width: 50, height: 30, type: .tiff)
+        let pasteboard = host.pasteboard(tiff: tiff)
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let id = try XCTUnwrap(host.tokenIDs.first)
+        var row = try host.row(id)
+        XCTAssertEqual(row.typeIdentifier, "public.png")
+        XCTAssertTrue(row.fileName.hasSuffix(".png"), "name: \(row.fileName)")
+        XCTAssertEqual(row.pixelWidth, 50)
+        XCTAssertEqual(row.pixelHeight, 30)
+        XCTAssertEqual(row.byteSize, Int64(tiff.count), "until it is converted, the size of what came")
+        XCTAssertFalse(row.isCopied)
+        let file = host.storage.attachments.fileURL(for: row)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), "nothing is written by the paste")
+        XCTAssertEqual(host.importer.pendingCopies, 1)
+
+        release.signal()
+        host.waitForCopies()
+
+        row = try host.row(id)
+        XCTAssertTrue(row.isCopied)
+        let stored = try Data(contentsOf: file)
+        XCTAssertEqual(Array(stored.prefix(4)), Self.pngSignature, "the stored file is a PNG")
+        XCTAssertEqual(row.byteSize, Int64(stored.count), "the row holds the size of the file that is there")
+        let image = try XCTUnwrap(NSBitmapImageRep(data: stored))
+        XCTAssertEqual(image.pixelsWide, 50)
+        XCTAssertEqual(image.pixelsHigh, 30)
+    }
+
     /// Review Focus 3: Excel, Word and browsers put an image of the selection next to its text, and the text is what is
     /// pasted (spec §6.5, 2 before 3).
     func testTextAndImagePastesText() throws {
@@ -389,6 +452,55 @@ final class AttachmentPasteTests: XCTestCase {
         let id = try XCTUnwrap(host.tokenIDs.first)
         XCTAssertEqual(host.text, "abc\n" + AttachmentToken.line(for: id) + "\ndef")
         XCTAssertEqual(try host.row(id).fileName, "dropped.txt")
+    }
+
+    /// A drag is judged by the types on its pasteboard and never by its data: `draggingUpdated(_:)` runs on every move of the
+    /// mouse, and reading or converting a picture each time would stutter. A pasteboard that declares an image and has no
+    /// bytes yet is a drag that makes an attachment, and the drop, which is where the data is read, finds nothing.
+    func testDragIsJudgedByItsTypesAndNotByItsData() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let spy = SpyImporter()
+        host.textView.attachmentImporter = spy
+        let declared = NSPasteboard.withUniqueName()
+        defer { declared.releaseGlobally() }
+        _ = declared.declareTypes([.tiff], owner: nil)
+
+        XCTAssertTrue(host.textView.wouldMakeAttachments(from: declared))
+        XCTAssertTrue(host.textView.acceptsDrop(of: declared))
+        XCTAssertNil(host.textView.attachmentSources(from: declared), "there are no bytes to make an attachment of")
+        XCTAssertFalse(host.textView.performDrop(of: declared, atViewPoint: .zero))
+        XCTAssertTrue(spy.calls.isEmpty)
+        XCTAssertEqual(host.text, "")
+    }
+
+    /// The same answers for what a drag really holds: files, and an image with no text, are attachments, and an image next to
+    /// text, or text, is not.
+    func testDragOfFilesAndImagesIsAnAttachmentDragAndTextWins() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let file = try host.makeFile(named: "a.txt", contents: Data("a".utf8))
+        let png = try AttachmentTestHost.imageData(width: 8, height: 8, type: .png)
+        let tiff = try AttachmentTestHost.imageData(width: 8, height: 8, type: .tiff)
+        let boards: [(String, NSPasteboard, Bool)] = [
+            ("a file", host.pasteboard(files: [file]), true),
+            ("a file and its name", host.pasteboard(files: [file], text: "a.txt"), true),
+            ("a PNG", host.pasteboard(png: png), true),
+            ("a TIFF", host.pasteboard(tiff: tiff), true),
+            ("cells and their picture", host.pasteboard(text: "Q3\t1", png: png, tiff: tiff), false),
+            ("text", host.pasteboard(text: "just text"), false),
+            ("nothing", host.pasteboard(), false),
+        ]
+        defer {
+            for (_, board, _) in boards { board.releaseGlobally() }
+        }
+
+        for (name, board, makesAttachments) in boards {
+            XCTAssertEqual(host.textView.wouldMakeAttachments(from: board), makesAttachments, name)
+            XCTAssertEqual(host.textView.acceptsDrop(of: board), makesAttachments, name)
+            XCTAssertEqual(
+                host.textView.attachmentSources(from: board) != nil, makesAttachments, "what the drop reads: \(name)")
+        }
     }
 
     /// A drop of text is not ours: it is the text view's own.

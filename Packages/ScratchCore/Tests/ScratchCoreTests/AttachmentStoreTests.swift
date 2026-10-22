@@ -196,6 +196,27 @@ private func names(in folder: URL) throws -> [String] {
     #expect(try names(in: h.folder(row)) == ["Pasted Image.png"])
 }
 
+@Test func writeInRecordsTheSizeOfWhatItWrote() throws {
+    // A TIFF from the pasteboard is registered with its own size and written as the PNG it is stored as: the row must
+    // end up with the size of the file that is there.
+    let h = try Harness()
+    defer { h.remove() }
+    let note = try h.note("")
+    let id = AttachmentID.make()
+    let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0xFF])
+    let row = try h.attachments.register(
+        id: id, noteID: note.id, fileName: "Image.png", typeIdentifier: "public.png", byteSize: 100_000,
+        pixelSize: (width: 2, height: 3), now: now)
+    #expect(row.byteSize == 100_000)
+
+    try h.attachments.writeIn(id, data: png)
+
+    let stored = try #require(try h.attachments.attachment(id))
+    #expect(stored.byteSize == Int64(png.count))
+    #expect(stored.isCopied)
+    #expect(stored.pixelWidth == 2 && stored.pixelHeight == 3 && stored.fileName == "Image.png")
+}
+
 @Test func copyingAnUnknownIDFails() throws {
     let h = try Harness()
     defer { h.remove() }

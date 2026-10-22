@@ -45,6 +45,55 @@ final class AttachmentEditingTests: XCTestCase {
         XCTAssertEqual(view.selectedRange(), caret(4), "left from the end steps over it the other way")
     }
 
+    /// Review Focus 4: ⇧→ over a token takes it into the selection whole, and ⇧← takes it out whole again. The end that
+    /// moves back is not pulled to the far side of the token, which would keep the selection from ever being made smaller.
+    func testShiftRightOverATokenAndShiftLeftShrinksBackOutOfIt() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 3)
+        defer { host.cleanUp() }
+        let view = host.textView
+
+        view.moveRightAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 3, length: 1), "the line break")
+        view.moveRightAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 3, length: 1 + size), "the token comes in whole")
+        view.moveRightAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 3, length: 2 + size), "and on to the next line")
+
+        view.moveLeftAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 3, length: 1 + size), "back to the end of the token")
+        view.moveLeftAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 3, length: 1), "the token leaves whole")
+        view.moveLeftAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), caret(3), "and the selection is empty again")
+    }
+
+    /// The mirror: ⇧← over a token from below takes it in whole, and ⇧→ takes it out whole, from the other side.
+    func testShiftLeftOverATokenAndShiftRightShrinksBackOutOfIt() throws {
+        let anchor = 4 + size + 2  // the "e" of "def"
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: anchor)
+        defer { host.cleanUp() }
+        let view = host.textView
+
+        view.moveLeftAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: anchor - 1, length: 1), "the d")
+        view.moveLeftAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: anchor - 2, length: 2), "the line break")
+        view.moveLeftAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 4, length: anchor - 4), "the token comes in whole")
+        view.moveLeftAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 3, length: anchor - 3), "and on to the line above")
+
+        view.moveRightAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 4, length: anchor - 4), "back to the start of the token")
+        view.moveRightAndModifySelection(nil)
+        XCTAssertEqual(
+            view.selectedRange(), NSRange(location: anchor - 2, length: 2), "the token leaves whole, by its start")
+        view.moveRightAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), NSRange(location: anchor - 1, length: 1))
+        view.moveRightAndModifySelection(nil)
+        XCTAssertEqual(view.selectedRange(), caret(anchor), "and the selection is empty again")
+    }
+
     /// A caret that is put inside a token (by code, or by a move that is not a key) goes to the token's edge.
     func testCaretPutInsideATokenGoesToItsEdge() throws {
         let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 0)

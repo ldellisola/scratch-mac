@@ -424,14 +424,48 @@ final class NoteTextView: NSTextView {
 
     /// What a paste or a drop would make of `pboard`, in the order of spec §6.5, or nil when it is text (or nothing that can
     /// be pasted): file references first, then, when there is no text, an image. A file that is not there is left out, and a
-    /// pasteboard whose files are all gone has none. An image is PNG: the pasteboard's own PNG as it is, or its TIFF
-    /// converted, which is how a screenshot or a copied picture is stored (spec §6.4). Excel, Word and browsers put an
-    /// image of the selection next to the text, and then the text wins, so there are no sources.
+    /// pasteboard whose files are all gone has none. An image is the pasteboard's own bytes, PNG or TIFF, exactly as they are
+    /// (`imageSource(on:)`): the importer reads the header for the size and stores a TIFF as PNG on the storage queue, so
+    /// nothing here decodes a picture (spec §4, "Visible lag"). Excel, Word and browsers put an image of the selection next
+    /// to the text, and then the text wins, so there are no sources.
+    ///
+    /// This reads the pasteboard's data: it is for the paste and the drop themselves, and never for a drag that is still
+    /// moving over the note (`wouldMakeAttachments(from:)` answers that from the types).
     func attachmentSources(from pboard: NSPasteboard) -> [AttachmentSource]? {
         let files = Self.fileURLs(on: pboard)
         if !files.isEmpty { return files.map { .file($0) } }
-        if let text = pboard.string(forType: .string), !text.isEmpty { return nil }
+        if Self.hasText(on: pboard) { return nil }
         return Self.imageSource(on: pboard).map { [$0] }
+    }
+
+    /// Whether `pboard` is a paste or a drag that makes attachments, decided from the types that are on it and nothing else:
+    /// files, or an image and no text. No image is read, decoded or converted. A drag asks this from `draggingEntered(_:)`,
+    /// `draggingUpdated(_:)` (on every move of the mouse, and again while it waits), `prepareForDragOperation(_:)` and
+    /// `performDragOperation(_:)`, so it has to cost nothing whatever the size of the picture. The data is read once, by
+    /// `performDrop(of:atViewPoint:)`.
+    ///
+    /// It can say yes for a pasteboard that `attachmentSources(from:)` finds nothing on: a file that went away since, or an
+    /// image whose bytes do not come. The drop then does nothing.
+    func wouldMakeAttachments(from pboard: NSPasteboard) -> Bool {
+        if pboard.availableType(from: Self.fileTypes) != nil { return true }
+        return pboard.availableType(from: Self.imageTypes) != nil && !Self.hasText(on: pboard)
+    }
+
+    /// The types that a file reference is on a pasteboard as: the file URL of every item, and the property list of paths that
+    /// older applications still put there.
+    private static let fileTypes: [NSPasteboard.PasteboardType] = [
+        .fileURL, NSPasteboard.PasteboardType("NSFilenamesPboardType"),
+    ]
+
+    /// The types that an image is on a pasteboard as: PNG, which is stored as it is, and TIFF, which is stored as PNG.
+    private static let imageTypes: [NSPasteboard.PasteboardType] = [.png, .tiff]
+
+    /// True when `pboard` holds text: any text wins over an image (spec §6.5), and an image is what Excel, Word and browsers
+    /// put next to a few cells or a few words. A drag asks only when an image is there to lose to the text
+    /// (`wouldMakeAttachments(from:)`), so what is read is the text that came with a picture, never the picture.
+    private static func hasText(on pboard: NSPasteboard) -> Bool {
+        guard let text = pboard.string(forType: .string) else { return false }
+        return !text.isEmpty
     }
 
     /// The file URLs of `pboard` that exist, as plain paths (a file reference URL, which Finder may put there, is turned
@@ -445,15 +479,19 @@ final class NoteTextView: NSTextView {
         }
     }
 
-    /// The image on `pboard` as PNG data: its PNG, or its TIFF converted. Nil when it has no image, or none that decodes.
+    /// The image on `pboard`, as the bytes it is there in: its PNG, or else its TIFF (a screenshot, or a picture copied from
+    /// Preview or another Cocoa application, which put a TIFF there). Nothing is decoded or converted here, on the main thread:
+    /// a TIFF of a full-size picture takes hundreds of milliseconds to decode and encode again. The importer reads its size
+    /// from the header, and makes the PNG that the row says it is on the storage queue (`AttachmentImporter`). Nil when the
+    /// pasteboard has no image data.
     private static func imageSource(on pboard: NSPasteboard) -> AttachmentSource? {
         if let png = pboard.data(forType: .png), !png.isEmpty {
             return .image(png, typeIdentifier: UTType.png.identifier)
         }
-        guard let tiff = pboard.data(forType: .tiff), let bitmap = NSBitmapImageRep(data: tiff),
-            let png = bitmap.representation(using: .png, properties: [:])
-        else { return nil }
-        return .image(png, typeIdentifier: UTType.png.identifier)
+        if let tiff = pboard.data(forType: .tiff), !tiff.isEmpty {
+            return .image(tiff, typeIdentifier: UTType.tiff.identifier)
+        }
+        return nil
     }
 
     /// Puts `sources` into the note over the selection (spec §6.4): an attachment each, as token lines of their own and one
@@ -527,14 +565,16 @@ final class NoteTextView: NSTextView {
 
     // MARK: Drops
 
-    /// True when a drop of `pboard` would make attachments: the note can be edited and the pasteboard holds files, or an
-    /// image and no text (`attachmentSources(from:)`). Any other drop, text included, is the text view's own.
+    /// True when a drop of `pboard` would make attachments: the note can be edited and the pasteboard holds files, or an image
+    /// and no text (`wouldMakeAttachments(from:)`, which looks at the types and never at the data). Any other drop, text
+    /// included, is the text view's own.
     func acceptsDrop(of pboard: NSPasteboard) -> Bool {
-        isEditable && attachmentSources(from: pboard) != nil
+        isEditable && wouldMakeAttachments(from: pboard)
     }
 
     /// Makes attachments of what was dropped at `point` (in the coordinates of this view): the caret goes there, and the
-    /// attachments are inserted as a paste of them is. Returns false when the drop is not an attachment drop.
+    /// attachments are inserted as a paste of them is. This is where the data of the drop is read, once. Returns false when
+    /// the drop is not an attachment drop, or when nothing could be read from it.
     func performDrop(of pboard: NSPasteboard, atViewPoint point: NSPoint) -> Bool {
         guard acceptsDrop(of: pboard), let sources = attachmentSources(from: pboard) else { return false }
         if window?.firstResponder !== self { window?.makeFirstResponder(self) }
@@ -544,26 +584,28 @@ final class NoteTextView: NSTextView {
     }
 
     /// A drag of files, or of an image with no text, over the note: copy, when it can be dropped, and nothing when it cannot
-    /// (a note in Recently Deleted). Any other drag is the text view's own.
+    /// (a note in Recently Deleted). Any other drag is the text view's own. The four callbacks decide from the types of the
+    /// drag pasteboard (`wouldMakeAttachments(from:)`) and read no data: `draggingUpdated(_:)` runs on every move of the
+    /// mouse.
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        guard attachmentSources(from: sender.draggingPasteboard) != nil else { return super.draggingEntered(sender) }
+        guard wouldMakeAttachments(from: sender.draggingPasteboard) else { return super.draggingEntered(sender) }
         return isEditable ? .copy : []
     }
 
     override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        guard attachmentSources(from: sender.draggingPasteboard) != nil else { return super.draggingUpdated(sender) }
+        guard wouldMakeAttachments(from: sender.draggingPasteboard) else { return super.draggingUpdated(sender) }
         return isEditable ? .copy : []
     }
 
     override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        guard attachmentSources(from: sender.draggingPasteboard) != nil else {
+        guard wouldMakeAttachments(from: sender.draggingPasteboard) else {
             return super.prepareForDragOperation(sender)
         }
         return isEditable
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        guard attachmentSources(from: sender.draggingPasteboard) != nil else {
+        guard wouldMakeAttachments(from: sender.draggingPasteboard) else {
             return super.performDragOperation(sender)
         }
         return performDrop(of: sender.draggingPasteboard, atViewPoint: convert(sender.draggingLocation, from: nil))

@@ -145,6 +145,121 @@ private func apply(_ edit: TextEdit, to text: String) -> String {
     #expect(snapped == NSRange(location: 0, length: text.utf16.count))
 }
 
+// A selection that is moved with ⇧ and an arrow key keeps one end (the anchor) and moves the other. When the moving end
+// goes back over a token that the selection covers, the token leaves the selection whole: the end must not be pulled to the
+// token's far side again, or the selection could never be made smaller.
+
+@Test func aSelectionThatEndsAtATokenCanBeShrunkBackOverIt() {
+    let text = "abc\n" + tokenA + "\ndef"
+    let end = 4 + size
+    let covering = NSRange(location: 3, length: end - 3)
+    // One unit back puts the end inside the token: the token goes, and the selection ends where it starts.
+    #expect(
+        AttachmentEditing.snappedSelection(
+            from: covering, to: NSRange(location: 3, length: end - 3 - 1), in: nsString(text))
+            == NSRange(location: 3, length: 1))
+    // A word back, or a line back, is further inside it: the same.
+    #expect(
+        AttachmentEditing.snappedSelection(from: covering, to: NSRange(location: 3, length: 20), in: nsString(text))
+            == NSRange(location: 3, length: 1))
+    // The token alone, shrunk from its end, leaves a caret at its start.
+    #expect(
+        AttachmentEditing.snappedSelection(
+            from: NSRange(location: 4, length: size), to: NSRange(location: 4, length: size - 1), in: nsString(text))
+            == caret(4))
+}
+
+@Test func aSelectionThatStartsAtATokenCanBeShrunkBackOverIt() {
+    let text = "abc\n" + tokenA + "\ndef"
+    let end = 4 + size
+    // The anchor is after the token (at 57) and the start is at the token's start: one unit forward is inside the token.
+    let covering = NSRange(location: 4, length: 57 - 4)
+    #expect(
+        AttachmentEditing.snappedSelection(
+            from: covering, to: NSRange(location: 5, length: 57 - 5), in: nsString(text))
+            == NSRange(location: end, length: 57 - end))
+    // The token alone, shrunk from its start, leaves a caret at its end.
+    #expect(
+        AttachmentEditing.snappedSelection(
+            from: NSRange(location: 4, length: size), to: NSRange(location: 5, length: size - 1), in: nsString(text))
+            == caret(end))
+}
+
+@Test func extendingOverATokenAndShrinkingBackOneUnitAtATime() {
+    let text = "abc\n" + tokenA + "\ndef"
+    func snapped(_ old: NSRange, _ new: NSRange) -> NSRange {
+        AttachmentEditing.snappedSelection(from: old, to: new, in: nsString(text))
+    }
+
+    // ⇧→ from the end of "abc": the line break, then the token as one step, then on.
+    var selection = caret(3)
+    var grown: [Int] = []
+    for _ in 0..<4 {
+        selection = snapped(selection, NSRange(location: 3, length: selection.length + 1))
+        grown.append(selection.length)
+    }
+    #expect(grown == [1, size + 1, size + 2, size + 3])
+
+    // ⇧← all the way back: the token goes in one step and the caret is back where it began.
+    var shrunk: [Int] = []
+    for _ in 0..<(size + 5) where selection.length > 0 {
+        selection = snapped(selection, NSRange(location: 3, length: selection.length - 1))
+        shrunk.append(selection.length)
+    }
+    #expect(shrunk == [size + 2, size + 1, 1, 0])
+}
+
+@Test func extendingBackwardOverATokenAndShrinkingBackOneUnitAtATime() {
+    let text = "abc\n" + tokenA + "\ndef"
+    let anchor = 4 + size + 2  // the "e" of "def"
+    func snapped(_ old: NSRange, _ new: NSRange) -> NSRange {
+        AttachmentEditing.snappedSelection(from: old, to: new, in: nsString(text))
+    }
+
+    // ⇧← from the "e": the "d", the line break, then the token as one step, then on.
+    var selection = caret(anchor)
+    var starts: [Int] = []
+    for _ in 0..<4 {
+        selection = snapped(selection, NSRange(location: selection.location - 1, length: selection.length + 1))
+        starts.append(selection.location)
+    }
+    #expect(starts == [anchor - 1, anchor - 2, 4, 3])
+
+    // ⇧→ all the way back: the token goes in one step and the caret is back at the anchor.
+    var shrunk: [Int] = []
+    for _ in 0..<(size + 5) where selection.length > 0 {
+        selection = snapped(selection, NSRange(location: selection.location + 1, length: selection.length - 1))
+        shrunk.append(selection.location)
+    }
+    #expect(shrunk == [4, 4 + size, anchor - 1, anchor])
+}
+
+@Test func aSelectionThatIsMovedAsAWholeIsNotShrunk() {
+    // Both ends changed: it is a new selection and not an end moving back, so a part of a token is the whole of it.
+    let text = "abc\n" + tokenA + "\ndef"
+    #expect(
+        AttachmentEditing.snappedSelection(
+            from: NSRange(location: 4, length: size), to: NSRange(location: 1, length: 12), in: nsString(text))
+            == NSRange(location: 1, length: 4 + size - 1))
+    #expect(
+        AttachmentEditing.snappedSelection(
+            from: NSRange(location: 1, length: 4 + size - 1), to: NSRange(location: 30, length: 27),
+            in: nsString(text)) == NSRange(location: 4, length: 53))
+    // And so is a selection that does not know where it came from.
+    let unknown = NSRange(location: NSNotFound, length: 0)
+    #expect(
+        AttachmentEditing.snappedSelection(from: unknown, to: NSRange(location: 3, length: 51), in: nsString(text))
+            == NSRange(location: 3, length: size + 1))
+}
+
+@Test func aTokenThatIsLiteralIsNotSnappedWhenTheSelectionShrinks() {
+    let text = "```\n" + tokenA + "\n```"
+    let shrunk = NSRange(location: 3, length: 20)
+    #expect(
+        AttachmentEditing.snappedSelection(
+            from: NSRange(location: 3, length: 21), to: shrunk, in: nsString(text), ignoring: { _ in true }) == shrunk)
+}
+
 @Test func aTokenThatIsLiteralIsNotSnapped() {
     let text = "```\n" + tokenA + "\n```"
     let inside = NSRange(location: 10, length: 0)

@@ -64,7 +64,9 @@ Style and a drop all end in; `attachmentSources(from:)` decides):
 2. **Any text wins**, even with an image next to it (Excel, Word and browsers put both there). The text is pasted as plain
    text and goes through the code classification of [code.md](code.md), as it always did.
 3. **An image with no text becomes an image attachment**, stored as PNG: the pasteboard's PNG as it is, or its TIFF
-   converted (a screenshot, a picture copied from Preview). It is named "Image 2026-10-22 at 10.42.13.png".
+   converted (a screenshot, a picture copied from Preview). It is named "Image 2026-10-22 at 10.42.13.png". The editor
+   never decodes or encodes a picture: it hands over the bytes, the row is written from the header of the image, and a TIFF
+   is made into the PNG that the row says it is on the storage queue, with the copy of a file.
 
 What goes into the note, and how:
 
@@ -82,7 +84,8 @@ What goes into the note, and how:
   as text, one on each line, and an image, which has no name, goes in nowhere. No attachment is made.
 - **A drop** puts the attachments where it landed (`performDrop(of:atViewPoint:)`): the caret goes to the drop point first.
   The drag is accepted when it holds files, or an image and no text, and the note can be edited. Any other drop is the text
-  view's own.
+  view's own. A drag is judged by the types on its pasteboard (`wouldMakeAttachments(from:)`), never by its data, because it
+  is asked on every move of the mouse; the data is read once, when the drop happens.
 - **A paste is never classified as code when it made attachments**: its text is token lines.
 
 ## The paperclip
@@ -102,6 +105,10 @@ selection delegate. A token inside a fenced block is text, and none of this appl
   `textView(_:willChangeSelectionFromCharacterRange:toCharacterRange:)` asks `NoteTextView.snappedSelection(from:to:)`.)
 - **A selection that covers part of a token covers all of it**, whichever end is inside. So cut, copy, deleting and typing
   over a selection act on whole tokens, and typing over a selected token replaces the whole token.
+- **A selection can be made smaller again.** ⇧→ over a token takes it into the selection whole and ⇧← takes it out whole
+  (and the mirror from below): an end that is moved back over a token, with the other end where it was, goes to the side of
+  the token it came from. Only that case: a selection whose two ends both changed is a new one, and a part of a token in it
+  is the whole of it.
 - **Backspace right after a token selects it**, and the next press deletes it. Right after is at the end of the token line, or
   at the start of the line below it. **Delete right before a token** (at the start of the token line, or at the end of the
   line above it) selects it the same way. With the token selected, either key deletes the token and its line break, so no
@@ -124,13 +131,16 @@ typing is not affected.
 | The file wins over its name as text; a file that is gone is left out | `testFileWinsOverItsNameAsText`, `testMissingFileIsLeftOut` |
 | Two files are two lines, in order; a paste mid-line or over a selection gets lines of its own | `testTwoFilesTwoLines`, `testPasteMidLineGetsOwnLine`, `testPasteReplacesTheSelection` |
 | An image with no text is a PNG attachment; a TIFF is converted | `testImageOnlyPastesAsPNGAttachment`, `testTIFFOnlyIsStoredAsPNG` |
+| A TIFF is handed over unconverted and made into a PNG on the copy queue, not by the paste | `testTIFFPasteHandsTheImporterTheBytesUnconverted`, `testTIFFIsConvertedOnTheCopyQueue` |
 | Text and an image paste the text (Review Focus 3) | `testTextAndImagePastesText` |
 | A paste into code inserts the names; a read-only note takes nothing; no importer pastes text | `testPasteIntoCodeBlockPastesNames`, `testImageIntoCodeBlockInsertsNothing`, `testReadOnlyIgnoresFiles`, `testPasteWithoutImporterPastesText` |
 | A 50 MB file returns in under 100 ms | `testFiftyMegabyteFileReturnsQuickly` |
 | One paste is one undo step | `testOneUndoStepRemovesInsertedTokens` |
 | A drop goes in at the point | `testDropOfAFileInsertsItAtThePoint`, `testDropOfTextIsNotAnAttachmentDrop` |
+| A drag is judged by its types and never by its data | `testDragIsJudgedByItsTypesAndNotByItsData`, `testDragOfFilesAndImagesIsAnAttachmentDragAndTextWins` |
 | The caret steps over a token; a partial selection grows (Review Focus 4) | `AttachmentEditingTests.testCaretSkipsOverToken`, `testCaretPutInsideATokenGoesToItsEdge`, `testPartialSelectionGrowsToWholeToken`, `testTokenInACodeBlockIsTextAndIsNotSnapped` |
 | Backspace and Delete select, then delete (Review Focus 4) | `testBackspaceSelectsThenDeletes`, `testBackspaceAtTheEndOfTheTokenLineSelectsThenDeletes`, `testDeleteForwardSelectsThenDeletes`, `testBackspaceBelowTextDoesNotJoinTheTokenToIt`, `testDeletingOrdinaryTextIsUnchanged`, `testBackspaceInATokenInACodeBlockIsPlain`, `testReadOnlyNoteKeepsItsTokens` |
+| ⇧-arrow takes a token into the selection whole and out again whole | `testShiftRightOverATokenAndShiftLeftShrinksBackOutOfIt`, `testShiftLeftOverATokenAndShiftRightShrinksBackOutOfIt` |
 | Typing over a selected token replaces it whole | `testTypingOverSelectedTokenReplacesWholeToken` |
 | The paperclip inserts the chosen files, and nothing when cancelled or read-only | `testPaperclipInsertsChosenFiles`, `testPaperclipCancelledOrReadOnlyInsertsNothing` |
 | The rules themselves (Linux) | `AttachmentEditingTests.swift` in ScratchCoreTests |

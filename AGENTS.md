@@ -1053,9 +1053,20 @@ new kind of release file, with no change to the app, ships.
   explicitly (`super.readSelection(from:type:)`), and `preferredPasteboardType(from:restrictedToTypesFrom:)` answers
   `.string` whenever there is text, so that an image next to the text (Excel, Word, browsers) can never be what AppKit reads
   (Review Focus 3). A paste that made attachments sets `attachmentPasteWasInserted`, and `endPaste` then skips the code
-  classification: its text is token lines. A TIFF is converted to PNG on the main thread, which is the one cost that
-  depends on the size of what is pasted; a file costs a few attributes and the header of an image, and is copied on the
+  classification: its text is token lines. Nothing of a picture is decoded or encoded on the main thread: `imageSource(on:)`
+  hands over the pasteboard's PNG, or else its TIFF, as the bytes they are (`AttachmentSource.image` with `public.png` or
+  `public.tiff`), `AttachmentImporter.describeImage` reads only the header, for the pixel size, and registers a TIFF as
+  `public.png` with a `.png` name, and `startCopy` makes the PNG of a TIFF (`CGImageSource` to `CGImageDestination`, the
+  orientation applied) on the storage queue, before `writeIn` (which then sets the row's size to the file's). A TIFF that
+  has no readable header is no attachment. A file costs a few attributes and the header of an image, and is copied on the
   storage queue.
+- **A drag is judged by the types on its pasteboard and never by its data.** `draggingEntered`, `draggingUpdated` (on every
+  move of the mouse), `prepareForDragOperation`, `performDragOperation` and `acceptsDrop(of:)` ask
+  `NoteTextView.wouldMakeAttachments(from:)`: `availableType(from:)` for the file types (`.fileURL` and
+  `NSFilenamesPboardType`: not `canReadObject(forClasses: [NSURL.self])`, which can say yes for a plain string that looks
+  like a URL), then for `.png` and `.tiff` together with "no text" (the one data read: `.string`, and only when an image
+  is there). The bytes are read once, by `performDrop(of:atViewPoint:)`, so a drag of a full-size picture over the note
+  costs nothing per move; a type that has no bytes behind it is a drop that finds nothing (`testDragIsJudgedByItsTypesAndNotByItsData`).
 - **An attachment that is pasted is a line of its own, and the caret goes below it.** `AttachmentEditing.insertion` adds a
   line break before the first token unless the paste starts a line, and one after the last token unless one follows already
   (so a token at the end of the note is followed by a line break, which deviates from the plan's literal rule: the caret
@@ -1066,7 +1077,11 @@ new kind of release file, with no change to the app, ships.
   `EditorViewController.textView(_:willChangeSelectionFromCharacterRange:toCharacterRange:)` is asked for every change of
   the selection, by a key, the mouse or code, and answers `AttachmentEditing.snappedSelection` (through
   `NoteTextView.snappedSelection(from:to:)`): a caret inside a token goes to its end, or its start when it came from the
-  right, and a click always to the end; a range grows to hold the whole token at either end. `deleteBackward` and
+  right, and a click always to the end; a range grows to hold the whole token at either end, except that an end that is
+  moved back with the other one fixed (⇧ and an arrow key, a drag back) gives the token up whole: the end of the range goes
+  to the token's start and the start to its end, or the selection could never be made smaller than the token
+  (`testShiftRightOverATokenAndShiftLeftShrinksBackOutOfIt` and its mirror). A range whose start and end both changed is a
+  new selection and grows. `deleteBackward` and
   `deleteForward` ask `AttachmentEditing.deletion` first: next to a token the first press selects it, the second removes it
   with one line break (`apply`, one undo step), and where a key would join a text line and a token line the caret only moves
   over the line break. Tokens in a fenced block are text for all of it (`isLiteral` is `styler.isInCodeBlock`). `token(touching:)`

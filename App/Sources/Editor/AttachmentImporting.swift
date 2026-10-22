@@ -6,8 +6,10 @@ import ScratchCore
 nonisolated enum AttachmentSource: Sendable, Equatable {
     /// A file, or a folder, to copy into Scratch's storage. Its name is the name of the attachment.
     case file(URL)
-    /// The bytes of an image, with the uniform type identifier they are in (`public.png`, as the editor converts every
-    /// pasted image to PNG).
+    /// The bytes of an image, exactly as they came, with the uniform type identifier they are in: `public.png`, or
+    /// `public.tiff`, which is what a screenshot or a picture copied from Preview is on the pasteboard. The editor decodes
+    /// nothing: the importer reads the header for the size, and stores a TIFF as PNG on the storage queue
+    /// (`AttachmentImporter`), so the main thread never converts a picture.
     case image(Data, typeIdentifier: String)
 }
 

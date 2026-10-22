@@ -66,13 +66,17 @@ public final class AttachmentStore: Sendable {
 
     /// Writes `data` into place, then sets ``Attachment/isCopied``, in the same atomic way as ``copyIn(_:from:)``. For
     /// an image that came from the pasteboard and has no file. Call it on the storage queue.
+    ///
+    /// The row's ``Attachment/byteSize`` becomes the size of `data`: an image is registered with the size of the bytes
+    /// that came (a TIFF) and is often written as something else (the PNG made from it).
     public func writeIn(_ id: AttachmentID, data: Data) throws {
-        try place(id) { temporary in try data.write(to: temporary) }
+        try place(id, byteSize: Int64(data.count)) { temporary in try data.write(to: temporary) }
     }
 
     /// Runs `write` to make the file under a temporary name, renames it to the attachment's file name and marks the
-    /// row copied. The temporary file is removed when anything fails.
-    private func place(_ id: AttachmentID, write: (URL) throws -> Void) throws {
+    /// row copied, with `byteSize` when the file's size is known to differ from the row's. The temporary file is
+    /// removed when anything fails.
+    private func place(_ id: AttachmentID, byteSize: Int64? = nil, write: (URL) throws -> Void) throws {
         guard let stored = try attachment(id) else { throw AttachmentError.unknownAttachment(id) }
         let target = fileURL(for: stored)
         let folder = target.deletingLastPathComponent()
@@ -86,7 +90,13 @@ public final class AttachmentStore: Sendable {
             try? FileManager.default.removeItem(at: temporary)
             throw error
         }
-        try database.execute("UPDATE attachments SET copied = 1 WHERE id = ?", [.text(id.rawValue)])
+        if let byteSize {
+            try database.execute(
+                "UPDATE attachments SET copied = 1, byte_size = ? WHERE id = ?",
+                [.integer(byteSize), .text(id.rawValue)])
+        } else {
+            try database.execute("UPDATE attachments SET copied = 1 WHERE id = ?", [.text(id.rawValue)])
+        }
     }
 
     /// `rename(2)`: puts `source` at `destination` in one step, replacing a file that is there. `FileManager` has no
