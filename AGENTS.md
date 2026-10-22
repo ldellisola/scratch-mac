@@ -206,8 +206,9 @@ App/Sources/Support/              AccessibilityID (also compiled into the UI tes
                                   with `order: afterMeasurementsOrder` after the signposts end), FrameMonitor
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
-                                  size, scroll anchor, scroll offset, pending paste work and the attachments of the note
-                                  (id, `copied` and `fileExists`) from, in isolated launches only)
+                                  size, scroll anchor, scroll offset, pending paste work, the previews still to decode and
+                                  the attachments of the note (id, `copied` and `fileExists`) from, in isolated launches
+                                  only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
@@ -338,7 +339,8 @@ macOS and runs on GitHub's Macs.
   `typical-dark`, `empty-light`, `huge-note-light`, `search-light` (typical, with "kube" typed in the search field),
   `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), `formatting-light` and
   `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note), and `code-light` and
-  `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured). These are the
+  `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured), and
+  `attachments-light` and `attachments-dark` (the `attachments` fixture: an image and a file chip). These are the
   names in the Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
@@ -699,8 +701,9 @@ new kind of release file, with no change to the app, ships.
 - **UI tests read the font size, the scroll anchor and the scroll offset from `debug.state`.** `DebugStateElement` is a
   1 x 1 point view in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its
   accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY`, `topInset`, and
-  `pendingHighlights` and `pendingPastes`, which are zero when a paste is done): `UITestSupport.debugState(in:)` reads
-  it. It draws nothing and takes no clicks, so it is not in a screenshot.
+  `pendingHighlights` and `pendingPastes`, which are zero when a paste is done, `pendingPreviews`, which is zero when
+  every image is decoded, and `attachments`): `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no
+  clicks, so it is not in a screenshot.
 - **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
   `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
   equivalents needs two items.

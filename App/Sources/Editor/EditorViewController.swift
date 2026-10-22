@@ -268,8 +268,10 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
                 // that have not been classified, so a test can wait for a block to be done.
                 "pendingHighlights": self.textView.styler.codeBlockStyler.pendingHighlights,
                 "pendingPastes": self.textView.pendingPasteClassifications,
-                // The attachments of the note: for each token in its text, the id and whether the copy is in place.
+                // The attachments of the note: for each token in its text, the id and whether the copy is in place, and
+                // the previews that are waiting to be decoded, so a screenshot is taken when the images are drawn.
                 "attachments": self.attachmentStates(),
+                "pendingPreviews": self.textView.styler.previews.pendingCount,
             ]
         }
         view.addSubview(element)
