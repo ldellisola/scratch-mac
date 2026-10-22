@@ -138,7 +138,7 @@ final class LaunchTimerTests: XCTestCase {
             LaunchTimer.mark("main", at: Date().addingTimeInterval(-0.5))
             LaunchTimer.finish(dataDirectory: directory, version: "9.9.9")
             spin(until: { LaunchTimer.current != nil })
-            XCTAssertEqual(Set(LaunchTimer.current?.phases.keys ?? []), ["main", "firstFrame"])
+            XCTAssertEqual(Set(LaunchTimer.current?.phases.keys.map { $0 } ?? []), ["main", "firstFrame"])
         }
     }
 
