@@ -191,7 +191,7 @@ App/Sources/Support/              AccessibilityID (also compiled into the UI tes
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
                                   size, scroll anchor, scroll offset, pending paste work and the attachments of the note
-                                  (id and `copied`) from, in isolated launches only)
+                                  (id, `copied` and `fileExists`) from, in isolated launches only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
@@ -222,7 +222,7 @@ App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an
                                   Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
                                   FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
                                   CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
-                                  AttachmentUITests (⌘V of a file survives a relaunch, Backspace twice and ⌘Z bring it
+                                  AttachmentUITests (⌘V of an image survives a relaunch, Backspace twice and ⌘Z bring it
                                   back), ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), CodePastePerfTests (a paste of
@@ -774,6 +774,12 @@ new kind of release file, with no change to the app, ships.
   picture (the request is made in `show`, before the window is visible, so zero means done). The `code` fixture's note is
   44 lines and fits the 1024 x 674 window whole: a line added to it can push the last block, the one with no fence name
   and the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
+- **A UI test cannot make a file for the app to read: it pastes image data.** The UI test runner is sandboxed (its
+  environment has `APP_SANDBOX_CONTAINER_ID`): it cannot create a directory in /tmp (`Operation not permitted`, CI of plan 5
+  task 5), and what it writes in its own container the app is not allowed to use. So `AttachmentUITests` put PNG data
+  (`.png`, what a screenshot is) on `NSPasteboard.general` and not a file's URL, and ask the app, through `debug.state`'s
+  `attachments` (`copied`, `fileExists`), whether the copy is on disk, because the runner cannot look in the data directory
+  either. Pasting file URLs is covered by the hosted `AttachmentPasteTests`, which run inside the app.
 - **UI tests type without clicking the editor first** (`editor.typeText`): the editor is first responder at launch, and a
   click would move the cursor that `testCursorRestoredAfterRelaunch` checks. `typeText` and `typeKey` need keyboard focus.
   Kill the app with `NSRunningApplication.forceTerminate()`, never `XCUIApplication.terminate()`, which may quit

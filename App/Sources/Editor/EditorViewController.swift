@@ -276,12 +276,17 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         debugStateElement = element
     }
 
-    /// The tokens in the note's text with whether each attachment's copy is in place, for `debug.state`. Reads the text and
-    /// the catalog when asked, so a UI test sees what the app knows now.
+    /// The tokens in the note's text, for `debug.state`: each one's id, whether its row says that the copy is in place
+    /// (`copied`) and whether Scratch's copy of the file is on disk (`fileExists`, which a UI test cannot look at itself: its
+    /// sandbox may keep it out of the data directory). Reads the text, the catalog and the disk when asked, so a UI test sees
+    /// what the app knows now.
     private func attachmentStates() -> [[String: Any]] {
         guard let catalog = attachmentCatalog else { return [] }
         return AttachmentToken.ids(in: textView.string).map { id in
-            ["id": id.rawValue, "copied": catalog.attachment(id)?.isCopied ?? false]
+            [
+                "id": id.rawValue, "copied": catalog.attachment(id)?.isCopied ?? false,
+                "fileExists": catalog.fileURL(id).map { FileManager.default.fileExists(atPath: $0.path) } ?? false,
+            ]
         }
     }
 
