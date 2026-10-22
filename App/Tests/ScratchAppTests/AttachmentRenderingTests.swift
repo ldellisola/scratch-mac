@@ -395,6 +395,68 @@ final class AttachmentRenderingTests: XCTestCase {
         XCTAssertGreaterThan(bluish * 4, total, "a quarter of the rectangle is the picture's blue")
     }
 
+    /// The pixels of the chip of the token at `location` that are not the chip's own tint: in the icon's square and in the
+    /// part of the chip where the name and the size are. Both are drawn in colours far from the tint, whatever the
+    /// appearance. Also the difference between the tint and what is just outside the chip.
+    private func chipInk(
+        atTokenAt location: Int, in host: Host
+    ) throws -> (icon: Int, text: Int, tintDistance: CGFloat) {
+        let target = drawnRect(ofTokenAt: location, in: host)
+        XCTAssertEqual(target.height, 44, accuracy: 0.5)
+        let rect = target.insetBy(dx: -8, dy: -8)
+        let rep = try XCTUnwrap(render(rect, in: host))
+        func distance(_ first: NSColor, _ second: NSColor) -> CGFloat {
+            abs(first.redComponent - second.redComponent) + abs(first.greenComponent - second.greenComponent)
+                + abs(first.blueComponent - second.blueComponent)
+        }
+        // Nothing is drawn at the right end of a chip, where the tint shows.
+        let tint = try XCTUnwrap(colour(at: NSPoint(x: target.maxX - 6, y: target.midY), in: rep, from: rect))
+        let outside = try XCTUnwrap(colour(at: NSPoint(x: target.maxX + 4, y: target.midY), in: rep, from: rect))
+        func ink(in area: NSRect) -> Int {
+            var count = 0
+            for y in 0..<rep.pixelsHigh {
+                for x in 0..<rep.pixelsWide {
+                    let point = NSPoint(
+                        x: rect.minX + (CGFloat(x) + 0.5) * rect.width / CGFloat(rep.pixelsWide),
+                        y: rect.minY + (CGFloat(y) + 0.5) * rect.height / CGFloat(rep.pixelsHigh))
+                    guard area.contains(point), let pixel = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else {
+                        continue
+                    }
+                    if distance(pixel, tint) > 0.25 { count += 1 }
+                }
+            }
+            return count
+        }
+        let icon = NSRect(x: target.minX + 8, y: target.minY + 6, width: 32, height: 32)
+        let text = NSRect(x: target.minX + 48, y: target.minY + 4, width: 160, height: 36)
+        return (ink(in: icon), ink(in: text), distance(tint, outside))
+    }
+
+    /// docs/features/attachments.md, "Display" (other files): the chip is a tint with the file's icon, its name and its size
+    /// drawn on it.
+    func testFileChipDrawsIconAndText() throws {
+        let host = try makeFixtureHost()
+        defer { host.cleanUp() }
+        let id = try XCTUnwrap(AttachmentToken.ids(in: host.note.body).last)
+        let ink = try chipInk(atTokenAt: tokenRange(id, in: host).location, in: host)
+        XCTAssertGreaterThan(ink.tintDistance, 0.05, "the chip is tinted")
+        XCTAssertGreaterThan(ink.icon, 20, "the icon is drawn")
+        XCTAssertGreaterThan(ink.text, 50, "the name and the size are drawn")
+    }
+
+    /// docs/features/attachments.md, "Display" (missing): the chip of a missing attachment has a symbol and its words.
+    func testMissingChipDrawsSymbolAndText() throws {
+        let (storage, directory) = try openStorage()
+        let id = AttachmentID.make()
+        let note = try saveNote("above\n\(AttachmentToken.line(for: id))\nbelow", in: storage)
+        let host = makeHost(storage: storage, directory: directory, note: note)
+        defer { host.cleanUp() }
+        let ink = try chipInk(atTokenAt: tokenRange(id, in: host).location, in: host)
+        XCTAssertGreaterThan(ink.tintDistance, 0.05, "the chip is tinted")
+        XCTAssertGreaterThan(ink.icon, 20, "the symbol is drawn")
+        XCTAssertGreaterThan(ink.text, 50, "the words are drawn")
+    }
+
     /// docs/features/attachments.md, "Display" (previews): a preview that arrives changes only what is drawn: no line is
     /// laid out again, and the text and its attributes are what they were.
     func testPreviewArrivalKeepsTheLayout() throws {
