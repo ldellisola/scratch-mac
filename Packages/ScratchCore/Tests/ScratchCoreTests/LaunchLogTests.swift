@@ -295,3 +295,26 @@ private func file(in directory: URL) -> URL {
     #expect(lines[1] == "2026-10-23 09:01  1234 ms")
     #expect(lines[2] == "2026-10-23 09:00     5 ms   first after start-up")
 }
+
+@Test func reportSurvivesNumbersNoLaunchCanHave() throws {
+    // A file that was edited by hand holds any number JSON can: 1e300 does not fit an Int, and a negative time is no time.
+    let directory = try makeDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    var log = LaunchLog()
+    log.append(record(minutes: 0, boot: 0, total: 100))
+    log.append(record(minutes: 1, boot: 0, total: 150))
+    log.append(record(minutes: 2, boot: 0, total: 200))
+    try log.save(to: directory)
+    var text = try String(contentsOf: file(in: directory), encoding: .utf8)
+    text = text.replacingOccurrences(of: "\"firstFrame\" : 100", with: "\"firstFrame\" : 1e300")
+    text = text.replacingOccurrences(of: "\"firstFrame\" : 150", with: "\"firstFrame\" : -5")
+    try text.write(to: file(in: directory), atomically: true, encoding: .utf8)
+
+    let loaded = LaunchLog.load(from: directory)
+    #expect(loaded.records.count == 3)
+    let lines = loaded.report(version: "1.0.0", timeZone: utc).split(separator: "\n").map(String.init)
+    #expect(lines.count == 1 + 3 + 1)
+    #expect(lines[1] == "2026-10-23 09:02   200 ms")
+    #expect(lines[2] == "2026-10-23 09:01     0 ms")
+    #expect(lines[3] == "2026-10-23 09:00 1000000000000 ms   first after start-up")
+}

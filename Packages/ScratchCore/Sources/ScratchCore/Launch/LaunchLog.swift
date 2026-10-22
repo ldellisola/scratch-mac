@@ -114,7 +114,7 @@ public struct LaunchLog: Equatable, Sendable {
 
         var lines = ["Scratch \(version), launch times on this Mac, newest first:"]
         for record in records.reversed() {
-            let milliseconds = String(Int(record.totalMilliseconds.rounded()))
+            let milliseconds = String(Self.wholeMilliseconds(record.totalMilliseconds))
             let padding = String(repeating: " ", count: max(0, 5 - milliseconds.count))
             var line = "\(formatter.string(from: record.date)) \(padding)\(milliseconds) ms"
             if record.isFirstAfterStartUp { line += "   first after start-up" }
@@ -137,6 +137,14 @@ public struct LaunchLog: Equatable, Sendable {
         guard !totals.isEmpty else { return "none yet" }
         let middle = totals.count / 2
         let median = totals.count.isMultiple(of: 2) ? (totals[middle - 1] + totals[middle]) / 2 : totals[middle]
-        return "\(Int(median.rounded())) ms"
+        return "\(wholeMilliseconds(median)) ms"
+    }
+
+    /// `milliseconds` to the whole millisecond, for the report. A number that no launch can have (a file edited by hand holds
+    /// anything a JSON number can be) is held to 0 and a trillion, because converting one that is out of range to an `Int`
+    /// would stop the app.
+    private static func wholeMilliseconds(_ milliseconds: Double) -> Int {
+        guard milliseconds.isFinite else { return 0 }
+        return Int(min(max(milliseconds, 0), 1e12).rounded())
     }
 }

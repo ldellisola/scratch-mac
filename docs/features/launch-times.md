@@ -62,6 +62,8 @@ Other launches, median of the last 1: 118 ms (budget 200 ms). First after start-
 - The first median is over the newest 10 records that are not first after start-up, the second over the newest 10 that
   are. A summary with no records says `none yet` in place of its number. With no record at all the report is `No
   launches recorded yet.`
+- A number that no launch can have (a file edited by hand holds any JSON number) is shown held to 0 and a trillion
+  milliseconds: converting one that is out of range to an `Int` would stop the app.
 - The alert is a sheet of the window (a panel of its own when there is none), with the report in a selectable, monospaced
   text view (`launchTimes.report`) and the buttons **Copy** (the report as plain text to the general pasteboard, and the
   alert closes) and **OK** (Escape).
@@ -78,7 +80,7 @@ has been written after the first frame, so a UI test waits for it.
 |---|---|
 | A record's total is its `firstFrame` and survives JSON | ScratchCore `LaunchRecordTests.swift` |
 | `isFirstAfterStartUp`, the limit of 50, the file, a corrupt, huge or missing file, a directory in its place (Review Focus 5) | ScratchCore `LaunchLogTests.appendMarksFirstAfterStartUp`, `logKeepsNewestFifty`, `saveAndLoadRoundTrip`, `launchLogIgnoresACorruptFile`, `launchLogIgnoresAHugeFile`, `launchLogIgnoresADirectoryWhereTheFileShouldBe`, `loadKeepsTheGoodRecordsOfAFileWithABadOne` |
-| The report, its medians and `none yet` | `LaunchLogTests.reportFormat`, `reportWithNoRecords`, `reportSaysNoneYetForAnEmptySummary`, `reportSummariesUseTheNewestTenOfEachKind`, `reportListsEveryRecordNewestFirstInTheGivenTimeZone` |
+| The report, its medians and `none yet` | `LaunchLogTests.reportFormat`, `reportWithNoRecords`, `reportSaysNoneYetForAnEmptySummary`, `reportSummariesUseTheNewestTenOfEachKind`, `reportListsEveryRecordNewestFirstInTheGivenTimeZone`, `reportSurvivesNumbersNoLaunchCanHave` |
 | The app's own launch has its five phases in order | `LaunchTimerTests.testPhasesAreInOrder`, UI `LaunchUITests.testLaunchesAreRecordedInTheLaunchLog` |
 | `finish` writes nothing itself, the file is there after the queue | `LaunchTimerTests.testLaunchLogIsWrittenAfterTheFirstFrame` |
 | An unwritable, a corrupt or a missing log never stops a launch (Review Focus 5) | `LaunchTimerTests.testLaunchSurvivesAnUnwritableLaunchLog`, `testLaunchReplacesACorruptLaunchLog`, `testLaunchGoesOnWithoutADataDirectory` |
