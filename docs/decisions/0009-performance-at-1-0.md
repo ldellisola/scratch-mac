@@ -11,8 +11,8 @@ the runner moves by an amount of milliseconds may be allowed that amount.
 
 ## Context
 
-- **The absolute launch cannot gate on these runners.** `launch_ms` is the median of ten launches of one build, and the
-  runner's own speed is most of it. Main's run of 0.5.0 (`f5ba72a`) measured 0.60 to 1.14 s across its ten launches, the
+- **The absolute launch cannot gate on these runners.** `launch_ms` was the median of ten launches of one build, and
+  the runner's own speed is most of it. Main's run of 0.5.0 (`f5ba72a`) measured 0.60 to 1.14 s across its ten launches, the
   medians of runs of one build were 331 to 776 ms (0003), and the commits `a698055` and `4faafbe`, which changed only
   documents, measured 800 and 1,027 ms. A budget of 400 ms with a failure at 800 ms failed builds that had not changed. A
   system app (Calculator) takes 0.9 to 1.6 s on the same runner (0003), so the spec's 200 ms is not reachable by any app
@@ -29,13 +29,14 @@ the runner moves by an amount of milliseconds may be allowed that amount.
    of `App/project.yml` that `ScratchPerfTests` depends on (built with the tests, into the same products folder, not
    linked), and neither the `Scratch` scheme, which makes the release, nor the Scratch target know it: it is never part
    of the app or of a release.
-2. **`launch_overhead_ms` = `launch_ms` − `launch_reference_ms`, both medians of 10 launches.** `testReferenceLaunch`
-   measures `LaunchReference.app` like `testLaunch` measures Scratch (the same three warm-up launches, the same ten
-   iterations of `XCTApplicationLaunchMetric()`), launched by its URL (`XCUIApplication(url:)`), in the same job on the same
-   runner. The runner's speed is in both numbers, and what is left is the work Scratch adds to what any app with a window and a
-   TextKit 1 text view costs: its storage, session restore, menus, sidebar, tab strip, styling and the rest. The budget is
-   150 ms: the spec's 200 ms launch (§7) less a share for what every app's launch costs, which is not Scratch's to save.
-   The owner's Mac will say whether that share is right (the last section), and the tolerance below applies.
+2. **`launch_overhead_ms` = `launch_ms` − `launch_reference_ms`, both medians of 30 launches** (the plan says 10: see "Measured
+   numbers"). `testReferenceLaunch` measures `LaunchReference.app` like `testLaunch` measures Scratch (the same three
+   warm-up launches, the same `LaunchPerfTests.measuredLaunches` iterations of `XCTApplicationLaunchMetric()`), launched by
+   its URL (`XCUIApplication(url:)`), in the same job on the same runner. The runner's speed is in both numbers, and what is
+   left is the work Scratch adds to what any app with a window and a TextKit 1 text view costs: its storage, session restore,
+   menus, sidebar, tab strip, styling and the rest. The budget is 150 ms: the spec's 200 ms launch (§7) less a share for what
+   every app's launch costs, which is not Scratch's to save. The owner's Mac will say whether that share is right (the last
+   section), and the tolerance below applies.
 3. **`launch_ms` and `launch_reference_ms` are reported and never fail.** They have no budget, so `perf-check.py` prints
    them as `INFO`: a result whose metric has no budget used to be dropped, and is now a row of the report with the verdict
    `INFO`, so that every number a run measured is in `perf/report.md`. The spec's 200 ms stays the target on the owner's Mac,
@@ -70,46 +71,55 @@ the runner moves by an amount of milliseconds may be allowed that amount.
 
 ## Measured numbers (task 2)
 
-The macOS job's runs of four commits of the same app code, in the order they ran. `f9ede5d` is the last commit before the
+The macOS job's runs of five commits of the same app code, in the order they ran. `f9ede5d` is the last commit before the
 reference app and the idle monitor, so it has `launch_ms` only. `a5d9ef8` is the first with the new metrics (Scratch 1.0.0
-before task 3 reduces its launch work), and `4d3d8f7` and `6156b17` changed documents only: more samples of what the runner
-does to one build.
+before task 3 reduces its launch work), and `4d3d8f7`, `6156b17` and `752a281` changed documents only: more samples of what
+the runner does to one build. All of them measured ten launches of each app.
 
-| Metric | `f9ede5d` | `a5d9ef8` | `4d3d8f7` | `6156b17` | Budget |
-|---|---|---|---|---|---|
-| `launch_ms` (median of 10) | 634.5 | 442.8 | 552.1 | 671.2 | none (INFO) |
-| the ten launches, fastest to slowest | 573 to 677 | 426 to 470 | 414 to 730 | 554 to 888 | |
-| `launch_reference_ms` (median of 10) | not measured | 261.4 | 328.5 | 406.9 | none (INFO) |
-| the ten reference launches | | 227 to 289 | 284 to 492 | 264 to 597 | |
-| `launch_overhead_ms` | not measured | 181.4 | 223.6 | 264.3 | 150 (WARN: no baseline, over budget) |
-| `idle_cpu_pct` | not measured | 0.031 | 0.067 | 0.075 | 1.0 (WARN: no baseline) |
-| `idle_wakeups` | not measured | 3 | 3 | 3 | none (INFO) |
+| Metric | `f9ede5d` | `a5d9ef8` | `4d3d8f7` | `6156b17` | `752a281` | Budget |
+|---|---|---|---|---|---|---|
+| `launch_ms` (median of 10) | 634.5 | 442.8 | 552.1 | 671.2 | 639.3 | none (INFO) |
+| the ten launches, fastest to slowest | 573 to 677 | 426 to 470 | 414 to 730 | 554 to 888 | 498 to 800 | |
+| `launch_reference_ms` (median of 10) | not measured | 261.4 | 328.5 | 406.9 | 302.5 | none (INFO) |
+| the ten reference launches | | 227 to 289 | 284 to 492 | 264 to 597 | 244 to 490 | |
+| `launch_overhead_ms` | not measured | 181.4 | 223.6 | 264.3 | **336.8** | 150 |
+| verdict of `launch_overhead_ms` | | WARN | WARN | WARN | **FAIL** (over 300) | |
+| `idle_cpu_pct` | not measured | 0.031 | 0.067 | 0.075 | 0.247 | 1.0 (WARN: no baseline) |
+| `idle_wakeups` | not measured | 3 | 3 | 3 | 3 | none (INFO) |
 
-- **The same app code launched up to 230 ms apart in four runs** (medians of 634, 443, 552 and 671 ms), which is the runner
-  and not the app, and why `launch_ms` cannot gate. The reference app is the other half of the comparison, and it moves with
-  the runner too (261, 329 and 407 ms).
-- **The overhead moves with the runner as well, though less than the launch.** It was 181, 224 and 264 ms, 41.0%, 40.5% and
-  39.4% of `launch_ms`, so a runner that is 50% slower makes Scratch's own work look about 45% longer. What stayed put is the
-  ratio of the two launches (`launch_ms` over `launch_reference_ms`: 1.69, 1.68 and 1.65). The plan fixes the metric as the
-  difference and this record keeps it, but it is the reason for the tolerance, and for what follows from it: the baseline of
-  task 10 is the slowest of three runs (0003), so a baseline near 264 puts the regression limit (1.2 x 264 + 60 = 377) above
-  twice the budget (300), and the limit that decides is 300. A runner slower than any of the above (a launch of about 750 ms)
-  reaches it with no change to the app, and then the job is run again, as 0003 says of every metric. Task 3 of Plan 6 lowers
-  the overhead itself, which is the real margin. All three overheads are over the budget of 150 ms: a WARN.
-- **Idle is nearly nothing.** The app used 1.5 ms of CPU in the 5.001 s of the first run (0.031% of a core), and 0.067% and
-  0.075% in the next two, with 3 wake-ups of the main run loop each time, at least one of them the monitor's own timer that
-  ends the measurement. The budget of 1.0 leaves a wide margin, and the tolerance of 0.5 is for a runner that is busy
-  elsewhere.
+- **The same app code launched up to 230 ms apart in five runs** (medians of 634, 443, 552, 671 and 639 ms), which is the
+  runner and not the app, and why `launch_ms` cannot gate. The reference app is the other half of the comparison, and it
+  moves with the runner too (261, 329, 407 and 303 ms), but not together with Scratch: the launches of one run differ by a
+  factor of two (the reference's, 264 to 597 ms in one run) and the two tests run one after the other, so what the difference
+  keeps of the runner's speed is noise.
+- **The overhead is a noisy number with a mean of 250 to 270 ms.** It was 181, 224, 264 and 337 ms: 41%, 40%, 39% and 53% of
+  `launch_ms`. A bootstrap over the 80 launches of the four runs that have both (resampling them 10 at a time, medians,
+  difference) has a mean of 265 ms and a standard deviation of 67 ms, and a probability of about 31% of a result above 300.
+  With 30 launches of each app the standard deviation is 40 ms and the probability 26%: more launches take away the noise of
+  the median and leave the mean, which is the app's own cost on this runner. So the tests measure 30 launches of each (the
+  plan says ten: the one deviation of this task from its numbers, about a minute of CI time for each test), and the budget
+  and the tolerance stay as the plan has them (150 ms, 60 ms).
+- **What that means for the gate.** The hard limit is twice the budget, 300 ms, and the app's overhead is near it: the run of
+  `752a281` failed with no change to the app (336.8 ms), and the same code passed in the three runs before it. Until
+  the overhead itself is lower (task 3 of Plan 6 works on it, and the tasks after it change the launch too), a `FAIL` above
+  300 ms in `launch_overhead_ms` with no change to the launch is the runner's: push a new commit for another one (AGENTS.md,
+  "Performance"). It has a second consequence for task 10: a baseline of the slowest of three runs would be near 300, where
+  the regression limit (1.2 x S + 60) is above the hard limit, so the hard limit decides. If the final app's overhead is still
+  near 250, the budget needs what `launch_ms` got in 0003 (a CI budget looser than the spec's, with its reason written here).
+- **Idle is nearly nothing.** The app used 1.5 ms of CPU in the 5.001 s of the first run (0.031% of a core), and 0.067%,
+  0.075% and 0.247% in the next three, with 3 wake-ups of the main run loop each time, at least one of them the monitor's own
+  timer that ends the measurement. The budget of 1.0 leaves a wide margin, and the tolerance of 0.5 is for a runner that is
+  busy elsewhere.
 - **Where Scratch's launch goes** (`launch_phase_<name>_ms`, medians over the launches in the log, in milliseconds from the
   process start; 16 launches in each run):
 
-  | Phase | `a5d9ef8` | `4d3d8f7` | `6156b17` |
-  |---|---|---|---|
-  | `main` (`main.swift` begins) | 60.1 | 83.5 | 97.1 |
-  | `storage` (the storage is open) | 101.7 | 143.1 | 157.8 |
-  | `restore` (the session is restored) | 272.0 | 357.6 | 430.4 |
-  | `window` (the window is shown) | 321.5 | 422.1 | 490.9 |
-  | `firstFrame` (on screen, takes keystrokes) | 470.9 | 595.4 | 698.7 |
+  | Phase | `a5d9ef8` | `4d3d8f7` | `6156b17` | `752a281` |
+  |---|---|---|---|---|
+  | `main` (`main.swift` begins) | 60.1 | 83.5 | 97.1 | 90.6 |
+  | `storage` (the storage is open) | 101.7 | 143.1 | 157.8 | 167.2 |
+  | `restore` (the session is restored) | 272.0 | 357.6 | 430.4 | 427.1 |
+  | `window` (the window is shown) | 321.5 | 422.1 | 490.9 | 503.8 |
+  | `firstFrame` (on screen, takes keystrokes) | 470.9 | 595.4 | 698.7 | 703.6 |
 
   In the first run the process is in `main.swift` 60 ms in, opening the storage takes 42 ms more, restoring the session 170
   ms, showing the window 50 ms and the first frame another 150 ms, and in the slower runs every phase is 1.3 to 1.6 times as

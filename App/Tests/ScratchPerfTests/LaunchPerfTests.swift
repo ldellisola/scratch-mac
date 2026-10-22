@@ -11,6 +11,12 @@ import XCTest
 /// that Scratch wrote in its own launch log (`launch_phases`), to see where the time goes.
 @MainActor
 final class LaunchPerfTests: XCTestCase {
+    /// The launches each of the two tests measures. Ten gave a median that moved by 60 ms or so from run to run (the launches
+    /// of one run differ by a factor of two on CI's Macs, and `launch_overhead_ms` is the difference of two such medians:
+    /// 181, 224, 264 and 337 ms in four runs of one app, docs/decisions/0009), and a launch costs a second, so the tests take
+    /// more of them.
+    static let measuredLaunches = 30
+
     func testLaunch() throws {
         continueAfterFailure = false
         let dataDirectory = UITestSupport.makeDataDirectory()
@@ -37,7 +43,7 @@ final class LaunchPerfTests: XCTestCase {
         // the first iteration only, with or without a `terminate()` in the block ("Received unexpected number of
         // metrics: 0"). The plain metric reported all of them.
         let options = XCTMeasureOptions()
-        options.iterationCount = 10
+        options.iterationCount = Self.measuredLaunches
         measure(metrics: [XCTApplicationLaunchMetric()], options: options) {
             app.launch()
         }
@@ -65,7 +71,7 @@ final class LaunchPerfTests: XCTestCase {
 
     /// `launch_reference_ms`: the same measurement of `LaunchReference.app` (App/LaunchReference), an AppKit app that shows
     /// one window with a TextKit 1 text view and does nothing else, launched from the products folder of this build with the
-    /// same warm-up and the same ten iterations. What Scratch's launch costs above it (`launch_overhead_ms`) is Scratch's own
+    /// same warm-up and the same number of iterations. What Scratch's launch costs above it (`launch_overhead_ms`) is Scratch's own
     /// work, and does not depend on how fast the runner is that day (docs/decisions/0009).
     func testReferenceLaunch() throws {
         continueAfterFailure = false
@@ -86,7 +92,7 @@ final class LaunchPerfTests: XCTestCase {
         }
 
         let options = XCTMeasureOptions()
-        options.iterationCount = 10
+        options.iterationCount = Self.measuredLaunches
         measure(metrics: [XCTApplicationLaunchMetric()], options: options) {
             app.launch()
         }

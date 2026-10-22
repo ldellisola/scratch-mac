@@ -436,8 +436,8 @@ budget); everything else that was measured prints `INFO` and never fails. The `m
 the keystroke test before and after, and the frame report). The measurements, and why each is what it is, are in
 docs/decisions/0001, 0003 and 0009. What to know when one fails or changes:
 
-- **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 10 launches, reported and never failing
-  (INFO). `launch_reference_ms`: the same of `LaunchReference.app`, an empty AppKit app that the same job builds
+- **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 30 launches (`LaunchPerfTests.measuredLaunches`),
+  reported and never failing (INFO). `launch_reference_ms`: the same of `LaunchReference.app`, an empty AppKit app that the same job builds
   (`LaunchPerfTests.testReferenceLaunch`), also INFO. `launch_overhead_ms`: `launch_ms` minus `launch_reference_ms`, which is
   Scratch's own launch work and the launch metric that gates: budget 150, tolerance 60, so it fails above 1.2 x baseline +
   60 or above 300 (docs/decisions/0009). `launch_phase_<name>_ms` (INFO): the median of each phase of the launch log
@@ -465,6 +465,11 @@ docs/decisions/0001, 0003 and 0009. What to know when one fails or changes:
   app is measured by the same job on the same runner, so the runner's speed is in both numbers. A failure that no change
   explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline, and push a new commit for
   another runner.
+- **`launch_overhead_ms` is noisy, and it fails above 300 ms.** The two medians are measured one after the other and the
+  launches of one run differ by a factor of two, so the difference moved between 181 and 337 ms in five runs of one app
+  (docs/decisions/0009, "Measured numbers"). While the app's own overhead is near 250 ms, a `FAIL` of that row (the notes say
+  "over 2x the budget") with no change to what a launch does is the runner's: push a new commit. Do not touch the budget, the
+  tolerance or the baseline for it. A real regression shows in the phases (`launch_phase_<name>_ms`) of every run, and stays.
 - **A signpost interval ends when the run loop is idle** (`RunLoopIdle`, `Signposts.beginEditorInterval`), not when the
   code returns, so that TextKit's lazy layout and drawing count. A new interval for the tests belongs there too.
 - **`XCTApplicationLaunchMetric(waitUntilResponsive: true)` reports one launch of ten, or none,** on macos-26. Use the
