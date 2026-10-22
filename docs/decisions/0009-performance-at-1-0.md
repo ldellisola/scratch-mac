@@ -68,9 +68,33 @@ the runner moves by an amount of milliseconds may be allowed that amount.
    7). Until then `launch_overhead_ms` and `idle_cpu_pct` have no baseline, so they can warn ("no baseline") and fail only
    above twice their budget.
 
-## Measured numbers
+## Measured numbers (task 2)
 
-To be filled in from the first CI runs of this task.
+The first run of the macOS job that has the new metrics (`a5d9ef8`, Scratch 1.0.0 before task 3 reduces its launch work),
+with the run of the commit before it (`f9ede5d`, the same app without the reference and the idle monitor) beside it, to show
+what the runner does to one build.
+
+| Metric | `f9ede5d` | `a5d9ef8` | Budget | Verdict at `a5d9ef8` |
+|---|---|---|---|---|
+| `launch_ms` (median of 10) | 634.5 | 442.8 | none | INFO |
+| the ten launches, fastest to slowest | 573 to 677 | 426 to 470 | | |
+| `launch_reference_ms` (median of 10) | not measured | 261.4 | none | INFO |
+| the ten reference launches | | 227 to 289 | | |
+| `launch_overhead_ms` | not measured | 181.4 | 150 | WARN (no baseline, over budget) |
+| `idle_cpu_pct` | not measured | 0.031 | 1.0 | WARN (no baseline) |
+| `idle_wakeups` | not measured | 3 in 5.001 s | none | INFO |
+
+- **The same app code launched 190 ms slower in the earlier run** (a median of 634 ms against 443 ms), which is the runner
+  and not the app, and why `launch_ms` cannot gate. The reference app is the other half of the comparison: in the run above it
+  took 261 ms, 59% of Scratch's launch, so a launch of an empty window is most of what the runner measures.
+- **Idle is nearly nothing.** The app used 1.5 ms of CPU in 5.001 s (0.031% of a core), with 3 wake-ups of the main run loop,
+  at least one of them the monitor's own timer that ends the measurement. The budget of 1.0 leaves a wide margin, and the tolerance of 0.5 (decision 6) is for
+  a runner that is busy elsewhere.
+- **Where Scratch's launch goes** (`launch_phase_<name>_ms`, medians of the 16 launches in the log of that run, milliseconds
+  from the process start): `main` 60.1, `storage` 101.7, `restore` 272.0, `window` 321.5, `firstFrame` 470.9. So the process
+  is in `main.swift` 60 ms in, opening the storage takes 42 ms more, restoring the session 170 ms, showing the window 50 ms
+  and the first frame another 150 ms. These are the numbers that task 3 of Plan 6 (less work before the first frame) is
+  measured against, and it records its own beside them.
 
 ## The owner's Mac
 
