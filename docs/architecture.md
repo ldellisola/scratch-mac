@@ -129,6 +129,10 @@ key press
 - Launching reads the session, then the note of every saved tab (`SessionCoordinator.restoredTabs`: a few small reads
   on the main thread, a tab whose note is gone or deleted is dropped), before the window shows. The note list is read
   on the storage queue after that (`SessionCoordinator.restore()`).
+- A launch measures itself: `LaunchTimer.mark` records the phases `main`, `storage`, `restore` and `window` as the launch
+  goes (a clock read each), the main run loop's first idle moment after the window is shown marks `firstFrame`, and only
+  then `LaunchTimer.finish` hands the marks to its own utility queue, which appends the record to `launch-times.json`
+  (`LaunchLog`) and writes it. Help > Launch Times… shows that log (`docs/features/launch-times.md`).
 - A click on a sidebar row goes `SidebarViewController.onOpen` (the table's click action) ->
   `SessionCoordinator.open(_:inNewTab:)`. A click on a tab goes `TabStripViewController.onSelect` ->
   `SessionCoordinator.selectTab(at:)`. The toolbar's new note button, ⌘N and ⌘T go `ToolbarController.onNewNote` or

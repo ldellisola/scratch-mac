@@ -42,4 +42,6 @@ enum AccessibilityID {
     static let tabClose = "tab.close"
     /// The "+" button at the end of the tab strip, which opens a new empty note in a new tab.
     static let tabNew = "tab.new"
+    /// The text view of the Launch Times alert (Help > Launch Times…, plan 6 task 1). Its value is the launch log's report.
+    static let launchTimesReport = "launchTimes.report"
 }

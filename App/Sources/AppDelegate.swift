@@ -60,6 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func launch() throws {
         let environment = try AppEnvironment.bootstrap(arguments: CommandLine.arguments)
         self.environment = environment
+        LaunchTimer.mark("storage")
 
         if let appearance = environment.options.appearance {
             NSApp.appearance = NSAppearance(named: appearance == .dark ? .darkAqua : .aqua)
@@ -110,6 +111,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             toolbarController?.setAttachEnabled(enabled)
             appCommands?.setActiveNotePin(pinned: pinned, enabled: enabled)
         }
+        // Help > Launch Times… shows how long the launches of this Mac took (plan 6 task 1).
+        commands.onShowLaunchTimes = { [weak self] in self?.showLaunchTimes() }
         // Scratch > About Scratch shows the licences of tree-sitter and its grammars as its credits (plan 5 task 7).
         commands.onShowAbout = { NSApp.orderFrontStandardAboutPanel(options: AboutCredits.panelOptions()) }
         // View > Bigger, Smaller and Actual Size (spec §6.4).
@@ -120,8 +123,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if environment.options.isIsolated { editor.installDebugStateElement() }
 
         coordinator.restore()
+        LaunchTimer.mark("restore")
         windowController.showWindow(nil)
         editor.focus()
+        LaunchTimer.mark("window")
+        // The launch log: when the main run loop is next idle the window is on screen and takes keystrokes, which is where the
+        // launch ends (spec §7). Everything the log does comes after that mark, on its own queue (`LaunchTimer.finish`).
+        let dataDirectory = environment.storage.directory
+        RunLoopIdle.onNext {
+            LaunchTimer.mark("firstFrame")
+            LaunchTimer.finish(dataDirectory: dataDirectory, version: LaunchTimesPanel.appVersion)
+        }
         // Notes that were deleted more than 30 days ago are removed once the window is up (spec §6.2): one turn of the
         // main queue after the restore, so that it is not part of what the first frame waits for.
         // The sweep of the attachments that no note names comes after the purge, on the same queue, because the purge may
@@ -145,6 +157,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             monitor.start()
             frameMonitor = monitor
         }
+    }
+
+    /// Help > Launch Times…: the launch log in an alert, with Copy. The log is the one the launch loaded and appended to, or,
+    /// in the moments before the queue has delivered it, the file's.
+    private func showLaunchTimes() {
+        guard let environment else { return }
+        let log = LaunchTimer.log ?? LaunchLog.load(from: environment.storage.directory)
+        LaunchTimesPanel.present(
+            report: LaunchTimesPanel.report(of: log), over: windowController?.window)
     }
 
     // MARK: NSWindowDelegate

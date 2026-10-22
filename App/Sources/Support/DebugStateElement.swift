@@ -2,7 +2,9 @@ import AppKit
 
 /// A 1 x 1 point view that publishes the editor's state to UI tests, which cannot see the font size or how far a note
 /// is scrolled. It is an accessibility element with the identifier `AccessibilityID.debugState` and a JSON string as
-/// its value, for example `{"attachments":[],"fontSize":13,"pendingHighlights":0,"pendingPastes":0,"pendingPreviews":0,"readOnly":false,"scrollAnchor":0,"scrollY":0,"topInset":0}`.
+/// its value, for example `{"attachments":[],"fontSize":13,"launchTimes":[],"pendingHighlights":0,"pendingPastes":0,"pendingPreviews":0,"readOnly":false,"scrollAnchor":0,"scrollY":0,"topInset":0}`.
+/// `launchTimes` is not the editor's: it is the newest 20 records of the launch log, newest first (`LaunchTimer.debugRecords`),
+/// empty until the log has been written after the first frame.
 ///
 /// It draws nothing, takes no clicks and exists only in an isolated data directory (`AppDelegate` asks the editor to
 /// install it), so a normal launch has no such view and a screenshot shows nothing of it. The value is computed when
@@ -32,7 +34,8 @@ final class DebugStateElement: NSView {
     }
 
     override func accessibilityValue() -> Any? {
-        let object = state?() ?? [:]
+        var object = state?() ?? [:]
+        object["launchTimes"] = LaunchTimer.debugRecords()
         guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return nil }
         return String(decoding: data, as: UTF8.self)
     }

@@ -12,8 +12,13 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
-- Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
-  done and released as 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
+- Latest plan: [`docs/superpowers/plans/2026-10-22-plan-6-polish.md`](docs/superpowers/plans/2026-10-22-plan-6-polish.md),
+  in progress, and its release is 1.0.0 (`VERSION` says so from task 1 on): launch speed and a launch log, the CI
+  performance check, the look of mockup B, accessibility, an icon, and the 0.5.0 follow-ups. Task 1 is done: the app writes
+  down each launch (`launch-times.json`, `LaunchLog`, `LaunchTimer`) and Help > Launch Times… shows and copies the record
+  ([`docs/features/launch-times.md`](docs/features/launch-times.md)). The plan before it,
+  [`2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md), is done and released as 0.5.0
+  (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
   and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
   and `AttachmentToken` exist, the schema is version 3, `AttachmentStore` keeps the files and removes them only when no
   note names them, the 0.4.0 follow-ups in ScratchCode are in, a token line is drawn as a preview or a chip, files and
@@ -78,7 +83,12 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   fixture on the real directory; `deletePermanently` and `purge`, which remove a note
                                   and then the files nothing names any more; its
                                   `database` is public so that tests can make writes fail, see section 7)
-  Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
+  Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride.
+                                  LaunchRecord (one launch: the date, the version, the boot time, the milliseconds from the
+                                  process start to each of the phases `main`, `storage`, `restore`, `window` and `firstFrame`,
+                                  and `isFirstAfterStartUp`) and LaunchLog (`<data dir>/launch-times.json`: the newest 50
+                                  records, `load` never throws, `append` decides what is the first after start-up, `save` is
+                                  atomic, `report` is the text of Help > Launch Times…)
   Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold at
                                   word boundaries (docs/decisions/0006), inline code and links, as UTF-16 `NSRange`s),
                                   MarkupSpan and MarkupKind, LinkScanner
@@ -134,11 +144,12 @@ App/Sources/Window/               MainWindowController (one window, closing it q
                                   sidebar item + editor area item), EditorAreaViewController (the tab strip above the
                                   editor), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
                                   menu), AppCommands (the target of the app's own menu items: About Scratch, the tabs,
-                                  pinning, attaching a file, searching and the font size), AboutCredits (the About
+                                  pinning, attaching a file, searching, the font size and Help > Launch Times…), AboutCredits (the About
                                   panel's credits: the licences in `Acknowledgements.rtf`, in `labelColor`; `credits(in:)`,
                                   `panelOptions(in:)`), ToolbarController (sidebar button,
                                   paperclip, pin button, new note button), TitlebarPocket (hides
-                                  the line macOS 26 draws under the toolbar, section 7)
+                                  the line macOS 26 draws under the toolbar, section 7), LaunchTimesPanel (the alert of
+                                  Help > Launch Times…: the report in a selectable text view, with Copy and OK)
 App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
                                   `TabStripLayout`, `TabStripContentView`, `TabItemView`)
 App/Sources/Sidebar/              SidebarViewController (the search field and the note list in the glass sidebar: an
@@ -203,15 +214,17 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   drag item and its picture, `AttachmentDragSource`: copy only) and AttachmentPasteboard
                                   (the one item of a copy of one attachment: its name, its file's URL, and for an image
                                   its PNG and TIFF, which `AttachmentImageProvider` makes when an application asks)
-App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
+App/Sources/Support/              LaunchClock (the process start and the boot time, from `sysctl`), LaunchTimer (the launch's
+                                  phase marks, and after the first frame the log's record: `mark`, `finish`, `current`, `log`),
+                                  AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
                                   `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
                                   (runs work when the main run loop is next about to wait: after the frame is drawn, and
                                   with `order: afterMeasurementsOrder` after the signposts end), FrameMonitor
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
-                                  size, scroll anchor, scroll offset, pending paste work, the previews still to decode and
-                                  the attachments of the note (id, `copied` and `fileExists`) from, in isolated launches
-                                  only)
+                                  size, scroll anchor, scroll offset, pending paste work, the previews still to decode,
+                                  the attachments of the note (id, `copied` and `fileExists`) and the newest 20 records of
+                                  the launch log (`launchTimes`) from, in isolated launches only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
@@ -238,7 +251,10 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   pasted in the order of spec §6.5, one undo step, a 50 MB file, drops,
                                   AttachmentEditingTests: the caret and a selection around a token, Backspace and Delete,
                                   ⇧⌘L and ⌘B around a token, the paperclip, AttachmentCopyTests: Copy's text and files, a click, a double-click and a
-                                  drag on an attachment, pasting what was copied; AttachmentTestHost is what they share)
+                                  drag on an attachment, pasting what was copied; AttachmentTestHost is what they share,
+                                  LaunchTimerTests: the five phases in order, `finish` writes after the queue and never fails
+                                  on a log that is corrupt or unwritable, LaunchClockTests, LaunchTimesPanelTests: the alert
+                                  and Copy)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -247,7 +263,8 @@ App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an
                                   FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
                                   CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
                                   AttachmentUITests (⌘V of an image survives a relaunch, Backspace twice and ⌘Z bring it
-                                  back), ScreenshotTests (one test per screenshot, section 3)
+                                  back), LaunchUITests (a launch is in the launch log, Help > Launch Times… and its Copy),
+                                  ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), CodePastePerfTests (a paste of
                                   500 lines of code until its colours are on screen), PerfSupport. They share
@@ -284,7 +301,7 @@ docs/release-notes-footer.md      the install and update steps (the DMG first, t
                                   placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
                                   title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md,
-                                  attachments.md (more as features land)
+                                  attachments.md, launch-times.md (more as features land)
 docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, attachments,
                                   search, recently-deleted): copies of the `screenshots/` that CI published for a release
                                   commit (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
@@ -644,6 +661,17 @@ new kind of release file, with no change to the app, ships.
   of `CodeDetectorTests` run in Debug, where the macOS runner took 107 ms for a bound of 100 and 498 ms for 400, so
   `bound(_:)` allows 4 times the figure a test names on macOS and the figure itself on Linux. The Release budget is held
   by `paste_code_ms`, not by them.
+- **The launch log runs after the first frame, on its own queue, and nothing in it may fail a launch.** `LaunchTimer.mark`
+  is a clock read and a dictionary write: that is all the main thread does before the first frame, besides registering the
+  run loop observer (`RunLoopIdle.onNext` in `AppDelegate.launch`) that marks `firstFrame` and calls `finish`. `finish` reads
+  `sysctl` (the process start and the boot time), loads `launch-times.json`, appends and saves on `LaunchTimer.queue` and
+  hands the log back to the main thread, so a new step that reads or writes the log must go there too. `LaunchLog.load`
+  never throws and `save` errors are dropped, so a corrupt file, a directory in its place or a data directory that cannot be
+  written costs the launch nothing (`LaunchTimerTests`). The timer's state is one static value, so a hosted test that calls
+  `finish` runs inside `LaunchTimer.withIsolatedState` after the app's own record has arrived (`current`), with the queue
+  drained before the body returns. A record's dates are whole milliseconds, because a `Date` made by `Date()` does not
+  survive the file's seconds-since-1970 round trip exactly, and `LaunchLog` calls two boot times within 30 s one boot (the
+  kernel moves `kern.boottime` when the clock is set).
 - **Do not link Homebrew's SQLite.** `CSQLite` deliberately has no `pkgConfig`, so macOS links the system library.
 - **Never commit `App/Scratch.xcodeproj`.** It is generated from `App/project.yml`.
 - **App tests run inside the app.** `ScratchAppTests` are hosted: Xcode starts the real app, then loads the tests into

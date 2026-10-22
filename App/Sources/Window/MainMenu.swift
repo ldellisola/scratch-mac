@@ -10,9 +10,10 @@ enum MainMenu {
     static func install(in application: NSApplication, commands: AppCommands) {
         let menuBar = NSMenu()
         let windowMenu = windowMenu(commands: commands)
+        let helpMenu = helpMenu(commands: commands)
         for menu in [
             appMenu(commands: commands), fileMenu(commands: commands), editMenu(commands: commands), formatMenu(),
-            viewMenu(commands: commands), windowMenu,
+            viewMenu(commands: commands), windowMenu, helpMenu,
         ] {
             let item = NSMenuItem()
             item.submenu = menu
@@ -20,6 +21,17 @@ enum MainMenu {
         }
         application.mainMenu = menuBar
         application.windowsMenu = windowMenu
+        // The system adds its Help search field to this menu and puts the menu last.
+        application.helpMenu = helpMenu
+    }
+
+    /// Launch Times… shows how long the launches of Scratch on this Mac took (plan 6 task 1), which is how the cold-boot
+    /// budget of the spec (§7) is checked.
+    private static func helpMenu(commands: AppCommands) -> NSMenu {
+        let menu = NSMenu(title: "Help")
+        menu.addItem(
+            commandItem("Launch Times…", #selector(AppCommands.showLaunchTimes(_:)), key: "", target: commands))
+        return menu
     }
 
     /// Minimize and Zoom, then the tabs (spec §6.3): ⌃Tab and ⌃⇧Tab, and ⌘1 to ⌘9.
