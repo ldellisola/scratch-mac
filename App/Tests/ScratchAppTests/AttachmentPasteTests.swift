@@ -1,0 +1,404 @@
+import AppKit
+import ScratchCore
+import UniformTypeIdentifiers
+import XCTest
+
+@testable import Scratch
+
+/// Hosted in the app. Covers docs/features/attachments.md ("Pasting and dropping") and docs/features/paste-and-copy.md
+/// ("Paste order"): file references become attachments, any text wins over an image, an image with no text becomes a PNG
+/// attachment, each attachment is a line of its own, a note that cannot be edited takes nothing, a paste into code inserts
+/// the file names, and one paste is one undo step (spec §6.5, plan 5 task 5). Every paste goes through
+/// `readSelection(from:)` with a pasteboard of its own, which is what Paste runs, and never touches the real clipboard.
+///
+/// What ⌘Z does after an autosave is `AttachmentUITests`: an undo group ends with the run loop turn, and a test method is
+/// one turn.
+@MainActor
+final class AttachmentPasteTests: XCTestCase {
+    private static let pngSignature: [UInt8] = [0x89, 0x50, 0x4E, 0x47]
+
+    // MARK: Files
+
+    /// Paste order 1: a file reference becomes an attachment, a line of its own, and the file is copied into Scratch's
+    /// storage off the main thread.
+    func testFileURLPastesAsAttachmentLine() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let contents = Data("1. stop the writers\n2. roll back\n".utf8)
+        let file = try host.makeFile(named: "rollback-plan.txt", contents: contents)
+        let pasteboard = host.pasteboard(files: [file])
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let ids = host.tokenIDs
+        XCTAssertEqual(ids.count, 1)
+        guard let id = ids.first else { return }
+        XCTAssertEqual(
+            host.text, AttachmentToken.line(for: id) + "\n", "the token is a line, and a line break follows it")
+        XCTAssertEqual(
+            host.textView.selectedRange(), NSRange(location: host.text.utf16.count, length: 0),
+            "the caret is on the line after the token")
+
+        var row = try host.row(id)
+        XCTAssertEqual(row.noteID, host.noteID)
+        XCTAssertEqual(row.fileName, "rollback-plan.txt")
+        XCTAssertEqual(row.byteSize, Int64(contents.count))
+        XCTAssertTrue(UTType(row.typeIdentifier)?.conforms(to: .text) == true, "type: \(row.typeIdentifier)")
+        XCTAssertFalse(row.isImage)
+
+        host.waitForCopies()
+        row = try host.row(id)
+        XCTAssertTrue(row.isCopied)
+        XCTAssertEqual(
+            try Data(contentsOf: host.storage.attachments.fileURL(for: row)), contents, "the copy is the file")
+        XCTAssertEqual(host.textView.pendingPasteClassifications, 0, "the tokens are not classified as code")
+    }
+
+    /// The row of an image file knows its pixel size and type, which is what the preview is sized from.
+    func testImageFileRowHasPixelSizeAndType() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let file = try host.makePNGFile(named: "picture.png", width: 64, height: 40)
+        let pasteboard = host.pasteboard(files: [file])
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let row = try host.row(try XCTUnwrap(host.tokenIDs.first))
+        XCTAssertEqual(row.typeIdentifier, "public.png")
+        XCTAssertTrue(row.isImage)
+        XCTAssertEqual(row.pixelWidth, 64)
+        XCTAssertEqual(row.pixelHeight, 40)
+        XCTAssertEqual(row.fileName, "picture.png")
+    }
+
+    /// Finder puts the file's name on the pasteboard as text too: the file wins (spec §6.5, 1 before 2).
+    func testFileWinsOverItsNameAsText() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let file = try host.makeFile(named: "notes.txt", contents: Data("x".utf8))
+        let pasteboard = host.pasteboard(files: [file], text: "notes.txt")
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.tokenIDs.count, 1)
+        XCTAssertFalse(host.text.contains("notes.txt"), "the name is not pasted as text: \(host.text)")
+    }
+
+    /// A file that is not there (a reference that went stale) is not an attachment: nothing is inserted for it.
+    func testMissingFileIsLeftOut() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let there = try host.makeFile(named: "there.txt", contents: Data("x".utf8))
+        let gone = try host.makeFile(named: "gone.txt", contents: Data("y".utf8))
+        let pasteboard = host.pasteboard(files: [gone, there])
+        defer { pasteboard.releaseGlobally() }
+        try FileManager.default.removeItem(at: gone)
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let ids = host.tokenIDs
+        XCTAssertEqual(ids.count, 1)
+        XCTAssertEqual(try host.row(try XCTUnwrap(ids.first)).fileName, "there.txt")
+    }
+
+    func testTwoFilesTwoLines() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let first = try host.makeFile(named: "one.txt", contents: Data("1".utf8))
+        let second = try host.makeFile(named: "two.txt", contents: Data("22".utf8))
+        let pasteboard = host.pasteboard(files: [first, second])
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let ids = host.tokenIDs
+        XCTAssertEqual(ids.count, 2)
+        guard ids.count == 2 else { return }
+        XCTAssertEqual(host.text, AttachmentToken.line(for: ids[0]) + "\n" + AttachmentToken.line(for: ids[1]) + "\n")
+        XCTAssertEqual(try host.row(ids[0]).fileName, "one.txt", "in the order of the pasteboard")
+        XCTAssertEqual(try host.row(ids[1]).fileName, "two.txt")
+        host.waitForCopies()
+        XCTAssertTrue(try host.row(ids[0]).isCopied)
+        XCTAssertTrue(try host.row(ids[1]).isCopied)
+    }
+
+    /// Global Constraints, "Tokens": an inserted attachment always gets its own line.
+    func testPasteMidLineGetsOwnLine() throws {
+        let host = try AttachmentTestHost(text: "abcdef", caret: 3)
+        defer { host.cleanUp() }
+        let file = try host.makeFile(named: "a.txt", contents: Data("a".utf8))
+        let pasteboard = host.pasteboard(files: [file])
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let id = try XCTUnwrap(host.tokenIDs.first)
+        XCTAssertEqual(host.text, "abc\n" + AttachmentToken.line(for: id) + "\ndef")
+        XCTAssertEqual(
+            host.textView.selectedRange(), NSRange(location: 4 + AttachmentToken.lineLength + 1, length: 0),
+            "the caret is at the start of the text that followed")
+    }
+
+    /// An attachment pasted over a selection replaces it.
+    func testPasteReplacesTheSelection() throws {
+        let host = try AttachmentTestHost(text: "keep\nreplace me\nkeep")
+        defer { host.cleanUp() }
+        host.textView.setSelectedRange(NSRange(location: 5, length: 10))
+        let file = try host.makeFile(named: "a.txt", contents: Data("a".utf8))
+        let pasteboard = host.pasteboard(files: [file])
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let id = try XCTUnwrap(host.tokenIDs.first)
+        XCTAssertEqual(host.text, "keep\n" + AttachmentToken.line(for: id) + "\nkeep")
+    }
+
+    // MARK: Images
+
+    /// Paste order 3: an image with no text is an image attachment, stored as PNG. PNG data is stored as it is.
+    func testImageOnlyPastesAsPNGAttachment() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let png = try AttachmentTestHost.imageData(width: 64, height: 40, type: .png)
+        let pasteboard = host.pasteboard(png: png)
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let id = try XCTUnwrap(host.tokenIDs.first)
+        var row = try host.row(id)
+        XCTAssertEqual(row.typeIdentifier, "public.png")
+        XCTAssertTrue(row.isImage)
+        XCTAssertEqual(row.pixelWidth, 64)
+        XCTAssertEqual(row.pixelHeight, 40)
+        XCTAssertTrue(row.fileName.hasSuffix(".png"), "name: \(row.fileName)")
+        host.waitForCopies()
+        row = try host.row(id)
+        XCTAssertTrue(row.isCopied)
+        XCTAssertEqual(try Data(contentsOf: host.storage.attachments.fileURL(for: row)), png)
+        XCTAssertEqual(host.textView.pendingPasteClassifications, 0)
+    }
+
+    /// An image that is only a TIFF on the pasteboard is converted: what is stored is a PNG.
+    func testTIFFOnlyIsStoredAsPNG() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let tiff = try AttachmentTestHost.imageData(width: 50, height: 30, type: .tiff)
+        let pasteboard = host.pasteboard(tiff: tiff)
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        let id = try XCTUnwrap(host.tokenIDs.first)
+        host.waitForCopies()
+        let row = try host.row(id)
+        XCTAssertEqual(row.typeIdentifier, "public.png")
+        XCTAssertEqual(row.pixelWidth, 50)
+        XCTAssertEqual(row.pixelHeight, 30)
+        XCTAssertTrue(row.fileName.hasSuffix(".png"), "name: \(row.fileName)")
+        let stored = try Data(contentsOf: host.storage.attachments.fileURL(for: row))
+        XCTAssertEqual(Array(stored.prefix(4)), Self.pngSignature, "the stored file is a PNG")
+    }
+
+    /// Review Focus 3: Excel, Word and browsers put an image of the selection next to its text, and the text is what is
+    /// pasted (spec §6.5, 2 before 3).
+    func testTextAndImagePastesText() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let spy = SpyImporter()
+        host.textView.attachmentImporter = spy
+        let tiff = try AttachmentTestHost.imageData(width: 40, height: 40, type: .tiff)
+        let png = try AttachmentTestHost.imageData(width: 40, height: 40, type: .png)
+        let pasteboard = host.pasteboard(text: "Q3\t1,204\nQ4\t1,377", png: png, tiff: tiff)
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, "Q3\t1,204\nQ4\t1,377", "the text, as it is")
+        XCTAssertTrue(spy.calls.isEmpty, "the image is not imported")
+        XCTAssertTrue(host.tokenIDs.isEmpty)
+    }
+
+    // MARK: Where an attachment cannot go
+
+    /// Global Constraints, "Excluded": inside a code block a block is literal, so the names of the files are inserted.
+    func testPasteIntoCodeBlockPastesNames() throws {
+        let text = "```\nx\n```"
+        let host = try AttachmentTestHost(text: text, caret: 5)
+        defer { host.cleanUp() }
+        XCTAssertTrue(host.textView.styler.isInCodeBlock(5), "the caret is in the block")
+        let spy = SpyImporter()
+        host.textView.attachmentImporter = spy
+        let first = try host.makeFile(named: "one.txt", contents: Data("1".utf8))
+        let second = try host.makeFile(named: "two.png", contents: Data("2".utf8))
+        let pasteboard = host.pasteboard(files: [first, second])
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, "```\nxone.txt\ntwo.png\n```", "the names, one on each line")
+        XCTAssertTrue(spy.calls.isEmpty, "no attachment is made")
+        XCTAssertEqual(host.textView.pendingPasteClassifications, 0)
+    }
+
+    /// An image has no name to insert into a block: nothing happens.
+    func testImageIntoCodeBlockInsertsNothing() throws {
+        let text = "```\nx\n```"
+        let host = try AttachmentTestHost(text: text, caret: 5)
+        defer { host.cleanUp() }
+        let spy = SpyImporter()
+        host.textView.attachmentImporter = spy
+        let pasteboard = host.pasteboard(png: try AttachmentTestHost.imageData(width: 8, height: 8, type: .png))
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertFalse(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, text)
+        XCTAssertTrue(spy.calls.isEmpty)
+    }
+
+    /// A note in Recently Deleted takes nothing: not a file, not an image, not text.
+    func testReadOnlyIgnoresFiles() throws {
+        let host = try AttachmentTestHost(text: "kept", isReadOnly: true)
+        defer { host.cleanUp() }
+        let spy = SpyImporter()
+        host.textView.attachmentImporter = spy
+        let file = try host.makeFile(named: "a.txt", contents: Data("a".utf8))
+        let pasteboard = host.pasteboard(files: [file], text: "a.txt")
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertFalse(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, "kept")
+        XCTAssertTrue(spy.calls.isEmpty)
+        XCTAssertFalse(
+            host.textView.acceptsDrop(of: pasteboard), "and a drop of the file is not accepted either")
+    }
+
+    /// Without an importer (a view that is not wired to the app's storage) a paste is the text paste it always was.
+    func testPasteWithoutImporterPastesText() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        host.textView.attachmentImporter = nil
+        let file = try host.makeFile(named: "notes.txt", contents: Data("x".utf8))
+        let pasteboard = host.pasteboard(files: [file], text: "notes.txt")
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, "notes.txt")
+    }
+
+    /// Plain text is still pasted as plain text: no pasteboard types that the attachments added get in its way.
+    func testPlainTextPasteIsUnchanged() throws {
+        let host = try AttachmentTestHost(text: "ab", caret: 1)
+        defer { host.cleanUp() }
+        let pasteboard = host.pasteboard(text: "XYZ")
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, "aXYZb")
+        XCTAssertEqual(host.textView.selectedRange(), NSRange(location: 4, length: 0))
+    }
+
+    // MARK: Speed and undo
+
+    /// Global Constraints, "Performance": inserting a 50 MB file returns to the run loop in under 100 ms, because the file
+    /// is copied on the storage queue and what the main thread does depends on nothing but the file's attributes. One
+    /// small file is attached first, so that what the first attachment makes ready (the icon services, say) is not counted.
+    func testFiftyMegabyteFileReturnsQuickly() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let warmUp = try host.makeFile(named: "small.txt", contents: Data("warm".utf8))
+        let warmUpBoard = host.pasteboard(files: [warmUp])
+        defer { warmUpBoard.releaseGlobally() }
+        XCTAssertTrue(host.textView.readSelection(from: warmUpBoard))
+        host.waitForCopies()
+
+        // A sparse file: 50 MB long, with no data written to it.
+        let big = try host.makeFile(named: "big.bin", contents: Data())
+        let handle = try FileHandle(forWritingTo: big)
+        try handle.truncate(atOffset: 50 * 1_024 * 1_024)
+        try handle.close()
+        let pasteboard = host.pasteboard(files: [big])
+        defer { pasteboard.releaseGlobally() }
+
+        let start = Date()
+        let didRead = host.textView.readSelection(from: pasteboard)
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertTrue(didRead)
+        XCTAssertLessThan(elapsed, 0.1, "readSelection took \(Int(elapsed * 1_000)) ms")
+        let ids = host.tokenIDs
+        XCTAssertEqual(ids.count, 2)
+        XCTAssertEqual(try host.row(try XCTUnwrap(ids.last)).byteSize, 50 * 1_024 * 1_024)
+        host.waitForCopies()
+        XCTAssertTrue(try host.row(try XCTUnwrap(ids.last)).isCopied)
+    }
+
+    /// Two files pasted at once are one undo step.
+    func testOneUndoStepRemovesInsertedTokens() throws {
+        let host = try AttachmentTestHost(text: "before")
+        defer { host.cleanUp() }
+        XCTAssertFalse(host.undo.canUndo, "showing a note is no undo step")
+        let first = try host.makeFile(named: "one.txt", contents: Data("1".utf8))
+        let second = try host.makeFile(named: "two.txt", contents: Data("2".utf8))
+        host.textView.setSelectedRange(NSRange(location: 6, length: 0))
+        let pasteboard = host.pasteboard(files: [first, second])
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+        XCTAssertEqual(host.tokenIDs.count, 2)
+        XCTAssertTrue(host.undo.canUndo)
+
+        host.undo.undo()
+
+        XCTAssertEqual(host.text, "before", "one undo takes both tokens and their line breaks away")
+        XCTAssertFalse(host.undo.canUndo, "the paste was one undo step")
+        XCTAssertTrue(host.undo.canRedo)
+    }
+
+    // MARK: Drops
+
+    /// A file dropped on the note goes in where it was dropped, as a line of its own (spec §6.4).
+    func testDropOfAFileInsertsItAtThePoint() throws {
+        let host = try AttachmentTestHost(text: "abc\ndef")
+        defer { host.cleanUp() }
+        let file = try host.makeFile(named: "dropped.txt", contents: Data("d".utf8))
+        let pasteboard = host.pasteboard(files: [file])
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(host.textView.acceptsDrop(of: pasteboard))
+
+        // Just inside the left edge of the "d" of the second line.
+        guard let layoutManager = host.textView.layoutManager, let container = host.textView.textContainer else {
+            return XCTFail("no TextKit 1 stack")
+        }
+        let glyph = layoutManager.glyphRange(
+            forCharacterRange: NSRange(location: 4, length: 1), actualCharacterRange: nil)
+        let box = layoutManager.boundingRect(forGlyphRange: glyph, in: container)
+        let origin = host.textView.textContainerOrigin
+        let point = NSPoint(x: origin.x + box.minX + 1, y: origin.y + box.midY)
+
+        XCTAssertTrue(host.textView.performDrop(of: pasteboard, atViewPoint: point))
+
+        let id = try XCTUnwrap(host.tokenIDs.first)
+        XCTAssertEqual(host.text, "abc\n" + AttachmentToken.line(for: id) + "\ndef")
+        XCTAssertEqual(try host.row(id).fileName, "dropped.txt")
+    }
+
+    /// A drop of text is not ours: it is the text view's own.
+    func testDropOfTextIsNotAnAttachmentDrop() throws {
+        let host = try AttachmentTestHost()
+        defer { host.cleanUp() }
+        let pasteboard = host.pasteboard(text: "just text")
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertNil(host.textView.attachmentSources(from: pasteboard))
+        XCTAssertFalse(host.textView.acceptsDrop(of: pasteboard))
+    }
+}
