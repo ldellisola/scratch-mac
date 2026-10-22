@@ -70,31 +70,45 @@ the runner moves by an amount of milliseconds may be allowed that amount.
 
 ## Measured numbers (task 2)
 
-The first run of the macOS job that has the new metrics (`a5d9ef8`, Scratch 1.0.0 before task 3 reduces its launch work),
-with the run of the commit before it (`f9ede5d`, the same app without the reference and the idle monitor) beside it, to show
+The macOS job's runs of three commits of the same app code, in the order they ran. `f9ede5d` is the last commit before the
+reference app and the idle monitor, so it has `launch_ms` only. `a5d9ef8` is the first with the new metrics (Scratch 1.0.0
+before task 3 reduces its launch work) and `4d3d8f7` is the next commit, which changed documents only: a second sample of
 what the runner does to one build.
 
-| Metric | `f9ede5d` | `a5d9ef8` | Budget | Verdict at `a5d9ef8` |
+| Metric | `f9ede5d` | `a5d9ef8` | `4d3d8f7` | Budget |
 |---|---|---|---|---|
-| `launch_ms` (median of 10) | 634.5 | 442.8 | none | INFO |
-| the ten launches, fastest to slowest | 573 to 677 | 426 to 470 | | |
-| `launch_reference_ms` (median of 10) | not measured | 261.4 | none | INFO |
-| the ten reference launches | | 227 to 289 | | |
-| `launch_overhead_ms` | not measured | 181.4 | 150 | WARN (no baseline, over budget) |
-| `idle_cpu_pct` | not measured | 0.031 | 1.0 | WARN (no baseline) |
-| `idle_wakeups` | not measured | 3 in 5.001 s | none | INFO |
+| `launch_ms` (median of 10) | 634.5 | 442.8 | 552.1 | none (INFO) |
+| the ten launches, fastest to slowest | 573 to 677 | 426 to 470 | 414 to 730 | |
+| `launch_reference_ms` (median of 10) | not measured | 261.4 | 328.5 | none (INFO) |
+| the ten reference launches | | 227 to 289 | 284 to 492 | |
+| `launch_overhead_ms` | not measured | 181.4 | 223.6 | 150 (WARN: no baseline, over budget) |
+| `idle_cpu_pct` | not measured | 0.031 | 0.067 | 1.0 (WARN: no baseline) |
+| `idle_wakeups` | not measured | 3 | 3 | none (INFO) |
 
-- **The same app code launched 190 ms slower in the earlier run** (a median of 634 ms against 443 ms), which is the runner
-  and not the app, and why `launch_ms` cannot gate. The reference app is the other half of the comparison: in the run above it
-  took 261 ms, 59% of Scratch's launch, so a launch of an empty window is most of what the runner measures.
-- **Idle is nearly nothing.** The app used 1.5 ms of CPU in 5.001 s (0.031% of a core), with 3 wake-ups of the main run loop,
-  at least one of them the monitor's own timer that ends the measurement. The budget of 1.0 leaves a wide margin, and the tolerance of 0.5 (decision 6) is for
-  a runner that is busy elsewhere.
-- **Where Scratch's launch goes** (`launch_phase_<name>_ms`, medians of the 16 launches in the log of that run, milliseconds
-  from the process start): `main` 60.1, `storage` 101.7, `restore` 272.0, `window` 321.5, `firstFrame` 470.9. So the process
-  is in `main.swift` 60 ms in, opening the storage takes 42 ms more, restoring the session 170 ms, showing the window 50 ms
-  and the first frame another 150 ms. These are the numbers that task 3 of Plan 6 (less work before the first frame) is
-  measured against, and it records its own beside them.
+- **The same app code launched up to 190 ms apart in three runs** (medians of 634, 443 and 552 ms), which is the runner and
+  not the app, and why `launch_ms` cannot gate. The reference app is the other half of the comparison: it took 261 and 329
+  ms, 59% of Scratch's launch in both runs, so a launch of an empty window is most of what the runner measures, and the
+  overhead moved by 42 ms (181 to 224) where `launch_ms` moved by 109. The 42 ms between the two overheads is inside the
+  tolerance of 60 ms (decision 6), and the baseline of task 10 is the slowest of three runs, as 0003 says. Both overheads
+  are over the budget of 150 ms: a WARN, which task 3 of Plan 6 works on.
+- **Idle is nearly nothing.** The app used 1.5 ms of CPU in the 5.001 s of the first run (0.031% of a core) and 0.067% in
+  the second, with 3 wake-ups of the main run loop both times, at least one of them the monitor's own timer that ends the
+  measurement. The budget of 1.0 leaves a wide margin, and the tolerance of 0.5 is for a runner that is busy elsewhere.
+- **Where Scratch's launch goes** (`launch_phase_<name>_ms`, medians over the launches in the log, in milliseconds from the
+  process start; 16 launches in each run):
+
+  | Phase | `a5d9ef8` | `4d3d8f7` |
+  |---|---|---|
+  | `main` (`main.swift` begins) | 60.1 | 83.5 |
+  | `storage` (the storage is open) | 101.7 | 143.1 |
+  | `restore` (the session is restored) | 272.0 | 357.6 |
+  | `window` (the window is shown) | 321.5 | 422.1 |
+  | `firstFrame` (on screen, takes keystrokes) | 470.9 | 595.4 |
+
+  In the first run the process is in `main.swift` 60 ms in, opening the storage takes 42 ms more, restoring the session 170
+  ms, showing the window 50 ms and the first frame another 150 ms, and in the slower run every phase is 1.3 to 1.4 times as
+  far from the process start as in the faster one. These are the numbers that task 3 of Plan 6 (less work before the first
+  frame) is measured against, and it records its own beside them.
 
 ## The owner's Mac
 
