@@ -12,7 +12,11 @@ import XCTest
 /// No test opens a file or starts a drag: `NoteTextView.openURL` and `NoteTextView.attachmentDragPresenter` are replaced in
 /// every test that clicks. And a click is sent only at a point that `attachmentHit(atViewPoint:)` confirms, because a click
 /// that the view does not take goes to `super.mouseDown`, which runs AppKit's tracking loop until the mouse button comes up
-/// (AGENTS.md). The matching mouse up is queued first, as in `LinkTests`, so that a click that did miss cannot hang the run.
+/// (AGENTS.md). The events go straight to the view's `mouseDown`, `mouseDragged` and `mouseUp` and never through the
+/// application's queue: `LinkTests` queues a mouse up and takes it out again, and that leaves a mouse event as
+/// `NSApp.currentEvent`, which the selection rules read to tell a click from a key (`snappedSelection(from:to:)`), so a test
+/// that ran after it would see every selection change as a click (the first run of this class broke
+/// `AttachmentEditingTests.testCaretPutInsideATokenGoesToItsEdge` that way).
 @MainActor
 final class AttachmentCopyTests: XCTestCase {
     private static let pngSignature: [UInt8] = [0x89, 0x50, 0x4E, 0x47]
@@ -115,13 +119,10 @@ final class AttachmentCopyTests: XCTestCase {
         guard host.textView.attachmentHit(atViewPoint: point) != nil else {
             return XCTFail("there is no attachment at \(point): nothing is clicked", file: file, line: line)
         }
-        guard let down = mouseEvent(.leftMouseDown, at: point, clickCount: clickCount, in: host),
-            let up = mouseEvent(.leftMouseUp, at: point, clickCount: clickCount, in: host)
-        else { return XCTFail("no mouse event", file: file, line: line) }
-        NSApp.postEvent(up, atStart: false)
+        guard let down = mouseEvent(.leftMouseDown, at: point, clickCount: clickCount, in: host) else {
+            return XCTFail("no mouse event", file: file, line: line)
+        }
         host.textView.mouseDown(with: down)
-        // What `mouseDown` did not take, so that it cannot end the tracking loop of a later click.
-        while NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true) != nil {}
     }
 
     private func release(at point: NSPoint, in host: AttachmentTestHost) {
