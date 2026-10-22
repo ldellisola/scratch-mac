@@ -210,4 +210,11 @@ key press
   of the block that the paste made are on screen, because they are written in later turns on purpose.
 - **`FrameMonitor`**, started only by `-ScratchFrameMonitor <path>`, scrolls the note by itself and records the main
   thread's work per frame. It observes the main run loop and the editor's clip view and does not touch the data flow.
-- The performance tests, their metrics and the CI check: AGENTS.md ("Performance") and `docs/decisions/0003-ci-performance-checks.md`.
+- **`IdleMonitor`**, started only by `-ScratchIdleMonitor <path>`, reads the process's CPU time (`getrusage`) 3.5 seconds
+  after launch and again 5 seconds later, counts the passes of the main run loop in between, and writes the percentage of
+  one core and the wake-ups. Like `FrameMonitor` it observes and does not touch the data flow.
+- **`LaunchReference`** is an application target of its own (`App/LaunchReference`, an empty window with a TextKit 1 text
+  view) that the performance tests launch to learn what a launch costs on the CI runner whatever the app does. Nothing but
+  `ScratchPerfTests` depends on it, and it is not in the `Scratch` scheme, so it is never in the app or in a release.
+- The performance tests, their metrics and the CI check: AGENTS.md ("Performance"),
+  `docs/decisions/0003-ci-performance-checks.md` and `docs/decisions/0009-performance-at-1-0.md`.

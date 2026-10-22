@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var attachmentCatalog: AttachmentCatalog?
     /// Only with `-ScratchFrameMonitor` (the performance tests).
     private var frameMonitor: FrameMonitor?
+    /// Only with `-ScratchIdleMonitor` (the performance tests).
+    private var idleMonitor: IdleMonitor?
 
     // MARK: Launch
 
@@ -156,6 +158,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let monitor = FrameMonitor(file: file, clipView: editor.clipView)
             monitor.start()
             frameMonitor = monitor
+        }
+        // Idle CPU: 3.5 s after the launch the app counts its own CPU time for 5 s and writes it down (ADR 0009).
+        if let file = environment.options.idleMonitorFile {
+            let monitor = IdleMonitor(file: file)
+            monitor.start()
+            idleMonitor = monitor
         }
     }
 

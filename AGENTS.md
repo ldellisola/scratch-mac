@@ -16,7 +16,9 @@ Copied text always comes out as plain text. The app is developed only by AI agen
   in progress, and its release is 1.0.0 (`VERSION` says so from task 1 on): launch speed and a launch log, the CI
   performance check, the look of mockup B, accessibility, an icon, and the 0.5.0 follow-ups. Task 1 is done: the app writes
   down each launch (`launch-times.json`, `LaunchLog`, `LaunchTimer`) and Help > Launch Times… shows and copies the record
-  ([`docs/features/launch-times.md`](docs/features/launch-times.md)). The plan before it,
+  ([`docs/features/launch-times.md`](docs/features/launch-times.md)). Task 2 is done: CI gates the launch on Scratch's own
+  work (`launch_overhead_ms`: `launch_ms` minus the launch of an empty AppKit app, `LaunchReference`) and measures idle CPU
+  (`idle_cpu_pct`), with `perf/tolerances.json` and report-only metrics (docs/decisions/0009). The plan before it,
   [`2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md), is done and released as 0.5.0
   (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
   and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
@@ -134,9 +136,14 @@ Packages/ScratchCode/             Swift package, no AppKit, builds and tests on 
                                   of ordinary code for each of the 17 languages (a test resource), and `Corpus/`: the
                                   samples the detector is tuned against, in `<fence name>/` (code), `unknown/` (code of
                                   a language Scratch lacks) and `prose/` (text that must stay plain)
-App/project.yml                   XcodeGen spec: targets Scratch (app), ScratchAppTests (hosted unit tests),
-                                  ScratchUITests, ScratchPerfTests; schemes Scratch and ScratchPerf. The generated
-                                  App/Scratch.xcodeproj is never committed.
+App/project.yml                   XcodeGen spec: targets Scratch (app), LaunchReference (the reference app of the launch
+                                  measurement), ScratchAppTests (hosted unit tests), ScratchUITests, ScratchPerfTests;
+                                  schemes Scratch and ScratchPerf. ScratchPerfTests depends on LaunchReference (built
+                                  with it, not linked), and the Scratch scheme does not know it: LaunchReference is never
+                                  in the app or a release. The generated App/Scratch.xcodeproj is never committed.
+App/LaunchReference/              main.swift: an AppKit app that shows one 1100 x 700 window with a TextKit 1 text view and
+                                  does nothing else, bundle id `io.github.ldellisola.Scratch.LaunchReference`. The floor of
+                                  the launch measurement (docs/decisions/0009)
 App/Sources/                      AppKit shell (default actor isolation MainActor). main.swift and AppDelegate (launch
                                   sequence: storage, session, window, menu bar), AppEnvironment (parses the launch
                                   arguments, opens storage; isolates a hosted test run)
@@ -220,7 +227,9 @@ App/Sources/Support/              LaunchClock (the process start and the boot ti
                                   `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
                                   (runs work when the main run loop is next about to wait: after the frame is drawn, and
                                   with `order: afterMeasurementsOrder` after the signposts end), FrameMonitor
-                                  (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
+                                  (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames), IdleMonitor
+                                  (`-ScratchIdleMonitor`: 3.5 s after launch counts the app's CPU time and the main run loop's
+                                  wake-ups for 5 s and writes `cpu_ms`, `wall_ms`, `cpu_pct` and `wakeups`),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
                                   size, scroll anchor, scroll offset, pending paste work, the previews still to decode,
                                   the attachments of the note (id, `copied` and `fileExists`) and the newest 20 records of
@@ -233,7 +242,7 @@ App/Resources/                    Assets.xcassets (placeholder app icon, the col
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, and a 50,000-line JSON paste and its wrap do too,
                                   AboutCreditsTests: the About credits list tree-sitter and every grammar,
-                                  SessionWarmUpTests: the open tabs' languages are warmed up, FrameMonitorTests, EditorViewControllerTests:
+                                  SessionWarmUpTests: the open tabs' languages are warmed up, FrameMonitorTests, IdleMonitorTests, EditorViewControllerTests:
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
                                   reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
@@ -265,12 +274,15 @@ App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an
                                   AttachmentUITests (⌘V of an image survives a relaunch, Backspace twice and ⌘Z bring it
                                   back), LaunchUITests (a launch is in the launch log, Help > Launch Times… and its Copy),
                                   ScreenshotTests (one test per screenshot, section 3)
-App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
+App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests
+                                  (`testLaunch`, which also attaches the launch log's phases as `launch_phases`, and
+                                  `testReferenceLaunch`: LaunchReference.app, launched by its URL in the products folder),
                                   EditorPerfTests (keystroke, scrolling, switching notes), CodePastePerfTests (a paste of
-                                  500 lines of code until its colours are on screen), PerfSupport. They share
-                                  UITestSupport and AccessibilityID with the UI tests
-perf/                             budgets.json (the budgets CI enforces, in milliseconds) and baseline.json (CI's own
-                                  numbers, the slowest of many runs: docs/decisions/0003)
+                                  500 lines of code until its colours are on screen), IdlePerfTests (`idle_cpu`), PerfSupport
+                                  (where the reference app is). They share UITestSupport and AccessibilityID with the UI tests
+perf/                             budgets.json (the budgets CI enforces: milliseconds, and `idle_cpu_pct` in percent),
+                                  tolerances.json (what a metric may exceed 1.2 x its baseline by) and baseline.json (CI's
+                                  own numbers, the slowest of many runs: docs/decisions/0003, 0009)
 VERSION                           the app's version, MAJOR.MINOR.PATCH on one line. It names the release and feeds the
                                   app's marketing and build versions (`make project`). Bump it with every change to
                                   App/ or Packages/ (section 6, Releases)
@@ -278,7 +290,7 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   ci-summary.py, publish-ci-results.sh, ci-wait.sh, ci-fetch.sh (the ci-results loop,
                                   section 4), lib-ci-results.sh (shared by those), name-screenshots.py (names the
                                   exported screenshots), perf-extract.py (a ScratchPerf result bundle to numbers),
-                                  perf-check.py (numbers against baseline and budgets), check-version-bump.sh (a change
+                                  perf-check.py (numbers against baseline, budgets and tolerances), check-version-bump.sh (a change
                                   to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
                                   release notes footer with the version filled in), check-release-zip.sh (unpacks a
                                   release zip, checks the app in it, Acknowledgements.rtf too, and prints its sizes),
@@ -314,7 +326,8 @@ docs/decisions/                   numbered decision records: 0001 (the editor us
                                   a note the owner empties is kept), 0005 (every release carries a DMG next to the zip),
                                   0006 (bold needs word boundaries), 0007 (tree-sitter: the packages, their versions and
                                   licences, and how to add a language), 0008 (attachments: the token line, the files kept
-                                  by reference, the own-line layout and the copy rules)
+                                  by reference, the own-line layout and the copy rules), 0009 (performance at 1.0: the launch
+                                  gates on the overhead above an empty app, idle CPU, the tolerances)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -368,7 +381,8 @@ macOS and runs on GitHub's Macs.
 - `make perf` `[macOS]`: run the performance tests (the `ScratchPerf` scheme, Release build) into
   `build/results/perf.xcresult`. Turn that into numbers with `python3 scripts/perf-extract.py
   build/results/perf.xcresult <out.json>`, and compare them with `python3 scripts/perf-check.py --results <out.json>
-  --baseline perf/baseline.json --budgets perf/budgets.json` (CI does both, section 4).
+  --baseline perf/baseline.json --budgets perf/budgets.json` (CI does both, section 4; `--tolerances` defaults to
+  `perf/tolerances.json`).
 - `make perf-baseline` `[macOS]`: run `make perf` and write its numbers to `perf/baseline.json`. Do not use it to
   update the baseline CI compares with: that is the slowest of at least three CI runs (docs/decisions/0003).
 - `make run FIXTURE=<name>` `[macOS]`: build the app and open it on a fixture in a throwaway data directory.
@@ -399,6 +413,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 | `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code`, `attachments` | delete the database and the `attachments` folder in the data directory and seed that fixture |
 | `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
+| `-ScratchIdleMonitor <path>` | any path | 3.5 s after launch measure the app's CPU time and run loop wake-ups for 5 s of idle, and write them, as JSON, to `<path>` (performance tests) |
 
 A fixture without `-ScratchDataDir` runs in a new `Scratch-<uuid>` directory under the temporary directory. A fixture
 is refused on the real data directory (`StorageError.fixtureRequiresIsolatedDirectory`), also when
@@ -414,13 +429,23 @@ is refused on the real data directory (`StorageError.fixtureRequiresIsolatedDire
 
 `make perf` runs `App/Tests/ScratchPerfTests` (UI tests on the Release build, the `ScratchPerf` scheme). CI runs it after
 the screenshots, extracts the numbers (`scripts/perf-extract.py`) and compares them (`scripts/perf-check.py`) with
-`perf/baseline.json` and `perf/budgets.json`. Every metric prints `OK`, `WARN` or `FAIL`, and a `FAIL` fails the job.
-The `macos` job's folder in `ci-results` has `perf/report.md` (the table), `perf/results.json` (the numbers),
+`perf/baseline.json`, `perf/budgets.json` and `perf/tolerances.json`. Every budgeted metric prints `OK`, `WARN` or
+`FAIL`, and a `FAIL` fails the job (a regression is a result above 1.2 x its baseline plus its tolerance, or above 2 x its
+budget); everything else that was measured prints `INFO` and never fails. The `macos` job's folder in `ci-results` has `perf/report.md` (the table), `perf/results.json` (the numbers),
 `perf/metrics.json` (everything `xcresulttool` knew), `perf/test-summary.json` and `perf/attachments/` (screenshots of
 the keystroke test before and after, and the frame report). The measurements, and why each is what it is, are in
-docs/decisions/0001 and 0003. What to know when one fails or changes:
+docs/decisions/0001, 0003 and 0009. What to know when one fails or changes:
 
-- **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 10 launches. `keystroke_ms`: the
+- **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 10 launches, reported and never failing
+  (INFO). `launch_reference_ms`: the same of `LaunchReference.app`, an empty AppKit app that the same job builds
+  (`LaunchPerfTests.testReferenceLaunch`), also INFO. `launch_overhead_ms`: `launch_ms` minus `launch_reference_ms`, which is
+  Scratch's own launch work and the launch metric that gates: budget 150, tolerance 60, so it fails above 1.2 x baseline +
+  60 or above 300 (docs/decisions/0009). `launch_phase_<name>_ms` (INFO): the median of each phase of the launch log
+  (`main`, `storage`, `restore`, `window`, `firstFrame`) over the launches `testLaunch` made, from the attachment
+  `launch_phases`. `idle_cpu_pct` and `idle_wakeups`: the app's CPU time over 5 s of idle (the typical fixture, the window
+  open, the caret blinking) as a percentage of one core, and the wake-ups of the main run loop in them
+  (`IdleMonitor`, `IdlePerfTests`, the attachment `idle_cpu`). Budget 1.0, tolerance 0.5; a percentage, because the
+  caret's blink is a timer that the app does not own. `keystroke_ms`: the
   `keystroke` signpost, `NoteTextView.keyDown` until the main run loop is idle, one character per iteration typed about
   a third into the huge note. `switch_small_ms` and `switch_huge_ms`: the `switch-note` signpost, from
   `SessionCoordinator.open` until the note is on screen. `scroll_frame_ms`: the median CPU time of the main thread per
@@ -430,22 +455,29 @@ docs/decisions/0001 and 0003. What to know when one fails or changes:
   one paste of 500 lines of Swift into an empty note per iteration, each with names that the app has not coloured before.
   Budget 50 (spec §7), baseline 85.3: it is a WARN on CI (55 to 85 ms, depending on the runner: the ADR 0003 addendum),
   and a FAIL above 100 (2 x the budget), which a slow runner can reach with no change to the paste: run the job again.
-  All in milliseconds and all medians.
+  All in milliseconds, except the idle ones, and all medians.
 - **The CI runner is slow and noisy.** Runs of the same build differ by up to a factor of two (the first run of a job is
-  the slowest), and a launch takes about 400 ms there (Calculator takes 1 s). The baseline is therefore the slowest of
-  many runs, and `launch_ms` and `switch_small_ms` are budgeted at 400 and 12 instead of the spec's 200 and 8
-  (docs/decisions/0003). A failure that no
-  change explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline. `launch_ms` is
-  the usual one: it fails above 800 ms (2 x its budget), and a slow runner gets there with no change to the app. The
-  commits `a698055` and `4faafbe` changed only docs and measured 800 and 1,027 ms, with all ten launches slow in
-  `perf/metrics.json`, where the same app took 677 ms on another runner (`f72e30f`). Push a new commit for another
-  runner.
+  the slowest), and a launch takes 600 ms and more there (Calculator takes 1 s). The baseline is therefore the slowest of
+  many runs, and `switch_small_ms` is budgeted at 12 instead of the spec's 8 (docs/decisions/0003). `launch_ms` does not
+  gate for that reason: the commits `a698055` and `4faafbe` changed only docs and measured 800 and 1,027 ms, with all ten
+  launches slow in `perf/metrics.json`, where the same app took 677 ms on another runner (`f72e30f`), and main's own run of
+  0.5.0 measured 0.60 to 1.14 s across its ten launches. The launch is gated on `launch_overhead_ms` instead: the reference
+  app is measured by the same job on the same runner, so the runner's speed is in both numbers. A failure that no change
+  explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline, and push a new commit for
+  another runner.
 - **A signpost interval ends when the run loop is idle** (`RunLoopIdle`, `Signposts.beginEditorInterval`), not when the
   code returns, so that TextKit's lazy layout and drawing count. A new interval for the tests belongs there too.
 - **`XCTApplicationLaunchMetric(waitUntilResponsive: true)` reports one launch of ten, or none,** on macos-26. Use the
   plain one.
 - **XCTest cannot report a custom number.** `scroll_frame_ms` reaches the result bundle as an attachment named
-  `scroll_frame_ms` (JSON), which `perf-extract.py` reads with `xcresulttool export attachments`.
+  `scroll_frame_ms` (JSON), which `perf-extract.py` reads with `xcresulttool export attachments`. So do `idle_cpu` (the
+  idle monitor's report) and `launch_phases` (a list of launch records). A new custom metric is an attachment of a perf
+  test plus a reader in `perf-extract.py`, and a budget in `perf/budgets.json` if it is to gate.
+- **`LaunchReference.app` is found next to the test runner.** `PerfSupport.referenceApplicationURL()` looks above
+  the test bundle (`<products>/ScratchPerfTests-Runner.app/Contents/PlugIns/ScratchPerfTests.xctest`), where the build puts
+  every product of the ScratchPerf scheme, and `XCUIApplication(url:)` launches it. `testReferenceLaunch` attaches
+  `reference-app-location` with the path it used and the ones it searched, so a failure to launch says where it looked.
+  Keep LaunchReference out of the `Scratch` scheme and out of the app's dependencies: the release is built from that scheme.
 - **Perf tests type and scroll through a 10,000-line note, so `make perf` takes about 5 minutes** and its tests have wide
   time limits (`make perf`). The keystroke test attaches `keystroke-before` and `keystroke-after`: look at them when
   its number changes, to see that the characters landed in the middle of the note.

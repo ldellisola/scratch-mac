@@ -1,1 +1,1 @@
-{"launch_ms": 400, "keystroke_ms": 8, "scroll_frame_ms": 8, "switch_small_ms": 12, "switch_huge_ms": 50, "paste_code_ms": 50}
+{"launch_overhead_ms": 150, "keystroke_ms": 8, "scroll_frame_ms": 8, "switch_small_ms": 12, "switch_huge_ms": 50, "paste_code_ms": 50, "idle_cpu_pct": 1.0}

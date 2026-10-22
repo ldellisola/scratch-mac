@@ -21,6 +21,7 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(options.fixture == nil)
     #expect(options.appearance == nil)
     #expect(options.frameMonitorFile == nil)
+    #expect(options.idleMonitorFile == nil)
 }
 
 @Test func dataDirFlagOverridesAndIsolates() throws {
@@ -84,6 +85,19 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     let options = try parse(["-ScratchFrameMonitor", "/tmp/scratch-frames.json", "-ScratchFixture", "huge-note"])
     #expect(options.frameMonitorFile == URL(fileURLWithPath: "/tmp/scratch-frames.json"))
     #expect(options.fixture == .hugeNote)
+}
+
+// Plan 6 task 2: `-ScratchIdleMonitor <path>` has the app measure its CPU over 5 seconds of idle and write the report to
+// the file (the performance tests, ADR 0009). It is a flag of its own and does not switch the frame monitor on.
+@Test func parsesIdleMonitor() throws {
+    let options = try parse(["-ScratchIdleMonitor", "/tmp/scratch-idle.json", "-ScratchFixture", "typical"])
+    #expect(options.idleMonitorFile == URL(fileURLWithPath: "/tmp/scratch-idle.json"))
+    #expect(options.frameMonitorFile == nil)
+    #expect(options.fixture == .typical)
+    let both = try parse(["-ScratchFrameMonitor", "/tmp/frames.json", "-ScratchIdleMonitor", "/tmp/idle.json"])
+    #expect(both.frameMonitorFile == URL(fileURLWithPath: "/tmp/frames.json"))
+    #expect(both.idleMonitorFile == URL(fileURLWithPath: "/tmp/idle.json"))
+    #expect(throws: LaunchOptionsError.missingValue("-ScratchIdleMonitor")) { try parse(["-ScratchIdleMonitor"]) }
 }
 
 @Test func lastOccurrenceOfAFlagWins() throws {

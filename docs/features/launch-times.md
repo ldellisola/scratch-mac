@@ -5,8 +5,8 @@ and copies it. Spec: [§7 Performance](../superpowers/specs/2026-10-19-scratchpa
 and 500 ms from a cold boot, "checked by hand when someone is at a real Mac") and §4 (visible lag). Plan:
 [Plan 6](../superpowers/plans/2026-10-22-plan-6-polish.md), task 1.
 
-Status: plan 6, task 1 (1.0.0). No CI runner can measure a cold boot, so the app measures its own launches and the owner
-reads the numbers on a real Mac. How CI gates the launch is the plan's task 2 (decision record 0009).
+Status: plan 6, tasks 1 and 2 (1.0.0). No CI runner can measure a cold boot, so the app measures its own launches and the
+owner reads the numbers on a real Mac. CI gates the launch differently (decision record 0009, "In CI" below).
 
 ## The phases
 
@@ -68,6 +68,15 @@ Other launches, median of the last 1: 118 ms (budget 200 ms). First after start-
   text view (`launchTimes.report`) and the buttons **Copy** (the report as plain text to the general pasteboard, and the
   alert closes) and **OK** (Escape).
 
+## In CI
+
+The absolute launch is not a CI gate: the runner's own speed is most of it (decision record 0009). `LaunchPerfTests` measures
+the launch of `LaunchReference.app`, an empty AppKit app, next to Scratch's, and the gate is the difference
+(`launch_overhead_ms`: budget 150 ms, tolerance 60). After its measurement `testLaunch` launches Scratch once more, reads the
+launch log's newest records from `debug.state` (`launchTimes`) and attaches them as `launch_phases`, and `perf-extract.py`
+reports the median of each phase (`launch_phase_<name>_ms`) in `perf/report.md`: they say where a slow launch spent its time
+and never fail.
+
 ## For tests
 
 `debug.state` (isolated launches only) has `launchTimes`: the newest 20 records of the log, newest first, each with `date`,
@@ -87,3 +96,4 @@ has been written after the first frame, so a UI test waits for it.
 | Milliseconds from the process start, rounded, never negative | `LaunchTimerTests.testRecordIsMillisecondsFromTheProcessStart`, `testRecordNeverHasAPhaseBeforeTheProcessStart` |
 | The kernel's two moments | `LaunchClockTests` |
 | The alert, Copy and the report text | `LaunchTimesPanelTests`, UI `LaunchUITests.testHelpMenuShowsLaunchTimes` |
+| CI's launch numbers: the reference app, the overhead, the phases, a result with no budget as INFO, a tolerance | `scripts/tests/test-perf-extract.sh` (`overhead_is_launch_minus_reference`, `phases_are_medians`), `test-perf-check.sh` (`metric_without_budget_is_info`, `tolerance_widens_regression_limit`), `LaunchPerfTests.testReferenceLaunch` and `testLaunch` |
