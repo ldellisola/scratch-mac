@@ -30,6 +30,8 @@ import ScratchCore
 ///   manager draws the preview or the chip from. What the line shows, and how big, comes from `AttachmentCatalog` and the
 ///   text width, so the lines are styled again when either changes (`attachmentDidChange`, `refreshAttachmentLayout`).
 ///   Previews are decoded off the main thread (`AttachmentPreviews`), and one that arrives only invalidates the display.
+///   Like the fenced blocks, the attachment lines above the window are styled whole when the note is shown, because the
+///   scroll position depends on their height (`styleAttachmentLines`).
 ///
 /// Styling never registers undo: attribute changes made to the text storage directly are not undo steps.
 @MainActor
@@ -51,6 +53,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     static let selectionRevealLimit = 20_000
     /// The paragraphs one change of the selection looks at, at most.
     static let refreshParagraphLimit = 500
+    /// What every attachment line starts with (`AttachmentToken`), searched for to find the lines above the window.
+    private static let attachmentOpening = "[[attachment:"
 
     // MARK: State
 
@@ -172,11 +176,15 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         storage.beginEditing()
         let result = styleParagraphs(
             from: start, upTo: end, maxParagraphs: .max, deadline: nil, text: text, storage: storage)
-        // The look of the blocks above the window too, before anything is laid out (see `styleBlocks`).
+        // The look of the blocks above the window too, before anything is laid out (see `styleBlocks`), and of the
+        // attachment lines above it (see `styleAttachmentLines`).
         let blocksChanged = styleBlocks(startingBefore: end, text: text, storage: storage)
+        let attachmentsChanged = styleAttachmentLines(startingBefore: start, text: text, storage: storage)
         storage.endEditing()
         isApplying = false
-        if let changed = Self.union(result.changed, blocksChanged) { invalidate(changed) }
+        if let changed = Self.union(Self.union(result.changed, blocksChanged), attachmentsChanged) {
+            invalidate(changed)
+        }
         // The blocks in what was just styled are coloured first: on the queue, and in the next turns.
         requestBlocks(intersecting: [NSRange(location: start, length: end - start)], in: storage)
 
@@ -881,6 +889,50 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
             previews.request(for: url, id: id, maxPixelSize: mark.previewPixelSize)
         }
         return true
+    }
+
+    /// Gives every attachment line that starts before `limit`, which is where the paragraphs styled at load begin, its look
+    /// at once, with the one read of the catalog that they need. A line's height depends on it (a preview is up to 252 pt
+    /// high, a line of text 17), and where a note is scrolled to is worked out from the layout of what is above it: a token
+    /// line that a chunk styled after the scroll was set, and the chunks style the text above the window last, moved the
+    /// note under the reader, and nothing applied the anchor again. The same remedy as for the blocks (`styleBlocks`), and
+    /// the same cheapness: a note with no token is one search of its text, and what this did is not done again by the
+    /// chunks (`styleAttachmentLine` writes nothing for a line that looks as it should). Call it inside `beginEditing()` and
+    /// `endEditing()`. Returns what it changed.
+    private func styleAttachmentLines(startingBefore limit: Int, text: NSString, storage: NSTextStorage) -> NSRange? {
+        guard limit > 0 else { return nil }
+        var lines: [(paragraph: NSRange, id: AttachmentID)] = []
+        var searchStart = 0
+        while searchStart < limit {
+            let found = text.range(
+                of: Self.attachmentOpening, options: [],
+                range: NSRange(location: searchStart, length: limit - searchStart))
+            guard found.location != NSNotFound else { break }
+            searchStart = NSMaxRange(found)
+            // A token is a whole line: it starts its paragraph, nothing follows it but the line break, and it is not in a
+            // block (the same tests as `styleBatch` makes).
+            var paragraphStart = 0
+            var paragraphEnd = 0
+            var contentsEnd = 0
+            text.getParagraphStart(
+                &paragraphStart, end: &paragraphEnd, contentsEnd: &contentsEnd,
+                for: NSRange(location: found.location, length: 0))
+            guard paragraphStart == found.location, contentsEnd - paragraphStart == AttachmentToken.lineLength,
+                block(coveringParagraphStart: paragraphStart) == nil,
+                let id = AttachmentToken.id(
+                    inLine: text.substring(with: NSRange(location: paragraphStart, length: AttachmentToken.lineLength)))
+            else { continue }
+            lines.append((NSRange(location: paragraphStart, length: paragraphEnd - paragraphStart), id))
+        }
+        guard !lines.isEmpty else { return nil }
+        catalog?.preload(lines.map { $0.id })
+        var changed: NSRange?
+        for line in lines {
+            if styleAttachmentLine(of: line.paragraph, id: line.id, in: storage) {
+                changed = Self.union(changed, line.paragraph)
+            }
+        }
+        return changed
     }
 
     /// Styles the attachment lines again (those of `id`, or all of them), for a change of what they show or of the text

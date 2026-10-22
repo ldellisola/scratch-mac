@@ -903,7 +903,12 @@ new kind of release file, with no change to the app, ships.
   every block that starts above the end of the window its look in one pass per block (a block, not a paragraph, is the
   unit, so it is cheap for the huge note), and `styleFenceLine` and `styleCodeBody` write nothing, and invalidate nothing,
   for a line that is as it should be. Anything else that changes the height of a paragraph (a new kind of marker) has the
-  same problem and the same remedy.
+  same problem and the same remedy: an attachment line is 252 pt high where a line of text is 17, so
+  `MarkupStyler.styleAttachmentLines` styles every token line above the paragraphs that `noteDidLoad` styles at once
+  (it searches the text above them for `[[attachment:`, keeps the matches that are a whole line outside a block, reads their
+  rows with one `catalog.preload`, and the chunks find that done), and
+  `AttachmentRenderingTests.testTokenLineFarAboveTheAnchorIsStyledBeforeTheScroll` holds it to that. A token line below the
+  window needs none of it: it moves nothing that is above it.
 - **Colours are keyed by text, not by place.** `CodeBlockStyler` sends a block's code to a private serial queue, one request
   at a time, and a result is applied to every block that holds the same fence name and code (hash first, then text), where
   the block is by then. A result for text that was edited since matches no block and is dropped (`droppedResults`): the edit

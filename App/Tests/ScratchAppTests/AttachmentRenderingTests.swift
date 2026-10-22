@@ -52,8 +52,13 @@ final class AttachmentRenderingTests: XCTestCase {
         return note
     }
 
-    /// An editor in an 800 x 600 window that is never shown, with a catalog on `storage`, showing `note`.
-    private func makeHost(storage: ScratchStorage, directory: URL, note: Note) -> Host {
+    /// An editor in an 800 x 600 window that is never shown, with a catalog on `storage`, showing `note` from its top, or
+    /// scrolled to `scrollAnchor`. The run loop is let turn for a moment afterwards (the lines are sized again when the
+    /// text view has its width) unless `settles` is false, which leaves the note as `show` and the first layout made it:
+    /// the chunks that style a long note have not run.
+    private func makeHost(
+        storage: ScratchStorage, directory: URL, note: Note, scrollAnchor: Int? = nil, settles: Bool = true
+    ) -> Host {
         let editor = EditorViewController()
         let catalog = AttachmentCatalog(store: storage.attachments)
         editor.attachmentCatalog = catalog
@@ -63,11 +68,11 @@ final class AttachmentRenderingTests: XCTestCase {
         window.isReleasedWhenClosed = false
         window.contentViewController = editor
         window.setContentSize(NSSize(width: 800, height: 600))
-        let tab = TabState(noteID: note.id, selection: 0, scrollY: 0, scrollAnchor: nil)
+        let tab = TabState(noteID: note.id, selection: 0, scrollY: 0, scrollAnchor: scrollAnchor)
         editor.show(note, tab: tab, undoManager: UndoManager(), isReadOnly: false)
         editor.view.layoutSubtreeIfNeeded()
         // Whatever the layout asks for a turn later (the lines are sized again when the text view has its width).
-        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        if settles { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
         return Host(
             editor: editor, window: window, storage: storage, catalog: catalog, directory: directory, note: note)
     }
@@ -537,6 +542,68 @@ final class AttachmentRenderingTests: XCTestCase {
         XCTAssertEqual(
             lineHeight(at: token.location, in: host), after.displaySize.height + 12, accuracy: 1,
             "the line is as high as the preview that is drawn in it")
+    }
+
+    // MARK: The scroll position
+
+    /// The 1-based number of the line that holds the UTF-16 offset `offset` of `text`.
+    private func lineNumber(ofOffset offset: Int, in text: String) -> Int {
+        text.utf16.prefix(offset).filter { $0 == 0x0A }.count + 1
+    }
+
+    /// AGENTS.md, "Blocks above the window are styled whole at load": a position is worked out from the layout of what is
+    /// above it, and a token line is 252 pt high where a line of text is 17, so a token line above the window that a chunk
+    /// styled after the scroll was set moved the note under the reader. At `show` the token line is styled already, and
+    /// when the chunks have run the line at the top is the one that was.
+    func testTokenLineFarAboveTheAnchorIsStyledBeforeTheScroll() throws {
+        let (storage, directory) = try openStorage()
+        let noteID = NoteID.make()
+        let tall = try addImage(width: 1_200, height: 900, noteID: noteID, to: storage)
+        var lines = (1...1_500).map { "text line \($0)" }
+        lines[9] = AttachmentToken.line(for: tall)
+        let body = lines.joined(separator: "\n")
+        let anchor = (body as NSString).range(of: "text line 1400").location
+        XCTAssertNotEqual(anchor, NSNotFound)
+        let host = makeHost(
+            storage: storage, directory: directory, note: try saveNote(body, id: noteID, in: storage),
+            scrollAnchor: anchor, settles: false)
+        defer { host.cleanUp() }
+        let styler = host.editor.textView.styler
+        XCTAssertFalse(styler.isFullyStyled, "the text above the window is still to be styled in chunks")
+        XCTAssertEqual(
+            lineNumber(ofOffset: host.editor.currentScrollAnchor, in: body), 1_400, "the note is at its anchor")
+
+        let token = tokenRange(tall, in: host)
+        XCTAssertEqual(lineNumber(ofOffset: token.location, in: body), 10)
+        XCTAssertEqual(lineNumber(ofOffset: anchor, in: body), 1_400, "far above the paragraphs styled at once")
+        let mark = try XCTUnwrap(
+            attachmentMark(at: token.location, in: host), "the token line above the window has its look at once")
+        XCTAssertEqual(mark.kind, .image)
+        XCTAssertEqual(mark.displaySize.height, 240, accuracy: 1)
+        let style =
+            host.editor.textView.textStorage?.attribute(.paragraphStyle, at: token.location, effectiveRange: nil)
+            as? NSParagraphStyle
+        XCTAssertEqual(style?.minimumLineHeight ?? 0, 240 + 12, accuracy: 1)
+        XCTAssertEqual(style?.maximumLineHeight ?? 0, 240 + 12, accuracy: 1)
+
+        // The layout of what is above `index`, which is all that the scroll position is worked out from.
+        let layoutManager = try XCTUnwrap(host.editor.textView.layoutManager)
+        func fragment(at index: Int) -> NSRect {
+            layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: index + 1))
+            let glyph = layoutManager.glyphIndexForCharacter(at: index)
+            return layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        }
+        XCTAssertEqual(fragment(at: token.location).height, 240 + 12, accuracy: 1, "and its height is laid out")
+        let before = fragment(at: anchor).minY
+
+        spin(until: { styler.isFullyStyled })
+
+        XCTAssertTrue(styler.isFullyStyled)
+        XCTAssertEqual(fragment(at: anchor).minY, before, accuracy: 0.5, "the line at the top has not moved")
+        XCTAssertEqual(
+            lineNumber(ofOffset: host.editor.currentScrollAnchor, in: body), 1_400,
+            "and it is still the line at the top of the window")
+        XCTAssertEqual(host.editor.currentText, body)
     }
 
     // MARK: The catalog

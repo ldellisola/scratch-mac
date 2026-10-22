@@ -40,6 +40,12 @@ style with the same minimum and maximum line height.
   biggest thumbnail of each image, 100 MB). The images that are styled first, which are the visible ones, are asked for
   first. Until a preview is there a tint stands in for it, and when it arrives only the display of its line is
   invalidated: nothing is laid out again. A preview that cannot be decoded makes the line a "Missing attachment" chip.
+- **Every token line above the window has its height before the note is scrolled.** The scroll position of a shown note
+  is worked out from the layout of everything above it, and a line of text is 17 pt where a preview is up to 252, so a
+  token line that the chunks styled after the scroll (they style the text above the window last) moved the note under the
+  reader. `MarkupStyler.noteDidLoad` styles the token lines above the paragraphs it styles at once, in the same pass as the
+  blocks above the window (`styleAttachmentLines`, like `styleBlocks` for code: docs/features/code.md), and the chunks
+  find them done.
 - **A change of the text width styles the lines again** (`MarkupStyler.refreshAttachmentLayout`, called by the editor's
   `viewDidLayout` before it applies the scroll anchor, and a turn after any change of the text view's frame), because the
   height of a preview depends on the width. A line whose size does not change is not written.
