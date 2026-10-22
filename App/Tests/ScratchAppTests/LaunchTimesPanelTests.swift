@@ -44,7 +44,9 @@ final class LaunchTimesPanelTests: XCTestCase {
         LaunchTimesPanel.copy(report, to: pasteboard)
 
         XCTAssertEqual(pasteboard.string(forType: .string), report)
-        XCTAssertEqual(pasteboard.types, [.string])
+        // AppKit adds the legacy name of the string type on its own: that is still only the text.
+        let legacyString = NSPasteboard.PasteboardType("NSStringPboardType")
+        XCTAssertTrue(Set(pasteboard.types ?? []).isSubset(of: [.string, legacyString]), "\(pasteboard.types ?? [])")
     }
 
     func testReportIsTheLogsReportForThisVersion() {

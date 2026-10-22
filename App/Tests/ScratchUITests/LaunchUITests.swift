@@ -62,9 +62,12 @@ final class LaunchUITests: XCTestCase {
         app.menuBars.menuBarItems["Help"].click()
         app.menuBars.menuItems["Launch Times…"].click()
 
-        let copy = app.buttons["Copy"]
+        // The alert is a sheet of the window. Its Copy is looked for there: the Touch Bar has a Copy button of its own.
+        let sheet = app.sheets.firstMatch
+        XCTAssertTrue(sheet.waitForExistence(timeout: 10), "the Launch Times alert did not appear")
+        let copy = sheet.buttons["Copy"]
         XCTAssertTrue(copy.waitForExistence(timeout: 10), "the Launch Times alert has no Copy button")
-        XCTAssertTrue(app.buttons["OK"].exists)
+        XCTAssertTrue(sheet.buttons["OK"].exists)
         let report = app.descendants(matching: .any).matching(identifier: AccessibilityID.launchTimesReport).firstMatch
         XCTAssertTrue(report.waitForExistence(timeout: 5), "the alert has no report")
         let text = report.value as? String ?? ""
