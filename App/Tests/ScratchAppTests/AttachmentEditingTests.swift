@@ -15,6 +15,11 @@ import XCTest
 /// tracking loop would wait for a mouse button that never comes up.
 @MainActor
 final class AttachmentEditingTests: XCTestCase {
+    /// How many times a panel was asked for.
+    @MainActor private final class Counter {
+        var count = 0
+    }
+
     private let id = AttachmentID(rawValue: "6f9619ff-8b86-4d11-b42d-00c04fc964ff")
     private var token: String { AttachmentToken.line(for: id) }
     private let size = AttachmentToken.lineLength
@@ -207,15 +212,15 @@ final class AttachmentEditingTests: XCTestCase {
         defer { host.cleanUp() }
         let first = try host.makeFile(named: "one.txt", contents: Data("1".utf8))
         let second = try host.makePNGFile(named: "two.png")
-        var panels = 0
+        let panels = Counter()
         host.textView.presentOpenPanel = { completion in
-            panels += 1
+            panels.count += 1
             completion([first, second])
         }
 
         host.textView.attachFiles()
 
-        XCTAssertEqual(panels, 1)
+        XCTAssertEqual(panels.count, 1)
         let ids = host.tokenIDs
         XCTAssertEqual(ids.count, 2)
         guard ids.count == 2 else { return }
@@ -240,13 +245,13 @@ final class AttachmentEditingTests: XCTestCase {
         let readOnly = try AttachmentTestHost(text: "kept", isReadOnly: true)
         defer { readOnly.cleanUp() }
         let file = try readOnly.makeFile(named: "one.txt", contents: Data("1".utf8))
-        var panels = 0
+        let panels = Counter()
         readOnly.textView.presentOpenPanel = { completion in
-            panels += 1
+            panels.count += 1
             completion([file])
         }
         readOnly.textView.attachFiles()
         XCTAssertEqual(readOnly.text, "kept")
-        XCTAssertEqual(panels, 0, "no panel is shown for a note that cannot take a file")
+        XCTAssertEqual(panels.count, 0, "no panel is shown for a note that cannot take a file")
     }
 }

@@ -60,6 +60,12 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         get { textView.styler.catalog }
         set { textView.styler.catalog = newValue }
     }
+    /// What makes attachments of what is pasted, dropped or chosen (plan 5, task 5): the session coordinator. Without one the
+    /// editor pastes and drops text only.
+    var attachmentImporter: (any AttachmentImporting)? {
+        get { textView.attachmentImporter }
+        set { textView.attachmentImporter = newValue }
+    }
     private var debugStateElement: DebugStateElement?
 
     init() {
@@ -140,6 +146,7 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         textView.breakUndoCoalescing()
         textView.noteUndoManager = undoManager
 
+        textView.noteID = note.id
         undoManager.disableUndoRegistration()
         textView.load(note.body)
         undoManager.enableUndoRegistration()
@@ -167,6 +174,11 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         isReadOnly = readOnly
         textView.isEditable = !readOnly
         titleField.isEditable = !readOnly
+    }
+
+    /// File > Attach File… and the paperclip: the files that the open panel gives go into the note at the caret (plan 5, task 5).
+    func attachFiles() {
+        textView.attachFiles()
     }
 
     /// Makes the text view the first responder, so typing goes into the note.
@@ -256,13 +268,33 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
                 // that have not been classified, so a test can wait for a block to be done.
                 "pendingHighlights": self.textView.styler.codeBlockStyler.pendingHighlights,
                 "pendingPastes": self.textView.pendingPasteClassifications,
+                // The attachments of the note: for each token in its text, the id and whether the copy is in place.
+                "attachments": self.attachmentStates(),
             ]
         }
         view.addSubview(element)
         debugStateElement = element
     }
 
+    /// The tokens in the note's text with whether each attachment's copy is in place, for `debug.state`. Reads the text and
+    /// the catalog when asked, so a UI test sees what the app knows now.
+    private func attachmentStates() -> [[String: Any]] {
+        guard let catalog = attachmentCatalog else { return [] }
+        return AttachmentToken.ids(in: textView.string).map { id in
+            ["id": id.rawValue, "copied": catalog.attachment(id)?.isCopied ?? false]
+        }
+    }
+
     // MARK: NSTextViewDelegate
+
+    /// The caret never stops inside an attachment's token, and a selection never starts or ends inside one: the selection is
+    /// made whole before it changes (`NoteTextView.snappedSelection(from:to:)`, plan 5 task 5).
+    func textView(
+        _ textView: NSTextView, willChangeSelectionFromCharacterRange oldSelectedCharRange: NSRange,
+        toCharacterRange newSelectedCharRange: NSRange
+    ) -> NSRange {
+        self.textView.snappedSelection(from: oldSelectedCharRange, to: newSelectedCharRange)
+    }
 
     func textDidChange(_ notification: Notification) {
         guard !isLoadingNote else { return }

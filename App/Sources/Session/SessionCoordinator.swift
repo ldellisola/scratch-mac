@@ -35,8 +35,13 @@ import ScratchCore
 /// (`purgeExpiredNotes`), and its tab, if it has one, closes. The writes of deleting, restoring and deleting for good run
 /// on the main thread, after `persistNow()` has emptied the storage queue: they are one statement each, the owner just
 /// asked for them, and a tab only closes when the write worked. The purge runs on the storage queue.
+///
+/// **Attachments.** The coordinator is the editor's `AttachmentImporting`: a file that is pasted, dropped or chosen is
+/// registered on the main thread (`AttachmentImporter`) and copied on the storage queue, so `persistNow()` and quitting wait
+/// for the copy, and a copy never runs beside the purge or the sweep. The sweep at launch (`sweepUnreferencedAttachments`)
+/// removes the rows and files that no stored note names and that are more than a day old.
 @MainActor
-final class SessionCoordinator {
+final class SessionCoordinator: AttachmentImporting {
     private let storage: ScratchStorage
     private let editor: EditorViewController
     private let tabStrip: TabStripViewController
@@ -45,6 +50,8 @@ final class SessionCoordinator {
     private let noteList: NoteListModel
     /// Calls `saveNow()` 300 ms after the last change and at most 1 s after the first one. Set at the end of `init`.
     private var autosaver: Autosaver!
+    /// Makes the attachments of what is pasted, dropped or chosen: the row at once, the copy on `storageQueue`.
+    private let attachmentImporter: AttachmentImporter
 
     /// The open tabs and the active one. Nil until `restore()` has run.
     private var tabs: TabList?
@@ -89,6 +96,8 @@ final class SessionCoordinator {
         self.tabStrip = tabStrip
         self.storageQueue = queue
         self.noteList = NoteListModel(storage: storage, storageQueue: queue, sidebar: sidebar)
+        self.attachmentImporter = AttachmentImporter(
+            store: storage.attachments, queue: queue, catalog: editor.attachmentCatalog)
 
         // The autosaver fires on the main queue, where `assumeIsolated` is valid. It calls `flush` from the main
         // thread too (`persistNow`).
@@ -109,6 +118,35 @@ final class SessionCoordinator {
         tabStrip.onSelect = { [weak self] index in self?.selectTab(at: index) }
         tabStrip.onClose = { [weak self] index in self?.closeTab(at: index) }
         tabStrip.onNewTab = { [weak self] in self?.newNoteInNewTab() }
+        editor.attachmentImporter = self
+    }
+
+    // MARK: Attachments
+
+    /// How old an attachment must be before the launch sweep may remove it when no stored note names it: a file whose token
+    /// is in text that was never saved (a crash within the second of autosave) is kept for a day, so that nothing the owner
+    /// can still get back is taken (plan 5, "Never lose an attachment").
+    static let attachmentSweepAge: TimeInterval = 24 * 60 * 60
+
+    /// The editor pasted, dropped or chose `sources` for the note `noteID`: each is registered and copied
+    /// (`AttachmentImporter`), and the ids come back in order for the editor to put their tokens in the text.
+    func importAttachments(_ sources: [AttachmentSource], into noteID: NoteID) -> [AttachmentID] {
+        attachmentImporter.importAttachments(sources, into: noteID)
+    }
+
+    /// The launch sweep: on the storage queue, after the purge that was asked for before it, removes the rows and files of the
+    /// attachments created more than a day before `now` that no stored note, in Recently Deleted too, names
+    /// (`AttachmentStore.sweep`). A file that something names is never removed.
+    func sweepUnreferencedAttachments(now: Date) {
+        let cutoff = now.addingTimeInterval(-Self.attachmentSweepAge)
+        let storage = self.storage
+        storageQueue.async { [storage] in
+            do {
+                try storage.attachments.sweep(createdBefore: cutoff, notes: storage.notes)
+            } catch {
+                report("cannot sweep the attachments: \(error)")
+            }
+        }
     }
 
     // MARK: Restoring

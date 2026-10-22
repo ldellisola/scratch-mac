@@ -1,7 +1,7 @@
 import AppKit
 
-/// The window's toolbar: the sidebar button over the sidebar and, over the editor, the pin button and the "new note"
-/// button at the right (spec §6.1). The system draws every toolbar item on Liquid Glass (spec §8.1).
+/// The window's toolbar: the sidebar button over the sidebar and, over the editor, the paperclip, the pin button and the
+/// "new note" button at the right (spec §6.1, §6.4). The system draws every toolbar item on Liquid Glass (spec §8.1).
 ///
 /// The toolbar keeps its delegate weakly, so whoever creates this controller must keep it alive for as long as the
 /// window lives (`AppDelegate` does).
@@ -12,15 +12,22 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
     /// Called when the user presses the pin button, which pins the note of the active tab or unpins it.
     var onTogglePin: (() -> Void)?
 
+    /// Called when the user presses the paperclip, which asks for files to attach to the note (spec §6.4).
+    var onAttach: (() -> Void)?
+
     private static let newNoteItem = NSToolbarItem.Identifier(AccessibilityID.newNoteButton)
     private static let pinItem = NSToolbarItem.Identifier(AccessibilityID.pinButton)
+    private static let attachItem = NSToolbarItem.Identifier(AccessibilityID.attachButton)
 
     /// The items from left to right. The tracking separator makes the items after it line up with the editor, and the
-    /// flexible space pushes the pin and "new note" buttons to the right edge.
+    /// flexible space pushes the paperclip, the pin and the "new note" buttons to the right edge.
     private static let itemIdentifiers: [NSToolbarItem.Identifier] = [
-        .toggleSidebar, .sidebarTrackingSeparator, .flexibleSpace, pinItem, newNoteItem,
+        .toggleSidebar, .sidebarTrackingSeparator, .flexibleSpace, attachItem, pinItem, newNoteItem,
     ]
 
+    /// The paperclip, once the toolbar has asked for it, and whether it works: it does not for a note in Recently Deleted.
+    private var attachButton: NSToolbarItem?
+    private var isAttachEnabled = true
     /// The pin button, once the toolbar has asked for it.
     private var pinButton: NSToolbarItem?
     /// What the pin button shows: whether the note of the active tab is pinned, and whether the button works.
@@ -46,8 +53,8 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
         Self.itemIdentifiers
     }
 
-    /// Only the pin and "new note" items are made here. AppKit makes the standard ones (sidebar button, separator,
-    /// space).
+    /// Only the paperclip, pin and "new note" items are made here. AppKit makes the standard ones (sidebar button,
+    /// separator, space).
     ///
     /// They are plain items with an image, not custom views, so that the system draws them on a Liquid Glass capsule
     /// like every other toolbar item: a custom `NSButton` view got no capsule, bordered item or not (screenshots, plan
@@ -58,6 +65,7 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
         if itemIdentifier == Self.pinItem { return makePinItem() }
+        if itemIdentifier == Self.attachItem { return makeAttachItem() }
         guard itemIdentifier == Self.newNoteItem else { return nil }
 
         let description = "New Note"
@@ -74,6 +82,35 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
 
     @objc private func newNote(_ sender: Any?) {
         onNewNote?()
+    }
+
+    // MARK: The paperclip
+
+    /// Whether the paperclip works: it does not for a note in Recently Deleted, which takes no attachments.
+    func setAttachEnabled(_ enabled: Bool) {
+        isAttachEnabled = enabled
+        attachButton?.isEnabled = enabled
+    }
+
+    private func makeAttachItem() -> NSToolbarItem {
+        let description = "Attach File"
+        let item = NSToolbarItem(itemIdentifier: Self.attachItem)
+        item.image = NSImage(systemSymbolName: "paperclip", accessibilityDescription: description)
+        item.label = description
+        item.paletteLabel = description
+        item.toolTip = description
+        item.isBordered = true
+        item.target = self
+        item.action = #selector(attach(_:))
+        // `setAttachEnabled` decides, and AppKit must not undo it by validating the item itself.
+        item.autovalidates = false
+        item.isEnabled = isAttachEnabled
+        attachButton = item
+        return item
+    }
+
+    @objc private func attach(_ sender: Any?) {
+        onAttach?()
     }
 
     // MARK: The pin button

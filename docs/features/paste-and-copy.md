@@ -17,7 +17,9 @@ references (plan 5), and may add rich copy-out.
   turn of the run loop, text of two lines or more that looks like code is wrapped in a fence with its language, an edit of
   its own: ⌘Z once gives back the plain pasted text, and ⌘Z again removes it. Prose, a single line, a paste into code and a
   paste that holds a fence line are left as pasted. The rules are in docs/features/code.md ("Pasting code"). File
-  references and images (plan 5) will come before the text in this order, and an image with no text after it.
+  references come before the text in this order and become attachments, and an image with no text comes after it and
+  becomes an image attachment, stored as PNG (plan 5; the rules are in docs/features/attachments.md, "Pasting and
+  dropping"). Text that comes with an image (Excel, Word, browsers) is pasted as text.
 - **Copy and Cut put plain text only on the pasteboard.** No RTF, RTFD or HTML. Nothing of the note's font or colours
   reaches Slack, mail or a terminal. The text is exactly what the editor holds.
 - **Nothing is substituted while typing or pasting.** Smart quotes, smart dashes, text replacement, auto-correct,
@@ -31,7 +33,10 @@ All of it is in `App/Sources/Editor/NoteTextView.swift`:
 
 - `applyScratchConfiguration()` makes the view a plain-text editor and turns every substitution off.
   `TextViewFactory.makeEditor()` calls it.
-- `readablePasteboardTypes` is `[.string]`: the one place that decides what a paste takes.
+- `readablePasteboardTypes` is `[.string, .fileURL, .png, .tiff]`: AppKit offers Paste, and accepts a drag, only for a
+  pasteboard that has one of them. The order of preference is not this list's: `readSelection(from:)` reads the files
+  first (`attachmentSources(from:)`), then text as `.string` and nothing else, then an image, and
+  `preferredPasteboardType(from:restrictedToTypesFrom:)` makes AppKit's own choice `.string` whenever there is text.
 - `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` start and end a paste (`beginPaste`, `endPaste`), and the
   wrap of a paste of code is `PasteClassifier` (`App/Sources/Editor/PasteClassifier.swift`).
 - `writablePasteboardTypes` is `[.string]` and `writeSelection(to:types:)` writes the selected text as `.string` and

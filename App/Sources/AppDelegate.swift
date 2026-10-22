@@ -87,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let toolbarController = ToolbarController()
         toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
         toolbarController.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
+        toolbarController.onAttach = { [weak editor] in editor?.attachFiles() }
         self.toolbarController = toolbarController
         windowController.window?.toolbar = toolbarController.makeToolbar()
 
@@ -100,9 +101,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // note in the active tab.
         commands.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
         commands.onFocusSearch = { [weak sidebar] in sidebar?.focusSearch() }
+        // File > Attach File… (⇧⌘A) and the paperclip (spec §6.4): the editor asks for the files and puts them in at the caret.
+        commands.onAttachFile = { [weak editor] in editor?.attachFiles() }
         let appCommands = commands
         coordinator.onActiveNotePinChange = { [weak toolbarController, weak appCommands] pinned, enabled in
             toolbarController?.setPinned(pinned, enabled: enabled)
+            // A note in Recently Deleted can be neither pinned nor attached to.
+            toolbarController?.setAttachEnabled(enabled)
             appCommands?.setActiveNotePin(pinned: pinned, enabled: enabled)
         }
         // View > Bigger, Smaller and Actual Size (spec §6.4).
@@ -117,8 +122,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editor.focus()
         // Notes that were deleted more than 30 days ago are removed once the window is up (spec §6.2): one turn of the
         // main queue after the restore, so that it is not part of what the first frame waits for.
+        // The sweep of the attachments that no note names comes after the purge, on the same queue, because the purge may
+        // leave some (plan 5, "Never lose an attachment").
         DispatchQueue.main.async { [weak coordinator] in
-            MainActor.assumeIsolated { coordinator?.purgeExpiredNotes(now: Date()) }
+            MainActor.assumeIsolated {
+                coordinator?.purgeExpiredNotes(now: Date())
+                coordinator?.sweepUnreferencedAttachments(now: Date())
+            }
         }
 
         if let file = environment.options.frameMonitorFile {

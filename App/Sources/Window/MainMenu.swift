@@ -82,13 +82,17 @@ enum MainMenu {
         return menu
     }
 
-    /// New Note and New Tab both open a new empty note in a new tab. ⇧⌘P pins the note of the active tab, or unpins it
-    /// (`AppCommands.validateMenuItem` sets the title). ⌘W closes the tab, and ⇧⌘W the window (which quits, spec §6.6).
+    /// New Note and New Tab both open a new empty note in a new tab. ⇧⌘A attaches files to the note (spec §6.4). ⇧⌘P pins
+    /// the note of the active tab, or unpins it (`AppCommands.validateMenuItem` sets the title). ⌘W closes the tab, and
+    /// ⇧⌘W the window (which quits, spec §6.6).
     private static func fileMenu(commands: AppCommands) -> NSMenu {
         let menu = NSMenu(title: "File")
         menu.addItem(commandItem("New Note", #selector(AppCommands.newNote(_:)), key: "n", target: commands))
         menu.addItem(commandItem("New Tab", #selector(AppCommands.newNote(_:)), key: "t", target: commands))
         menu.addItem(.separator())
+        let attach = commandItem("Attach File…", #selector(AppCommands.attachFile(_:)), key: "a", target: commands)
+        attach.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(attach)
         let pin = commandItem("Pin Note", #selector(AppCommands.togglePin(_:)), key: "p", target: commands)
         pin.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(pin)

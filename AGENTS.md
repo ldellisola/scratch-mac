@@ -14,9 +14,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
   in progress for 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out and
-  copied; plus the 0.4.0 follow-ups). Its Tasks 1 to 4 are done: titles skip fence and attachment lines, `AttachmentID`
+  copied; plus the 0.4.0 follow-ups). Its Tasks 1 to 5 are done: titles skip fence and attachment lines, `AttachmentID`
   and `AttachmentToken` exist, the schema is version 3, `AttachmentStore` keeps the files and removes them only when no
-  note names them, the 0.4.0 follow-ups in ScratchCode are in, and a token line is drawn as a preview or a chip. Plan 4, done and released as 0.4.0 (code: highlighting, code
+  note names them, the 0.4.0 follow-ups in ScratchCode are in, a token line is drawn as a preview or a chip, and files and
+  images are pasted, dropped or attached with the paperclip and kept whole when selected or deleted. Plan 4, done and released as 0.4.0 (code: highlighting, code
   blocks, paste classification, the language label menu, and bold at word boundaries):
   [`2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
@@ -45,7 +46,11 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   place) and AttachmentStore (the `attachments` table and the copied files under
                                   `<data dir>/attachments/<id>/<file name>`: `register`, `copyIn`, `writeIn`, `attachment`,
                                   `attachments`, `fileURL`, and the removal by reference `removeUnreferenced` and
-                                  `sweep`)
+                                  `sweep`) and AttachmentEditing (what the keys and the pasteboard do around a token line,
+                                  as `TextEdit`s and `KeyAction`s: `snappedSelection` keeps the caret and a selection from
+                                  ending inside a token, `deletion` is Backspace and Delete next to one, `removal`,
+                                  `insertion`: the token lines of a paste, each on a line of its own; `token(touching:)`
+                                  reads at most 51 units each way of a position)
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores: the tabs, the active one, the
                                   font size, and each tab's cursor and `scrollAnchor`), SessionStore (JSON under key
                                   "state"), TabList (the tab rules: open, close, select, with TabOpening and
@@ -119,7 +124,8 @@ App/Sources/Window/               MainWindowController (one window, closing it q
                                   sidebar item + editor area item), EditorAreaViewController (the tab strip above the
                                   editor), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
                                   menu), AppCommands (the target of the app's own menu items: the tabs, pinning,
-                                  searching and the font size), ToolbarController (sidebar button, pin button, new note button), TitlebarPocket (hides
+                                  attaching a file, searching and the font size), ToolbarController (sidebar button,
+                                  paperclip, pin button, new note button), TitlebarPocket (hides
                                   the line macOS 26 draws under the toolbar, section 7)
 App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
                                   `TabStripLayout`, `TabStripContentView`, `TabItemView`)
@@ -130,9 +136,12 @@ App/Sources/Sidebar/              SidebarViewController (the search field and th
                                   SidebarTableView (Return, ⌘⌫, the click on the Recently Deleted header, the row's
                                   context menu)
 App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore, new note, close,
-                                  pinning, delete, restore and purge, the tab titles; the one place that writes to
-                                  storage), NoteListModel (the sidebar's data: reads the note list, the search results
-                                  and Recently Deleted on the storage queue, builds the sections)
+                                  pinning, delete, restore and purge, the tab titles, the launch sweep of the attachments
+                                  that no note names; the one place that writes to storage; it is the editor's
+                                  `AttachmentImporting`), NoteListModel (the sidebar's data: reads the note list, the
+                                  search results and Recently Deleted on the storage queue, builds the sections),
+                                  AttachmentImporter (makes the attachments of what is pasted, dropped or chosen: the row
+                                  at once on the main thread, the copy on the storage queue, `pendingCopies`)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
                                   TitleField (the optional title above the text), EditorViewController (the title field
@@ -167,15 +176,22 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   kind, size, file name, icon) with the `scratchAttachment` attribute and `MarkerRole.attachment`.
                                   MarkupStyler styles a token line (`styleAttachmentLine`) and again when the catalog or the
                                   text width changes (`attachmentDidChange`, `refreshAttachmentLayout`);
-                                  `MarkupLayoutManager.attachmentRect(forTokenAt:)` is where the preview is drawn
+                                  `MarkupLayoutManager.attachmentRect(forTokenAt:)` is where the preview is drawn.
+                                  AttachmentImporting (`AttachmentSource`: a file or the bytes of an image, and the
+                                  `AttachmentImporting` protocol that NoteTextView asks to make attachments, `noteID`).
+                                  NoteTextView reads a paste or a drop in the order of spec §6.5 (`readSelection(from:)`,
+                                  `paste`, `attachmentSources(from:)`, `insertAttachments`, `acceptsDrop`, `performDrop`),
+                                  opens the paperclip's panel (`attachFiles`, `presentOpenPanel`), keeps a token whole
+                                  (`snappedSelection`, which the editor's selection delegate asks, and `deleteBackward` and
+                                  `deleteForward`)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
                                   `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
                                   (runs work when the main run loop is next about to wait: after the frame is drawn, and
                                   with `order: afterMeasurementsOrder` after the signposts end), FrameMonitor
                                   (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
-                                  size, scroll anchor, scroll offset and pending paste work from, in isolated launches
-                                  only)
+                                  size, scroll anchor, scroll offset, pending paste work and the attachments of the note
+                                  (id and `copied`) from, in isolated launches only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
@@ -195,7 +211,10 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   menu, its edits and undo steps, the label's hit test, a block typed by hand,
                                   AttachmentRenderingTests: a token line's null glyphs and height, an image scaled to the
                                   width and 240 pt, the file chip, the Copying and Missing attachment chips, the pixels of
-                                  a preview, a change of the text width)
+                                  a preview, a change of the text width, AttachmentPasteTests: files, images and text
+                                  pasted in the order of spec §6.5, one undo step, a 50 MB file, drops,
+                                  AttachmentEditingTests: the caret and a selection around a token, Backspace and Delete,
+                                  the paperclip; AttachmentTestHost is what they share)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -203,7 +222,8 @@ App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an
                                   Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
                                   FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
                                   CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
-                                  ScreenshotTests (one test per screenshot, section 3)
+                                  AttachmentUITests (⌘V of a file survives a relaunch, Backspace twice and ⌘Z bring it
+                                  back), ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
                                   EditorPerfTests (keystroke, scrolling, switching notes), CodePastePerfTests (a paste of
                                   500 lines of code until its colours are on screen), PerfSupport. They share
@@ -1018,3 +1038,38 @@ new kind of release file, with no change to the app, ships.
   through the edit (`EditMapping`): a caret in the code stays in the same place of the code. Choosing the name that is there
   is an edit of nothing, which `apply` does not register as an undo step. The menu items have `NoteTextView` as their target and
   the menu has `autoenablesItems = false`, as the Format menu does.
+- **A paste or a drop is read in the order of the spec, by the code and not by AppKit** (`NoteTextView.readSelection(from:)`,
+  `paste(_:)`, `pasteAsPlainText(_:)`, `performDragOperation(_:)`): file URLs first (`attachmentSources(from:)`,
+  `readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])`, files that exist), then any text, then
+  an image with no text. `readablePasteboardTypes` lists `.fileURL`, `.png` and `.tiff` only because AppKit offers Paste
+  and a drop, and validates the Paste menu item, only for a pasteboard that has a type of the list. It does not choose:
+  `paste(_:)` and `pasteAsPlainText(_:)` make the attachments before they call `super`, the text path reads `.string`
+  explicitly (`super.readSelection(from:type:)`), and `preferredPasteboardType(from:restrictedToTypesFrom:)` answers
+  `.string` whenever there is text, so that an image next to the text (Excel, Word, browsers) can never be what AppKit reads
+  (Review Focus 3). A paste that made attachments sets `attachmentPasteWasInserted`, and `endPaste` then skips the code
+  classification: its text is token lines. A TIFF is converted to PNG on the main thread, which is the one cost that
+  depends on the size of what is pasted; a file costs a few attributes and the header of an image, and is copied on the
+  storage queue.
+- **An attachment that is pasted is a line of its own, and the caret goes below it.** `AttachmentEditing.insertion` adds a
+  line break before the first token unless the paste starts a line, and one after the last token unless one follows already
+  (so a token at the end of the note is followed by a line break, which deviates from the plan's literal rule: the caret
+  would otherwise be at the end of the token's line, where typing breaks the token). The caret ends at the start of the
+  line after the last token, which is where the Backspace rule selects the token. Typing at an end of a token line still
+  breaks the token (it is text then, and ⌘Z takes it back); nothing guards that.
+- **A token is kept whole by the selection delegate and two key overrides, and the rules are in Core.**
+  `EditorViewController.textView(_:willChangeSelectionFromCharacterRange:toCharacterRange:)` is asked for every change of
+  the selection, by a key, the mouse or code, and answers `AttachmentEditing.snappedSelection` (through
+  `NoteTextView.snappedSelection(from:to:)`): a caret inside a token goes to its end, or its start when it came from the
+  right, and a click always to the end; a range grows to hold the whole token at either end. `deleteBackward` and
+  `deleteForward` ask `AttachmentEditing.deletion` first: next to a token the first press selects it, the second removes it
+  with one line break (`apply`, one undo step), and where a key would join a text line and a token line the caret only moves
+  over the line break. Tokens in a fenced block are text for all of it (`isLiteral` is `styler.isInCodeBlock`). `token(touching:)`
+  reads at most 51 units each way, so a selection change in a note with one huge line costs nothing. Word and line deletions
+  (⌥⌫, ⌘⌫) are built on selection changes and so are snapped; a hosted test must not send a click on a token until plan 5
+  task 6 handles it, because it would end in `super.mouseDown`.
+- **A copy runs on the storage queue, so `persistNow()` waits for it.** `AttachmentImporter` registers the row on the main
+  thread, calls `AttachmentCatalog.markCopying`, and queues `copyIn` or `writeIn` on the coordinator's storage queue, then
+  `markCopied` on the main queue. A copy that is under way when the app quits or the tab changes is waited for, which is
+  the point: the file is there after a relaunch. A very large copy therefore delays a tab switch (`persistNow()`); the
+  alternative is a queue of its own, which would not be waited for. The launch sweep (`sweepUnreferencedAttachments`) is
+  queued after the purge in the same main-queue turn, and removes only attachments created more than 24 hours ago.

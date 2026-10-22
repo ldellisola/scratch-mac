@@ -5,8 +5,9 @@ Images and files that a note holds, and how they are drawn. Spec:
 (the purge "along with their attachments"). Plan: [Plan 5](../superpowers/plans/2026-10-22-plan-5-attachments.md).
 
 Status: plan 5, in progress. Done so far: the token and the storage (`ScratchCore`: `AttachmentToken`,
-`AttachmentStore`, schema version 3), titles that skip fence and attachment lines, and the display below (task 4).
-Pasting, dropping and the paperclip (task 5), opening, dragging out and copying (task 6) are not there yet.
+`AttachmentStore`, schema version 3), titles that skip fence and attachment lines, the display (task 4), and pasting,
+dropping, the paperclip and keeping tokens whole when they are selected or deleted (task 5). Opening, dragging out and
+copying (task 6) are not there yet.
 
 ## The token
 
@@ -53,4 +54,87 @@ style with the same minimum and maximum line height.
   that are styled), and which files are being copied (`markCopying`, `markCopied`) or are undecodable. It tells the
   editor which attachment changed (`onChange`), and the lines of that attachment are styled again.
 
-Tests: `AttachmentRenderingTests` (hosted).
+## Pasting and dropping
+
+A paste or a drop is read in the order of spec §6.5 (`NoteTextView.readSelection(from:)`, which Paste, Paste and Match
+Style and a drop all end in; `attachmentSources(from:)` decides):
+
+1. **File references become attachments**, one for each file, in the order they are on the pasteboard. A file that is not
+   there any more is left out. A file the Finder copied has its name on the pasteboard as text too: the file wins.
+2. **Any text wins**, even with an image next to it (Excel, Word and browsers put both there). The text is pasted as plain
+   text and goes through the code classification of [code.md](code.md), as it always did.
+3. **An image with no text becomes an image attachment**, stored as PNG: the pasteboard's PNG as it is, or its TIFF
+   converted (a screenshot, a picture copied from Preview). It is named "Image 2026-10-22 at 10.42.13.png".
+
+What goes into the note, and how:
+
+- **Each attachment is a line of its own** (`AttachmentEditing.insertion`). A line break goes in before the first token
+  unless the paste is at the start of a line, and one after the last token unless a line break follows already, so that what
+  is typed next is on a line of its own and can never join a token's line. The caret ends at the start of the line after the
+  last token. A paste over a selection replaces it, and several attachments are several lines. All of it is one undo step:
+  ⌘Z takes every token of the paste away.
+- **The token is in the note at once**, and the line says "Copying…" until the copy is there. The row is written on the main
+  thread (`AttachmentImporter`: the file's size from its attributes, an image's pixel size from the header of the image, both
+  quick), and the copy runs on the storage queue (`AttachmentStore.copyIn`, `writeIn`). So inserting a 50 MB file returns to
+  the run loop in a few milliseconds, and `persistNow()` and quitting wait for a copy that is under way.
+- **A note that cannot be edited takes nothing**: not a file, not an image, not text (a note in Recently Deleted).
+- **Inside code a block is literal.** A paste or drop of files into a fenced block or into inline code inserts the file names
+  as text, one on each line, and an image, which has no name, goes in nowhere. No attachment is made.
+- **A drop** puts the attachments where it landed (`performDrop(of:atViewPoint:)`): the caret goes to the drop point first.
+  The drag is accepted when it holds files, or an image and no text, and the note can be edited. Any other drop is the text
+  view's own.
+- **A paste is never classified as code when it made attachments**: its text is token lines.
+
+## The paperclip
+
+The paperclip in the toolbar (`toolbar.attach`, the SF Symbol `paperclip`) and File > Attach File… (⇧⌘A) show an open panel
+as a sheet of the window, with several files allowed, and put the chosen files in at the caret as a paste of them would
+(`NoteTextView.attachFiles()`). Both are off for a note in Recently Deleted, and cancelling the panel inserts nothing.
+
+## Selecting and deleting a token
+
+The rules are `AttachmentEditing` in ScratchCore (tested on Linux), carried out by `NoteTextView` and the editor's
+selection delegate. A token inside a fenced block is text, and none of this applies to it.
+
+- **The caret never stops inside a token.** A caret that lands inside one (an arrow key, a word move, a click, code) goes to
+  the token's end, or to its start when it came from further on in the text, so the arrow keys step over a token. At the two
+  ends of the token line the caret is allowed. (`EditorViewController`'s
+  `textView(_:willChangeSelectionFromCharacterRange:toCharacterRange:)` asks `NoteTextView.snappedSelection(from:to:)`.)
+- **A selection that covers part of a token covers all of it**, whichever end is inside. So cut, copy, deleting and typing
+  over a selection act on whole tokens, and typing over a selected token replaces the whole token.
+- **Backspace right after a token selects it**, and the next press deletes it. Right after is at the end of the token line, or
+  at the start of the line below it. **Delete right before a token** (at the start of the token line, or at the end of the
+  line above it) selects it the same way. With the token selected, either key deletes the token and its line break, so no
+  empty line is left (the line break before it when it is the last line), as one undo step.
+- **A key that would join a line of text and a token line only moves the caret.** Backspace at the start of a token line
+  below a line of text, and Delete at the end of a token line above one, would leave the token half a line and it would be
+  text, so the caret goes over the line break and nothing is deleted. Where the other line is empty the key removes the
+  empty line as it always did.
+
+Known limit: typing a character at either end of a token line puts it on the token's own line, which then holds more than
+the token and is text again (⌘Z takes it back). A paste leaves the caret on the line after the token, so pasting and then
+typing is not affected.
+
+## Tests
+
+| Behaviour | Test |
+|---|---|
+| A file reference is an attachment line, with its row and its copy | `AttachmentPasteTests.testFileURLPastesAsAttachmentLine` |
+| An image file's row has its pixel size and type | `AttachmentPasteTests.testImageFileRowHasPixelSizeAndType` |
+| The file wins over its name as text; a file that is gone is left out | `testFileWinsOverItsNameAsText`, `testMissingFileIsLeftOut` |
+| Two files are two lines, in order; a paste mid-line or over a selection gets lines of its own | `testTwoFilesTwoLines`, `testPasteMidLineGetsOwnLine`, `testPasteReplacesTheSelection` |
+| An image with no text is a PNG attachment; a TIFF is converted | `testImageOnlyPastesAsPNGAttachment`, `testTIFFOnlyIsStoredAsPNG` |
+| Text and an image paste the text (Review Focus 3) | `testTextAndImagePastesText` |
+| A paste into code inserts the names; a read-only note takes nothing; no importer pastes text | `testPasteIntoCodeBlockPastesNames`, `testImageIntoCodeBlockInsertsNothing`, `testReadOnlyIgnoresFiles`, `testPasteWithoutImporterPastesText` |
+| A 50 MB file returns in under 100 ms | `testFiftyMegabyteFileReturnsQuickly` |
+| One paste is one undo step | `testOneUndoStepRemovesInsertedTokens` |
+| A drop goes in at the point | `testDropOfAFileInsertsItAtThePoint`, `testDropOfTextIsNotAnAttachmentDrop` |
+| The caret steps over a token; a partial selection grows (Review Focus 4) | `AttachmentEditingTests.testCaretSkipsOverToken`, `testCaretPutInsideATokenGoesToItsEdge`, `testPartialSelectionGrowsToWholeToken`, `testTokenInACodeBlockIsTextAndIsNotSnapped` |
+| Backspace and Delete select, then delete (Review Focus 4) | `testBackspaceSelectsThenDeletes`, `testBackspaceAtTheEndOfTheTokenLineSelectsThenDeletes`, `testDeleteForwardSelectsThenDeletes`, `testBackspaceBelowTextDoesNotJoinTheTokenToIt`, `testDeletingOrdinaryTextIsUnchanged`, `testBackspaceInATokenInACodeBlockIsPlain`, `testReadOnlyNoteKeepsItsTokens` |
+| Typing over a selected token replaces it whole | `testTypingOverSelectedTokenReplacesWholeToken` |
+| The paperclip inserts the chosen files, and nothing when cancelled or read-only | `testPaperclipInsertsChosenFiles`, `testPaperclipCancelledOrReadOnlyInsertsNothing` |
+| The rules themselves (Linux) | `AttachmentEditingTests.swift` in ScratchCoreTests |
+| ⌘V of a file, the token and its copy survive a relaunch | `AttachmentUITests.testPastedImageShowsAndSurvivesRelaunch` |
+| Backspace twice, an autosave, ⌘Z: the token and its file are back (Review Focus 1) | `AttachmentUITests.testUndoAfterDeletingAnAttachmentBringsItBack` |
+
+The display is `AttachmentRenderingTests` (hosted).
