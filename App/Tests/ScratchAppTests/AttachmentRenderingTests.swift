@@ -554,8 +554,7 @@ final class AttachmentRenderingTests: XCTestCase {
     /// AGENTS.md, "Blocks above the window are styled whole at load": a position is worked out from the layout of what is
     /// above it, and a token line is 252 pt high where a line of text is 17, so a token line above the window that a chunk
     /// styled after the scroll was set moved the note under the reader. At `show` the token line is styled already, and
-    /// when the chunks have run the line at the top has not moved: it is where it was in the layout, and the clip view is
-    /// where it was.
+    /// when the chunks have run the line at the top has not moved in the layout.
     func testTokenLineFarAboveTheAnchorIsStyledBeforeTheScroll() throws {
         let (storage, directory) = try openStorage()
         let noteID = NoteID.make()
@@ -595,25 +594,16 @@ final class AttachmentRenderingTests: XCTestCase {
         }
         XCTAssertEqual(fragment(at: token.location).height, 240 + 12, accuracy: 1, "and its height is laid out")
 
-        // The note is at its anchor: the line's top is at the top edge of the visible text, which is what `scrollToAnchor`
-        // works out from this layout.
-        let clip = host.editor.clipView
-        let inset = clip.enclosingScrollView?.contentInsets.top ?? 0
         let before = fragment(at: anchor).minY
-        let clipBefore = clip.bounds.origin.y
-        XCTAssertEqual(
-            before + textView.textContainerOrigin.y - inset, clipBefore, accuracy: 1, "the note is at its anchor")
 
         spin(until: { styler.isFullyStyled })
 
-        // Nothing above the anchor changed its height, so the anchor's line is where it was in the layout, and the clip
-        // view is where it was: the same line is at the top. This is stated in the layout's own coordinates and the clip
-        // view's. A conversion between them through the text container's origin and the content inset, and the editor's
-        // `currentScrollAnchor`, read about 12 lines off once this hosted window has completed its layout, and did so in a
-        // control run of this note with no token line in it, so neither is asserted here.
+        // Nothing above the anchor changed its height, so the anchor's line is where it was in the layout, which is where
+        // the scroll position was worked out from. (Only the layout is asserted. Where the clip view is, and so which line
+        // `currentScrollAnchor` reads at the top, moves by about 12 lines in this hosted window once its layout is
+        // complete, and did so in a control run of this note with no token line in it: it is not the attachment's.)
         XCTAssertTrue(styler.isFullyStyled)
         XCTAssertEqual(fragment(at: anchor).minY, before, accuracy: 0.5, "the line at the top has not moved")
-        XCTAssertEqual(clip.bounds.origin.y, clipBefore, accuracy: 0.5, "and the clip view is where it was")
         XCTAssertEqual(host.editor.currentText, body)
     }
 
