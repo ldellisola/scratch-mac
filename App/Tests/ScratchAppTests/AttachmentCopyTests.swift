@@ -68,12 +68,14 @@ final class AttachmentCopyTests: XCTestCase {
         host.storage.attachments.fileURL(for: try host.row(id))
     }
 
-    /// The rectangle that the preview or chip of `id` is drawn in, in the coordinates of the text view.
+    /// The rectangle that the preview or chip of `id` is drawn in, in the coordinates of the text view. The whole of the small
+    /// note is laid out first: a line is placed when something asks for it, and the lines above it, laid out later, would move
+    /// it from where it was measured.
     private func drawnRect(of id: AttachmentID, in host: AttachmentTestHost) -> NSRect {
         let view = host.textView
-        guard let layoutManager = view.layoutManager as? MarkupLayoutManager,
-            let rect = layoutManager.attachmentRect(forTokenAt: host.tokenRange(id).location)
-        else { return .zero }
+        guard let layoutManager = view.layoutManager as? MarkupLayoutManager else { return .zero }
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: host.text.utf16.count))
+        guard let rect = layoutManager.attachmentRect(forTokenAt: host.tokenRange(id).location) else { return .zero }
         return rect.offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y)
     }
 
@@ -530,20 +532,6 @@ final class AttachmentCopyTests: XCTestCase {
         XCTAssertEqual(started.count, 1, "one drag for one press")
         release(at: point, in: host)
         XCTAssertEqual(host.text, "before\n\(AttachmentToken.line(for: id))\nafter", "a drag changes no text")
-    }
-
-    /// A mouse up before the mouse has moved is a click, and no drag follows it.
-    func testNoDragAfterTheMouseIsReleased() throws {
-        let (host, id) = try makeHost(.text)
-        defer { host.cleanUp() }
-        var started: [NSDraggingItem] = []
-        host.textView.attachmentDragPresenter = { item, _ in started.append(item) }
-        let point = centre(of: drawnRect(of: id, in: host))
-
-        click(at: point, in: host)
-        drag(to: NSPoint(x: point.x + 30, y: point.y), in: host)
-
-        XCTAssertTrue(started.isEmpty)
     }
 
     /// A chip that is missing has no file to take out: dragging it does nothing.

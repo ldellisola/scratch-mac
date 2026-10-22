@@ -6,8 +6,8 @@ Images and files that a note holds, and how they are drawn. Spec:
 
 Status: plan 5, in progress. Done so far: the token and the storage (`ScratchCore`: `AttachmentToken`,
 `AttachmentStore`, schema version 3), titles that skip fence and attachment lines, the display (task 4), and pasting,
-dropping, the paperclip and keeping tokens whole when they are selected or deleted (task 5). Opening, dragging out and
-copying (task 6) are not there yet.
+dropping, the paperclip and keeping tokens whole when they are selected or deleted (task 5), and opening, dragging out and
+copying (task 6).
 
 ## The token
 
@@ -118,6 +118,53 @@ selection delegate. A token inside a fenced block is text, and none of this appl
   text, so the caret goes over the line break and nothing is deleted. Where the other line is empty the key removes the
   empty line as it always did.
 
+## Opening and dragging out
+
+Spec §6.4: "Double-click opens the file with its default app. Dragging out of the note gives the file itself." All of it is
+a click on the rectangle that is drawn (`NoteTextView.attachmentHit(atViewPoint:)`: the preview, or the chip, and not the
+6 pt above and below it or the room beside a chip). It works in a note that cannot be edited too (Recently Deleted): nothing
+here changes the note.
+
+- **A single click selects the attachment**, whole, which outlines it, and the view takes the keyboard. No caret is placed
+  in the token.
+- **A double-click opens the stored file** (Scratch's own copy, never the original, which may be gone) with its default
+  application. A third click of the series opens nothing more.
+- **A missing attachment opens nothing and beeps.** So does one that is still being copied ("Copying…"), one that is a
+  "Missing attachment" because its image cannot be decoded, and one whose file went from the disk after the line was drawn.
+  A click on it still selects it.
+- **A drag from the attachment takes the file out.** Once the mouse has moved 3 points from where it went down, a drag
+  session begins whose one item is the stored file's URL, and whose picture is the preview or the chip as they are drawn
+  (without the outline). It is a copy and only a copy: a drop in Finder, Mail or Slack gets the file, and Scratch's own
+  copy is never moved out of its storage. A drop on a note of Scratch makes another attachment, with a copy of its own. A
+  missing or copying attachment cannot be dragged.
+- **Any other click is the text view's own**: one beside a chip or in the padding of a preview puts the caret at the end of
+  the token line (a click never stops inside a token), and so does a click with ⇧, ⌘, ⌥ or ⌃ held (⇧ extends the selection
+  over the token whole).
+
+## Copying
+
+Spec §6.5: Copy and Cut put plain text on the pasteboard, and "if the selection includes an attachment, its file name
+appears in the text. If the selection is exactly one attachment, the file or image itself is also put on the pasteboard".
+`NoteTextView.writeSelection(to:types:)` is the one place (the rules are `AttachmentCopying` in ScratchCore, tested on
+Linux).
+
+- **The text has the file's name where a token line was**: the name the owner knows (the row's), and "Missing attachment" for
+  an id that no row knows. The text around it is exactly as stored, and a token inside a fenced block is copied as it was
+  typed, because a block is literal. Several lines and several attachments are several names.
+- **A selection that is exactly one token line** (a click selects exactly that, and so does Backspace next to one) also puts
+  the file itself on the pasteboard, as one item: the name as text, the file's URL (`public.file-url`, the stored copy), and
+  for an image its PNG and its TIFF. A file that is not an image has no image. An attachment whose copy is not done yet, or
+  whose file is gone, has no file to put there, and only its name is copied.
+- **The image is made when it is asked for, not when it is copied.** Decoding and encoding a full-size picture takes
+  hundreds of milliseconds, which Copy never waits for: the PNG and the TIFF are promised and an
+  `NSPasteboardItemDataProvider` (`AttachmentImageProvider`) reads the stored file and runs ImageIO when an application pastes
+  them. A PNG file is its own PNG, byte for byte.
+- **Cut** is Copy and then the deletion of the selection, as for text: the pasteboard is the same, and the file stays in
+  Scratch's storage (nothing removes a file when a token leaves the text).
+- **Pasting what was copied makes a new attachment.** The file URL comes first in the paste order (§6.5), so the paste makes
+  an attachment of the stored file: a new id, a copy of its own, the same bytes. Text that holds names is pasted as those
+  names.
+
 Known limit: typing a character at either end of a token line puts it on the token's own line, which then holds more than
 the token and is text again (⌘Z takes it back). A paste leaves the caret on the line after the token, so pasting and then
 typing is not affected.
@@ -144,6 +191,13 @@ typing is not affected.
 | Typing over a selected token replaces it whole | `testTypingOverSelectedTokenReplacesWholeToken` |
 | The paperclip inserts the chosen files, and nothing when cancelled or read-only | `testPaperclipInsertsChosenFiles`, `testPaperclipCancelledOrReadOnlyInsertsNothing` |
 | The rules themselves (Linux) | `AttachmentEditingTests.swift` in ScratchCoreTests |
+| The text of a copy has names for tokens, a token in a block as typed, one token alone is an attachment (Linux) | `AttachmentCopyingTests.swift` in ScratchCoreTests |
+| Copy names the file in place of the token, and no more than text | `AttachmentCopyTests.testCopyOfTextAndAttachmentNamesTheFile`, `testUnknownTokenAndTokenInCodeBlockAreCopiedAsTheyAre` |
+| One attachment also writes its file URL, and an image its PNG and TIFF; a file writes no image | `testCopyOfOneAttachmentWritesFileURLAndImage`, `testCopyOfOneFileWritesFileURLOnly`, `testCopyOfAnAttachmentThatIsStillBeingCopiedWritesTheNameOnly` |
+| Pasting what was copied makes a new attachment | `testPastingCopiedAttachmentMakesANewOne`, `testPastingACopiedImageMakesANewImageAttachment` |
+| A click hits the drawn rectangle and nothing else | `testAttachmentHitIsTheDrawnRectangle`, `testAttachmentHitOfAnImageIsItsPreview`, `testAttachmentHitInANoteWithoutAttachments` |
+| A click selects; a double-click opens the stored file; a missing one opens nothing | `testSingleClickSelectsTheToken`, `testDoubleClickOpensStoredFile`, `testTripleClickDoesNotOpenTwice`, `testDoubleClickOnAnImageOpensItsStoredFile`, `testDoubleClickOnAMissingAttachmentOpensNothing`, `testDoubleClickWhenTheFileIsGoneOpensNothing`, `testReadOnlyNoteStillOpensItsAttachments` |
+| A drag past 3 points takes the stored file out | `testDragWriterIsTheStoredFile`, `testDragStartsPastThreePoints`, `testNothingIsDraggedOutOfAMissingAttachment` |
 | ⌘V of an image, the token and its copy survive a relaunch | `AttachmentUITests.testPastedImageShowsAndSurvivesRelaunch` |
 | Backspace twice, an autosave, ⌘Z: the token and its file are back (Review Focus 1) | `AttachmentUITests.testUndoAfterDeletingAnAttachmentBringsItBack` |
 

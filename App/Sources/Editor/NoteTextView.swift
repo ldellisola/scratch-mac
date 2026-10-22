@@ -63,18 +63,44 @@ final class NoteTextView: NSTextView {
     /// `writeSelection(to:types:)` below. Keep copy-out in these two places: rich copy-out would be added here.
     override var writablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string] }
 
-    /// Writes the selected text, exactly as it is stored, as the only thing on the pasteboard. Several selections
-    /// (a rectangular selection) are joined by line breaks. Returns false, and writes nothing, when no text is
-    /// selected or `types` does not ask for plain text. AppKit's own implementation is not used: it writes the types
-    /// it prefers, which are not the same on every SDK.
+    /// Writes the selected text, as it is stored, as the only thing on the pasteboard, except for attachments (spec §6.5): a
+    /// token line is written as the name of its file, and a selection that is exactly one attachment also writes the stored
+    /// file's URL and, for an image, the image as PNG and TIFF (`AttachmentCopying`, `AttachmentPasteboard`). Several
+    /// selections (a rectangular selection) are joined by line breaks. Returns false, and writes nothing, when no text is
+    /// selected or `types` does not ask for plain text. AppKit's own implementation is not used: it writes the types it
+    /// prefers, which are not the same on every SDK. Copy, Cut, drags and Services all end here.
     override func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
         guard types.contains(.string), let storage = textStorage else { return false }
         let ranges = selectedRanges.map(\.rangeValue).filter { $0.length > 0 }
         guard !ranges.isEmpty else { return false }
-        let text = ranges.map { storage.attributedSubstring(from: $0).string }.joined(separator: "\n")
+        let text = storage.string as NSString
+        // A token in a fenced block is text, and is copied as it was typed.
+        let isLiteral: (NSRange) -> Bool = { self.styler?.isInCodeBlock($0.location) ?? false }
+        let catalog = styler?.catalog
+        let name: (AttachmentID) -> String = { catalog?.attachment($0)?.fileName ?? Self.missingAttachmentName }
+        let copied = ranges.map { AttachmentCopying.text(of: $0, in: text, name: name, ignoring: isLiteral) }
+            .joined(separator: "\n")
+
+        if ranges.count == 1, let id = AttachmentCopying.soleAttachment(in: ranges[0], of: text, ignoring: isLiteral),
+            let attachment = catalog?.attachment(id), let url = catalog?.fileURL(id),
+            FileManager.default.fileExists(atPath: url.path)
+        {
+            let made = AttachmentPasteboard.item(name: copied, fileURL: url, isImage: attachment.isImage)
+            // The pasteboard asks the provider when an application wants the image, which is after this returns.
+            attachmentImageProvider = made.provider
+            _ = pboard.clearContents()
+            return pboard.writeObjects([made.item])
+        }
         _ = pboard.declareTypes([.string], owner: nil)
-        return pboard.setString(text, forType: .string)
+        return pboard.setString(copied, forType: .string)
     }
+
+    /// What the text of a copy has where the token of an attachment that no row knows was (spec §6.5).
+    private static let missingAttachmentName = "Missing attachment"
+
+    /// The provider of the image of the attachment that was copied last, kept for as long as the pasteboard may ask it: an
+    /// application that pastes the image asks when it pastes, after Copy has returned.
+    private var attachmentImageProvider: AttachmentImageProvider?
 
     /// What a paste or a drop takes: text first, which is plain text whatever was copied and drops its font, size and
     /// colours, so pasted text always looks like the note (spec §6.5, "Paste and Match Style" is the same as Paste), and
@@ -662,6 +688,135 @@ final class NoteTextView: NSTextView {
         if frame.width > 0 { scrollRangeToVisible(selectedRange()) }
     }
 
+    // MARK: Opening an attachment and dragging it out
+
+    /// A click on an attachment that `mouseDown` took, until its mouse button comes up (`mouseUp(with:)`), or the drag that it
+    /// became has begun. Nil the rest of the time.
+    private struct AttachmentPress {
+        /// What the attachment's token line is drawn as.
+        let mark: AttachmentMark
+        /// Where its preview or chip is drawn, in the coordinates of this view, and where the mouse went down in them.
+        let rect: NSRect
+        let location: NSPoint
+        /// True while moving the mouse far enough can start a drag: for a file that is there, until one has started.
+        var canDrag: Bool
+    }
+
+    private var attachmentPress: AttachmentPress?
+
+    /// Says what happens when a drag of an attachment starts. Nil, the default, begins an `NSDraggingSession`, which runs
+    /// until the mouse button is released (the window server drives it): a hosted test replaces this, so that no drag session is
+    /// started on a runner, and receives the item and the event that start it.
+    var attachmentDragPresenter: ((NSDraggingItem, NSEvent) -> Void)?
+
+    /// The source of the drags that begin here: copy only (`AttachmentDragSource`). The drag session does not keep it.
+    private let attachmentDragSource = AttachmentDragSource()
+
+    /// What the layout manager draws for the token line that `point` is on, in the coordinates of this view: the token's
+    /// range, the mark it is drawn from and the rectangle of the preview or chip. The point must be inside that rectangle, so
+    /// the padding above and below a picture and the room beside a chip are not the attachment. Nil anywhere else.
+    ///
+    /// The line is found from the character that the layout manager puts under the point, and again from the start of the
+    /// line at the same height: the characters of a token but the first have no glyph, and which character the layout
+    /// manager names for a point beside the one glyph that is left is not something to rely on. The rectangle decides.
+    private func attachmentTarget(atViewPoint point: NSPoint) -> (range: NSRange, mark: AttachmentMark, rect: NSRect)? {
+        guard let layoutManager = layoutManager as? MarkupLayoutManager, layoutManager.hasAttachments,
+            let container = textContainer, let storage = textStorage, storage.length > 0
+        else { return nil }
+        let origin = textContainerOrigin
+        let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+        let text = storage.string as NSString
+        for probe in [local, NSPoint(x: container.lineFragmentPadding, y: local.y)] {
+            let found = layoutManager.characterIndex(
+                for: probe, in: container, fractionOfDistanceBetweenInsertionPoints: nil)
+            guard found != NSNotFound else { continue }
+            let start = text.paragraphRange(for: NSRange(location: min(found, storage.length - 1), length: 0)).location
+            guard let mark = storage.attribute(.scratchAttachment, at: start, effectiveRange: nil) as? AttachmentMark,
+                let rect = layoutManager.attachmentRect(forTokenAt: start), rect.contains(local)
+            else { continue }
+            return (
+                NSRange(location: start, length: AttachmentToken.lineLength), mark,
+                rect.offsetBy(dx: origin.x, dy: origin.y)
+            )
+        }
+        return nil
+    }
+
+    /// The attachment whose preview or chip is drawn at `point` (in the coordinates of this view): the range of its token and
+    /// its id, or nil when `point` is anywhere else. It is the rectangle that `MarkupLayoutManager` draws in
+    /// (`attachmentRect(forTokenAt:)`), like `labelHit(atViewPoint:)` for the label of a code block.
+    func attachmentHit(atViewPoint point: NSPoint) -> (NSRange, AttachmentID)? {
+        attachmentTarget(atViewPoint: point).map { ($0.range, $0.mark.id) }
+    }
+
+    /// A plain click on an attachment, which goes no further (never to `super.mouseDown`: AppKit would run a tracking loop
+    /// and put the caret inside the token). The view takes the keyboard and the attachment is selected whole, which draws
+    /// its outline. A double-click then opens its file, and when the mouse moves on with the button down a drag begins
+    /// (`mouseDragged(with:)`). Returns false and does nothing when there is no attachment at `point`.
+    private func pressAttachment(with event: NSEvent, atViewPoint point: NSPoint) -> Bool {
+        guard let target = attachmentTarget(atViewPoint: point) else { return false }
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        setSelectedRange(target.range)
+        let isDouble = event.clickCount == 2
+        if isDouble { openAttachment(target.mark) }
+        attachmentPress = AttachmentPress(
+            mark: target.mark, rect: target.rect, location: point,
+            canDrag: !isDouble && storedFile(of: target.mark) != nil)
+        return true
+    }
+
+    /// The stored file of the attachment drawn as `mark`, when there is one to open or take out: the line is a preview or a
+    /// chip of a file, and the file is there. A missing attachment, one that is still being copied and one whose file went
+    /// away have none.
+    private func storedFile(of mark: AttachmentMark) -> URL? {
+        guard mark.kind == .image || mark.kind == .file, let url = styler?.catalog?.fileURL(mark.id),
+            FileManager.default.fileExists(atPath: url.path)
+        else { return nil }
+        return url
+    }
+
+    /// Opens the file of the attachment drawn as `mark` with its default application (`openURL`), or beeps and opens nothing
+    /// when there is no file to open (a missing attachment).
+    private func openAttachment(_ mark: AttachmentMark) {
+        guard let url = storedFile(of: mark) else { return NSSound.beep() }
+        openURL(url)
+    }
+
+    /// The mouse moved with the button down. After a press on an attachment, once it has moved `AttachmentDrag.threshold`
+    /// points from where it went down, the attachment's stored file is dragged out of the note, and that is the one drag of
+    /// the press. Nothing else moves while the button is down on an attachment: the view never began a selection.
+    override func mouseDragged(with event: NSEvent) {
+        guard let press = attachmentPress else { return super.mouseDragged(with: event) }
+        guard press.canDrag else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        guard hypot(point.x - press.location.x, point.y - press.location.y) >= AttachmentDrag.threshold else { return }
+        attachmentPress?.canDrag = false
+        beginAttachmentDrag(of: press.mark, in: press.rect, event: event)
+    }
+
+    /// The button came up: the press on an attachment is over. A mouse up that follows any other mouse down is the text
+    /// view's.
+    override func mouseUp(with event: NSEvent) {
+        guard attachmentPress != nil else { return super.mouseUp(with: event) }
+        attachmentPress = nil
+    }
+
+    /// Starts the drag of the stored file of the attachment drawn as `mark` in `rect`. The picture that follows the mouse is
+    /// the preview, or the chip, as it is drawn in the note. Copy is the only thing a drop may do (`AttachmentDragSource`).
+    private func beginAttachmentDrag(of mark: AttachmentMark, in rect: NSRect, event: NSEvent) {
+        guard let url = storedFile(of: mark) else { return }
+        let preview =
+            mark.kind == .image
+            ? (layoutManager as? MarkupLayoutManager)?.previews?.cachedImage(forID: mark.id, minPixelSize: 1) : nil
+        let item = AttachmentDrag.draggingItem(for: url, mark: mark, preview: preview, frame: rect)
+        if let attachmentDragPresenter {
+            attachmentDragPresenter(item, event)
+        } else {
+            let session = beginDraggingSession(with: [item], event: event, source: attachmentDragSource)
+            session.animatesToStartingPositionsOnCancelOrFail = true
+        }
+    }
+
     // MARK: Edits the owner asks for
 
     /// Applies an edit that one of the editing rules (`ListEditing`, `InlineEditing`) answered with, as one undo step:
@@ -737,16 +892,20 @@ final class NoteTextView: NSTextView {
 
     /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
     /// it was, so the box can be clicked while typing somewhere else. A plain click on the language label of a code block
-    /// opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A ⌘-click on a
+    /// opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A plain click on
+    /// the preview or the chip of an attachment selects it, and a double-click opens its file (`pressAttachment`), in a note
+    /// that cannot be edited as well: a drag from it then takes the file out (`mouseDragged(with:)`). A ⌘-click on a
     /// link opens it (`openURL`) and goes no further: it places no caret, and it also works in a note that cannot be
-    /// edited. Any other click, also one on a box or a label with a modifier key held (⇧ extends the selection) or in a
-    /// note that cannot be edited, is the text view's own: a plain click on a link places the caret and never opens
-    /// anything.
+    /// edited. Any other click, also one on a box, a label or an attachment with a modifier key held (⇧ extends the
+    /// selection) or in a note that cannot be edited, is the text view's own: a plain click on a link places the caret and
+    /// never opens anything.
     override func mouseDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
+        attachmentPress = nil
         if modifiers.isDisjoint(with: [.shift, .command, .option, .control]),
             toggleCheckbox(atViewPoint: point) || showCodeBlockMenu(atViewPoint: point)
+                || pressAttachment(with: event, atViewPoint: point)
         {
             return
         }

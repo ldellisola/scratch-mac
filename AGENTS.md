@@ -14,10 +14,12 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
   in progress for 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out and
-  copied; plus the 0.4.0 follow-ups). Its Tasks 1 to 5 are done: titles skip fence and attachment lines, `AttachmentID`
+  copied; plus the 0.4.0 follow-ups). Its Tasks 1 to 6 are done: titles skip fence and attachment lines, `AttachmentID`
   and `AttachmentToken` exist, the schema is version 3, `AttachmentStore` keeps the files and removes them only when no
-  note names them, the 0.4.0 follow-ups in ScratchCode are in, a token line is drawn as a preview or a chip, and files and
-  images are pasted, dropped or attached with the paperclip and kept whole when selected or deleted. Plan 4, done and released as 0.4.0 (code: highlighting, code
+  note names them, the 0.4.0 follow-ups in ScratchCode are in, a token line is drawn as a preview or a chip, files and
+  images are pasted, dropped or attached with the paperclip and kept whole when selected or deleted, and an attachment is
+  selected with a click, opened with a double-click, dragged out as its file and copied as its name (and, alone, as its
+  file). Plan 4, done and released as 0.4.0 (code: highlighting, code
   blocks, paste classification, the language label menu, and bold at word boundaries):
   [`2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
@@ -50,7 +52,10 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   as `TextEdit`s and `KeyAction`s: `snappedSelection` keeps the caret and a selection from
                                   ending inside a token, `deletion` is Backspace and Delete next to one, `removal`,
                                   `insertion`: the token lines of a paste, each on a line of its own; `token(touching:)`
-                                  reads at most 51 units each way of a position)
+                                  reads at most 51 units each way of a position) and AttachmentCopying (what Copy puts on
+                                  the pasteboard: `text(of:in:name:ignoring:)` is the text with the file's name in place of
+                                  each token, `soleAttachment(in:of:ignoring:)` says that a selection is exactly one token,
+                                  which is the one that also copies the file)
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores: the tabs, the active one, the
                                   font size, and each tab's cursor and `scrollAnchor`), SessionStore (JSON under key
                                   "state"), TabList (the tab rules: open, close, select, with TabOpening and
@@ -183,7 +188,13 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   `paste`, `attachmentSources(from:)`, `insertAttachments`, `acceptsDrop`, `performDrop`),
                                   opens the paperclip's panel (`attachFiles`, `presentOpenPanel`), keeps a token whole
                                   (`snappedSelection`, which the editor's selection delegate asks, and `deleteBackward` and
-                                  `deleteForward`)
+                                  `deleteForward`), takes a click on a preview or a chip (`attachmentHit`: the drawn rect,
+                                  `pressAttachment`: a click selects, a double-click opens through `openURL`, `mouseDragged`
+                                  past 3 pt drags the file out, `attachmentDragPresenter`) and writes an attachment copy
+                                  (`writeSelection`). AttachmentDrag (`pasteboardWriter(for:)`, the stored file's NSURL, the
+                                  drag item and its picture, `AttachmentDragSource`: copy only) and AttachmentPasteboard
+                                  (the one item of a copy of one attachment: its name, its file's URL, and for an image
+                                  its PNG and TIFF, which `AttachmentImageProvider` makes when an application asks)
 App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
                                   `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
                                   (runs work when the main run loop is next about to wait: after the frame is drawn, and
@@ -214,7 +225,8 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   a preview, a change of the text width, AttachmentPasteTests: files, images and text
                                   pasted in the order of spec §6.5, one undo step, a 50 MB file, drops,
                                   AttachmentEditingTests: the caret and a selection around a token, Backspace and Delete,
-                                  the paperclip; AttachmentTestHost is what they share)
+                                  the paperclip, AttachmentCopyTests: Copy's text and files, a click, a double-click and a
+                                  drag on an attachment, pasting what was copied; AttachmentTestHost is what they share)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
@@ -1086,8 +1098,30 @@ new kind of release file, with no change to the app, ships.
   with one line break (`apply`, one undo step), and where a key would join a text line and a token line the caret only moves
   over the line break. Tokens in a fenced block are text for all of it (`isLiteral` is `styler.isInCodeBlock`). `token(touching:)`
   reads at most 51 units each way, so a selection change in a note with one huge line costs nothing. Word and line deletions
-  (⌥⌫, ⌘⌫) are built on selection changes and so are snapped; a hosted test must not send a click on a token until plan 5
-  task 6 handles it, because it would end in `super.mouseDown`.
+  (⌥⌫, ⌘⌫) are built on selection changes and so are snapped. A plain click on a token's drawn rect is `NoteTextView`'s
+  (next pitfall), so a hosted test may send one there, after `attachmentHit` says it is on the attachment; a click on a token
+  line anywhere else, and any click with ⇧, ⌘, ⌥ or ⌃ held, is AppKit's and ends in `super.mouseDown`.
+- **A click on an attachment is handled in `NoteTextView.mouseDown`, never by `super`, and the drag is not a tracking
+  loop.** `attachmentHit(atViewPoint:)` is the rectangle that `MarkupLayoutManager.attachmentRect(forTokenAt:)` draws in
+  (the padding round a preview and the room beside a chip are not the attachment; the line is found from the character
+  under the point and again from the start of the line at the same height, because a token has one glyph and the layout
+  manager's answer for a point beside it is not to be relied on). A plain click there takes the keyboard and selects the token
+  whole, a double-click (`clickCount == 2`: a third click does not open again) opens the stored file through `openURL`,
+  and a missing, copying or gone file beeps and opens nothing. This works in a note that cannot be edited too: nothing
+  changes the note. No `super.mouseDown` means no tracking loop, so `mouseDragged(with:)` and `mouseUp(with:)` are what the
+  view gets while the button is down: `attachmentPress` holds the press, and a move of 3 pt (`AttachmentDrag.threshold`)
+  begins `beginDraggingSession` once, with the stored file's `NSURL` and the preview or the chip as its picture and
+  `AttachmentDragSource`, which allows copy only (a move would let Finder take the file out of Scratch's storage).
+  `attachmentDragPresenter` replaces the session in a hosted test, so none starts a real drag.
+- **Copy writes names, and one attachment alone writes its file too.** `writeSelection(to:types:)` is the one place
+  (`writablePasteboardTypes` stays `[.string]`): the text is `AttachmentCopying.text`, which puts the file's name (the row's,
+  "Missing attachment" for an id with no row) where a token line was and leaves a token in a fenced block as typed. A
+  selection that is exactly one token (`AttachmentCopying.soleAttachment`, line break excluded) whose file is there writes one
+  `NSPasteboardItem` with `.string`, `.fileURL` and, for an image, `.png` and `.tiff`. The two image types are promised
+  (`AttachmentImageProvider`, a data provider that reads the stored file and runs ImageIO when an application asks, a PNG
+  file as its own bytes) because decoding and encoding a full-size picture must never make Copy wait; the view keeps the
+  provider of the last copy alive (`attachmentImageProvider`), since the pasteboard may ask after Copy has returned.
+  Pasting what was copied finds the file URL first (spec §6.5 order) and makes a new attachment with its own copy.
 - **A copy runs on the storage queue, so `persistNow()` waits for it.** `AttachmentImporter` registers the row on the main
   thread, calls `AttachmentCatalog.markCopying`, and queues `copyIn` or `writeIn` on the coordinator's storage queue, then
   `markCopied` on the main queue. A copy that is under way when the app quits or the tab changes is waited for, which is

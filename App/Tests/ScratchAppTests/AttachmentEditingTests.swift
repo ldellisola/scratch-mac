@@ -11,8 +11,9 @@ import XCTest
 /// `AttachmentEditing` in ScratchCore (tested on Linux too); these tests run them through the text view, its delegate and
 /// AppKit's own key commands.
 ///
-/// Nothing here sends a click: a click on a token ends in `super.mouseDown` until plan 5 task 6 handles it, and AppKit's
-/// tracking loop would wait for a mouse button that never comes up.
+/// Nothing here sends a click. A click on an attachment's preview or chip is the view's own (`AttachmentCopyTests`), and a
+/// click on a token line anywhere else ends in `super.mouseDown`, whose tracking loop would wait for a mouse button that never
+/// comes up.
 @MainActor
 final class AttachmentEditingTests: XCTestCase {
     /// How many times a panel was asked for.
