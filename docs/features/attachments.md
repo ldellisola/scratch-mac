@@ -4,10 +4,11 @@ Images and files that a note holds, and how they are drawn. Spec:
 [§6.4 Attachments](../superpowers/specs/2026-10-19-scratchpad-design.md), §6.5 (paste order and copy-out) and §6.2
 (the purge "along with their attachments"). Plan: [Plan 5](../superpowers/plans/2026-10-22-plan-5-attachments.md).
 
-Status: plan 5, in progress. Done so far: the token and the storage (`ScratchCore`: `AttachmentToken`,
-`AttachmentStore`, schema version 3), titles that skip fence and attachment lines, the display (task 4), and pasting,
-dropping, the paperclip and keeping tokens whole when they are selected or deleted (task 5), and opening, dragging out and
-copying (task 6).
+Status: done, released in 0.5.0 (plan 5): the token and the storage (`ScratchCore`: `AttachmentToken`, `AttachmentStore`,
+schema version 3), titles that skip fence and attachment lines, the display, pasting, dropping, the paperclip and keeping
+tokens whole when they are selected or deleted, opening, dragging out and copying, and the screenshots below. The decisions
+(the token, files kept by reference, a line of its own, what Copy writes) are in
+[docs/decisions/0008-attachments.md](../decisions/0008-attachments.md).
 
 ## The token
 
@@ -169,6 +170,29 @@ Known limit: typing a character at either end of a token line puts it on the tok
 the token and is text again (⌘Z takes it back). A paste leaves the caret on the line after the token, so pasting and then
 typing is not affected.
 
+## Screenshots
+
+`ScreenshotTests` takes two of the `attachments` fixture, `attachments-light` and `attachments-dark` (`make screenshots`,
+published by CI in `ci-results/<sha>/macos/screenshots/`). The fixture is the note "Screenshots": a line of text, an image
+(`dashboard.png`, 64 x 40 pixels), a line of text and a text file (`rollback-plan.txt`, 233 bytes). A person (or an agent that
+opens the PNGs) checks, in both appearances:
+
+- the image is a preview with rounded corners and a hairline, as the rules say: as wide as the text up to the image's own
+  width, so a 64 pixel picture is 64 pt wide and 40 pt high and is never blown up (a picture that is bigger is scaled down to
+  the text width and 240 pt high: `AttachmentRenderingTests`), with the text line above and below it;
+- the file is a chip, 360 pt wide and 44 pt high, on the tint of the code blocks, with the file's Finder icon on the left, the
+  name "rollback-plan.txt" in bold and its size, "233 bytes", under it;
+- no text of a token (`[[attachment:...]]`) is visible anywhere, and no attachment is outlined (the caret is at the top of
+  the note, so the selection touches none);
+- the sidebar row says "Screenshots", with a preview line that begins "The dashboard after the dep…" and has no token.
+
+The previews are decoded on a background queue after the window is up, so both tests wait for `debug.state` to report both
+attachments in place (`attachments`: each one `copied`, its file on disk) and no preview left to decode (`pendingPreviews` is
+zero) before the picture is taken, and they assert the sidebar's title and preview. They were looked at on CI for the
+release: the preview, the chip and the sidebar are as above in light and dark. The README's `attachments.png` is
+`attachments-light`, and its window pictures (`window-light`, `window-dark`, `formatting`, `code`, `search`,
+`recently-deleted`) are copies of the other screenshots of the same run, taken again for the paperclip in the toolbar.
+
 ## Tests
 
 | Behaviour | Test |
@@ -200,5 +224,6 @@ typing is not affected.
 | A drag past 3 points takes the stored file out | `testDragWriterIsTheStoredFile`, `testDragStartsPastThreePoints`, `testNothingIsDraggedOutOfAMissingAttachment` |
 | ⌘V of an image, the token and its copy survive a relaunch | `AttachmentUITests.testPastedImageShowsAndSurvivesRelaunch` |
 | Backspace twice, an autosave, ⌘Z: the token and its file are back (Review Focus 1) | `AttachmentUITests.testUndoAfterDeletingAnAttachmentBringsItBack` |
+| The fixture's note on screen: the preview, the chip, no token text, the sidebar's title and preview (the "Screenshots" section) | `ScreenshotTests.testAttachmentsLight`, `testAttachmentsDark` |
 
 The display is `AttachmentRenderingTests` (hosted).

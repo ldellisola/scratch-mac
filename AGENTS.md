@@ -13,14 +13,15 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
-  in progress for 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out and
-  copied; plus the 0.4.0 follow-ups). Its Tasks 1 to 7 are done: titles skip fence and attachment lines, `AttachmentID`
+  done and released as 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
+  and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
   and `AttachmentToken` exist, the schema is version 3, `AttachmentStore` keeps the files and removes them only when no
   note names them, the 0.4.0 follow-ups in ScratchCode are in, a token line is drawn as a preview or a chip, files and
   images are pasted, dropped or attached with the paperclip and kept whole when selected or deleted, and an attachment is
   selected with a click, opened with a double-click, dragged out as its file and copied as its name (and, alone, as its
   file), and the 0.4.0 follow-ups in the app are in (the licences in the About panel, the query warm-up, a first line of
-  code that keeps clear of the language label, and a 50,000-line JSON paste that is held to the paste budget). Plan 4, done and released as 0.4.0 (code: highlighting, code
+  code that keeps clear of the language label, and a 50,000-line JSON paste that is held to the paste budget), and the
+  screenshots, the decision record 0008 and the README are in. Plan 4, done and released as 0.4.0 (code: highlighting, code
   blocks, paste classification, the language label menu, and bold at word boundaries):
   [`2026-10-21-plan-4-code.md`](docs/superpowers/plans/2026-10-21-plan-4-code.md). Plan 3, released as 0.3.0 (the formatting):
   [`2026-10-20-plan-3-formatting.md`](docs/superpowers/plans/2026-10-20-plan-3-formatting.md). Plan 2, released as 0.2.0:
@@ -282,10 +283,10 @@ docs/release-notes-footer.md      the install and update steps (the DMG first, t
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
                                   title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md,
                                   attachments.md (more as features land)
-docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, search,
-                                  recently-deleted): copies of the `screenshots/` that CI published for a release commit
-                                  (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
-                                  code-light, search-light, recently-deleted-light). They
+docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, attachments,
+                                  search, recently-deleted): copies of the `screenshots/` that CI published for a release
+                                  commit (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
+                                  code-light, attachments-light, search-light, recently-deleted-light). They
                                   change only when someone replaces them, so refresh them when a plan visibly changes
                                   the UI
 docs/decisions/                   numbered decision records: 0001 (the editor uses TextKit 1, with the measurements and the
@@ -293,7 +294,8 @@ docs/decisions/                   numbered decision records: 0001 (the editor us
                                   performance check compares), 0004 (a new note opens at the end of the tab strip, and
                                   a note the owner empties is kept), 0005 (every release carries a DMG next to the zip),
                                   0006 (bold needs word boundaries), 0007 (tree-sitter: the packages, their versions and
-                                  licences, and how to add a language)
+                                  licences, and how to add a language), 0008 (attachments: the token line, the files kept
+                                  by reference, the own-line layout and the copy rules)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -834,6 +836,14 @@ new kind of release file, with no change to the app, ships.
   picture (the request is made in `show`, before the window is visible, so zero means done). The `code` fixture's note is
   44 lines and fits the 1024 x 674 window whole: a line added to it can push the last block, the one with no fence name
   and the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
+- **A screenshot of attachments waits for its files and its previews.** `ScreenshotTests.testAttachmentsLight` and
+  `testAttachmentsDark` wait until `debug.state` reports both attachments of the `attachments` fixture in place
+  (`attachments`: `copied` and `fileExists`) and `pendingPreviews` at zero (an image is decoded on its own queue), then
+  assert the sidebar's title and preview (`UITestSupport.sidebarPreviewTexts`: a preview with no token in it). The
+  fixture's image is 64 x 40 pixels and is drawn at that size, because an image is never made bigger than it is, so the
+  picture shows the rounded corners and the chip but not the scaling, which
+  `AttachmentRenderingTests.testImageIsScaledToWidthAndCap` checks. The README's `attachments.png` is
+  `attachments-light`.
 - **A UI test cannot make a file for the app to read: it pastes image data.** The UI test runner is sandboxed (its
   environment has `APP_SANDBOX_CONTAINER_ID`): it cannot create a directory in /tmp (`Operation not permitted`, CI of plan 5
   task 5), and what it writes in its own container the app is not allowed to use. So `AttachmentUITests` put PNG data

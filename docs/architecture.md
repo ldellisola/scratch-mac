@@ -16,7 +16,9 @@ App (AppKit shell)  ──depends on──▶  ScratchCore (Foundation + CSQLite
   the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures, and the marker
   parser (`Markup/`: the spans of a line and the fenced code blocks of a note, as UTF-16 ranges the editor applies
   directly) and the rules for the keys that edit it (`ListEditing`, `InlineEditing`: what Return, Tab, ⇧Tab, ⇧⌘L, ⌘B
-  and a click on a checkbox change, as a `TextEdit`). A later plan adds copy-out. It builds and tests with plain
+  and a click on a checkbox change, as a `TextEdit`) and the attachments (`Attachments/`: the token line
+  `[[attachment:<id>]]`, the `attachments` table and the copied files under `<data directory>/attachments/<id>/`, the rules
+  of the keys and the paste around a token, and the text that a copy writes). It builds and tests with plain
   `swift test` on macOS and on Linux.
 - **`Packages/ScratchCode`** is a second Swift package, also with no AppKit or SwiftUI imports, and the only one with a
   third-party dependency: tree-sitter (`docs/decisions/0007-tree-sitter.md`, which lists every package, its version and
@@ -95,6 +97,28 @@ key press
   it) and answers a `TextEdit` that puts the pasted text between two fences, applied with `apply`: the paste and the wrap
   are two undo steps. The label menu (`CodeBlockMenu`) is the same kind of edit on the fence lines, one undo step each.
   The `paste-code` signpost runs from the paste until the colours are on screen.
+- **An attachment is a token line that is drawn over, and its file is kept by reference**
+  (`docs/features/attachments.md`, `docs/decisions/0008-attachments.md`). The note's text holds the line
+  `[[attachment:<id>]]` and nothing else of the attachment, so storage, search and autosave are the path above. The styler
+  gives a token line null glyphs (all but the first character, which keeps the line a fragment of its own) and a height that
+  fits its preview or chip, and `MarkupLayoutManager` draws it from an `AttachmentMark` that holds everything it needs:
+
+  ```
+  paste, drop or the paperclip -> NoteTextView.readSelection / attachFiles (the order of spec §6.5)
+    -> AttachmentImporter: the row (AttachmentStore.register) on the main thread, a token line in the text (one undo step)
+    -> storage queue: AttachmentStore.copyIn / writeIn (a temporary file renamed onto the name); then markCopied on main
+  MarkupStyler (a token line) -> AttachmentCatalog (the rows, read a batch of paragraphs at a time)
+    -> AttachmentPreviews: ImageIO thumbnails on a private serial queue -> main thread: the display of that line is invalidated
+  ```
+
+  The editor's selection delegate and `deleteBackward`/`deleteForward` ask `AttachmentEditing` (core) to keep a token whole,
+  a double-click opens the stored file, a drag out hands the file's URL to the pasteboard, and `writeSelection` asks
+  `AttachmentCopying` for the text of a copy (file names for tokens) and writes the file itself when the selection is one
+  token. **A stored file is removed by reference and never by count**: `ScratchStorage.deletePermanently` and `purge` remove
+  the notes and then ask `AttachmentStore.removeUnreferenced` about the ids that were in them, and the launch sweep
+  (`SessionCoordinator.sweepUnreferencedAttachments`) removes unreferenced attachments older than 24 hours. Both read every
+  stored body (`NoteStore.referencedAttachmentIDs`) in the same transaction as the removal, so deleting a token and pressing
+  ⌘Z always brings the file back.
 - A write that fails never costs text: `UnsavedNotes` (ScratchCore) keeps the note with the owner's text until a write of
   it succeeds, `persistNow()` and every save write those notes again, and `SessionCoordinator.loadNote` shows a note
   from there when it is opened again (`docs/features/autosave-and-restore.md`, "Write errors are not silent").
@@ -133,6 +157,12 @@ key press
   thread reads without a hop is `UnsavedNotes`, a mutex-guarded record of the notes whose write failed: the queue
   records an outcome as the write ends, so the record is right when `persistNow()` returns, which a callback on the main
   queue would not be.
+- **The copy of an attachment runs on the storage queue**, after the row was written on the main thread, so inserting a
+  50 MB file returns to the run loop at once and `persistNow()` (and so quitting and a change of tab) waits for a copy that
+  is under way. **One private serial queue decodes previews** (`io.github.ldellisola.Scratch.previews`, QoS user-initiated,
+  `AttachmentPreviews`, ImageIO thumbnails in the order the styler asked, so the images on screen come first); the main
+  thread only invalidates the display of the lines of an image that arrived. A preview or a copy never runs on the main
+  thread, and nothing they run waits for the main thread.
 - **One private serial highlight queue** (`io.github.ldellisola.Scratch.highlight`, QoS user-initiated, made by
   `MarkupStyler` for `CodeBlockStyler`) runs `CodeDetector` and `Highlighter` for the code
   blocks, one request at a time, so highlighting never runs on the main thread and never competes with itself. `Highlighter` is thread-safe (a parser for each call, a compiled query for each language, shared behind a

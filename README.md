@@ -18,7 +18,7 @@ from, and text you copy always comes out as plain text.
 
 ## What it does
 
-Scratch is at version 0.4, which does these things:
+Scratch is at version 0.5, which does these things:
 
 - **Always ready.** It opens to a note you can type in at once. There is no Save and no file to name: everything you
   type is written within about a second, and a crash or a force-quit loses at most that second. Quitting and opening
@@ -53,6 +53,15 @@ Scratch is at version 0.4, which does these things:
   alone: an email, a list, meeting notes with times, a log, a CSV row or a note of `name: value` lines stay plain text. ⌘Z once gives back exactly the
   text you pasted, and ⌘Z again removes it. Click a block's label to choose another language, to show the block as
   plain text, or to take the fence off (Not Code), each one undo step.
+- **Images and files, right in the note.** Paste an image or a file you copied in Finder, drop one on the note, or click
+  the paperclip (⇧⌘A), and it sits in the note on a line of its own: an image as a preview, as wide as the text and up
+  to 240 pt high, and any other file as a chip with its icon, name and size. Double-click one to open the file with its
+  default app, and drag it out of the note to give the file to Finder, Mail or any app that takes files. Scratch keeps its
+  own copy of every file, so the original can be moved or deleted, and removes the copy only when no note, Recently
+  Deleted included, refers to it any more. Backspace next to an attachment selects it before the next press deletes it,
+  and ⌘Z brings a deleted one back, file and all. Copying text with attachments in it writes the file names, and copying
+  exactly one attachment copies the file (or the image) as well. When a paste holds files, text and an image, the files
+  win, then the text (Excel and Word paste text, not a picture of it), and an image comes in only when there is no text.
 - **Made for macOS 26.** The sidebar, the tab strip and the toolbar buttons are native Liquid Glass, and the app is
   built only for Apple Silicon.
 
@@ -65,15 +74,18 @@ Scratch is at version 0.4, which does these things:
 </p>
 
 <p align="center">
+  <img src="docs/images/attachments.png" alt="One note with a line of text, a small image drawn as a preview with rounded corners, a line of text, and a chip for the file rollback-plan.txt with its icon, name and size" width="70%">
+</p>
+
+<p align="center">
   <img src="docs/images/search.png" alt="Typing kube in the search field leaves only the notes that contain it" width="49%">
   <img src="docs/images/recently-deleted.png" alt="The Recently Deleted section open under the note list" width="49%">
 </p>
 
-Coming in the next releases:
+Coming in the next release:
 
 | Release | Adds |
 |---|---|
-| 0.5 | Attachments: images and files, pasted or dragged in |
 | 1.0 | Performance and accessibility polish |
 
 The plan behind that order is in [the roadmap](docs/superpowers/plans/2026-10-19-roadmap.md).
@@ -112,8 +124,13 @@ To update, do the same with the new release and choose Replace. Your notes live 
 | ⌘B | Bold: put `**` around the selection, or take the stars off a bold run |
 | ⇧⌘L | Turn the selected lines into a checklist, or back into plain lines |
 | ⌘-click a link | Open the `http://` or `https://` link in your browser. A plain click only places the caret |
-| ⌘V | Paste as plain text. Two lines or more of code are then wrapped in a fence with their language: ⌘Z once leaves the plain paste |
+| ⌘V | Paste as plain text. Two lines or more of code are then wrapped in a fence with their language: ⌘Z once leaves the plain paste. Files copied in Finder, and an image that comes with no text, become attachments |
 | Click a code block's label | Choose the block's language, show it as plain text, or take its fence off (Not Code) |
+| ⇧⌘A, the paperclip | Attach files: choose them in a sheet, and they go in at the caret (File > Attach File…) |
+| Click an attachment | Select it (⌘C copies its file and its name, ⌘X cuts it) |
+| Double-click an attachment | Open its file with its default app |
+| Drag an attachment out | Give its file to Finder, Mail or another app. Scratch's own copy stays in the note |
+| Backspace after an attachment, Delete before it | Select it. Press again to delete it (⌘Z brings it back) |
 
 ## How it is built
 
