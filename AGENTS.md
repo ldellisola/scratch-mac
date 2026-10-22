@@ -1113,6 +1113,13 @@ new kind of release file, with no change to the app, ships.
   begins `beginDraggingSession` once, with the stored file's `NSURL` and the preview or the chip as its picture and
   `AttachmentDragSource`, which allows copy only (a move would let Finder take the file out of Scratch's storage).
   `attachmentDragPresenter` replaces the session in a hosted test, so none starts a real drag.
+- **A hosted test must not leave a mouse event as `NSApp.currentEvent`.** `NoteTextView.snappedSelection(from:to:)` reads
+  `NSApplication.shared.currentEvent?.type` to tell a click from a key, and the last event that `NSApp.nextEvent(...)`
+  returned stays the current one for the rest of the test run. `LinkTests.click` queues a mouse up and takes it out again,
+  which leaves one: `AttachmentCopyTests` first did the same, ran before `AttachmentEditingTests`, and
+  `testCaretPutInsideATokenGoesToItsEdge` then saw its programmatic move backwards as a click and put the caret at the end
+  of the token (CI of plan 5 task 6). The attachment tests send their events straight to the view's `mouseDown`,
+  `mouseDragged` and `mouseUp`, which is safe because they click only where `attachmentHit` says an attachment is.
 - **Copy writes names, and one attachment alone writes its file too.** `writeSelection(to:types:)` is the one place
   (`writablePasteboardTypes` stays `[.string]`): the text is `AttachmentCopying.text`, which puts the file's name (the row's,
   "Missing attachment" for an id with no row) where a token line was and leaves a token in a fenced block as typed. A
