@@ -86,10 +86,12 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   nothing is formatting), TextLines (internal: line splitting and white space over UTF-16
                                   units). The editing rules answer an action with a `TextEdit` (a range, its
                                   replacement and the selection afterwards): ListEditing (Return, Tab, ⇧Tab, ⇧⌘L and a
-                                  click on a checkbox) and InlineEditing (⌘B). They read only the paragraphs that cover
-                                  the selection (`ParagraphLines`, internal: those lines with document offsets, and how
-                                  a selection moves when they change). The editor's styling reads CodeBlockIndex (the
-                                  fenced blocks of a note, carried over each edit and scanned again only when an edit
+                                  click on a checkbox) and InlineEditing (⌘B, and `touchesAttachment`: whether the
+                                  selection touches a token line, which ⌘B must not wrap). They read only the paragraphs
+                                  that cover the selection (`ParagraphLines`, internal: those lines with document offsets,
+                                  and how a selection moves when they change; `isAttachmentLine`, which ⇧⌘L
+                                  skips). The editor's styling reads CodeBlockIndex (the fenced blocks of a note, carried
+                                  over each edit and scanned again only when an edit
                                   touches a fence line; `intersects` says whether a range holds a block), EditMapping
                                   (where positions go when text is replaced) and `MarkupParser.mayHaveSpans` (a cheap
                                   test that skips the parse of a line with no marker)
@@ -235,7 +237,7 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   a preview, a change of the text width, AttachmentPasteTests: files, images and text
                                   pasted in the order of spec §6.5, one undo step, a 50 MB file, drops,
                                   AttachmentEditingTests: the caret and a selection around a token, Backspace and Delete,
-                                  the paperclip, AttachmentCopyTests: Copy's text and files, a click, a double-click and a
+                                  ⇧⌘L and ⌘B around a token, the paperclip, AttachmentCopyTests: Copy's text and files, a click, a double-click and a
                                   drag on an attachment, pasting what was copied; AttachmentTestHost is what they share)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
@@ -955,6 +957,16 @@ new kind of release file, with no change to the app, ships.
 - **A command that edits whole paragraphs asks `styler.intersectsCodeBlock` for the paragraphs it will change**, not
   `isInCodeBlock` for the caret: a selection can start and end outside a block and hold it. ⇧⌘L beeps there, and in a
   read-only note.
+- **A rule that edits whole paragraphs, or wraps the selection, must leave token lines alone.** A token line is a line of
+  text to `ParagraphLines`, so a rule that gives "every line that is not a list line" a marker, or puts stars around the
+  selection, rewrites `[[attachment:<id>]]` as `[ ] [[attachment:<id>]]` or `**[[attachment:<id>]]**`: the line is text, the
+  picture is gone (⌘Z brings it back, and the file is kept: a stored file goes only when no body names it). So
+  `ListEditing.toggleChecklist` skips a line for which `ParagraphLines.isAttachmentLine` is true (it is not "a line with
+  text", and it keeps the blank lines around it empty like one), and `NoteTextView.toggleBoldMarkers` beeps when
+  `InlineEditing.touchesAttachment` says the selection touches a token line (`AttachmentToken.lineRanges`: a selected
+  attachment, a selection that holds one, and a caret at either edge of the line, which is where a click beside a chip puts
+  it). Return, Tab and ⇧Tab act on list lines only, and a token line is none. A new command of this kind needs the same
+  two things and a hosted test in `AttachmentEditingTests` with a token in the note.
 - **Return, Tab and ⇧Tab are `NoteTextView` overrides that ask the core and fall back to `super`.** `listEdit(_:)` gives
   the rule (`ListEditing.newline`, `indent`, `outdent`) the paragraphs under the selection and answers nil, so that
   `super` runs, when the view is read-only, text is being composed, there is more than one selection, or

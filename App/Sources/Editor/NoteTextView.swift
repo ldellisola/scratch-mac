@@ -1110,26 +1110,34 @@ final class NoteTextView: NSTextView {
 
     /// ⇧⌘L (Format > Checklist): the lines of the selection (the caret's line when there is none) become a checklist,
     /// or, when every one of them already is one, plain lines again (`ListEditing.toggleChecklist`). One undo step. It
-    /// does nothing but beep when the note cannot be edited, or when a fenced block is among the lines: inside a block
-    /// nothing is formatting, so no marker is put there.
+    /// does nothing but beep when the note cannot be edited, when a fenced block is among the lines (inside a block
+    /// nothing is formatting, so no marker is put there) and when the lines hold nothing it may change. The token line
+    /// of an attachment is never one of them: a box in front of it would make it text.
     @objc func toggleChecklist(_ sender: Any?) {
         guard isEditable else { return NSSound.beep() }
         let paragraphs = coveringParagraphs()
         guard !styler.intersectsCodeBlock(paragraphs.range) else { return NSSound.beep() }
-        apply(
-            ListEditing.toggleChecklist(
-                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))
+        let edit = ListEditing.toggleChecklist(
+            paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
+        guard edit.range.length > 0 || !edit.replacement.isEmpty else { return NSSound.beep() }
+        apply(edit)
     }
 
     /// ⌘B (Format > Bold): the selection becomes `**selection**`, or loses its stars when it is a bold run, or, with no
     /// selection, `****` goes in with the caret between the pairs (`InlineEditing.toggleBold`). One undo step. It does
     /// nothing but beep when the note cannot be edited, when a fenced block is under the selection (inside a block
-    /// every character is literal) and for a rectangular selection. The name is not `toggleBold`: that is AppKit's
-    /// action for the font panel, which a plain-text view must not answer.
+    /// every character is literal), for a rectangular selection and when the selection touches the token line of an
+    /// attachment (a selected attachment, a selection that holds one, or a caret at either end of its line: stars
+    /// there would make the token text, `InlineEditing.touchesAttachment`). The name is not `toggleBold`: that is
+    /// AppKit's action for the font panel, which a plain-text view must not answer.
     @objc func toggleBoldMarkers(_ sender: Any?) {
         guard isEditable, selectedRanges.count == 1 else { return NSSound.beep() }
         let paragraphs = coveringParagraphs()
         guard !styler.intersectsCodeBlock(paragraphs.range) else { return NSSound.beep() }
+        guard
+            !InlineEditing.touchesAttachment(
+                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
+        else { return NSSound.beep() }
         applyAndReveal(
             InlineEditing.toggleBold(
                 paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))

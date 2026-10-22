@@ -60,7 +60,10 @@ that then renders like typed text.
   Blank lines between lines with text stay empty. The selection moves with its text, and the whole command is one undo
   step.
 - **It does nothing, with a beep,** in a read-only note and when a fenced block is among the lines (the selection holds
-  one, or starts or ends in it): no marker is put into code. A line next to a block is fine.
+  one, or starts or ends in it): no marker is put into code. A line next to a block is fine. It also beeps when the lines
+  hold nothing it may change, which is a token line of an attachment and nothing else.
+- **A token line is never changed.** The line of an attachment (`[[attachment:<id>]]`, attachments.md) gets no box and is not
+  a line with text: Select All over text and a picture gives the text lines boxes and leaves the picture.
 - The commands that change the text (this one, and ⌘B below) are in the **Format** menu, after Edit. Its items go to
   whoever has the keyboard: only the editor answers them.
 
@@ -97,7 +100,9 @@ spaces.
   bold run to unwrap. Next to white space or punctuation, as in `(word)`, the stars make a run, and ⌘B again takes them
   off.
 - **⌘B does nothing, with a beep,** in a note that cannot be edited, when a fenced block is under the selection, and for
-  a rectangular selection (several selections, which no key rule handles either).
+  a rectangular selection (several selections, which no key rule handles either). It does nothing either when the selection
+  touches the token line of an attachment (an attachment that a click selected, a selection that holds one, or a caret at
+  either end of its line): stars there would make the token text (attachments.md, "Format commands").
 - **Copy still keeps the stars:** after ⌘B and a select-all, ⌘C puts `**word**` on the pasteboard.
 
 ## Behaviour: links open with ⌘-click
@@ -176,6 +181,7 @@ text like any other, so that placing the caret in a link never opens a browser.
 | ⇧⌘L makes a checklist and takes it away again, from a selection, a caret or bullets, as one undo step | `testToggleChecklistOnSelection`, `testToggleChecklistWithoutSelectionUsesTheCaretsLine`, `testToggleChecklistTurnsABulletIntoABox`, `testChecklistCommandIsOneUndoStep` |
 | ⇧⌘L from the keyboard goes through the Format menu, and ⌘Z after it takes back the checklist and not the typing before it | `ChecklistUITests.testChecklistShortcutTurnsTheLineIntoACheckbox`, `testCommandZAfterTheChecklistShortcutTakesBackOnlyTheChecklist` |
 | ⇧⌘L does nothing in a code block or a read-only note | `testToggleChecklistInACodeBlockDoesNothing`, `testToggleChecklistInAReadOnlyNoteDoesNothing`, ScratchCore `CodeBlockIndexTests.intersects…` |
+| ⇧⌘L leaves the token line of an attachment alone (no box, not a line with text, nothing to change on an attachment alone) | `AttachmentEditingTests.testChecklistCommandLeavesTheTokenAlone`, `testChecklistCommandOnAnAttachmentChangesNothing`, ScratchCore `ListEditingTests.toggleChecklistSkipsTokenLines`, `toggleChecklistOnlyOnATokenChangesNothing`, `toggleChecklistLeavesTheBlankLinesAroundATokenEmpty`, `toggleChecklistDoesNotCountATokenLineAsText` |
 | The box is drawn, open as an outline and ticked filled | `testCheckboxSymbolIsDrawn` |
 | The Format menu follows Edit and has Checklist on ⇧⌘L | `testFormatMenuHasTheChecklistShortcut` |
 | Return continues a bullet or a checkbox (an open box after a ticked one), keeps the indentation and splits an item | `ListKeyTests.testReturnContinuesBullet`, `testReturnSplitsTheItemAtTheCaret`, `testReturnOnATickedItemAddsAnOpenBox`, `testReturnKeepsTheIndentation`, `FormattingUITests.testTypingAListByKeyboard`, `testChecklistShortcutThenReturn` |
@@ -186,6 +192,7 @@ text like any other, so that placing the caret in a link never opens a browser.
 | ⌘B wraps the selection, takes the stars off a bold run, or puts the caret between a pair | `testCommandBWrapsSelection`, `testCommandBOnABoldRunTakesTheStarsAway`, `testCommandBWithoutSelectionPutsTheCaretBetweenTheStars` |
 | ⌘B inside a word wraps the selection, and the stars are not a run (the core's rule); next to punctuation they are | ScratchCore `InlineEditingTests.wrapInsideAWordStillInsertsStarsButTheyAreNotBold`, `unwrapNextToPunctuationStillWorks`, `wrapNextToPunctuationMakesARun` |
 | ⌘B does nothing in a block or a read-only note | `testCommandBInsideCodeBlockDoesNothing`, `testCommandBInAReadOnlyNoteDoesNothing` |
+| ⌘B does nothing when the selection touches the token line of an attachment, and works on the line below it | `AttachmentEditingTests.testBoldCommandLeavesAnAttachmentAlone`, `testBoldCommandBelowAnAttachmentStillWorks`, ScratchCore `InlineEditingTests.aSelectedAttachmentIsTouched`, `aSelectionThatHoldsATokenLineIsTouched`, `aCaretAtEitherEndOfATokenLineTouchesIt`, `aCaretOrSelectionNextToATokenLineButNotOnItIsNotTouched` |
 | ⌘B is Format > Bold, and copy after it keeps the stars | `testFormatMenuHasBoldOnCommandB`, `FormattingUITests.testCommandBThenCopyKeepsMarkers` |
 | Each of these edits is one undo step | `testEachEditIsOneUndoStep` |
 | Markers in a fenced block and in inline code are literal | `testFencedBlockIsNotStyled`, `testMarkersInsideInlineCodeAreLiteral` |

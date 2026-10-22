@@ -27,6 +27,9 @@ private func r(_ location: Int, _ length: Int) -> NSRange {
     NSRange(location: location, length: length)
 }
 
+/// The line of an attachment: a token and nothing else (docs/features/attachments.md, "Format commands").
+private let token = "[[attachment:6f9619ff-8b86-4d11-b42d-00c04fc964ff]]"
+
 // MARK: Return
 
 @Test func newlineContinuesBullet() {
@@ -322,6 +325,59 @@ private func r(_ location: Int, _ length: Int) -> NSRange {
 
 @Test func toggleChecklistWithACheckboxAmongPlainLinesAddsNoSecondBox() {
     #expect(toggleChecklist("|[ ] a\nb|") == "|[ ] a\n[ ] b|")
+}
+
+@Test func toggleChecklistSkipsTokenLines() {
+    // A box in front of the token would make it text, and the picture would be gone.
+    #expect(toggleChecklist("|a\n\(token)\nb|") == "[ ] |a\n\(token)\n[ ] b|")
+    #expect(toggleChecklist("|\(token)\nb|") == "|\(token)\n[ ] b|")
+    #expect(toggleChecklist("|a\n\(token)|") == "[ ] |a\n\(token)|")
+    #expect(toggleChecklist("|a\r\n\(token)\r\nb|") == "[ ] |a\r\n\(token)\r\n[ ] b|")
+    // Offsets of the paragraphs do not matter.
+    #expect(toggleChecklist("a\nb\n|\(token)\nc|") == "a\nb\n|\(token)\n[ ] c|")
+}
+
+@Test func toggleChecklistOnlyOnATokenChangesNothing() {
+    // A caret on the line, at either end of it, a selection that is the token (a click selects that), and Select All of a
+    // note that holds a picture only: the edit is empty, so the text view has nothing to apply.
+    #expect(toggleChecklist("\(token)|") == "\(token)|")
+    #expect(toggleChecklist("|\(token)") == "|\(token)")
+    #expect(toggleChecklist("|\(token)|") == "|\(token)|")
+    #expect(toggleChecklist("a\n|\(token)|\nb") == "a\n|\(token)|\nb")
+    let edit = ListEditing.toggleChecklist(paragraphs: token, start: 0, selection: r(0, token.utf16.count))
+    #expect(edit == TextEdit(range: r(0, 0), replacement: "", selection: r(0, token.utf16.count)))
+}
+
+@Test func toggleChecklistLeavesTheBlankLinesAroundATokenEmpty() {
+    // Select All over a picture and the empty line after it: the empty line is not "a caret on a blank line".
+    #expect(toggleChecklist("|\(token)\n\n|") == "|\(token)\n\n|")
+    #expect(toggleChecklist("|\n\(token)\n|b") == "|\n\(token)\n|b")
+    // A caret on the blank line below a picture still gets its box.
+    #expect(toggleChecklist("\(token)\n|") == "\(token)\n[ ] |")
+}
+
+@Test func toggleChecklistDoesNotCountATokenLineAsText() {
+    // The token is no line with text, so the other lines are all checkboxes, and they are unchecked.
+    #expect(toggleChecklist("|[ ] a\n\(token)\n[x] b|") == "|a\n\(token)\nb|")
+    #expect(toggleChecklist("|[x] a\n\(token)|") == "|a\n\(token)|")
+}
+
+@Test func toggleChecklistJudgesATokenLineAsTyped() {
+    // A line that holds more than the token is text (AGENTS.md: an attachment line is judged as typed).
+    #expect(toggleChecklist("\(token) x|") == "[ ] \(token) x|")
+    #expect(toggleChecklist("  \(token)|") == "  [ ] \(token)|")
+    // The id is lowercase hex only.
+    let upper = "[[attachment:6F9619FF-8b86-4d11-b42d-00c04fc964ff]]"
+    #expect(toggleChecklist("|\(upper)|") == "[ ] |\(upper)|")
+}
+
+@Test func theOtherListRulesLeaveTokenLinesAlone() {
+    // A token line is no list line, so Return, Tab and ⇧Tab never change it.
+    #expect(newline("\(token)|") == nil)
+    #expect(indent("|\(token)|") == nil)
+    #expect(outdent("|\(token)|") == nil)
+    #expect(indent("|- a\n\(token)\n- b|") == "  |- a\n\(token)\n  - b|")
+    #expect(outdent("|  - a\n\(token)\n  - b|") == "|- a\n\(token)\n- b|")
 }
 
 @Test func toggleChecklistCountsUTF16() {

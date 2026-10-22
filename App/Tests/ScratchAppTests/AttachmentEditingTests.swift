@@ -254,6 +254,100 @@ final class AttachmentEditingTests: XCTestCase {
         XCTAssertEqual(view.selectedRange(), caret(5))
     }
 
+    // MARK: Format commands
+
+    /// ⇧⌘L over a note that holds an attachment, as Select All makes it: the lines of text become a checklist and the token
+    /// line is left as it is, so the picture stays. The second press takes the boxes away again, and the token is still not
+    /// touched.
+    func testChecklistCommandLeavesTheTokenAlone() throws {
+        let text = "abc\n\(token)\ndef"
+        let host = try AttachmentTestHost(text: text, caret: 0)
+        defer { host.cleanUp() }
+        let view = host.textView
+        view.setSelectedRange(NSRange(location: 0, length: text.utf16.count))
+
+        view.toggleChecklist(nil)
+        XCTAssertEqual(host.text, "[ ] abc\n\(token)\n[ ] def", "no box in front of the token")
+        XCTAssertEqual(host.tokenIDs, [id], "it is still an attachment line")
+
+        view.toggleChecklist(nil)
+        XCTAssertEqual(host.text, text, "the boxes go again and the token was never part of it")
+    }
+
+    /// ⇧⌘L with the caret on the attachment's line (at either end of it, where a click beside a chip puts it) or with the
+    /// attachment selected (what a click on it does) changes nothing: there is no line it may change, so it beeps.
+    func testChecklistCommandOnAnAttachmentChangesNothing() throws {
+        let text = "abc\n\(token)\ndef"
+        let host = try AttachmentTestHost(text: text, caret: 0)
+        defer { host.cleanUp() }
+        let view = host.textView
+        let places = [caret(4), caret(4 + size), NSRange(location: 4, length: size)]
+
+        for selection in places {
+            view.setSelectedRange(selection)
+            XCTAssertEqual(view.selectedRange(), selection, "a place the editor allows")
+            view.toggleChecklist(nil)
+            XCTAssertEqual(host.text, text, "nothing changed with the selection at \(selection)")
+            XCTAssertEqual(view.selectedRange(), selection)
+        }
+        XCTAssertFalse(host.undo.canUndo, "and nothing is there to undo")
+    }
+
+    /// ⌘B on an attachment that a click selected, on a selection that holds one, and on a caret at either end of its line:
+    /// no `**` goes in, so the token stays a token. It beeps.
+    func testBoldCommandLeavesAnAttachmentAlone() throws {
+        let text = "abc\n\(token)\ndef"
+        let host = try AttachmentTestHost(text: text, caret: 0)
+        defer { host.cleanUp() }
+        let view = host.textView
+        let places = [
+            NSRange(location: 4, length: size),  // the attachment, as a click selects it
+            NSRange(location: 0, length: text.utf16.count),  // Select All
+            NSRange(location: 1, length: 4 + size - 1),  // text above it and the token
+            caret(4),  // the start of its line
+            caret(4 + size),  // the end of its line
+        ]
+
+        for selection in places {
+            view.setSelectedRange(selection)
+            XCTAssertEqual(view.selectedRange(), selection, "a place the editor allows")
+            view.toggleBoldMarkers(nil)
+            XCTAssertEqual(host.text, text, "nothing changed with the selection at \(selection)")
+            XCTAssertEqual(view.selectedRange(), selection)
+        }
+        XCTAssertEqual(host.tokenIDs, [id])
+        XCTAssertFalse(host.undo.canUndo, "and nothing is there to undo")
+    }
+
+    /// ⌘B next to an attachment but not on its line is as it always was: the caret a paste leaves is below the token, and
+    /// ⌘B there puts the pairs of stars in.
+    func testBoldCommandBelowAnAttachmentStillWorks() throws {
+        let text = "abc\n\(token)\ndef"
+        let host = try AttachmentTestHost(text: text, caret: 4 + size + 1)
+        defer { host.cleanUp() }
+        let view = host.textView
+
+        view.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(host.text, "abc\n\(token)\n****def")
+        XCTAssertEqual(view.selectedRange(), caret(4 + size + 3))
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// A token in a fenced block is text, and the block's own rule stays: the commands do nothing there.
+    func testFormatCommandsInATokenInACodeBlockDoNothing() throws {
+        let text = "```\n\(token)\n```"
+        let host = try AttachmentTestHost(text: text, caret: 0)
+        defer { host.cleanUp() }
+        let view = host.textView
+        view.setSelectedRange(caret(10))
+
+        view.toggleChecklist(nil)
+        view.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(host.text, text)
+    }
+
     // MARK: The paperclip
 
     /// File > Attach File… and the paperclip: the open panel's files go in at the caret, each on a line of its own.

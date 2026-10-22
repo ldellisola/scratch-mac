@@ -119,6 +119,27 @@ selection delegate. A token inside a fenced block is text, and none of this appl
   text, so the caret goes over the line break and nothing is deleted. Where the other line is empty the key removes the
   empty line as it always did.
 
+## Format commands
+
+An attachment is one line with nothing else on it (the token), so a command that edits whole lines or puts markers around
+the selection must leave the token line alone: `**[[attachment:…]]**` and `[ ] [[attachment:…]]` are text, the picture is
+gone and the raw token shows. (⌘Z brings it back, and the file is kept: a stored file goes only when no note names it.)
+
+- **⇧⌘L (Checklist) skips token lines** (`ListEditing.toggleChecklist`). A token line gets no box, and it is not a line with
+  text: it does not count when the command works out whether every line is a checkbox, and it keeps the blank lines around
+  it empty like a line of text does. Select All over a note of text and pictures gives the text lines boxes and leaves the
+  pictures; a second press takes the boxes away. With the caret on a token line, or an attachment selected (a click), or a
+  selection of nothing else, there is no line to change, so nothing is changed and it beeps.
+- **⌘B (Bold) does nothing, with a beep, when the selection touches a token line** (`InlineEditing.touchesAttachment`,
+  `NoteTextView.toggleBoldMarkers`): an attachment that a click selected, a selection that holds one or part of one, or a
+  caret at either end of the token line (where a click beside a chip puts it, and where Backspace next to a token leaves
+  it). A caret on the line below a token (where a paste leaves it) and a selection that only ends where a token starts are
+  not on it, and ⌘B works there as it always did.
+- **A line that holds more than the token is text** (a space before it, any character after it), judged as typed
+  (`AttachmentToken.id(inLine:)`): the commands treat it as any text.
+- **Return, Tab and ⇧Tab need nothing of this**: they act on bullet and checkbox lines only, and a token line is neither.
+- A token inside a fenced block is text, and the commands do nothing in a block at all (formatting.md).
+
 ## Opening and dragging out
 
 Spec §6.4: "Double-click opens the file with its default app. Dragging out of the note gives the file itself." All of it is
@@ -214,6 +235,9 @@ release: the preview, the chip and the sidebar are as above in light and dark. T
 | ⇧-arrow takes a token into the selection whole and out again whole | `testShiftRightOverATokenAndShiftLeftShrinksBackOutOfIt`, `testShiftLeftOverATokenAndShiftRightShrinksBackOutOfIt` |
 | Typing over a selected token replaces it whole | `testTypingOverSelectedTokenReplacesWholeToken` |
 | The paperclip inserts the chosen files, and nothing when cancelled or read-only | `testPaperclipInsertsChosenFiles`, `testPaperclipCancelledOrReadOnlyInsertsNothing` |
+| ⇧⌘L leaves a token line alone: boxes on the text lines of Select All and no box in front of the token; nothing to change on an attachment | `AttachmentEditingTests.testChecklistCommandLeavesTheTokenAlone`, `testChecklistCommandOnAnAttachmentChangesNothing` |
+| ⌘B on an attachment, a selection that holds one or a caret at the end of its line changes nothing; below a token it still works; in a block nothing | `testBoldCommandLeavesAnAttachmentAlone`, `testBoldCommandBelowAnAttachmentStillWorks`, `testFormatCommandsInATokenInACodeBlockDoNothing` |
+| The rules (Linux): the checklist skips token lines and the blank lines around them, judges a line as typed, and the list keys never touch one; ⌘B's test of the selection | ScratchCore `ListEditingTests.toggleChecklistSkipsTokenLines`, `toggleChecklistOnlyOnATokenChangesNothing`, `toggleChecklistLeavesTheBlankLinesAroundATokenEmpty`, `toggleChecklistDoesNotCountATokenLineAsText`, `toggleChecklistJudgesATokenLineAsTyped`, `theOtherListRulesLeaveTokenLinesAlone`; `InlineEditingTests.aSelectedAttachmentIsTouched`, `aSelectionThatHoldsATokenLineIsTouched`, `aCaretAtEitherEndOfATokenLineTouchesIt`, `aCaretOrSelectionNextToATokenLineButNotOnItIsNotTouched`, `boldTreatsALineThatHoldsMoreThanTheTokenAsText` |
 | The rules themselves (Linux) | `AttachmentEditingTests.swift` in ScratchCoreTests |
 | The text of a copy has names for tokens, a token in a block as typed, one token alone is an attachment (Linux) | `AttachmentCopyingTests.swift` in ScratchCoreTests |
 | Copy names the file in place of the token, and no more than text | `AttachmentCopyTests.testCopyOfTextAndAttachmentNamesTheFile`, `testUnknownTokenAndTokenInCodeBlockAreCopiedAsTheyAre` |

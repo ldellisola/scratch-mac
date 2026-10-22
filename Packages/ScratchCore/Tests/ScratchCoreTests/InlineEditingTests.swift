@@ -14,6 +14,16 @@ private func r(_ location: Int, _ length: Int) -> NSRange {
     NSRange(location: location, length: length)
 }
 
+/// The line of an attachment: a token and nothing else (docs/features/attachments.md, "Format commands").
+private let token = "[[attachment:6f9619ff-8b86-4d11-b42d-00c04fc964ff]]"
+
+/// What the text view asks before it does ⌘B: whether the selection touches the line of an attachment.
+private func touchesAttachment(_ marked: String) -> Bool {
+    let input = MarkedText(marked)
+    let cut = coveringParagraphs(of: input.text, selection: input.selection)
+    return InlineEditing.touchesAttachment(paragraphs: cut.paragraphs, start: cut.start, selection: input.selection)
+}
+
 @Test func wrapSelection() {
     #expect(toggleBold("a |word| b") == "a **|word|** b")
     #expect(toggleBold("|word|") == "**|word|**")
@@ -138,4 +148,49 @@ private func r(_ location: Int, _ length: Int) -> NSRange {
 @Test func boldWithCRLFLines() {
     #expect(toggleBold("a\r\n**|word|**\r\nb") == "a\r\n|word|\r\nb")
     #expect(toggleBold("a\r\n|word|\r\nb") == "a\r\n**|word|**\r\nb")
+}
+
+// MARK: Attachments (⌘B never wraps a token)
+
+@Test func aSelectedAttachmentIsTouched() {
+    // A click on an attachment selects exactly its token line.
+    #expect(touchesAttachment("|\(token)|"))
+    #expect(touchesAttachment("a\n|\(token)|\nb"))
+    #expect(touchesAttachment("a\r\n|\(token)|\r\nb"))
+}
+
+@Test func aSelectionThatHoldsATokenLineIsTouched() {
+    #expect(touchesAttachment("|a\n\(token)\nb|"))
+    #expect(touchesAttachment("|a\n\(token)|"))
+    #expect(touchesAttachment("|\(token)\nb|"))
+    #expect(touchesAttachment("a|\n\(token)|"))
+}
+
+@Test func aCaretAtEitherEndOfATokenLineTouchesIt() {
+    // Where a click beside a chip puts it, and where Backspace next to a token leaves it.
+    #expect(touchesAttachment("|\(token)"))
+    #expect(touchesAttachment("\(token)|"))
+    #expect(touchesAttachment("a\n|\(token)\nb"))
+    #expect(touchesAttachment("a\n\(token)|\nb"))
+}
+
+@Test func aCaretOrSelectionNextToATokenLineButNotOnItIsNotTouched() {
+    // The caret a paste leaves is on the line below the token.
+    #expect(!touchesAttachment("\(token)\n|"))
+    #expect(!touchesAttachment("\(token)\n|b"))
+    #expect(!touchesAttachment("a|\n\(token)"))
+    #expect(!touchesAttachment("a\n|\n\(token)"))
+    // A selection that ends where the token starts, or starts where it ends, has no character of it.
+    #expect(!touchesAttachment("|a\n|\(token)"))
+    #expect(!touchesAttachment("\(token)|\nb|"))
+    #expect(!touchesAttachment("\(token)|\r\nb|"))
+}
+
+@Test func boldTreatsALineThatHoldsMoreThanTheTokenAsText() {
+    // Judged as typed (AGENTS.md): white space, or any other character, makes it text, and ⌘B wraps it as any text.
+    #expect(!touchesAttachment("| \(token)|"))
+    #expect(!touchesAttachment("|\(token) x|"))
+    #expect(!touchesAttachment("x\(token)|"))
+    #expect(!touchesAttachment("|a word|"))
+    #expect(toggleBold("| \(token)|") == " **|\(token)|**")
 }

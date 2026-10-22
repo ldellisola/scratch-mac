@@ -54,6 +54,16 @@ struct ParagraphLines {
         units[lines[index].start..<lines[index].end].allSatisfy { $0.isMarkupWhitespace }
     }
 
+    /// True when line `index` is the token line of an attachment and nothing else (`AttachmentToken.id(inLine:)`: the line as
+    /// typed, with no white space around it). A rule that edits whole lines leaves such a line alone, or the token would
+    /// be text and the picture would be gone.
+    func isAttachmentLine(_ index: Int) -> Bool {
+        let line = lines[index]
+        // Only a line of exactly the length of a token can be one, so never copy a longer line.
+        guard line.end - line.start == AttachmentToken.lineLength else { return false }
+        return AttachmentToken.id(inLine: text(of: index)) != nil
+    }
+
     /// The text of line `index` without its line break.
     func text(of index: Int) -> String {
         String(decoding: units[lines[index].start..<lines[index].end], as: UTF16.self)
