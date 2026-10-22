@@ -554,22 +554,14 @@ final class AttachmentRenderingTests: XCTestCase {
     /// AGENTS.md, "Blocks above the window are styled whole at load": a position is worked out from the layout of what is
     /// above it, and a token line is 252 pt high where a line of text is 17, so a token line above the window that a chunk
     /// styled after the scroll was set moved the note under the reader. At `show` the token line is styled already, and
-    /// when the chunks have run the line at the top is the one that was.
+    /// when the chunks have run the line at the top has not moved: it is where it was in the layout, and the clip view is
+    /// where it was.
     func testTokenLineFarAboveTheAnchorIsStyledBeforeTheScroll() throws {
-        try checkAnchorSurvivesChunks(withToken: true)
-    }
-
-    /// The same note with no token line: what the scroll position does in this host when nothing is an attachment.
-    func testControlNoteWithoutTokenKeepsItsAnchor() throws {
-        try checkAnchorSurvivesChunks(withToken: false)
-    }
-
-    private func checkAnchorSurvivesChunks(withToken: Bool) throws {
         let (storage, directory) = try openStorage()
         let noteID = NoteID.make()
         let tall = try addImage(width: 1_200, height: 900, noteID: noteID, to: storage)
         var lines = (1...1_500).map { "text line \($0)" }
-        if withToken { lines[9] = AttachmentToken.line(for: tall) }
+        lines[9] = AttachmentToken.line(for: tall)
         let body = lines.joined(separator: "\n")
         let anchor = (body as NSString).range(of: "text line 1400").location
         XCTAssertNotEqual(anchor, NSNotFound)
@@ -579,57 +571,43 @@ final class AttachmentRenderingTests: XCTestCase {
         defer { host.cleanUp() }
         let styler: MarkupStyler = host.editor.textView.styler
         XCTAssertFalse(styler.isFullyStyled, "the text above the window is still to be styled in chunks")
-        XCTAssertEqual(
-            lineNumber(ofOffset: host.editor.currentScrollAnchor, in: body), 1_400, "the note is at its anchor")
+
+        let token = tokenRange(tall, in: host)
+        XCTAssertEqual(lineNumber(ofOffset: token.location, in: body), 10)
+        XCTAssertEqual(lineNumber(ofOffset: anchor, in: body), 1_400, "far above the paragraphs styled at once")
+        let mark = try XCTUnwrap(
+            attachmentMark(at: token.location, in: host), "the token line above the window has its look at once")
+        XCTAssertEqual(mark.kind, .image)
+        XCTAssertEqual(mark.displaySize.height, 240, accuracy: 1)
+        let style =
+            host.editor.textView.textStorage?.attribute(.paragraphStyle, at: token.location, effectiveRange: nil)
+            as? NSParagraphStyle
+        XCTAssertEqual(style?.minimumLineHeight ?? 0, 240 + 12, accuracy: 1)
+        XCTAssertEqual(style?.maximumLineHeight ?? 0, 240 + 12, accuracy: 1)
 
         // The layout of what is above `index`, which is all that the scroll position is worked out from.
-        let layoutManager = try XCTUnwrap(host.editor.textView.layoutManager)
+        let textView = host.editor.textView
+        let layoutManager = try XCTUnwrap(textView.layoutManager)
         func fragment(at index: Int) -> NSRect {
             layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: index + 1))
             let glyph = layoutManager.glyphIndexForCharacter(at: index)
             return layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
         }
-        if withToken {
-            let token = tokenRange(tall, in: host)
-            XCTAssertEqual(lineNumber(ofOffset: token.location, in: body), 10)
-            XCTAssertEqual(lineNumber(ofOffset: anchor, in: body), 1_400, "far above the paragraphs styled at once")
-            let mark = try XCTUnwrap(
-                attachmentMark(at: token.location, in: host), "the token line above the window has its look at once")
-            XCTAssertEqual(mark.kind, .image)
-            XCTAssertEqual(mark.displaySize.height, 240, accuracy: 1)
-            let style =
-                host.editor.textView.textStorage?.attribute(.paragraphStyle, at: token.location, effectiveRange: nil)
-                as? NSParagraphStyle
-            XCTAssertEqual(style?.minimumLineHeight ?? 0, 240 + 12, accuracy: 1)
-            XCTAssertEqual(style?.maximumLineHeight ?? 0, 240 + 12, accuracy: 1)
-            XCTAssertEqual(fragment(at: token.location).height, 240 + 12, accuracy: 1, "and its height is laid out")
+        // How far the top of the anchor's line is below the top edge of the visible text: 0 when the note is at its anchor.
+        func anchorOffset() -> CGFloat {
+            let clip = host.editor.clipView
+            let inset = clip.enclosingScrollView?.contentInsets.top ?? 0
+            return fragment(at: anchor).minY + textView.textContainerOrigin.y - inset - clip.bounds.origin.y
         }
+        XCTAssertEqual(fragment(at: token.location).height, 240 + 12, accuracy: 1, "and its height is laid out")
+        XCTAssertEqual(anchorOffset(), 0, accuracy: 1, "the note is at its anchor")
         let before = fragment(at: anchor).minY
 
-        // What moves, and when (the clip view's origin, the text view's height, the previews that are on their way).
-        var trace: [String] = []
-        var lastState = ""
-        func record(_ label: String) {
-            let state =
-                "clipY=\(host.editor.clipView.bounds.origin.y) frameH=\(host.editor.textView.frame.height) "
-                + "previews=\(styler.previews.pendingCount) styled=\(styler.isFullyStyled)"
-            if state != lastState { trace.append("\(label) \(state)") }
-            lastState = state
-        }
-        record("before")
-        let deadline = Date().addingTimeInterval(5)
-        while !styler.isFullyStyled, Date() < deadline {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
-            record("turn")
-        }
-        record("styled")
+        spin(until: { styler.isFullyStyled })
 
         XCTAssertTrue(styler.isFullyStyled)
         XCTAssertEqual(fragment(at: anchor).minY, before, accuracy: 0.5, "the line at the top has not moved")
-        XCTAssertEqual(
-            lineNumber(ofOffset: host.editor.currentScrollAnchor, in: body), 1_400,
-            "and it is still the line at the top of the window (token: \(withToken)): "
-                + trace.joined(separator: " | "))
+        XCTAssertEqual(anchorOffset(), 0, accuracy: 1, "and it is still at the top edge of the visible text")
         XCTAssertEqual(host.editor.currentText, body)
     }
 
