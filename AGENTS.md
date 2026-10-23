@@ -31,7 +31,9 @@ Copied text always comes out as plain text. The app is developed only by AI agen
   Task 6 is done: what is typed,
   composed or pasted next to a token goes on a line of its own, a copy or a drag of a selection that holds a token also
   writes the note's text on a private type that a paste or a drop into Scratch reads first, and a copied image is written
-  with its data when Scratch quits ([`docs/features/attachments.md`](docs/features/attachments.md)). The plan before it,
+  with its data when Scratch quits ([`docs/features/attachments.md`](docs/features/attachments.md)). Task 9 is done: the app
+  has an icon, a yellow notepad with a ticked checkbox that `scripts/make-app-icon.py` draws with Pillow into
+  `AppIcon.appiconset` (docs/decisions/0010), and the release zip check fails an app without `AppIcon.icns`. The plan before it,
   [`2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md), is done and released as 0.5.0
   (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
   and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
@@ -291,7 +293,8 @@ App/Sources/Support/              LaunchClock (the process start and the boot ti
                                   test holds to the catalog; `isIncreaseContrastOn`), AppearanceOverride+AppKit
                                   (`nsAppearanceName`, `force(on:)`: the appearance that `-ScratchAppearance` forces, and for
                                   `light-contrast` and `dark-contrast` the high contrast colours too)
-App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
+App/Resources/                    Assets.xcassets (`AppIcon.appiconset`, the app icon: ten PNGs that `scripts/make-app-icon.py`
+                                  writes, never edit them by hand, section 3, and the colours `CodeText` and `CodeBackground` of
                                   inline code, `CodeBorder` of a code block's hairline and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
                                   light and a dark variant and a high contrast one of each: Increase Contrast, section 7),
@@ -360,15 +363,19 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   perf-check.py (numbers against baseline, budgets and tolerances), check-version-bump.sh (a change
                                   to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
                                   release notes footer with the version filled in), check-release-zip.sh (unpacks a
-                                  release zip, checks the app in it, Acknowledgements.rtf too, and prints its sizes),
+                                  release zip, checks the app in it, Acknowledgements.rtf, AppIcon.icns and CFBundleIconName
+                                  too, and prints its sizes),
                                   check-release-dmg.sh (attaches a release DMG
                                   read-only and checks the window and the app in it), make-acknowledgements.py (writes
                                   App/Resources/Acknowledgements.rtf from Package.resolved, the LICENSE files and the vendored
-                                  grammars; `--check` says whether the file is current), tests/ (their tests, the
-                                  zip and DMG checks' against stubs of ditto, hdiutil, codesign and lipo)
+                                  grammars; `--check` says whether the file is current), make-app-icon.py (draws the app
+                                  icon's PNGs with Pillow, a development tool: docs/decisions/0010), tests/ (their tests, the
+                                  zip and DMG checks' against stubs of ditto, hdiutil, codesign and lipo, and
+                                  `test_make_app_icon.py`, Python's unittest)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests, version bump check. Job `macos`:
                                   XcodeGen, core tests on macOS, app build and app tests, screenshots, performance tests
                                   and their check, the release zip and the release DMG. Both publish to `ci-results`.
+                                  The `linux` job installs `python3-pil` (Pillow) for the icon's test.
 .github/workflows/release.yml     the release: a merge to main that changes App/, Packages/ or VERSION builds
                                   `make release-zip release-dmg` and publishes a GitHub Release `v<VERSION>` with the
                                   zip and the DMG (section 6, Releases)
@@ -394,7 +401,8 @@ docs/decisions/                   numbered decision records: 0001 (the editor us
                                   0006 (bold needs word boundaries), 0007 (tree-sitter: the packages, their versions and
                                   licences, and how to add a language), 0008 (attachments: the token line, the files kept
                                   by reference, the own-line layout and the copy rules), 0009 (performance at 1.0: the launch
-                                  gates on the overhead above an empty app, idle CPU, the tolerances)
+                                  gates on the overhead above an empty app, idle CPU, the tolerances), 0010 (the 1.0 calls:
+                                  the app icon and Pillow as a development tool; Task 10 adds the look, editing and attachments)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -413,14 +421,20 @@ macOS and runs on GitHub's Macs.
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
 - `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py`,
-  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh`, `check-release-dmg.sh`, `check-release-zip.sh` and
-  `make-acknowledgements.py`, whose test also holds the checked-in `Acknowledgements.rtf` to `Package.resolved`). Each test
+  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh`, `check-release-dmg.sh`, `check-release-zip.sh`,
+  `make-acknowledgements.py`, whose test also holds the checked-in `Acknowledgements.rtf` to `Package.resolved`, and
+  `make-app-icon.py`, whose test needs Pillow: `apt-get install python3-pil` or `pip install pillow`). Each test
   file ends with an `all ... passed` line.
 - `python3 scripts/make-acknowledgements.py [--check]` `[linux]`: write `App/Resources/Acknowledgements.rtf`, the licences of
   tree-sitter and every grammar (from `Packages/ScratchCode/Package.resolved`, SwiftPM's checkouts in
   `Packages/ScratchCode/.build/checkouts`, which `make core-test` fetches, and the vendored `Sources/Grammar*/LICENSE`), or with
   `--check` say whether the checked-in file is current. Run it whenever a grammar is added or a version changes
   (docs/decisions/0007, "Adding a language"), and check the file in.
+- `python3 scripts/make-app-icon.py [<appiconset>]` `[linux]`: draw the app icon (needs Pillow) and write the ten PNGs of
+  `App/Resources/Assets.xcassets/AppIcon.appiconset` (or of another set's `Contents.json`: its sizes and file names). The
+  PNGs are checked in, so run it whenever the design in the script changes, look at `icon_512x512@2x.png` and
+  `icon_16x16@2x.png` (32 px) with the Read tool, and check the files in: `test_make_app_icon.py` fails when they are not
+  what the script makes (docs/decisions/0010).
 - `scripts/check-version-bump.sh <base-ref>` `[linux]`: exit 1 when the branch changed App/ or Packages/ since
   `<base-ref>` without a `VERSION` that is greater than `<base-ref>`'s (compared number by number: 0.10.0 is greater than
   0.9.0), or when `VERSION` is not MAJOR.MINOR.PATCH. CI runs it with `origin/main`.
@@ -443,7 +457,7 @@ macOS and runs on GitHub's Macs.
   `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured), and
   `attachments-light` and `attachments-dark` (the `attachments` fixture: an image and a file chip), and
   `typical-contrast-light` and `code-contrast-dark` (Increase Contrast on: `-ScratchAppearance light-contrast` and
-  `dark-contrast`). These are the
+  `dark-contrast`), and `about-light` (the About panel: a picture of that window, with the app icon). These are the
   names in the Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
@@ -749,6 +763,16 @@ new kind of release file, with no change to the app, ships.
   and its tag or commit, which the script reads. `scripts/check-release-zip.sh` fails a zip without the file in
   `Contents/Resources`, and `AboutCredits` gives the text `labelColor`, because the file has no colour of its own and black
   RTF text is unreadable in a dark panel. swift-tree-sitter is BSD 3-Clause, the rest are MIT.
+- **The app icon is generated, and the release depends on it.** The ten PNGs of `AppIcon.appiconset` are the output of
+  `scripts/make-app-icon.py` (Pillow, drawn at 4 times each size and scaled down with LANCZOS: the design is its constants,
+  docs/decisions/0010), so a change to the icon is a change to the script and a run of it, with the PNGs checked in.
+  `make script-test` holds the PNGs to the script (`test_make_app_icon.py`: the sizes `Contents.json` lists, a transparent
+  corner, the pixels at the design's points at 32, 128 and 1024 px, and a mean difference under one level of 255 from the
+  script's own output) and needs Pillow, which the `linux` job gets as `python3-pil`. Xcode makes `AppIcon.icns` and
+  `Assets.car` from the set (`ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon`), `scripts/check-release-zip.sh` fails an app
+  without a non-empty `Contents/Resources/AppIcon.icns` and `CFBundleIconName` = `AppIcon`, and `about-light` is the picture
+  to look at (the About panel is a window of its own with no identifier: `ScreenshotTests.aboutPanel(in:)` finds it as the
+  window that does not hold the editor).
 - **The first line of code of a block with a label is further in from the right than the others.** The label is drawn at the
   top right and reaches into that line, so its paragraph style has a tail indent of `inset + label width + 12 pt`
   (`MarkupAppearance.firstCodeLineStyle`, `CodeBlockMetrics.labelReserve`, at most 240 pt, none without a label); every other
