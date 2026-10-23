@@ -311,6 +311,67 @@ final class ListKeyTests: XCTestCase {
         XCTAssertEqual(marked(host), "a **|**")
     }
 
+    /// Plan 6 task 5: ⌘B with a caret in a word bolds the word and keeps the caret in it, and ⌘B again takes it off.
+    func testBoldOnCaretInWord() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("say he|llo now", in: host)
+
+        host.editor.textView.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(marked(host), "say **he|llo** now", "the caret stays at its place in the word")
+        for index in 6...10 {
+            XCTAssertTrue(
+                isBold(host.editor.textView.textStorage?.attribute(.font, at: index, effectiveRange: nil) as? NSFont),
+                "the character at \(index) is bold")
+        }
+        XCTAssertFalse(isBold(host.editor.textView.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont))
+
+        host.editor.textView.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(marked(host), "say he|llo now", "twice puts the text back")
+    }
+
+    func testBoldOnCaretBetweenEmptyPairRemovesIt() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("a **|** b", in: host)
+
+        host.editor.textView.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(marked(host), "a | b")
+    }
+
+    func testCommandBOnSeveralLinesWrapsEachLine() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("⟦- one\n- two⟧", in: host)
+
+        host.editor.textView.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(marked(host), "- **⟦one**\n- **two⟧**")
+        XCTAssertTrue(
+            isBold(host.editor.textView.textStorage?.attribute(.font, at: 4, effectiveRange: nil) as? NSFont))
+        XCTAssertTrue(
+            isBold(host.editor.textView.textStorage?.attribute(.font, at: 14, effectiveRange: nil) as? NSFont))
+
+        host.editor.textView.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(marked(host), "- ⟦one\n- two⟧", "the same selection takes the stars off again")
+    }
+
+    func testCommandBOnWhiteSpaceOnlyDoesNothing() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let undo = UndoManager()
+        show("a⟦  ⟧b", undoManager: undo, in: host)
+
+        host.editor.textView.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(marked(host), "a⟦  ⟧b", "the rule has nothing to wrap, so the key beeps")
+        XCTAssertFalse(undo.canUndo)
+    }
+
     func testCommandBOnABoldRunTakesTheStarsAway() {
         let host = makeHostedEditor()
         defer { withExtendedLifetime(host.window) {} }
@@ -375,7 +436,13 @@ final class ListKeyTests: XCTestCase {
             ("⇧Tab on a line", "  - a|", "- a|", { $0.insertBacktab(nil) }),
             ("⌘B on a selection", "⟦word⟧", "**⟦word⟧**", { $0.toggleBoldMarkers(nil) }),
             ("⌘B on a bold run", "**⟦word⟧**", "⟦word⟧", { $0.toggleBoldMarkers(nil) }),
-            ("⌘B on nothing", "a|", "a**|**", { $0.toggleBoldMarkers(nil) }),
+            ("⌘B on nothing", "a |", "a **|**", { $0.toggleBoldMarkers(nil) }),
+            ("⌘B on a word", "say he|llo now", "say **he|llo** now", { $0.toggleBoldMarkers(nil) }),
+            ("⌘B on an empty pair", "a **|** b", "a | b", { $0.toggleBoldMarkers(nil) }),
+            ("⌘B on two lines", "⟦- a\n- b⟧", "- **⟦a**\n- **b⟧**", { $0.toggleBoldMarkers(nil) }),
+            ("⇧⌘U on a line", "[ ] a|", "[x] a|", { $0.toggleCheckmarks(nil) }),
+            ("⇧⌘U on two lines", "⟦[ ] a\n[x] b⟧", "⟦[x] a\n[x] b⟧", { $0.toggleCheckmarks(nil) }),
+            ("⇧⌘U on ticked lines", "⟦[x] a\n[x] b⟧", "⟦[ ] a\n[ ] b⟧", { $0.toggleCheckmarks(nil) }),
         ]
         for testCase in cases {
             let host = makeHostedEditor()

@@ -88,6 +88,74 @@ final class MarkupStylerTests: XCTestCase {
         "```",
     ].joined(separator: "\n")
 
+    // MARK: Composed text
+
+    /// The underline of the character at `index`: the text storage's, which is where AppKit puts the attributes that an
+    /// input method hands over with composed text, or else the layout manager's temporary one.
+    private func underline(at index: Int, in host: Host) -> Int? {
+        if let value = attribute(.underlineStyle, at: index, in: host) as? Int { return value }
+        return host.editor.textView.layoutManager?.temporaryAttribute(
+            .underlineStyle, atCharacterIndex: index, effectiveRange: nil) as? Int
+    }
+
+    /// What an input method hands over for the text it composes: the text, its underline and its clause segment.
+    private func composed(_ text: String) -> NSAttributedString {
+        NSAttributedString(
+            string: text,
+            attributes: [
+                .underlineStyle: NSUnderlineStyle.single.rawValue, .underlineColor: NSColor.labelColor,
+                .markedClauseSegment: 0,
+            ])
+    }
+
+    /// Plan 6 task 5 (`MarkupStyler`, "Composed text"): the styler resets the attributes of the paragraph an edit touched,
+    /// and composing text is an edit at every key. The marked text keeps the underline that says it is not yet entered.
+    func testMarkedTextKeepsItsUnderline() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        // The caret is inside the bold run, after "bo".
+        show("a **bold** b", caret: 6, in: host)
+        let textView = host.editor.textView
+        host.window.makeFirstResponder(textView)
+        defer { textView.unmarkText() }
+
+        textView.setMarkedText(
+            composed("ni"), selectedRange: NSRange(location: 2, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        XCTAssertEqual(host.editor.currentText, "a **bonild** b")
+        XCTAssertEqual(textView.markedRange(), NSRange(location: 6, length: 2))
+        XCTAssertEqual(underline(at: 6, in: host), NSUnderlineStyle.single.rawValue, "the first composed character")
+        XCTAssertEqual(underline(at: 7, in: host), NSUnderlineStyle.single.rawValue, "the second composed character")
+        XCTAssertNil(underline(at: 5, in: host), "the text before it is not underlined")
+        XCTAssertNil(underline(at: 8, in: host), "nor the text after it")
+        XCTAssertTrue(isBold(font(at: 6, in: host)), "the composed text is in the bold run, so it is bold as well")
+
+        // The composition goes on: the marked text is replaced, which is another edit and another restyle.
+        textView.setMarkedText(
+            composed("nih"), selectedRange: NSRange(location: 3, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        XCTAssertEqual(textView.markedRange(), NSRange(location: 6, length: 3))
+        for index in 6...8 {
+            XCTAssertEqual(
+                underline(at: index, in: host), NSUnderlineStyle.single.rawValue, "composed character \(index)")
+        }
+        XCTAssertNil(underline(at: 9, in: host), "the text after it is not underlined")
+    }
+
+    func testTextThatIsNotComposedHasNoUnderlineFromTheStyler() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("a **bold** b", caret: 6, in: host)
+
+        insert("xy", into: host)
+
+        for index in 0..<host.editor.currentText.utf16.count {
+            XCTAssertNil(underline(at: index, in: host), "the character at \(index) is not underlined")
+        }
+    }
+
     // MARK: Bold and hidden markers
 
     func testBoldContentIsBoldAndMarkersAreNullGlyphs() {

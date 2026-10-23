@@ -40,6 +40,47 @@ final class TitleUITests: XCTestCase {
         XCTAssertEqual(editor.value as? String, "milk")
     }
 
+    /// Plan 6 task 5: what is typed in a note's title is undone with that note only. Switching notes ends the title's
+    /// editing and drops its undo steps, so ⌘Z in a note never reaches the title field's editor, which shows another
+    /// note's title by then.
+    func testTitleUndoStaysWithItsNote() throws {
+        continueAfterFailure = false
+        let app = UITestSupport.launch(fixture: "empty")
+        let editor = UITestSupport.editor(in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 10), "the editor text view did not appear")
+
+        typeTitle("Alpha", in: app)
+        app.typeKey("t", modifierFlags: .command)
+        XCTAssertTrue(
+            UITestSupport.wait { UITestSupport.tabs(in: app).count == 2 },
+            "the tabs after ⌘T: \(UITestSupport.tabTitles(in: app))")
+        typeTitle("Beta", in: app)
+
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(
+            UITestSupport.wait { UITestSupport.activeTabIndex(in: app) == 0 },
+            "the active tab after ⌘1: \(String(describing: UITestSupport.activeTabIndex(in: app)))")
+        XCTAssertTrue(
+            UITestSupport.wait { UITestSupport.text(of: UITestSupport.titleField(in: app)) == "Alpha" },
+            "the title shown for the first note: \(UITestSupport.text(of: UITestSupport.titleField(in: app)))")
+
+        app.typeKey("z", modifierFlags: .command)
+        app.typeKey("z", modifierFlags: .command)
+        // Undo is applied by the app a moment after the key, and a crash would take the app down with it.
+        Thread.sleep(forTimeInterval: 1)
+
+        XCTAssertEqual(app.state, .runningForeground, "the app is still running after the undos")
+        XCTAssertEqual(UITestSupport.text(of: UITestSupport.titleField(in: app)), "Alpha", "the first note's title")
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(
+            UITestSupport.wait { UITestSupport.activeTabIndex(in: app) == 1 },
+            "the active tab after ⌘2: \(String(describing: UITestSupport.activeTabIndex(in: app)))")
+        XCTAssertTrue(
+            UITestSupport.wait { UITestSupport.text(of: UITestSupport.titleField(in: app)) == "Beta" },
+            "the title shown for the second note: \(UITestSupport.text(of: UITestSupport.titleField(in: app)))")
+        XCTAssertEqual(UITestSupport.tabTitles(in: app), ["Alpha", "Beta"], "the notes' own titles")
+    }
+
     func testTitleSurvivesRelaunch() throws {
         continueAfterFailure = false
         let app = UITestSupport.launch(fixture: "empty")

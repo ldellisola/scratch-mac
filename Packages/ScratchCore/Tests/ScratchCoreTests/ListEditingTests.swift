@@ -23,6 +23,11 @@ private func toggleChecklist(_ marked: String) -> String {
     result(of: marked) { ListEditing.toggleChecklist(paragraphs: $0, start: $1, selection: $2) }!
 }
 
+/// ⇧⌘U: the marked text after ticking or unticking the checklist lines of the selection, or nil when it has none.
+private func toggleCheckmarks(_ marked: String) -> String? {
+    result(of: marked) { ListEditing.toggleCheckmarks(paragraphs: $0, start: $1, selection: $2) }
+}
+
 private func r(_ location: Int, _ length: Int) -> NSRange {
     NSRange(location: location, length: length)
 }
@@ -395,6 +400,88 @@ private let token = "[[attachment:6f9619ff-8b86-4d11-b42d-00c04fc964ff]]"
     let edit = ListEditing.toggleChecklist(paragraphs: "a\r\n\r\nb", start: 0, selection: r(0, 6))
     // The edit ends where the last change is (the second box), so the "b" after it is not in the replaced range.
     #expect(edit == TextEdit(range: r(0, 5), replacement: "[ ] a\r\n\r\n[ ] ", selection: r(4, 10)))
+}
+
+// MARK: ⇧⌘U (plan 6 task 5: Mark as Checked)
+
+@Test func checkmarksTickAllWhenAnyOpen() {
+    #expect(toggleCheckmarks("|[ ] a\n[x] b\n[ ] c|") == "|[x] a\n[x] b\n[x] c|")
+    #expect(toggleCheckmarks("|[x] a\n[ ] b|") == "|[x] a\n[x] b|")
+    #expect(toggleCheckmarks("[ ] a|") == "[x] a|")
+    #expect(toggleCheckmarks("|[ ] a") == "|[x] a")
+}
+
+@Test func checkmarksUntickWhenAllTicked() {
+    #expect(toggleCheckmarks("|[x] a\n[X] b|") == "|[ ] a\n[ ] b|")
+    #expect(toggleCheckmarks("[x] a|") == "[ ] a|")
+    #expect(toggleCheckmarks("[X] a|") == "[ ] a|")
+}
+
+@Test func checkmarksTwiceRestoreTheText() throws {
+    let ticked = try #require(toggleCheckmarks("|[ ] a\n[ ] b|"))
+    #expect(ticked == "|[x] a\n[x] b|")
+    #expect(toggleCheckmarks(ticked) == "|[ ] a\n[ ] b|")
+}
+
+@Test func checkmarksNilWithoutChecklist() {
+    #expect(toggleCheckmarks("|") == nil)
+    #expect(toggleCheckmarks("plain|") == nil)
+    #expect(toggleCheckmarks("- a|") == nil)
+    #expect(toggleCheckmarks("|- a\nb|") == nil)
+    // A bullet is a bullet, though it holds a box (ADR: `- [ ] a` is a bullet).
+    #expect(toggleCheckmarks("- [ ] a|") == nil)
+    // Nothing but the marker of a checkbox is a checkbox: `[ ]` with no space after it is text.
+    #expect(toggleCheckmarks("[ ]|") == nil)
+}
+
+@Test func checkmarksKeepIndentAndText() {
+    #expect(toggleCheckmarks("  [ ] a **b** `c`|") == "  [x] a **b** `c`|")
+    #expect(toggleCheckmarks("    [x] a|") == "    [ ] a|")
+    #expect(toggleCheckmarks("[ ]| ") == "[x]| ")
+}
+
+@Test func checkmarksOnlyTouchTheLinesOfTheSelection() {
+    #expect(toggleCheckmarks("[ ] a|\n[ ] b") == "[x] a|\n[ ] b")
+    #expect(toggleCheckmarks("[ ] a\n[ ] b|\n[ ] c") == "[ ] a\n[x] b|\n[ ] c")
+    // A selection that ends where a line begins leaves that line out.
+    #expect(toggleCheckmarks("|[ ] a\n|[ ] b") == "|[x] a\n|[ ] b")
+}
+
+@Test func checkmarksIgnoreTheLinesThatAreNotCheckboxes() {
+    #expect(toggleCheckmarks("|[ ] a\nplain\n- b\n[ ] c|") == "|[x] a\nplain\n- b\n[x] c|")
+    // Only the checkboxes among the lines decide: one that is open ticks them all, and plain lines have no say.
+    #expect(toggleCheckmarks("|[x] a\nplain\n[x] b|") == "|[ ] a\nplain\n[ ] b|")
+}
+
+@Test func checkmarksTickTheOpenOnesWhenSomeAreAlreadyTicked() {
+    #expect(toggleCheckmarks("|[x] a\n[ ] b\n[X] c|") == "|[x] a\n[x] b\n[X] c|")
+}
+
+@Test func checkmarksKeepTheSelectionWhereItWas() {
+    // A caret inside the box, before and after the mark: the edit is one character and the caret stays.
+    #expect(toggleCheckmarks("[|] a") == nil)
+    #expect(toggleCheckmarks("[ |] a") == "[x|] a")
+    #expect(toggleCheckmarks("[|x] a") == "[| ] a")
+    #expect(toggleCheckmarks("|[ ] a|") == "|[x] a|")
+}
+
+@Test func checkmarksOfAnAttachmentAreNothing() {
+    #expect(toggleCheckmarks("\(token)|") == nil)
+    #expect(toggleCheckmarks("|[ ] a\n\(token)\n[ ] b|") == "|[x] a\n\(token)\n[x] b|")
+}
+
+@Test func checkmarksCountUTF16AndStartOffsets() {
+    #expect(toggleCheckmarks("😀\n[ ] a|") == "😀\n[x] a|")
+    let edit = ListEditing.toggleCheckmarks(paragraphs: "[ ] a\n[ ] b", start: 40, selection: r(40, 11))
+    #expect(edit == TextEdit(range: r(41, 7), replacement: "x] a\n[x", selection: r(40, 11)))
+}
+
+@Test func checkmarksWithCRLFLines() {
+    #expect(toggleCheckmarks("|[ ] a\r\n[ ] b|") == "|[x] a\r\n[x] b|")
+}
+
+@Test func checkmarksOutsideTheParagraphsAreNil() {
+    #expect(ListEditing.toggleCheckmarks(paragraphs: "[ ] a", start: 10, selection: r(3, 0)) == nil)
 }
 
 // MARK: A click on the box
