@@ -62,10 +62,10 @@ final class AppearanceTests: XCTestCase {
         for name in allNames {
             let color = try asset(name)
             XCTAssertNotEqual(
-                try components(color, in: .accessibilityHighContrastAqua), try components(color, in: .aqua),
+                try components(color, in: .highContrastAqua), try components(color, in: .aqua),
                 "\(name) has no light high contrast variant")
             XCTAssertNotEqual(
-                try components(color, in: .accessibilityHighContrastDarkAqua), try components(color, in: .darkAqua),
+                try components(color, in: .highContrastDarkAqua), try components(color, in: .darkAqua),
                 "\(name) has no dark high contrast variant")
         }
     }
@@ -103,7 +103,7 @@ final class AppearanceTests: XCTestCase {
     /// (dark) on the tint of a block or a pill, which is stronger than the usual one.
     func testHighContrastTextReadsOnTheBackgroundAndTheTint() throws {
         let cases: [(NSAppearance.Name, NSAppearance.Name, Double, Double)] = [
-            (.accessibilityHighContrastAqua, .aqua, 7, 7), (.accessibilityHighContrastDarkAqua, .darkAqua, 7, 5),
+            (.highContrastAqua, .aqua, 7, 7), (.highContrastDarkAqua, .darkAqua, 7, 5),
         ]
         for (high, usual, onBackground, onTint) in cases {
             let background = try components(NSColor.textBackgroundColor, in: high)
@@ -123,29 +123,36 @@ final class AppearanceTests: XCTestCase {
     func testHighContrastBorderIsStrongerThanTheUsualOne() throws {
         let border = try asset("CodeBorder")
         XCTAssertGreaterThan(
-            try components(border, in: .accessibilityHighContrastAqua)[3], try components(border, in: .aqua)[3])
+            try components(border, in: .highContrastAqua)[3], try components(border, in: .aqua)[3])
         XCTAssertGreaterThan(
-            try components(border, in: .accessibilityHighContrastDarkAqua)[3], try components(border, in: .darkAqua)[3])
+            try components(border, in: .highContrastDarkAqua)[3], try components(border, in: .darkAqua)[3])
     }
 
     // MARK: -ScratchAppearance
 
-    func testContrastLaunchAppearancesAreTheAccessibilityOnes() {
+    func testContrastLaunchAppearancesAreTheHighContrastOnes() {
         XCTAssertEqual(AppearanceOverride.light.nsAppearanceName, .aqua)
         XCTAssertEqual(AppearanceOverride.dark.nsAppearanceName, .darkAqua)
-        XCTAssertEqual(AppearanceOverride.lightContrast.nsAppearanceName, .accessibilityHighContrastAqua)
-        XCTAssertEqual(AppearanceOverride.darkContrast.nsAppearanceName, .accessibilityHighContrastDarkAqua)
+        XCTAssertEqual(AppearanceOverride.lightContrast.nsAppearanceName, .highContrastAqua)
+        XCTAssertEqual(AppearanceOverride.darkContrast.nsAppearanceName, .highContrastDarkAqua)
+        XCTAssertEqual(NSAppearance.Name.highContrastAqua.rawValue, "NSAppearanceNameAccessibilityHighContrastAqua")
+        XCTAssertEqual(
+            NSAppearance.Name.highContrastDarkAqua.rawValue, "NSAppearanceNameAccessibilityHighContrastDarkAqua")
+        // An appearance made with the name keeps it: the SDK's own `.accessibilityHighContrastAqua` is turned into plain Aqua
+        // by `NSAppearance(named:)`, and would never have a colour asset answer with its high contrast variant.
         for option in AppearanceOverride.allCases {
-            XCTAssertNotNil(NSAppearance(named: option.nsAppearanceName), "\(option)")
+            XCTAssertEqual(
+                NSAppearance(named: option.nsAppearanceName)?.name, option.nsAppearanceName,
+                "\(option) is forced as \(option.nsAppearanceName.rawValue)")
         }
     }
 
     /// The code colours that the editor draws with are the catalog's: a block in high contrast gets the stronger tint.
     func testCodeBlockColoursFollowTheAppearance() throws {
         let usual = try components(CodeBlockColors.background, in: .aqua)
-        let high = try components(CodeBlockColors.background, in: .accessibilityHighContrastAqua)
+        let high = try components(CodeBlockColors.background, in: .highContrastAqua)
         XCTAssertGreaterThan(high[3], usual[3])
-        let border = try components(CodeBlockColors.border, in: .accessibilityHighContrastDarkAqua)
+        let border = try components(CodeBlockColors.border, in: .highContrastDarkAqua)
         XCTAssertEqual(border[3], 0.45, accuracy: 0.01)
     }
 }

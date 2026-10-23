@@ -62,9 +62,10 @@ final class NoteRowCellView: NSTableCellView {
         pinView.imageScaling = .scaleProportionallyDown
         // The group header already says "Pinned", and the title's value is only the title.
         pinView.setAccessibilityElement(false)
-        // The row is one element that reads its title, its time and its preview (`accessibilityLabel(...)`). Its three texts
-        // are its children, with identifiers of their own, which the UI tests read.
-        setAccessibilityElement(true)
+        // The row reads as one element: its title, its time and its preview are the label of its row view
+        // (`accessibilityLabel(for:now:)`, set by `SidebarViewController`), and the three texts stay its children with
+        // identifiers of their own, which the UI tests read. Nothing here makes the cell an element or names its children:
+        // doing both hid the texts from the UI tests (CI of plan 6 task 8).
 
         for subview in [pinView, titleField, timeField, previewField] {
             subview.translatesAutoresizingMaskIntoConstraints = false
@@ -104,8 +105,7 @@ final class NoteRowCellView: NSTableCellView {
             // A note in Recently Deleted is greyed out: it can be read, and not changed.
             titleField.textColor = summary.deletedAt == nil ? .labelColor : .secondaryLabelColor
         }
-        timeField.stringValue = NoteTimeLabel.text(
-            for: summary.modifiedAt, now: now, calendar: .current, locale: .current)
+        timeField.stringValue = Self.timeText(for: summary, now: now)
         previewField.stringValue = summary.preview
         let hasPreview = !summary.preview.isEmpty
         previewField.isHidden = !hasPreview
@@ -123,15 +123,24 @@ final class NoteRowCellView: NSTableCellView {
         pinView.isHidden = !isPinned
         pinWidth.constant = isPinned ? Self.pinSize : 0
         titleLeading.constant = isPinned ? 4 : 0
-
-        setAccessibilityLabel(
-            Self.accessibilityLabel(
-                title: titleField.stringValue, time: timeField.stringValue, preview: summary.preview, isPinned: isPinned
-            ))
     }
 
-    /// What VoiceOver reads for the row (plan 6 task 8): "<title>, <time>, <preview>", with ", pinned" after it for a pinned
-    /// note, and no preview when there is none. The title is "Untitled" for a note with no text, as the row shows it.
+    /// The edit time that a row shows: the time of day for today and yesterday, otherwise the date (`NoteTimeLabel`).
+    static func timeText(for summary: NoteSummary, now: Date) -> String {
+        NoteTimeLabel.text(for: summary.modifiedAt, now: now, calendar: .current, locale: .current)
+    }
+
+    /// What VoiceOver reads for the row of `summary` (plan 6 task 8): "<title>, <time>, <preview>", with ", pinned" after it
+    /// for a pinned note and no preview when there is none. The title is "Untitled" for a note with no text, as the row shows
+    /// it. It is the label of the table's row view, which is one element with the three texts as its children.
+    static func accessibilityLabel(for summary: NoteSummary, now: Date) -> String {
+        let isPinned = summary.pinnedAt != nil && summary.deletedAt == nil
+        return accessibilityLabel(
+            title: summary.displayTitle.isEmpty ? "Untitled" : summary.displayTitle,
+            time: timeText(for: summary, now: now), preview: summary.preview, isPinned: isPinned)
+    }
+
+    /// The words of `accessibilityLabel(for:now:)`.
     static func accessibilityLabel(title: String, time: String, preview: String, isPinned: Bool) -> String {
         var parts = [title, time]
         if !preview.isEmpty { parts.append(preview) }
@@ -145,13 +154,6 @@ final class NoteRowCellView: NSTableCellView {
         return true
     }
 
-    /// The row's children are its texts, in reading order: the title, the time and the preview when it has one. The pin is not
-    /// an element, and a hidden preview is not there.
-    override func accessibilityChildren() -> [Any]? {
-        var children: [NSView] = [titleField, timeField]
-        if !previewField.isHidden { children.append(previewField) }
-        return children
-    }
 }
 
 /// The header of a group of rows: "Pinned", "Today", "Yesterday", "Earlier" or "Recently Deleted (N)", in small bold grey
@@ -163,11 +165,15 @@ final class NoteRowCellView: NSTableCellView {
 /// titles have `sidebarGroup`.
 final class GroupRowCellView: NSTableCellView {
     private let chevronView = NSImageView()
-    private let label = NSTextField(labelWithString: "")
+    /// The header's title, which the tests read. The title of the Recently Deleted header is a button for VoiceOver
+    /// (`configureRecentlyDeleted`).
+    let label = HeaderTitleField(labelWithString: "")
 
     /// What a press does, for VoiceOver: the header of Recently Deleted shows or hides its notes, as a click on it does
-    /// (`SidebarViewController`). Nil for the other headers, which do nothing.
-    var onPress: (() -> Void)?
+    /// (`SidebarViewController`). Nil for the other headers, which do nothing. It is the title's press (`HeaderTitleField`).
+    var onPress: (() -> Void)? {
+        didSet { label.onPress = onPress }
+    }
 
     /// The arrow is 0 points wide, and the title starts at the row's edge, in every header but Recently Deleted's.
     private var chevronWidth: NSLayoutConstraint!
@@ -230,15 +236,15 @@ final class GroupRowCellView: NSTableCellView {
     }
 
     /// Shows the header of Recently Deleted: "Recently Deleted (`count`)", with an arrow that says whether its notes are
-    /// `expanded` (shown under the header). It is a button for VoiceOver, with a label that counts the notes and a value that
-    /// says "expanded" or "collapsed", and a press shows or hides the notes (`onPress`). Only a cell that shows this header
-    /// is made so, and it is never shown as another one (the table keeps these cells apart from the other headers').
+    /// `expanded` (shown under the header). Its title is a button for VoiceOver, with a label that counts the notes, whether
+    /// it is expanded and a hint, and a press shows or hides the notes (`onPress`). The title stays the header's child with its
+    /// identifier (the UI tests look for it by identifier and not by type); only a cell that shows this header is made so, and
+    /// it is never shown as another one (the table keeps these cells apart from the other headers').
     func configureRecentlyDeleted(count: Int, expanded: Bool) {
-        setAccessibilityElement(true)
-        setAccessibilityRole(.button)
-        setAccessibilityLabel(Self.recentlyDeletedAccessibilityLabel(count: count))
-        setAccessibilityValue(expanded ? "expanded" : "collapsed")
-        setAccessibilityExpanded(expanded)
+        label.setAccessibilityRole(.button)
+        label.setAccessibilityLabel(Self.recentlyDeletedAccessibilityLabel(count: count))
+        label.setAccessibilityExpanded(expanded)
+        label.setAccessibilityHelp(expanded ? "Hides the deleted notes" : "Shows the deleted notes")
         label.stringValue = "Recently Deleted (\(count))"
         label.setAccessibilityIdentifier(AccessibilityID.recentlyDeletedHeader)
         chevronView.image = NSImage(
@@ -248,11 +254,13 @@ final class GroupRowCellView: NSTableCellView {
         labelLeading.constant = 4
     }
 
-    /// The header's one child is its title, with its identifier, which the UI tests read: the header is a button for
-    /// VoiceOver (`configureRecentlyDeleted`), and a button's children are not what AppKit lists by default.
-    override func accessibilityChildren() -> [Any]? {
-        [label]
-    }
+}
+
+/// The title of a group header: a label that a press from VoiceOver can act on. Only the header of Recently Deleted sets
+/// `onPress`, and makes the title a button; the other headers' titles are plain texts.
+final class HeaderTitleField: NSTextField {
+    /// What a press does: shows or hides the deleted notes.
+    var onPress: (() -> Void)?
 
     override func accessibilityPerformPress() -> Bool {
         guard let onPress else { return false }

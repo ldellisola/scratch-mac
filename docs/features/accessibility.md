@@ -46,14 +46,18 @@ a nested item. Inside a fenced block nothing is a marker: a line `- not a bullet
 
 ### The window
 
-- **A sidebar row is one element.** Its label reads "<title>, <time>, <preview>" and, for a pinned note, ", pinned":
-  "Groceries, Oct 18, milk, eggs, coffee beans". A note with no text reads "Untitled", and a note with no preview has two
-  parts. The row's three texts are its children, each with its identifier (`sidebar.row.title`, `.time`, `.preview`), which
-  the UI tests read. The pin is not an element. A press from VoiceOver opens the note, as a click and Return do (the arrow
-  keys only move the highlight).
-- **The header of Recently Deleted is a button.** Its label is "Recently Deleted, 2 notes" ("1 note" for one), its value
-  says "collapsed" or "expanded", and a press from VoiceOver shows or hides the notes, as a click does. It is a cell of its
-  own kind in the table, so that no other header is ever made a button by being reused. The other headers are plain text.
+- **A sidebar row is one element.** The table's row view for a note has the label "<title>, <time>, <preview>" and, for a
+  pinned note, ", pinned": "Groceries, Oct 18, milk, eggs, coffee beans" (`NoteRowCellView.accessibilityLabel(for:now:)`, set
+  by `SidebarViewController.tableView(_:didAdd:forRow:)`). A note with no text reads "Untitled", and a note with no preview
+  has two parts. The row's three texts are still its children, each with its identifier (`sidebar.row.title`, `.time`,
+  `.preview`), which the UI tests read. The pin is not an element. A press from VoiceOver opens the note, as a click and
+  Return do (the arrow keys only move the highlight): the cell has the press, `onPress`.
+- **The header of Recently Deleted is a button.** Its title is a button for VoiceOver with the label "Recently Deleted, 2
+  notes" ("1 note" for one), whether it is expanded and a hint ("Shows the deleted notes", "Hides the deleted notes"), and a
+  press from VoiceOver shows or hides the notes, as a click does (`HeaderTitleField`). The title stays the header's child
+  with its identifier and its text as its value ("Recently Deleted (2)"), so that the UI tests find it by identifier and
+  not by type. The header is a cell of its own kind in the table, so that no other header is ever made a button by being
+  reused. The other headers are plain text.
 - **The close button of a tab names the tab:** "Close Deploy checklist". The tab itself is a button whose label is its title
   and which is selected for the active tab (plan 2). The "+" button is "New Tab".
 - **The toolbar's buttons** are "Pin" or "Unpin", "Attach File" and "New Note", with the same words as their tooltips.
@@ -98,8 +102,11 @@ because how a text view validates an action it does not know is not documented.
 
 Every colour of the asset catalog has a high contrast variant, light and dark (`"appearances": [{"appearance": "contrast",
 "value": "high"}]`, and with `luminosity: dark` for the dark one). AppKit picks it when the effective appearance is one of
-the accessibility ones (`NSAppearance.Name.accessibilityHighContrastAqua` and `…DarkAqua`), which is when Increase Contrast
-is on in System Settings. Nothing in the code asks for the setting.
+the high contrast ones ("NSAppearanceNameAccessibilityHighContrastAqua" and "…DarkAqua", `NSAppearance.Name.highContrastAqua`
+and `highContrastDarkAqua` in the app), which is when Increase Contrast is on in System Settings. Nothing in the code asks
+for the setting. The SDK's own constants `NSAppearance.Name.accessibilityHighContrastAqua` and `…DarkAqua` are not these:
+their raw values are "NSAppearanceNameAccessibilityAqua" and "…DarkAqua", and `NSAppearance(named:)` resolves them to
+plain Aqua and Dark Aqua, so a colour asset never answers with its high contrast variant to them.
 
 - **The code colours** (`CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`, `CodeFunction`,
   `CodeAttribute`, `CodePreprocessor`, and `CodeText` of inline code) are darker in light mode and lighter in dark mode, so
@@ -123,8 +130,9 @@ on the machine: `typical-contrast-light` and `code-contrast-dark` (docs/images a
   `accessibilityAttributedString(for:)`, `menu(for:)`, `validateMenuItem`, `toggleCheckbox(at:)`,
   `codeBlock(atViewPoint:)`.
 - `App/Sources/Editor/EditorContextMenu.swift`: the context menu's items.
-- `App/Sources/Sidebar/SidebarRowViews.swift`: the row's label and the header's button. `SidebarViewController.swift`: the
-  header's own cell kind and its press.
+- `App/Sources/Sidebar/SidebarRowViews.swift`: the row's label (`accessibilityLabel(for:now:)`), its press, and the header's
+  button (`HeaderTitleField`). `SidebarViewController.swift`: the label on the row view (`didAdd`), the header's own cell
+  kind and the presses.
 - `App/Sources/Tabs/TabStripViewController.swift`: the close buttons' labels and the high contrast outline of the raised tab.
 - `App/Sources/Window/KeyViewLoop.swift`: the order of Tab. `App/Sources/Support/DebugStateElement.swift`: `firstResponder`
   (`editor`, `title`, `search`, `sidebar` or `other`), for the tests.
@@ -136,6 +144,8 @@ on the machine: `typical-contrast-light` and `code-contrast-dark` (docs/images a
 - `SpokenTextTests` (hosted): a checklist, bullets and nested items, bold and inline code with the caret away and in them,
   a range cut to its words, tokens (an image, a file and a token with no row), a block with its label and one with none, a
   block's lines as typed, the value being the stored text.
+- `SidebarRowViewsTests` (hosted): a row's label (title, time, preview, pinned, "Untitled", no preview), a press on a row,
+  the Recently Deleted header as a button with its count and state and its press, and an ordinary header as plain text.
 - `ContextMenuTests` (hosted): the box (open and ticked, and the caret staying), a link (choosing it opens its URL), an
   attachment (choosing it opens the stored file), a code block (the submenu's items, choosing Python renames the fence), a
   note that cannot be edited, and the menu of a right click with the items first.

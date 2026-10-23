@@ -20,7 +20,7 @@ final class AccessibilityUITests: XCTestCase {
             "the tabs at launch: \(UITestSupport.tabTitles(in: app))")
         XCTAssertTrue(
             UITestSupport.wait { UITestSupport.sidebarTitleTexts(in: app).count == 6 },
-            "the sidebar rows: \(UITestSupport.sidebarTitleTexts(in: app))")
+            "the sidebar rows: \(UITestSupport.sidebarTitleTexts(in: app))\n\(UITestSupport.hierarchy(of: app))")
         return app
     }
 
@@ -91,7 +91,9 @@ final class AccessibilityUITests: XCTestCase {
 
         let expected = "Groceries, \(time), milk, eggs, coffee beans"
         let row = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", expected)).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "no element reads \"\(expected)\"")
+        XCTAssertTrue(
+            row.waitForExistence(timeout: 5),
+            "no element reads \"\(expected)\"\n\(UITestSupport.hierarchy(of: app))")
 
         let pinned = app.descendants(matching: .any).matching(
             NSPredicate(format: "label BEGINSWITH %@ AND label ENDSWITH %@", "Snippets I keep reusing, ", ", pinned")
@@ -106,23 +108,23 @@ final class AccessibilityUITests: XCTestCase {
         XCTAssertTrue(
             UITestSupport.sidebarRow(titled: "Groceries", in: app).waitForExistence(timeout: 20),
             "the sidebar rows: \(UITestSupport.sidebarTitleTexts(in: app))")
-        let text = UITestSupport.recentlyDeletedHeader(in: app)
+        let header = UITestSupport.recentlyDeletedHeader(in: app)
         XCTAssertTrue(
-            UITestSupport.wait(timeout: 20) { text.exists && UITestSupport.text(of: text) == "Recently Deleted (1)" },
-            "the header reads: \(text.exists ? UITestSupport.text(of: text) : "nothing")")
+            UITestSupport.wait(timeout: 20) {
+                header.exists && UITestSupport.text(of: header) == "Recently Deleted (1)"
+            },
+            "the header reads: \(header.exists ? UITestSupport.text(of: header) : "nothing")\n"
+                + UITestSupport.hierarchy(of: app))
 
-        let header = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Recently Deleted, ")
-        ).firstMatch
-        XCTAssertTrue(header.waitForExistence(timeout: 5), "no element is labelled \"Recently Deleted, …\"")
         XCTAssertEqual(header.label, "Recently Deleted, 1 note")
-        XCTAssertEqual(header.elementType, .button)
-        XCTAssertEqual(header.value as? String, "collapsed")
+        XCTAssertEqual(header.elementType, .button, UITestSupport.hierarchy(of: app))
+        XCTAssertEqual(UITestSupport.text(of: header), "Recently Deleted (1)", "its text is still its value")
 
-        text.click()
+        // A click on it shows the deleted notes under it, as before.
+        header.click()
         XCTAssertTrue(
-            UITestSupport.wait { header.value as? String == "expanded" },
-            "after a click the header says: \(String(describing: header.value))")
+            UITestSupport.wait { UITestSupport.sidebarTitleTexts(in: app) == ["Groceries", "Old meeting notes"] },
+            "the sidebar rows after the click: \(UITestSupport.sidebarTitleTexts(in: app))")
     }
 
     // MARK: The key view loop

@@ -48,8 +48,9 @@ Status: plan 2, tasks 8 and 9. Deleting, restoring and the Recently Deleted sect
   - A group header cannot be highlighted or opened. The arrow keys step over it, and a click on it does nothing.
   - **A row is one element for VoiceOver** (plan 6 task 8): it reads "<title>, <time>, <preview>", with ", pinned" after a
     pinned note ("Groceries, Oct 18, milk, eggs, coffee beans"), and its three texts are still its children with their
-    identifiers. A press from VoiceOver opens the note, as a click and Return do. The header of Recently Deleted is a button that says "Recently Deleted, 2 notes" and "collapsed" or
-    "expanded", and a press from VoiceOver shows or hides the notes like a click (accessibility.md).
+    identifiers. A press from VoiceOver opens the note, as a click and Return do. The title of the Recently Deleted header is a
+    button that says "Recently Deleted, 2 notes" and whether it is expanded, and a press from VoiceOver shows or hides the
+    notes like a click (accessibility.md).
   - **Tab goes from the search field to the note list**, then to the title and the editor (accessibility.md, "The
     keyboard").
 - **Pinning.**
@@ -107,7 +108,7 @@ UI tests in `App/Tests/ScratchUITests/SidebarUITests.swift`, on the `typical` fi
 | Search finds a word in the text, and a title in any case | `SidebarUITests.testSearchFiltersByBodyText`, `testSearchMatchesTitlesCaseInsensitively` |
 | Clearing the field, or Escape, brings the whole list back | `SidebarUITests.testClearingSearchRestoresList`, `testEscapeClearsSearch` |
 | The sidebar lists the fixture's notes, pinned first | `SidebarUITests.testSidebarListsFixtureNotesPinnedFirst` |
-| A row reads as one element with its title, time and preview (and ", pinned"), and keeps its texts; the Recently Deleted header is a button with its count and state; Tab leaves the search field for the note list | `AccessibilityUITests.testSidebarRowReadsAsOneElement`, `testRecentlyDeletedHeaderIsAButton`, `testTabFromSearchReachesTheNoteList` |
+| A row reads as one element with its title, time and preview (and ", pinned"), and keeps its texts; the Recently Deleted header is a button with its count and state; Tab leaves the search field for the note list | `AccessibilityUITests.testSidebarRowReadsAsOneElement`, `testRecentlyDeletedHeaderIsAButton`, `testTabFromSearchReachesTheNoteList`, `SidebarRowViewsTests` |
 | A title and a preview skip fence lines and attachment lines; an image-only note has no title | `NoteTests.titleSkipsFenceLines`, `titleSkipsAttachmentLines`, `imageOnlyNoteHasEmptyTitle`, `previewSkipsFenceAndAttachmentLines` |
 | The migration to schema version 3 works the titles out again, keeps every note, and leaves `modified_at` alone | `SchemaTests.migratingV2RecomputesTitles`, `migratingV2KeepsEveryNoteAndEveryOtherColumn` |
 | A title and a preview have no list marker, bold stars or code backticks outside a block, and are as typed inside one | `PlainLineTests`, `NoteTests.checkboxTitleHasNoMarker`, `bulletAndBoldTitle`, `codeBlockLinesKeepMarkers` |

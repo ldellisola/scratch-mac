@@ -1,8 +1,8 @@
 import Foundation
 
 /// Forces the app's appearance, so a screenshot in light or dark mode does not depend on the machine's setting. The two
-/// `-contrast` ones are light and dark with Increase Contrast on (the app maps them to the accessibility appearances,
-/// `NSAppearance.Name.accessibilityHighContrastAqua` and `…DarkAqua`), for the screenshots that show the high contrast
+/// `-contrast` ones are light and dark with Increase Contrast on (the app maps them to the high contrast appearances,
+/// "NSAppearanceNameAccessibilityHighContrastAqua" and "…DarkAqua"), for the screenshots that show the high contrast
 /// variants of the colours (plan 6 task 8).
 public enum AppearanceOverride: String, CaseIterable, Sendable {
     case light
