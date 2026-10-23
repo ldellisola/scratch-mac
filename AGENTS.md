@@ -235,8 +235,10 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   AttachmentImporting (`AttachmentSource`: a file or the bytes of an image, and the
                                   `AttachmentImporting` protocol that NoteTextView asks to make attachments, `noteID`).
                                   NoteTextView reads a paste or a drop in the order of spec §6.5 (`readSelection(from:)`,
-                                  `paste`, `attachmentSources(from:)`, `insertAttachments`, `acceptsDrop`, `performDrop`),
-                                  opens the paperclip's panel (`attachFiles`, `presentOpenPanel`), keeps a token whole
+                                  `readSelection(from:type:)`, `paste`, `insertNoteText`: the note's own text of a copy,
+                                  `insertTextWithTokenBreaks`, `attachmentSources(from:)`, `insertAttachments`,
+                                  `acceptsDrop`, `performDrop`), puts text typed or composed next to a token on a line of
+                                  its own (`makeRoomAtTokenEdge`), opens the paperclip's panel (`attachFiles`, `presentOpenPanel`), keeps a token whole
                                   (`snappedSelection`, which the editor's selection delegate asks, and `deleteBackward` and
                                   `deleteForward`), takes a click on a preview or a chip (`attachmentHit`: the drawn rect,
                                   `pressAttachment`: a click selects, a double-click opens through `openURL`, `mouseDragged`
