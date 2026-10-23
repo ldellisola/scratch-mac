@@ -181,7 +181,7 @@ final class SpokenTextTests: XCTestCase {
         let text = "[ ] buy **milk**\n- a `thing`\n```swift\nlet x = 1\n```"
         show(text, caret: 0, in: host)
 
-        XCTAssertEqual(host.editor.textView.accessibilityValue() as? String, text, "the value is the stored text")
+        XCTAssertEqual(host.editor.textView.accessibilityValue(), text, "the value is the stored text")
         XCTAssertEqual(host.editor.currentText, text)
         XCTAssertNotEqual(spoken(in: host), text, "while what is read for a range is not")
     }
