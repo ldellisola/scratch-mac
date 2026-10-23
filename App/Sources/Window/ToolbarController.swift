@@ -112,7 +112,6 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
         item.label = "Tabs"
         item.paletteLabel = "Tabs"
         item.isBordered = false
-        item.hidesSharedBackground = true
         item.visibilityPriority = .high
         if !forPalette { tabStripToolbarItem = item }
         return item

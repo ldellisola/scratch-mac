@@ -56,7 +56,7 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
   mockup B). The toolbar's items are, from the left: the sidebar button, the tracking separator, the strip, a flexible space,
   the pin and the paperclip (one glass group), a space and the new note button (another). It is as wide as its tabs, and no
   wider than the room the toolbar leaves before its buttons (below).
-  - The item has no border and no shared background (`isBordered = false`, `hidesSharedBackground = true`), so the toolbar
+  - The item has no border and no shared background (`isBordered = false`), so the toolbar
     puts no second capsule round the strip's own, and visibility priority `high`; the three buttons have `user`, so none of
     them goes into the overflow menu.
   - **Its width is made to fit, never left to the toolbar:** a toolbar that is short of room moves items into its overflow

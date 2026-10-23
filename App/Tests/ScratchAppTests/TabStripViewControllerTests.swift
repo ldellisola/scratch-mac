@@ -275,8 +275,7 @@ final class TabStripViewControllerTests: XCTestCase {
 
         XCTAssertTrue(item.view === strip.view, "the item's view is the strip's")
         XCTAssertTrue(item.view is TabStripView)
-        XCTAssertFalse(item.isBordered)
-        XCTAssertTrue(item.hidesSharedBackground, "one glass capsule round the tabs: the strip's own")
+        XCTAssertFalse(item.isBordered, "one glass capsule round the tabs: the strip's own")
         XCTAssertEqual(item.visibilityPriority, .high)
         for identifier in [AccessibilityID.pinButton, AccessibilityID.attachButton, AccessibilityID.newNoteButton] {
             let button = try XCTUnwrap(

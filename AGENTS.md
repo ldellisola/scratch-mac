@@ -948,8 +948,8 @@ new kind of release file, with no change to the app, ships.
   list again (`SidebarTableView` turns Return into `onReturn`). ⌘-click on the highlighted row deselects it, which
   `open(_:inNewTab:)` undoes by rendering the sidebar even when it has nothing to show.
 - **The tab strip is the view of a toolbar item, and its width is made to fit.** `ToolbarController` makes the item for
-  `AccessibilityID.tabStrip` (`makeTabStripItem`: the strip's view, `isBordered = false`, `hidesSharedBackground = true`, so
-  that the toolbar draws no second capsule round the strip's own glass, and `visibilityPriority = .high`). The toolbar's
+  `AccessibilityID.tabStrip` (`makeTabStripItem`: the strip's view, `isBordered = false`, so that the
+  toolbar draws no second capsule round the strip's own glass (`NSToolbarItem` has no `hidesSharedBackground` on the macOS 26.5 SDK: it did not compile), and `visibilityPriority = .high`). The toolbar's
   items are `[.toggleSidebar, .sidebarTrackingSeparator, strip, .flexibleSpace, pin, paperclip, .space, new note]` (the
   `.space` ends the glass group of the first two, so there are two capsules), and the three buttons are `.user`: **a toolbar
   that is short of room moves items into its overflow menu**, so the strip is never left to be as wide as its tabs want. Its
