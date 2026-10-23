@@ -158,9 +158,10 @@ final class MarkupStylerTests: XCTestCase {
         for index in 4...10 { XCTAssertTrue(isBold(font(at: index, in: host)), "bold at \(index)") }
     }
 
-    /// What is composed keeps the keys of the view's `markedTextAttributes`, but not the font and the colours that an edit
-    /// takes from the text next to it: those are the styler's, and a stale one would paint composed text next to inline
-    /// code or a link as that.
+    /// What is composed keeps the keys of the view's `markedTextAttributes` (the plan's call: "marked (IME) text keeps
+    /// `markedTextAttributes` while the styler restyles its paragraph"), the colour that highlights it included, but not
+    /// a font or a colour that is not the value of `markedTextAttributes`: those are the text next to it, which the styler
+    /// settles, and a stale one would paint composed text next to inline code or a link as that.
     func testComposedTextKeepsMarkedTextAttributesButNotTheNeighboursLook() {
         let host = makeHostedEditor()
         defer { withExtendedLifetime(host.window) {} }
@@ -185,12 +186,63 @@ final class MarkupStylerTests: XCTestCase {
             XCTAssertEqual(
                 attribute(.strikethroughStyle, at: index, in: host) as? Int, NSUnderlineStyle.single.rawValue,
                 "a key of markedTextAttributes is kept at \(index)")
-            XCTAssertNil(attribute(.backgroundColor, at: index, in: host), "a colour is the styler's, at \(index)")
-            XCTAssertEqual(attribute(.foregroundColor, at: index, in: host) as? NSColor, plainColour)
-            XCTAssertTrue(isRegular(font(at: index, in: host)), "the font is the styler's, at \(index)")
+            XCTAssertEqual(
+                attribute(.backgroundColor, at: index, in: host) as? NSColor, NSColor.systemYellow,
+                "the marked-text highlight is kept at \(index)")
+            XCTAssertEqual(
+                attribute(.foregroundColor, at: index, in: host) as? NSColor, plainColour,
+                "a foreground colour that markedTextAttributes does not name is the styler's, at \(index)")
+            XCTAssertTrue(
+                isRegular(font(at: index, in: host)),
+                "a font that markedTextAttributes does not name is the styler's, at \(index)")
         }
         XCTAssertNil(attribute(.strikethroughStyle, at: 4, in: host))
         XCTAssertNil(attribute(.strikethroughStyle, at: 7, in: host))
+        XCTAssertNil(attribute(.backgroundColor, at: 4, in: host), "the text before it has no highlight")
+        XCTAssertNil(attribute(.backgroundColor, at: 7, in: host), "nor has the text after it")
+    }
+
+    /// A key that the styler owns is kept at the value of `markedTextAttributes` and at no other: the same key with another
+    /// value is the neighbour's.
+    func testComposedColourIsKeptOnlyAtTheMarkedTextValue() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("plain text", caret: 5, in: host)
+        let textView = host.editor.textView
+        textView.markedTextAttributes = [
+            .underlineStyle: NSUnderlineStyle.single.rawValue, .foregroundColor: NSColor.systemBlue,
+            .backgroundColor: NSColor.systemYellow,
+        ]
+        let plainColour = attribute(.foregroundColor, at: 0, in: host) as? NSColor
+        XCTAssertNotEqual(plainColour, NSColor.systemBlue, "the plain colour must differ from the marked-text one")
+
+        compose(
+            composed("ni", adding: [.foregroundColor: NSColor.systemBlue, .backgroundColor: NSColor.systemOrange]),
+            replacing: NSRange(location: 5, length: 0), in: host)
+
+        XCTAssertEqual(host.editor.currentText, "plainni text")
+        for index in 5...6 {
+            XCTAssertEqual(
+                attribute(.foregroundColor, at: index, in: host) as? NSColor, NSColor.systemBlue,
+                "the marked-text colour is kept at \(index)")
+            XCTAssertNil(
+                attribute(.backgroundColor, at: index, in: host),
+                "a background that is not the marked-text one is dropped at \(index)")
+        }
+        XCTAssertEqual(attribute(.foregroundColor, at: 4, in: host) as? NSColor, plainColour)
+        XCTAssertEqual(attribute(.foregroundColor, at: 7, in: host) as? NSColor, plainColour)
+
+        // The composition goes on with the colour of the text next to it: not the marked-text one, so the styler's.
+        compose(
+            composed("zh", adding: [.foregroundColor: NSColor.systemRed]),
+            replacing: NSRange(location: 5, length: 2), in: host)
+
+        XCTAssertEqual(host.editor.currentText, "plainzh text")
+        for index in 5...6 {
+            XCTAssertEqual(
+                attribute(.foregroundColor, at: index, in: host) as? NSColor, plainColour,
+                "a colour that is not the marked-text one is the styler's, at \(index)")
+        }
     }
 
     /// A real `setMarkedText`: the paragraph is styled around the composed characters at every step, the note's text is

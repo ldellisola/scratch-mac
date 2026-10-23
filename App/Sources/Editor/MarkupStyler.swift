@@ -430,21 +430,35 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     // MARK: Composed text
 
     /// The attributes that mean "this text is being composed" (plan 6 task 5): the underline and the clause segment that
-    /// an input method hands over with its text, and the other keys of the view's `markedTextAttributes`. Resetting a
+    /// an input method hands over with its text, and the keys of the view's `markedTextAttributes`. Resetting a
     /// paragraph's attributes would take them off text that is still being composed, and the owner would no longer see
-    /// which part of it is not entered yet. The font, the colours and the paragraph style are not among them, even
-    /// where `markedTextAttributes` names a colour (it does by default, macOS 26.6): the edit that puts composed text in
-    /// gives it the attributes of the text next to it, so what it carries of those is the neighbour's and not the
-    /// input method's, and keeping it would paint composed text next to inline code or a link as that.
-    private func composedKeys(of textView: NoteTextView) -> Set<NSAttributedString.Key> {
-        var keys: Set<NSAttributedString.Key> = [.underlineStyle, .underlineColor, .markedClauseSegment]
-        // Typed as an optional, whichever way the SDK declares the property.
-        let marked: [NSAttributedString.Key: Any]? = textView.markedTextAttributes
-        if let marked { keys.formUnion(marked.keys) }
-        return keys.subtracting(Self.stylerOwnedKeys)
+    /// which part of it is not entered yet. The keys that the styler sets on every paragraph itself (the font, the
+    /// colours, the paragraph style: `stylerOwnedKeys`) are kept only at the value that `markedTextAttributes` gives
+    /// them, which is the marked-text highlight (by default, macOS 26.6, a background and a foreground colour). The edit
+    /// that puts composed text in also gives it the attributes of the text next to it, so a colour or a font that
+    /// differs from `markedTextAttributes` is the neighbour's and not the input method's, and keeping it would paint
+    /// composed text next to inline code or a link as that.
+    private func keptComposedAttributes(
+        _ attributes: [NSAttributedString.Key: Any], marked: [NSAttributedString.Key: Any]
+    ) -> [NSAttributedString.Key: Any] {
+        attributes.filter { entry in
+            if Self.stylerOwnedKeys.contains(entry.key) {
+                guard let expected = marked[entry.key] as? NSObject, let actual = entry.value as? NSObject else {
+                    return false
+                }
+                return expected.isEqual(actual)
+            }
+            return Self.composedKeys.contains(entry.key) || marked[entry.key] != nil
+        }
     }
 
-    /// What the styler sets on every paragraph itself, so that an edit's inherited value is never worth keeping.
+    /// What marks composed text whatever the view's `markedTextAttributes` say.
+    private static let composedKeys: Set<NSAttributedString.Key> = [
+        .underlineStyle, .underlineColor, .markedClauseSegment,
+    ]
+
+    /// What the styler sets on every paragraph itself, so that an edit's inherited value is only worth keeping when it
+    /// is the value of `markedTextAttributes`.
     private static let stylerOwnedKeys: Set<NSAttributedString.Key> = [
         .font, .foregroundColor, .backgroundColor, .paragraphStyle,
     ]
@@ -453,7 +467,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     /// paragraph has been styled. Only text that `setMarkedText` is putting in is composed (`isSettingMarkedText`): the
     /// edit of typing, a paste or an input method's final `insertText` keeps none of it, so a link's underline that
     /// typed text took from the text before it is the styler's to settle. Empty when nothing is being composed, and when
-    /// the edit carries none of the keys, which is what AppKit hands the text storage on macOS 26.6: the composed
+    /// the edit carries none of the attributes, which is what AppKit hands the text storage on macOS 26.6: the composed
     /// characters have the typing attributes only at the end of the edit (measured on CI, plan 6 task 5), so this
     /// holds for a version that gives them the input method's attributes in the edit itself.
     private func composedAttributes(
@@ -462,10 +476,12 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         guard let textView, textView.isSettingMarkedText, range.length > 0, NSMaxRange(range) <= storage.length else {
             return []
         }
-        let keys = composedKeys(of: textView)
+        // Typed as an optional, whichever way the SDK declares the property.
+        let markedAttributes: [NSAttributedString.Key: Any]? = textView.markedTextAttributes
+        let marked = markedAttributes ?? [:]
         var runs: [(range: NSRange, attributes: [NSAttributedString.Key: Any])] = []
         storage.enumerateAttributes(in: range, options: []) { attributes, run, _ in
-            let kept = attributes.filter { keys.contains($0.key) }
+            let kept = keptComposedAttributes(attributes, marked: marked)
             if !kept.isEmpty { runs.append((run, kept)) }
         }
         return runs

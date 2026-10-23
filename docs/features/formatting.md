@@ -144,9 +144,10 @@ Every step of the composition replaces that text, which is an edit, and the styl
 from its base attributes. What marks the text as composed (the underline, its colour, the clause segment, and the other keys
 of the view's `markedTextAttributes`) is therefore put back after the paragraph has been styled, when the edit itself carries
 it (`MarkupStyler.composedAttributes`, for the edit that `NoteTextView.setMarkedText` makes): the owner can always see which
-part of the text is not entered yet, also inside a bold run, a list line or inline code. The font, the colours and the paragraph
-style of the composed text stay the styler's. The composed text is part of the note's text like any other, and what is entered
-is styled as typed. On macOS 26.6 AppKit gives the storage none of these attributes (it draws the marked text itself and
+part of the text is not entered yet, also inside a bold run, a list line or inline code. Colours and fonts are kept only when
+they are the values of `markedTextAttributes` (the marked-text highlight, a background colour for example); a colour or a font
+that is not one of them is the text next to it, and stays the styler's, as does the paragraph style. The composed text is part
+of the note's text like any other, and what is entered is styled as typed. On macOS 26.6 AppKit gives the storage none of these attributes (it draws the marked text itself and
 writes the typing font on it), so there the rule changes nothing; it holds for an input method that does hand them over.
 
 ## Behaviour: links open with ⌘-click

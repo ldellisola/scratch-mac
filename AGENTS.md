@@ -1118,9 +1118,13 @@ new kind of release file, with no change to the app, ships.
   is entered. So the styler's rule is defensive, for a version that does hand the storage the attributes in the edit itself:
   `NoteTextView.setMarkedText` sets `isSettingMarkedText` around `super`, and the styler reads the underline, the underline
   colour, the clause segment and the keys of `markedTextAttributes` from the characters that edit put in
-  (`composedAttributes`) before the reset, and puts them back after the styling (`restoreComposedAttributes`). The font, the
-  colours and the paragraph style are never kept (`stylerOwnedKeys`): they are the neighbour's in that edit, and `markedTextAttributes`
-  names a colour, so keeping them would paint composed text next to inline code or a link as that. Typing, a paste and the final
+  (`composedAttributes`) before the reset, and puts them back after the styling (`restoreComposedAttributes`). **Colours and
+  fonts are kept only when they are the `markedTextAttributes` values** (plan 6 Global Constraints, "Composed text"): a key
+  that the styler sets on every paragraph itself (`stylerOwnedKeys`: font, foreground and background colour, paragraph style)
+  is kept when its value `isEqual` to the one under the same key in `markedTextAttributes` (the marked-text highlight: by
+  default a background and a foreground colour), and dropped otherwise, because a colour or a font that differs from
+  `markedTextAttributes` is the neighbour's in that edit, and keeping it would paint composed text next to inline code or a link
+  as that (`keptComposedAttributes`). Typing, a paste and the final
   `insertText` of an input method are not composed, and keep nothing. A hosted test cannot get such an edit out of AppKit, so
   `MarkupStylerTests` set `isSettingMarkedText` themselves (it is not `private(set)` for that reason) and edit the storage
   with an attributed string like an input method's; `testSetMarkedTextRestylesTheLineAndEndsTheComposing` is the real
