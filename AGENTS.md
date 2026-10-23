@@ -265,7 +265,7 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
                                   reveal, fenced blocks are literal, a long note is styled in chunks, composed text keeps
-                                  its underline, CheckboxTests: a
+                                  what marks it (the storage edited directly, see section 7), CheckboxTests: a
                                   click ticks a box, a double-click ticks it once, ⇧⌘L, ⇧⌘U, the drawn symbol, the Format
                                   menu, ListKeyTests: Return, Tab, ⇧Tab and ⌘B (on a word, on lines), LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
                                   coordinator on a failing disk keeps and retries the notes it could not write, and
@@ -1107,15 +1107,25 @@ new kind of release file, with no change to the app, ships.
   The hosted `ListKeyTests` call `insertNewline(nil)`, `insertTab(nil)`, `insertBacktab(nil)` and `toggleBoldMarkers(nil)`
   directly, with one editor and one `UndoManager` for each edit that is undone (see the undo pitfall above), and
   `FormattingUITests` presses the keys, so that the menu bar and the responder chain are in the path.
-- **Composed (IME) text is an edit at every key, and the styler resets the paragraph of every edit.** An input method
-  puts its text in the storage with an underline and a clause segment (`markedTextAttributes`), and `setMarkedText`
-  replaces it at every step, so `storageDidEdit`'s `setAttributes(appearance.base, …)` took the underline away.
+- **Composed (IME) text is an edit at every key, and the styler resets the paragraph of every edit.** `setMarkedText`
+  replaces the marked text at every step, so `storageDidEdit`'s `setAttributes(appearance.base, …)` would take off whatever
+  the edit had put on the composed characters. **Measured on CI (macOS 26.6.2, plan 6 task 5): AppKit puts none of the input
+  method's attributes in the storage.** A bare TextKit 1 view and the editor both end `setMarkedText` with the typing attributes
+  (font and colour) and nothing else on the composed characters (no underline, no clause segment, no `markedTextAttributes`:
+  those are a background and a foreground colour by default), and no temporary attribute either, and at the styler's
+  `didProcessEditing` the composed characters carry the font and colour of the text next to them. AppKit draws the marked text
+  by other means, and writes the typing font onto it after the edit, so a composed character in a bold run is regular until it
+  is entered. So the styler's rule is defensive, for a version that does hand the storage the attributes in the edit itself:
   `NoteTextView.setMarkedText` sets `isSettingMarkedText` around `super`, and the styler reads the underline, the underline
   colour, the clause segment and the keys of `markedTextAttributes` from the characters that edit put in
-  (`composedAttributes`) before the reset and puts them back after the styling (`restoreComposedAttributes`). Typing, a
-  paste and the final `insertText` of an input method are not composed, and get nothing back. The hosted
-  `MarkupStylerTests.testMarkedTextKeepsItsUnderline` hands over an attributed string like an input method's, and looks for
-  the underline in the storage and, failing that, in the layout manager's temporary attributes.
+  (`composedAttributes`) before the reset, and puts them back after the styling (`restoreComposedAttributes`). The font, the
+  colours and the paragraph style are never kept (`stylerOwnedKeys`): they are the neighbour's in that edit, and `markedTextAttributes`
+  names a colour, so keeping them would paint composed text next to inline code or a link as that. Typing, a paste and the final
+  `insertText` of an input method are not composed, and keep nothing. A hosted test cannot get such an edit out of AppKit, so
+  `MarkupStylerTests` set `isSettingMarkedText` themselves (it is not `private(set)` for that reason) and edit the storage
+  with an attributed string like an input method's; `testSetMarkedTextRestylesTheLineAndEndsTheComposing` is the real
+  `setMarkedText` and holds to what AppKit does do. A temporary diagnostic must never log `storage.string` per edit: it made the
+  keystroke 22.6 ms on the huge note.
 - **The Format menu is not auto-enabled** (`menu.autoenablesItems = false`, `MainMenu.formatMenu`): AppKit would ask the
   first responder, and the way `NSTextView` validates an action it does not know is not documented. A Format item has
   no target, so the first responder gets it, and a command that cannot work beeps (`NSSound.beep()`).

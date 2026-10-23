@@ -8,7 +8,7 @@ behaviour, marker rules) and §6.5 (copy-out keeps the markers), guarding the an
 Status: released in 0.3.0 (plan 3): styling, checkboxes, ⇧⌘L, the keyboard (Return, Tab, ⇧Tab and ⌘B) and ⌘-click on
 links. From 0.4.0 (plan 4, task 1) bold needs word boundaries: [ADR 0006](../decisions/0006-bold-word-boundaries.md).
 From 1.0.0 (plan 6, task 5): ⌘B on a caret and on several lines, ⇧⌘U (Mark as Checked), a double-click on a box ticks it
-once, and composed (IME) text keeps its underline.
+once, and the styler keeps what marks composed (IME) text when the edit carries it.
 
 ## Behaviour: what renders
 
@@ -139,13 +139,15 @@ spaces.
 
 ## Behaviour: composed text
 
-An input method (Japanese, Chinese, Korean, the accent menu) puts the text it composes in the note, underlined, until the
-owner enters it. Every step of the composition replaces that text, which is an edit, and the styler styles the paragraph
-of every edit again from its base attributes. The underline that AppKit gave the composed text (and its clause segment)
-is therefore put back after the paragraph has been styled (`MarkupStyler.composedAttributes`, for the edit that
-`NoteTextView.setMarkedText` makes): the owner can always see which part of the text is not entered yet, also inside a bold
-run, a list line or inline code. The composed text is part of the note's text like any other, and what is entered is
-styled as typed.
+An input method (Japanese, Chinese, Korean, the accent menu) puts the text it composes in the note until the owner enters it.
+Every step of the composition replaces that text, which is an edit, and the styler styles the paragraph of every edit again
+from its base attributes. What marks the text as composed (the underline, its colour, the clause segment, and the other keys
+of the view's `markedTextAttributes`) is therefore put back after the paragraph has been styled, when the edit itself carries
+it (`MarkupStyler.composedAttributes`, for the edit that `NoteTextView.setMarkedText` makes): the owner can always see which
+part of the text is not entered yet, also inside a bold run, a list line or inline code. The font, the colours and the paragraph
+style of the composed text stay the styler's. The composed text is part of the note's text like any other, and what is entered
+is styled as typed. On macOS 26.6 AppKit gives the storage none of these attributes (it draws the marked text itself and
+writes the typing font on it), so there the rule changes nothing; it holds for an input method that does hand them over.
 
 ## Behaviour: links open with ⌘-click
 
@@ -235,11 +237,12 @@ text like any other, so that placing the caret in a link never opens a browser.
 | Tab is a tab on a plain line and in a block, and nothing in a read-only note | `testTabOnAPlainLineInsertsATab`, `testTabInsideCodeBlockInsertsATab`, `testTabInAReadOnlyNoteChangesNothing`, `testShiftTabOnAPlainLineChangesNoText` |
 | ⌘B wraps the selection, takes the stars off a bold run, or puts the caret between a pair | `testCommandBWrapsSelection`, `testCommandBOnABoldRunTakesTheStarsAway`, `testCommandBWithoutSelectionPutsTheCaretBetweenTheStars` |
 | ⌘B with a caret wraps the word under it and keeps the caret, takes a run's stars off, and removes an empty pair (ScratchCore, then the editor) | `InlineEditingTests.boldCaretInWordWrapsWord`, `boldCaretAtTheEdgeOfAWordWrapsIt`, `boldCaretNextToPunctuationWrapsTheWordOnly`, `boldCaretWrapsTheWordOfALaterLine`, `boldCaretTakesAnApostropheInsideAWord`, `boldCaretKnowsLettersAndDigitsOfAnyScriptAndNotEmoji`, `boldCaretInAListItemWrapsTheWordAfterTheMarker`, `boldCaretInAMarkerActsAtTheStartOfTheText`, `boldCaretInRunUnwraps`, `boldCaretInOneRunOfSeveralUnwrapsThatRun`, `boldCaretInARunInAListItemUnwraps`, `boldCaretInEmptyPairRemovesIt`, `boldTwiceInWordRestoresText`, `boldTwiceOnTheEmptyPairRestoresText`, `boldCaretWrapsAWordThatIsARun`, `boldCaretOutsideTheParagraphsIsNil`, `ListKeyTests.testBoldOnCaretInWord`, `testBoldOnCaretBetweenEmptyPairRemovesIt`, `FormattingUITests.testCommandBTwiceOnAWordRestoresIt` |
-| ⌘B on several lines wraps each line after its marker, skips blank lines, takes the stars off when all are bold, and twice restores the text; on white space only it is nil | `InlineEditingTests.wrapSelectionAcrossLinesWrapsEachLine`, `aSelectionOfOnlyWhiteSpaceIsNil`, `boldLinesWrapEachLine`, `boldLinesWrapAfterTheListMarkerAndKeepTheIndent`, `boldLinesLeaveWhiteSpaceAtTheEndsOutside`, `boldLinesStartAndEndInTheMiddleOfTheirLines`, `boldLinesSkipBlankLines`, `boldLinesUnwrapWhenAllBold`, `boldLinesUnwrapWhenTheSelectionIsTheContent`, `boldLinesTwiceRestoreTheText`, `boldLinesWrapOnlyTheLinesThatAreNotRunsYet`, `boldLinesOfOnlyWhiteSpaceAreNil`, `boldLinesOfALongerDocumentUseTheStartOffset`, `boldLinesWithCRLF`, `aTripleClickOnAListLineWrapsTheTextAfterTheMarker`, `ListKeyTests.testCommandBOnSeveralLinesWrapsEachLine`, `testCommandBOnWhiteSpaceOnlyDoesNothing` |
+| ⌘B on several lines wraps each line after its marker, skips blank lines, takes the stars off when all are bold, and twice restores the text; on white space only it is nil | `InlineEditingTests.wrapSelectionAcrossLinesWrapsEachLine`, `boldWhitespaceSelectionIsNil`, `boldLinesWrapEachLine`, `boldLinesWrapAfterTheListMarkerAndKeepTheIndent`, `boldLinesLeaveWhiteSpaceAtTheEndsOutside`, `boldLinesStartAndEndInTheMiddleOfTheirLines`, `boldLinesSkipBlankLines`, `boldLinesUnwrapWhenAllBold`, `boldLinesUnwrapWhenTheSelectionIsTheContent`, `boldLinesTwiceRestoreTheText`, `boldLinesWrapOnlyTheLinesThatAreNotRunsYet`, `boldLinesOfOnlyWhiteSpaceAreNil`, `boldLinesOfALongerDocumentUseTheStartOffset`, `boldLinesWithCRLF`, `aTripleClickOnAListLineWrapsTheTextAfterTheMarker`, `ListKeyTests.testCommandBOnSeveralLinesWrapsEachLine`, `testCommandBOnWhiteSpaceOnlyDoesNothing` |
 | ⇧⌘U ticks every open box under the selection, unticks them when all are ticked, ignores the lines that are no boxes, keeps the selection and is nil without a box (ScratchCore) | `ListEditingTests.checkmarksTickAllWhenAnyOpen`, `checkmarksUntickWhenAllTicked`, `checkmarksTwiceRestoreTheText`, `checkmarksNilWithoutChecklist`, `checkmarksKeepIndentAndText`, `checkmarksOnlyTouchTheLinesOfTheSelection`, `checkmarksIgnoreTheLinesThatAreNotCheckboxes`, `checkmarksTickTheOpenOnesWhenSomeAreAlreadyTicked`, `checkmarksKeepTheSelectionWhereItWas`, `checkmarksOfAnAttachmentAreNothing`, `checkmarksCountUTF16AndStartOffsets`, `checkmarksWithCRLFLines`, `checkmarksOutsideTheParagraphsAreNil` |
 | Mark as Checked is in the Format menu on ⇧⌘U, ticks the selected lines in one undo step, beeps in a code block and without a box, and works from the keyboard | `CheckboxTests.testMarkAsCheckedMenuItem`, `testMarkAsCheckedTicksTheSelectedLines`, `testMarkAsCheckedUntickWhenEveryBoxIsTicked`, `testMarkAsCheckedUsesTheCaretsLine`, `testMarkAsCheckedBeepsInCodeBlock`, `testMarkAsCheckedWithoutACheckboxDoesNothing`, `testMarkAsCheckedInAReadOnlyNoteDoesNothing`, `FormattingUITests.testMarkAsCheckedShortcutTicksAndUnticks` |
 | A double-click on a box ticks it once, in one undo step, and a click after it toggles again | `CheckboxTests.testDoubleClickOnABoxTicksItOnce`, `testASingleClickAfterADoubleClickTicksAgain` |
-| Composed text keeps its underline through the restyle of its paragraph, and typed text gets none | `MarkupStylerTests.testMarkedTextKeepsItsUnderline`, `testTextThatIsNotComposedHasNoUnderlineFromTheStyler` |
+| Composed text keeps its underline and clause segment through the restyle of its paragraph, in a bold run, at every step, and keeps the other keys of `markedTextAttributes` but not the neighbour's font and colours; typed text and an edit that is not composed get none | `MarkupStylerTests.testMarkedTextKeepsItsUnderline`, `testComposedTextKeepsMarkedTextAttributesButNotTheNeighboursLook`, `testTextThatIsNotComposedHasNoUnderlineFromTheStyler` |
+| `setMarkedText` restyles the line around the composed characters, lowers the styler's flag and leaves the text as sent | `MarkupStylerTests.testSetMarkedTextRestylesTheLineAndEndsTheComposing` |
 | ⌘B inside a word wraps the selection, and the stars are not a run (the core's rule); next to punctuation they are | ScratchCore `InlineEditingTests.wrapInsideAWordStillInsertsStarsButTheyAreNotBold`, `unwrapNextToPunctuationStillWorks`, `wrapNextToPunctuationMakesARun` |
 | ⌘B does nothing in a block or a read-only note | `testCommandBInsideCodeBlockDoesNothing`, `testCommandBInAReadOnlyNoteDoesNothing` |
 | ⌘B does nothing when the selection touches the token line of an attachment, and works on the line below it | `AttachmentEditingTests.testBoldCommandLeavesAnAttachmentAlone`, `testBoldCommandBelowAnAttachmentStillWorks`, ScratchCore `InlineEditingTests.aSelectedAttachmentIsTouched`, `aSelectionThatHoldsATokenLineIsTouched`, `aCaretAtEitherEndOfATokenLineTouchesIt`, `aCaretOrSelectionNextToATokenLineButNotOnItIsNotTouched` |

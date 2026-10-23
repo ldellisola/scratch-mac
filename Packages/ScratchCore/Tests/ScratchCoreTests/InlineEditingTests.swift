@@ -58,7 +58,7 @@ private func touchesAttachment(_ marked: String) -> Bool {
     #expect(toggleBold("a\n|word\r\n|b") == "a\n**|word|**\r\nb")
 }
 
-@Test func aSelectionOfOnlyWhiteSpaceIsNil() {
+@Test func boldWhitespaceSelectionIsNil() {
     // Nothing to make bold: the text view beeps (plan 6 task 5).
     #expect(toggleBold("a|  |b") == nil)
     #expect(toggleBold("|   |") == nil)

@@ -429,33 +429,36 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
 
     // MARK: Composed text
 
-    /// What AppKit puts on the characters of composed (marked) text, which an input method has not entered yet: the
-    /// underline and the clause segment that it hands over with the text, and whatever else the view's
-    /// `markedTextAttributes` hold. Resetting a paragraph's attributes would take them off the text that is still being
-    /// composed, and the owner would no longer see which part of the text is not entered yet.
+    /// The attributes that mean "this text is being composed" (plan 6 task 5): the underline and the clause segment that
+    /// an input method hands over with its text, and the other keys of the view's `markedTextAttributes`. Resetting a
+    /// paragraph's attributes would take them off text that is still being composed, and the owner would no longer see
+    /// which part of it is not entered yet. The font, the colours and the paragraph style are not among them, even
+    /// where `markedTextAttributes` names a colour (it does by default, macOS 26.6): the edit that puts composed text in
+    /// gives it the attributes of the text next to it, so what it carries of those is the neighbour's and not the
+    /// input method's, and keeping it would paint composed text next to inline code or a link as that.
     private func composedKeys(of textView: NoteTextView) -> Set<NSAttributedString.Key> {
         var keys: Set<NSAttributedString.Key> = [.underlineStyle, .underlineColor, .markedClauseSegment]
         // Typed as an optional, whichever way the SDK declares the property.
         let marked: [NSAttributedString.Key: Any]? = textView.markedTextAttributes
         if let marked { keys.formUnion(marked.keys) }
-        return keys
+        return keys.subtracting(Self.stylerOwnedKeys)
     }
 
-    /// The attributes of composed text in `range`, which holds what an edit has just put in, to put back after the
-    /// paragraph has been styled. Only text that `setMarkedText` is putting in is composed: the edit of typing, a paste or
-    /// an input method's final `insertText` is never given an underline here, so a link's underline that typed text took
-    /// from the text before it is the styler's to settle. Empty when nothing is being composed.
-    // DIAGNOSTIC (temporary)
-    static var diagnosticLog: [String] = []
+    /// What the styler sets on every paragraph itself, so that an edit's inherited value is never worth keeping.
+    private static let stylerOwnedKeys: Set<NSAttributedString.Key> = [
+        .font, .foregroundColor, .backgroundColor, .paragraphStyle,
+    ]
 
+    /// The attributes of composed text in `range`, which holds what an edit has just put in, to put back after the
+    /// paragraph has been styled. Only text that `setMarkedText` is putting in is composed (`isSettingMarkedText`): the
+    /// edit of typing, a paste or an input method's final `insertText` keeps none of it, so a link's underline that
+    /// typed text took from the text before it is the styler's to settle. Empty when nothing is being composed, and when
+    /// the edit carries none of the keys, which is what AppKit hands the text storage on macOS 26.6: the composed
+    /// characters have the typing attributes only at the end of the edit (measured on CI, plan 6 task 5), so this
+    /// holds for a version that gives them the input method's attributes in the edit itself.
     private func composedAttributes(
         in range: NSRange, storage: NSTextStorage
     ) -> [(range: NSRange, attributes: [NSAttributedString.Key: Any])] {
-        Self.diagnosticLog.append(
-            "composedAttributes range=\(NSStringFromRange(range)) setting=\(textView?.isSettingMarkedText ?? false) "
-                + "hasMarked=\(textView?.hasMarkedText() ?? false) markedRange=\(NSStringFromRange(textView?.markedRange() ?? NSRange(location: NSNotFound, length: 0))) "
-                + "text=\(storage.string.debugDescription) attrs=\(range.length > 0 && NSMaxRange(range) <= storage.length ? String(describing: storage.attributes(at: range.location, effectiveRange: nil).keys.map(\.rawValue).sorted()) : "-")"
-        )
         guard let textView, textView.isSettingMarkedText, range.length > 0, NSMaxRange(range) <= storage.length else {
             return []
         }

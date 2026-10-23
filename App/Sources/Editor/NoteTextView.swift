@@ -134,8 +134,11 @@ final class NoteTextView: NSTextView {
     }
 
     /// True while `setMarkedText(_:selectedRange:replacementRange:)` runs: the edit that it makes puts composed text in the
-    /// note, and the styler keeps the attributes that AppKit gave that text (`MarkupStyler.composedAttributes`).
-    private(set) var isSettingMarkedText = false
+    /// note, and the styler keeps the attributes that AppKit gave that text (`MarkupStyler.composedAttributes`). Only
+    /// `setMarkedText` sets it, except in `MarkupStylerTests`, which edit the storage directly with it set: AppKit
+    /// gives a hosted view's composed text none of the input method's attributes, so that is the one way to hand the
+    /// styler an edit that carries them.
+    var isSettingMarkedText = false
 
     /// An input method is composing text (the owner types, say, pinyin, and has not chosen the characters yet): the text
     /// is in the note, underlined, until it is entered. Every step replaces it, which is an edit that the styler styles
