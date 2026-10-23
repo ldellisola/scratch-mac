@@ -140,7 +140,7 @@ final class ScreenshotTests: XCTestCase {
     /// version 1.0.0 and the credits' first lines. XCTest sees the panel as a dialog of the app (`aboutPanel(in:)`).
     func testAboutLight() {
         capture(
-            "about-light", fixture: "typical", appearance: "light", sidebarRows: 6,
+            "about-light", fixture: "typical", appearance: "light", sidebarRows: 6, parkPointer: false,
             prepare: { app in
                 app.menuBars.menuBarItems["Scratch"].click()
                 app.menuBars.menuItems["About Scratch"].click()
@@ -149,12 +149,13 @@ final class ScreenshotTests: XCTestCase {
                     "the About panel did not appear: \(UITestSupport.hierarchy(of: app))")
             },
             subject: { app in aboutPanel(in: app) ?? app.windows.firstMatch },
-            // Looked at once the picture is taken, so that a surprise here never costs the picture.
+            // Looked at once the picture is taken, so that a surprise here never costs the picture. It reads the texts of the
+            // panel and asks for no predicate: a predicate on `value` meets the scroll bar's number.
             afterwards: { app in
-                let shownVersion = NSPredicate(format: "label BEGINSWITH 'Version' OR value BEGINSWITH 'Version'")
-                let versions = aboutPanel(in: app)?.descendants(matching: .any).matching(shownVersion).count ?? 0
-                XCTAssertGreaterThan(
-                    versions, 0, "the About panel shows no version: \(UITestSupport.hierarchy(of: app))")
+                let texts =
+                    aboutPanel(in: app)?.staticTexts.allElementsBoundByIndex.map { UITestSupport.text(of: $0) } ?? []
+                XCTAssertTrue(
+                    texts.contains { $0.hasPrefix("Version") }, "the About panel shows no version, its texts: \(texts)")
             })
     }
 
@@ -200,10 +201,11 @@ final class ScreenshotTests: XCTestCase {
     /// Launches `fixture`, waits for the editor and for `sidebarRows` sidebar rows (the fixture's notes that the
     /// sidebar lists), runs `prepare` to bring the window into the state the screenshot is about, and attaches a
     /// screenshot of `subject` (the main window unless a test says otherwise) as `name`, kept even though the test
-    /// passes. `afterwards` runs once the screenshot is attached. `prepare` comes first among the closures, so that a trailing
+    /// passes. `parkPointer` is false for a picture of something that is not the main window (the pointer is then left where
+    /// the preparation put it). `afterwards` runs once the screenshot is attached. `prepare` comes first among the closures, so that a trailing
     /// closure is the preparation (Swift gives an unlabeled trailing closure to the first closure parameter).
     private func capture(
-        _ name: String, fixture: String, appearance: String, sidebarRows: Int,
+        _ name: String, fixture: String, appearance: String, sidebarRows: Int, parkPointer: Bool = true,
         prepare: @MainActor (XCUIApplication) -> Void = { _ in },
         subject: @MainActor (XCUIApplication) -> XCUIElement = { $0.windows.firstMatch },
         afterwards: @MainActor (XCUIApplication) -> Void = { _ in }
@@ -221,7 +223,7 @@ final class ScreenshotTests: XCTestCase {
         prepare(app)
         // Park the pointer over the empty part of the editor. Where the last click left it, it can rest on the sidebar
         // or the toolbar, and its tooltip ("Hide Sidebar") then shows in the picture.
-        window.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9)).hover()
+        if parkPointer { window.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9)).hover() }
 
         // Let the first layout, the glass material and the selection highlight settle before the picture is taken.
         Thread.sleep(forTimeInterval: 1.0)

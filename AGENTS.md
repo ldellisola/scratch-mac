@@ -583,9 +583,11 @@ screenshots. The branch keeps the newest 30 shas.
 
 The `macos` job adds to its folder: `perf/` (see Performance above), `test-summary.json` (from `xcresulttool`: passed and failed counts, and each
 failure's test name and message in `testFailures`), `app-test-diagnostics.txt` (every compiler warning and error of the
-whole build log, which the 300-line tail would cut), `failure-attachments/` (screenshots that failed UI tests
+whole build log, which the 300-line tail would cut), `crash-reports/` (the macOS crash reports of Scratch from the last two
+hours: a UI test says only "Application … is not running" when the app crashed), `failure-attachments/` (screenshots that failed UI tests
 attached) and `screenshots/<name>.png` (the key screens, `make screenshots`). A hosted test's failure message is also
-in `app-test.log`: search it for `error:`. To look at a screen, fetch the commit's results and open the PNG with the
+in `app-test.log`: search it for `error:`. `screenshots.log` keeps its last 3,000 lines (the other logs 300), which is every
+step of every screenshot test. To look at a screen, fetch the commit's results and open the PNG with the
 Read tool: `scripts/ci-fetch.sh <sha> build/ci-fetch/<sha>`, then `build/ci-fetch/<sha>/macos/screenshots/typical-light.png`.
 
 1. Commit and `git push -u origin <branch>`. CI runs on every push except to `ci-results`.
