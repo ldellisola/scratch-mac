@@ -228,4 +228,38 @@ final class SessionRestoreTests: XCTestCase {
         XCTAssertNil(try storage.notes.note(untouched.id), "the untouched note is replaced, and discarded")
         XCTAssertEqual(host.titles, ["other"])
     }
+
+    // MARK: Titles without markers
+
+    /// Plan 6, Task 4 (docs/features/tabs.md, "The tab strip", and docs/features/sidebar.md, "A row shows a line as the
+    /// editor shows it"): a tab shows the line of its note as the editor shows it, without its list marker, its stars or its
+    /// backticks, and as typed inside a fenced block. Whichever tab is active, its title is the note's, and the others' come
+    /// from the derived columns (`NoteStore.tabInfo`), which hold the same text. The title the owner typed is as typed.
+    func testTabsShowTheirTitlesWithoutMarkers() throws {
+        let task = note("[ ] bump version to `2.4.1`\n[x] run migrations")
+        let bullet = note("- **don't** deploy")
+        let code = note("```\n- x\n```")
+        let markersFirst = note("- \n****\nreal words")
+        let typed = note("- body", title: "[ ] typed title")
+        let notes = [task, bullet, code, markersFirst, typed]
+
+        for active in notes.indices {
+            let (storage, directory) = try makeStorage(
+                notes: notes, tabs: notes.map(\.id), activeIndex: active)
+            let host = restore(storage, directory: directory)
+            defer {
+                host.cleanUp()
+                withExtendedLifetime(host.window) {}
+            }
+            XCTAssertEqual(
+                host.titles, ["bump version to 2.4.1", "don't deploy", "- x", "real words", "[ ] typed title"],
+                "the tabs show text without markers (active tab \(active))")
+            XCTAssertEqual(
+                host.tabStrip.shownItems.map(\.hasTitle), [false, false, false, false, true],
+                "only the typed title is a title (active tab \(active))")
+            XCTAssertEqual(
+                host.editor.currentText, notes[active].body,
+                "the editor still shows the note as stored (active tab \(active))")
+        }
+    }
 }

@@ -30,6 +30,18 @@ Status: plan 2, tasks 8 and 9. Deleting, restoring and the Recently Deleted sect
     `[[attachment:<id>]]` is a picture or a file, not words. A note that holds nothing else is listed as "Untitled"
     (dimmed): a note with only an image has no title and is still a note. The sidebar columns of the notes that were saved
     before 0.5.0 are worked out again by the migration to schema version 3, without touching a note's edit time.
+  - **A row shows a line as the editor shows it, without its markers** (from 1.0.0, plan 6 task 4). Outside a fenced block
+    the title and the preview have no list marker (`- `, `[ ] `, `[x] ` and the indent before them), no `**` round bold and
+    no backticks round inline code: `[ ] bump version to \`2.4.1\`` is listed as "bump version to 2.4.1", and
+    `- **don't** deploy` as "don't deploy". A link, a glob (`src/**/*.ts`) and `x**2` are as typed, because the editor does
+    not render them either (docs/decisions/0006). Inside a fenced block a line is as typed (`- x` stays `- x`). A line that
+    is only markers (`- `, `[ ] `, `****`) has no words and is skipped like a blank line, so a note of nothing else is
+    "Untitled". A fence has to have its partner to make a block (fences pair from the top, `FenceScanner`): the lines after
+    one that has none are outside a block and lose their markers. The title that the owner typed in the title field is
+    shown as typed, markers and all. Tabs show the same title as the rows (tabs.md).
+  - **The migration to schema version 4 works the titles and previews out again** for the notes that 0.5.0 stored with their
+    markers. It keeps every note and never writes `modified_at` or touches the search index, so the order of the list does
+    not move and a search finds what it found.
   - The time is the time of day for Today and Yesterday (`10:42`, or `10:42 AM` in a 12-hour locale), the month and the
     day for earlier this year (`Oct 14`) and the year too before that (`Oct 14, 2025`): the locale's own formats
     (`NoteTimeLabel`).
@@ -91,6 +103,10 @@ UI tests in `App/Tests/ScratchUITests/SidebarUITests.swift`, on the `typical` fi
 | The sidebar lists the fixture's notes, pinned first | `SidebarUITests.testSidebarListsFixtureNotesPinnedFirst` |
 | A title and a preview skip fence lines and attachment lines; an image-only note has no title | `NoteTests.titleSkipsFenceLines`, `titleSkipsAttachmentLines`, `imageOnlyNoteHasEmptyTitle`, `previewSkipsFenceAndAttachmentLines` |
 | The migration to schema version 3 works the titles out again, keeps every note, and leaves `modified_at` alone | `SchemaTests.migratingV2RecomputesTitles`, `migratingV2KeepsEveryNoteAndEveryOtherColumn` |
+| A title and a preview have no list marker, bold stars or code backticks outside a block, and are as typed inside one | `PlainLineTests`, `NoteTests.checkboxTitleHasNoMarker`, `bulletAndBoldTitle`, `codeBlockLinesKeepMarkers` |
+| A line of markers alone is skipped, a glob is kept (ADR 0006), and the title the owner typed is never changed | `NoteTests.markerOnlyLineIsSkipped`, `globIsKept`, `theTitleTheOwnerTypedIsNeverChanged` |
+| A fence with no partner is no block, and the scan agrees with `FenceScanner` on every text | `NoteTests.theFenceStateFollowsHowTheFencesPair`, `randomNotesAreScannedAsTheFencesPair`, `aFenceBytesAwayFromItsPartnerIsStillPaired` |
+| The migration to schema version 4 shows the stored titles without markers, keeps every note, the order, `modified_at` and the search | `SchemaTests.migratingV3StripsMarkersFromTitles`, `migratingV3WritesOnlyTheRowsThatChange`, `migratingV2ReachesTheMarkerFreeTitlesToo`, `failedV4MigrationLeavesVersion3Intact`, `freshDatabaseIsVersion4` |
 
 The rules under these have unit tests in ScratchCore: the groups by calendar day, also across a clock change
 (`SidebarSectionsTests`), the time labels (`NoteTimeLabelTests`), the search expression and the search itself

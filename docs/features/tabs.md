@@ -54,8 +54,10 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
 - **The tab strip.** A Liquid Glass bar (`NSGlassEffectView`, corner radius 14, 32 pt tall) below the toolbar, 12 pt from
   the left. It is as wide as its tabs, and no wider than the editor area less 12 pt on each side.
   - A tab is 120 to 200 pt wide, and shares the strip when they do not all fit. Its title is the note's title, or else
-    the first line of the note that is not a fence line or an attachment line, or else "Untitled". A titled tab is
-    bold, an untitled one is in the note font.
+    the first line of the note that is not a fence line or an attachment line, or else "Untitled". That line is shown as
+    the editor shows it, without its list marker, its `**` or its backticks, and as typed inside a fenced block (from
+    1.0.0: [sidebar.md](sidebar.md), "A row shows a line as the editor shows it"). A titled tab is bold, an untitled one
+    is in the note font.
   - The active tab is raised: a white pill (a lighter one in dark mode) with a soft shadow. The other tabs have no
     background.
   - A tab's title follows the note's about as fast as the sidebar row does: after the autosave.
@@ -96,6 +98,7 @@ it is selected when it is the active tab.
 | An untouched new tab is discarded when it closes, also from the database | `TabsUITests.testUntypedNewTabIsDiscardedOnClose`, `SaveFailureTests.testUntouchedNewNoteIsStillDiscardedWhenItsTabCloses` |
 | A note typed in and then emptied is kept when its tab closes, and listed as "Untitled" | `TabsUITests.testTypedThenEmptiedNoteIsKeptWhenItsTabCloses`, `SaveFailureTests.testTypedThenEmptiedNoteIsKeptWhenItsTabCloses` |
 | A note emptied and open at quit is kept after the relaunch, and when its tab closes | `TabsUITests.testEmptiedNoteSurvivesRelaunch`, `SaveFailureTests.testRestoredEmptiedNoteIsKeptAndRestoredUntouchedNoteIsDiscarded` |
+| A tab's title has no list marker, bold stars or code backticks outside a fenced block, whichever tab is active | `SessionRestoreTests.testTabsShowTheirTitlesWithoutMarkers`, `NoteTests.checkboxTitleHasNoMarker` |
 | The sidebar's new note button opens a tab, and a replaced untouched note is discarded | `SidebarUITests.testNewNoteButtonCreatesListedNote`, `testUntouchedNewNoteIsDiscarded` |
 
 The rules under these (where a tab opens, which tab is active after a close, wrapping, ⌘9) have unit tests in

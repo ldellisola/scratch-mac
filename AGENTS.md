@@ -18,7 +18,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
   down each launch (`launch-times.json`, `LaunchLog`, `LaunchTimer`) and Help > Launch Times… shows and copies the record
   ([`docs/features/launch-times.md`](docs/features/launch-times.md)). Task 2 is done: CI gates the launch on Scratch's own
   work (`launch_overhead_ms`: `launch_ms` minus the launch of an empty AppKit app, `LaunchReference`) and measures idle CPU
-  (`idle_cpu_pct`), with `perf/tolerances.json` and report-only metrics (docs/decisions/0009). The plan before it,
+  (`idle_cpu_pct`), with `perf/tolerances.json` and report-only metrics (docs/decisions/0009). Task 3 is done: a launch reads
+  the body of the active note only, and the colours of a pasted block are asked for before the block exists. Task 4 is done:
+  a sidebar row and a tab show a line without its markers (`PlainLine`), and schema version 4 works the titles and previews
+  of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). The plan before it,
   [`2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md), is done and released as 0.5.0
   (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
   and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
@@ -41,7 +44,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 Packages/ScratchCore/             Foundation-only Swift package. Builds and tests on Linux and macOS.
   Sources/CSQLite/                module map for the system SQLite library (no pkgConfig, on purpose)
   Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview (a title and a preview skip
-                                  blank lines, fence lines and attachment lines). NoteSummary: a sidebar
+                                  blank lines, fence lines, attachment lines and lines of markers alone, and show a line
+                                  as the editor does outside a fenced block: PlainLine takes out a list line's marker,
+                                  the `**` of bold and the backticks of inline code, and what is inside a block stays as
+                                  typed). NoteSummary: a sidebar
                                   row (`deletedAt` is set for Recently Deleted rows). NoteStore: reads and writes the
                                   notes table (pinned first, newest edit first), searches it (`search`), and pins,
                                   deletes, restores and purges notes (`setPinned`, `delete`, `restore`,
@@ -80,7 +86,7 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   UnsavedNotes (the notes whose write failed, kept with the owner's text until a write
                                   succeeds: thread-safe, the newest copy of a note wins)
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
-                                  SQLValue and Row, Schema (version 3, with the FTS5 index `notes_fts`, the
+                                  SQLValue and Row, Schema (version 4, with the FTS5 index `notes_fts`, the
                                   `attachments` table, the migration rule, and SchemaError for a database from a newer
                                   Scratch), ScratchStorage (opens
                                   the data directory and its stores, `notes`, `session` and `attachments`; refuses a
@@ -610,10 +616,23 @@ new kind of release file, with no change to the app, ships.
   (`SchemaError.newerThanSupported`, whose message is the "cannot start" alert) and changes nothing in it.
 - **A change to how a note's title or preview is derived needs a migration step that works them out again.** The sidebar
   columns `display_title`, `has_title` and `preview` are written on every save and never recomputed, so the rows of notes
-  nobody edits keep the old rule. Schema v3 does it for the rule "skip fence and attachment lines": it builds a `Note` from
-  each row's title and body (the same code `NoteStore.save` runs), and writes only those three columns, and only when they
-  differ, so `modified_at`, the list order and the search index stay as they were. A note that holds only fences and
-  attachments has an empty `display_title` and is still not `isEmpty`: a note with an attachment is never an unused note.
+  nobody edits keep the old rule. Schema v3 did it for the rule "skip fence and attachment lines" and v4 does it for "show
+  the text without its markers": each builds a `Note` from each row's title and body (the same code `NoteStore.save` runs,
+  `Schema.recomputeDerivedNoteColumns`, which v4 shares with v3 and which therefore always applies the rule as it is now),
+  and writes only those three columns, and only when they differ, so `modified_at`, the list order and the search index
+  stay as they were. A note that holds only fences, attachments and markers has an empty `display_title` and is still not
+  `isEmpty`: a note with an attachment is never an unused note.
+- **A title is the line as the editor shows it, and the scan that finds it follows `FenceScanner`.** `Note`'s lazy line scan
+  (`forEachTextLine`) takes the markers out of every line outside a fenced block (`PlainLine.text(of:)`, which reads
+  `MarkupParser.parseLine` and removes a list line's indent and marker, the `**` of a bold run and the backticks of inline
+  code, and leaves a link and a glob as typed) and keeps a line inside a block as typed. The blocks are the ones
+  `FenceScanner` finds, which pair fences from the top, so a fence with no partner after it is no block: at an opening fence
+  the scan looks ahead for the next fence line (`hasFenceLine`, `memchr` over the bytes). A note that starts with a fence
+  and never closes it costs one pass over its bytes, 1.5 ms for `displayTitle` and `preview` together on 5 MB, where a
+  line-by-line look took 27 ms in Release and 319 ms in Debug. `PlainLine` judges the line as typed, before it is trimmed
+  (a tab is not an indent), and a line of markers alone (`- `, `[ ] `, the `****` that ⌘B makes) has no words. The typed
+  title is never changed. `NoteTests.randomNotesAreScannedAsTheFencesPair` holds the scan to a plain `FenceScanner` oracle
+  over random bodies. An attachment line is still skipped inside a block.
 - **An attachment line is judged as typed, a fence line too.** `Note` looks at a line before it trims it, as the styler will:
   `AttachmentToken.id(inLine:)` accepts exactly `[[attachment:<lowercase UUID>]]` and nothing else on the line, so
   `" [[attachment:…]]"` is text and a title. `AttachmentToken.ids(in:)` counts a token inside a fenced block too, because

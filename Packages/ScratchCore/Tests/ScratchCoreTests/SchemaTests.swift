@@ -5,7 +5,8 @@ import Testing
 
 // Schema v1 is `notes` (with the derived title columns) and `session`. Schema v2 adds the full-text index `notes_fts`
 // (Plan 2, Task 2). Schema v3 adds `attachments` and works the derived title columns out again with the rule that a
-// title skips fence and attachment lines (Plan 5, Task 1). A database written by a newer Scratch is refused and left
+// title skips fence and attachment lines (Plan 5, Task 1). Schema v4 works them out again with the rule that a title and
+// a preview are the text without its markers (Plan 6, Task 4). A database written by a newer Scratch is refused and left
 // as it was.
 
 private func columnNames(of table: String, in db: Database) throws -> [String] {
@@ -125,11 +126,11 @@ private func matches(_ word: String, in db: Database) throws -> [String] {
     ).compactMap { $0.string("id") }
 }
 
-@Test func freshDatabaseIsVersion3() throws {
+@Test func freshDatabaseIsVersion4() throws {
     let db = try Database(path: ":memory:")
     try Schema.migrate(db)
-    #expect(Schema.currentVersion == 3)
-    #expect(try db.userVersion() == 3)
+    #expect(Schema.currentVersion == 4)
+    #expect(try db.userVersion() == 4)
 
     let tables = try db.query("SELECT name FROM sqlite_master WHERE type = 'table'").compactMap { $0.string("name") }
     #expect(tables.contains("notes_fts"))
@@ -159,7 +160,7 @@ private func matches(_ word: String, in db: Database) throws -> [String] {
 
     let store = try NoteStore(database: Database(path: path))
     let db = try Database(path: path)
-    #expect(try db.userVersion() == 3)
+    #expect(try db.userVersion() == 4)
     // Every note is still there, unchanged.
     #expect(try db.query("SELECT COUNT(*) AS n FROM notes").first?.int("n") == 3)
     let old = try #require(try store.note(NoteID(rawValue: "old")))
@@ -196,7 +197,7 @@ private func matches(_ word: String, in db: Database) throws -> [String] {
     let db = try Database(path: ":memory:")
     try createSchemaV1(in: db)
     try Schema.migrate(db)
-    #expect(try db.userVersion() == 3)
+    #expect(try db.userVersion() == 4)
     #expect(try matches("anything", in: db) == [])
 }
 
@@ -216,10 +217,10 @@ private func matches(_ word: String, in db: Database) throws -> [String] {
     let db = try Database(path: ":memory:")
     try Schema.migrate(db)
     try insertV1Note(db, id: "a", title: "T", body: "kept", modifiedAt: 1)
-    try db.execute("PRAGMA user_version = 4")
+    try db.execute("PRAGMA user_version = 5")
 
-    #expect(throws: SchemaError.newerThanSupported(found: 4, supported: 3)) { try Schema.migrate(db) }
-    #expect(try db.userVersion() == 4)
+    #expect(throws: SchemaError.newerThanSupported(found: 5, supported: 4)) { try Schema.migrate(db) }
+    #expect(try db.userVersion() == 5)
     #expect(try db.query("SELECT COUNT(*) AS n FROM notes").first?.int("n") == 1)
 }
 
@@ -236,10 +237,10 @@ private func matches(_ word: String, in db: Database) throws -> [String] {
         try newer.execute("PRAGMA user_version = 9")
     }
 
-    #expect(throws: SchemaError.newerThanSupported(found: 9, supported: 3)) {
+    #expect(throws: SchemaError.newerThanSupported(found: 9, supported: 4)) {
         try NoteStore(database: Database(path: path))
     }
-    #expect(throws: SchemaError.newerThanSupported(found: 9, supported: 3)) {
+    #expect(throws: SchemaError.newerThanSupported(found: 9, supported: 4)) {
         try SessionStore(database: Database(path: path))
     }
 
@@ -251,7 +252,7 @@ private func matches(_ word: String, in db: Database) throws -> [String] {
 }
 
 @Test func theNewerDatabaseErrorSaysWhatToDo() {
-    let error = SchemaError.newerThanSupported(found: 4, supported: 3)
+    let error = SchemaError.newerThanSupported(found: 5, supported: 4)
     let message =
         "This data was saved by a newer version of Scratch. Install the latest version from the Releases page."
     #expect(error.errorDescription == message)
@@ -373,7 +374,7 @@ private let v3Token = "[[attachment:6f9619ff-8b86-4d11-b42d-00c04fc964ff]]"
 
     let store = try NoteStore(database: Database(path: path))
     let db = try Database(path: path)
-    #expect(try db.userVersion() == 3)
+    #expect(try db.userVersion() == 4)
     let derived = try derivedColumns(of: "fenced", in: db)
     #expect(derived.title == "let a = 1" && derived.hasTitle == 0 && derived.preview == "let b = 2")
     // The edit time is the owner's, not the migration's.
@@ -450,7 +451,7 @@ private let v3Token = "[[attachment:6f9619ff-8b86-4d11-b42d-00c04fc964ff]]"
     try createSchemaV1(in: db)
     try insertV1Note(db, id: "a", title: "", body: "```sql\nSELECT 1\n```", modifiedAt: 77)
     try Schema.migrate(db)
-    #expect(try db.userVersion() == 3)
+    #expect(try db.userVersion() == 4)
     #expect(try derivedColumns(of: "a", in: db).title == "SELECT 1")
     #expect(try db.query("SELECT modified_at FROM notes").first?.double("modified_at") == 77)
 }
@@ -470,7 +471,7 @@ private let v3Token = "[[attachment:6f9619ff-8b86-4d11-b42d-00c04fc964ff]]"
     let db = try Database(path: ":memory:")
     try createSchemaV2(in: db)
     try Schema.migrate(db)
-    #expect(try db.userVersion() == 3)
+    #expect(try db.userVersion() == 4)
     #expect(try db.query("SELECT COUNT(*) AS n FROM attachments").first?.int("n") == 0)
 }
 
@@ -485,4 +486,190 @@ private let v3Token = "[[attachment:6f9619ff-8b86-4d11-b42d-00c04fc964ff]]"
     let tables = try db.query("SELECT name FROM sqlite_master WHERE type = 'table'").compactMap { $0.string("name") }
     #expect(!tables.contains("attachments"))
     #expect(try derivedColumns(of: "a", in: db).title == "```")
+}
+
+// MARK: Schema v4
+
+/// The version 3 schema exactly as 0.5.0 created it (version 2 and the `attachments` table), so that a test can build the
+/// database the owner has now. A migration step is never edited, so neither is this.
+private func createSchemaV3(in db: Database) throws {
+    try createSchemaV2(in: db)
+    try db.execute(
+        """
+        CREATE TABLE attachments (
+          id TEXT PRIMARY KEY, note_id TEXT NOT NULL, file_name TEXT NOT NULL,
+          type_identifier TEXT NOT NULL, byte_size INTEGER NOT NULL, pixel_width INTEGER, pixel_height INTEGER,
+          created_at REAL NOT NULL, copied INTEGER NOT NULL)
+        """)
+    try db.execute("CREATE INDEX attachments_note ON attachments(note_id)")
+    try db.execute("PRAGMA user_version = 3")
+}
+
+/// The live notes in the order of the sidebar: pinned first, then the newest edit first (`NoteStore.summaries`).
+private func listOrder(in db: Database) throws -> [String] {
+    try db.query(
+        "SELECT id FROM notes WHERE deleted_at IS NULL ORDER BY pinned_at IS NULL, modified_at DESC, created_at DESC, id"
+    ).compactMap { $0.string("id") }
+}
+
+private func modifiedTimes(in db: Database) throws -> [String: Double] {
+    var times: [String: Double] = [:]
+    for row in try db.query("SELECT id, modified_at FROM notes") {
+        if let id = row.string("id"), let time = row.double("modified_at") { times[id] = time }
+    }
+    return times
+}
+
+/// Fills a version 3 database with what 0.5.0 stored for notes that begin with markers: the first line as typed, markers
+/// and all, in `display_title` and in `preview`.
+private func fillV3WithMarkedNotes(_ db: Database) throws {
+    try insertV2Note(
+        db, id: "task", body: "[ ] bump version to `2.4.1`\n[x] run migrations",
+        displayTitle: "[ ] bump version to `2.4.1`", preview: "[x] run migrations", createdAt: 1, modifiedAt: 100)
+    try insertV2Note(
+        db, id: "bullet", body: "- **don't** deploy\n- later", displayTitle: "- **don't** deploy", preview: "- later",
+        createdAt: 2, modifiedAt: 300)
+    try insertV2Note(
+        db, id: "titled", title: "Deploy checklist", body: "[ ] a\n- b", displayTitle: "Deploy checklist",
+        hasTitle: true, preview: "[ ] a - b", createdAt: 3, modifiedAt: 200)
+    try insertV2Note(
+        db, id: "pinned", body: "**Pinned** plan\n`code`", displayTitle: "**Pinned** plan", preview: "`code`",
+        createdAt: 4, modifiedAt: 50, pinnedAt: 400)
+    try insertV2Note(
+        db, id: "gone", body: "- thrown away", displayTitle: "- thrown away", preview: "", createdAt: 5, modifiedAt: 60,
+        deletedAt: 500)
+    // Notes the new rule leaves as they are.
+    try insertV2Note(
+        db, id: "plain", body: "restart the proxy\nthen wait", displayTitle: "restart the proxy", preview: "then wait",
+        createdAt: 6, modifiedAt: 70)
+    try insertV2Note(
+        db, id: "code", body: "```\n- x\n```", displayTitle: "- x", preview: "", createdAt: 7, modifiedAt: 80)
+    try insertV2Note(db, id: "empty", body: "", displayTitle: "", preview: "", createdAt: 8, modifiedAt: 8)
+}
+
+@Test func migratingV3StripsMarkersFromTitles() throws {
+    let path = temporaryDatabasePath()
+    defer { removeDatabaseFiles(at: path) }
+    let orderBefore: [String]
+    let timesBefore: [String: Double]
+    do {
+        let v3 = try Database(path: path)
+        try createSchemaV3(in: v3)
+        try fillV3WithMarkedNotes(v3)
+        try v3.execute("INSERT INTO session (key, value) VALUES ('state', ?)", [.blob([1, 2, 3])])
+        #expect(try v3.userVersion() == 3)
+        orderBefore = try listOrder(in: v3)
+        timesBefore = try modifiedTimes(in: v3)
+        #expect(orderBefore == ["pinned", "bullet", "titled", "task", "code", "plain", "empty"])
+    }
+
+    let store = try NoteStore(database: Database(path: path))
+    let db = try Database(path: path)
+    #expect(try db.userVersion() == 4)
+
+    // The rows show text without markers.
+    #expect(try derivedColumns(of: "task", in: db) == ("bump version to 2.4.1", 0, "run migrations"))
+    #expect(try derivedColumns(of: "bullet", in: db) == ("don't deploy", 0, "later"))
+    #expect(try derivedColumns(of: "titled", in: db) == ("Deploy checklist", 1, "a b"))
+    #expect(try derivedColumns(of: "pinned", in: db) == ("Pinned plan", 0, "code"))
+    #expect(try derivedColumns(of: "gone", in: db) == ("thrown away", 0, ""))
+    #expect(
+        try store.summaries().map(\.displayTitle) == [
+            "Pinned plan", "don't deploy", "Deploy checklist", "bump version to 2.4.1", "- x", "restart the proxy", "",
+        ])
+    #expect(try store.summaries().map(\.preview) == ["code", "later", "a b", "run migrations", "", "then wait", ""])
+    #expect(try store.deletedSummaries().map(\.displayTitle) == ["thrown away"])
+
+    // The edit times and the order of the list are as they were: the migration is not an edit.
+    #expect(try modifiedTimes(in: db) == timesBefore)
+    #expect(try listOrder(in: db) == orderBefore)
+    #expect(try store.summaries().map(\.id.rawValue) == orderBefore)
+    #expect(try store.summaries().first?.pinnedAt == Date(timeIntervalSinceReferenceDate: 400))
+
+    // Nothing is lost: every title, body, creation time and pin is as it was, and so is the session.
+    #expect(try db.query("SELECT COUNT(*) AS n FROM notes").first?.int("n") == 8)
+    let task = try #require(try store.note(NoteID(rawValue: "task")))
+    #expect(task.title == "" && task.body == "[ ] bump version to `2.4.1`\n[x] run migrations")
+    #expect(task.createdAt == Date(timeIntervalSinceReferenceDate: 1))
+    let titled = try #require(try store.note(NoteID(rawValue: "titled")))
+    #expect(titled.title == "Deploy checklist" && titled.body == "[ ] a\n- b")
+    let gone = try #require(try store.note(NoteID(rawValue: "gone")))
+    #expect(gone.deletedAt == Date(timeIntervalSinceReferenceDate: 500) && gone.body == "- thrown away")
+    #expect(try db.query("SELECT value FROM session WHERE key = 'state'").first?["value"] == .blob([1, 2, 3]))
+    for id in ["task", "bullet", "titled", "pinned", "gone", "plain", "code", "empty"] {
+        let note = try #require(try store.note(NoteID(rawValue: id)))
+        let derived = try derivedColumns(of: id, in: db)
+        #expect(derived.title == note.displayTitle && derived.preview == note.preview, "\(id) matches the rule")
+        #expect(derived.hasTitle == (note.hasTitle ? 1 : 0))
+    }
+
+    // Search follows the text, which did not change: it finds the same notes by the same words, markers excluded.
+    #expect(try store.search("migrations").map(\.id.rawValue) == ["task"])
+    #expect(try store.search("deploy").map(\.id.rawValue) == ["bullet", "titled"])
+    #expect(try store.search("pinned").map(\.id.rawValue) == ["pinned"])
+    #expect(try store.search("proxy").map(\.id.rawValue) == ["plain"])
+    #expect(try store.search("thrown").isEmpty)
+    #expect(try matches("thrown", in: db) == ["gone"])
+    try db.execute("INSERT INTO notes_fts(notes_fts, rank) VALUES ('integrity-check', 1)")
+}
+
+@Test func migratingV3WritesOnlyTheRowsThatChange() throws {
+    let db = try Database(path: ":memory:")
+    try createSchemaV3(in: db)
+    try fillV3WithMarkedNotes(db)
+    // Every UPDATE of a row leaves its id in `writes`.
+    try db.execute("CREATE TABLE writes (id TEXT)")
+    try db.execute("CREATE TRIGGER log_writes AFTER UPDATE ON notes BEGIN INSERT INTO writes VALUES (new.id); END")
+    try Schema.migrate(db)
+    let written = try db.query("SELECT id FROM writes ORDER BY id").compactMap { $0.string("id") }
+    #expect(written == ["bullet", "gone", "pinned", "task", "titled"])
+    #expect(try db.userVersion() == 4)
+}
+
+@Test func migratingV3ToV4IsRunOnceAndLeavesLaterEditsAlone() throws {
+    let db = try Database(path: ":memory:")
+    try createSchemaV3(in: db)
+    try fillV3WithMarkedNotes(db)
+    try Schema.migrate(db)
+    try db.execute("UPDATE notes SET display_title = 'kept as written' WHERE id = 'task'")
+    try Schema.migrate(db)
+    #expect(try derivedColumns(of: "task", in: db).title == "kept as written")
+}
+
+@Test func migratingV2ReachesTheMarkerFreeTitlesToo() throws {
+    let db = try Database(path: ":memory:")
+    try createSchemaV2(in: db)
+    try insertV2Note(
+        db, id: "a", body: "[ ] ```\n- x", displayTitle: "[ ] ```", preview: "- x", modifiedAt: 9)
+    try insertV2Note(
+        db, id: "b", body: "```sh\nls\n```\n- **done**", displayTitle: "```sh", preview: "ls ``` - **done**",
+        modifiedAt: 10)
+    try Schema.migrate(db)
+    #expect(try db.userVersion() == 4)
+    #expect(try derivedColumns(of: "a", in: db) == ("```", 0, "x"))
+    #expect(try derivedColumns(of: "b", in: db) == ("ls", 0, "done"))
+    #expect(try modifiedTimes(in: db) == ["a": 9, "b": 10])
+}
+
+@Test func migratingAnEmptyV3DatabaseWorks() throws {
+    let db = try Database(path: ":memory:")
+    try createSchemaV3(in: db)
+    try Schema.migrate(db)
+    #expect(try db.userVersion() == 4)
+    #expect(try db.query("SELECT COUNT(*) AS n FROM notes").first?.int("n") == 0)
+}
+
+@Test func failedV4MigrationLeavesVersion3Intact() throws {
+    let db = try Database(path: ":memory:")
+    try createSchemaV3(in: db)
+    try fillV3WithMarkedNotes(db)
+    // The first row that changes makes the migration fail, which must undo the rows it had written before.
+    try db.execute(
+        "CREATE TRIGGER refuse_writes BEFORE UPDATE ON notes WHEN new.id = 'pinned' BEGIN SELECT RAISE(ABORT, 'no'); END"
+    )
+    #expect(throws: DatabaseError.self) { try Schema.migrate(db) }
+    #expect(try db.userVersion() == 3)
+    #expect(try derivedColumns(of: "task", in: db).title == "[ ] bump version to `2.4.1`")
+    #expect(try derivedColumns(of: "bullet", in: db).title == "- **don't** deploy")
+    #expect(try db.query("SELECT COUNT(*) AS n FROM notes").first?.int("n") == 8)
 }
