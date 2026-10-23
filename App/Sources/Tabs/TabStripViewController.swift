@@ -264,6 +264,9 @@ final class TabStripContentView: NSView {
             tabViews[index].onSelect = { [weak self] in self?.onSelect?(index) }
             closeButtons[index].tag = index
             closeButtons[index].contentTintColor = item.isDeleted ? .tertiaryLabelColor : .secondaryLabelColor
+            // VoiceOver says which tab the button closes (plan 6 task 8): "Close Deploy checklist". The title is cut where the
+            // tab cuts it, so that the first line of a huge note never gets this far.
+            closeButtons[index].setAccessibilityLabel(TabItemView.closeLabel(forTitle: item.title))
         }
         needsLayout = true
     }
@@ -378,6 +381,11 @@ final class TabItemView: NSView {
         fatalError("TabItemView is created in code")
     }
 
+    /// What VoiceOver reads for the close button of the tab titled `title`: "Close <title>".
+    static func closeLabel(forTitle title: String) -> String {
+        "Close \(title.prefix(titleLimit))"
+    }
+
     /// Shows `item`, raised when `isActive`. Does nothing when it already shows exactly that.
     func configure(_ item: TabStripItem, isActive: Bool) {
         guard item != self.item || isActive != self.isActive else { return }
@@ -433,6 +441,14 @@ final class TabItemView: NSView {
         layer.shadowOpacity = isActive ? (isDark ? 0.3 : 0.12) : 0
         layer.shadowRadius = 1.5
         layer.shadowOffset = CGSize(width: 0, height: -1)
+        // With Increase Contrast the raised tab also has an outline: the white pill and a shadow of 12% do not set it apart
+        // from the glass enough for everyone (plan 6 task 8).
+        let isHighContrast =
+            effectiveAppearance.bestMatch(from: [
+                .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua, .aqua, .darkAqua,
+            ]).map { $0 == .accessibilityHighContrastAqua || $0 == .accessibilityHighContrastDarkAqua } ?? false
+        layer.borderWidth = isActive && isHighContrast ? 1 : 0
+        layer.borderColor = NSColor.labelColor.withAlphaComponent(0.55).cgColor
     }
 
     override func viewDidChangeEffectiveAppearance() {

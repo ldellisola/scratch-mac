@@ -69,7 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         LaunchTimer.mark("storage")
 
         if let appearance = environment.options.appearance {
-            NSApp.appearance = NSAppearance(named: appearance == .dark ? .darkAqua : .aqua)
+            NSApp.appearance = NSAppearance(named: appearance.nsAppearanceName)
         }
 
         let editor = EditorViewController()
@@ -87,6 +87,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.windowController = windowController
         // The Edit menu's Undo asks the window for its undo manager, and the window asks this delegate.
         windowController.window?.delegate = self
+        // Tab goes from the search field to the note list, the title and the editor (plan 6 task 8).
+        KeyViewLoop.connect(sidebar.keyViews + [editor.titleField, editor.textView])
 
         let coordinator = SessionCoordinator(
             storage: environment.storage, editor: editor, sidebar: sidebar, tabStrip: tabStrip)

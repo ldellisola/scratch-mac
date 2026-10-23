@@ -29,7 +29,8 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
   session, and a note that is empty when the session is restored counts as untouched only when its edit time is still
   its creation time, so a note that was emptied and still open in a tab at quit is kept too (docs/decisions/0004,
   closed in 0.3.0).
-- **Close.** ⌘W (File > Close Tab) closes the active tab, and the close button inside a tab closes that tab. When the
+- **Close.** ⌘W (File > Close Tab) closes the active tab, and the close button inside a tab closes that tab. VoiceOver reads
+  that button as "Close <the tab's title>" (accessibility.md); the raised tab has a 1 pt outline with Increase Contrast. When the
   active tab closes, the tab that takes its place is shown (the one on its right, or else the new last tab). Closing the
   only tab leaves one tab with a new empty note, which is not listed. Closing the tab of a note that is still an empty,
   unused note leaves things as they are.
@@ -121,6 +122,7 @@ it is selected when it is the active tab.
 | The strip is as wide as its tabs, never wider than its maximum, never below its floor, and the maximum leaves room for the buttons | `TabStripViewControllerTests.testStripIsAsWideAsItsTabs`, `testStripIsNeverWiderThanItsMaximum`, `testStripKeepsAFloorOfWidth`, `testMaximumWidthLeavesRoomForTheButtons` |
 | The active tab is in the row of the toolbar's buttons, left of them, with no band under the toolbar (plan 6 Review Focus 4) | `TabsUITests.testTabStripIsInTheToolbarRow` |
 | Twelve tabs keep the pin, the paperclip and the new note button in reach, with the sidebar shown, hidden and shown again | `TabsUITests.testTwelveTabsKeepTheToolbarButtons` |
+| The close button names its tab ("Close Deploy checklist"), and the toolbar's buttons have labels | `AccessibilityUITests.testCloseButtonNamesItsTab`, `testToolbarButtonsHaveLabels` |
 
 The rules under these (where a tab opens, which tab is active after a close, wrapping, ⌘9) have unit tests in
 ScratchCore: `TabListTests`.

@@ -973,7 +973,7 @@ final class NoteTextView: NSTextView {
     /// The stored file of the attachment drawn as `mark`, when there is one to open or take out: the line is a preview or a
     /// chip of a file, and the file is there. A missing attachment, one that is still being copied and one whose file went
     /// away have none.
-    private func storedFile(of mark: AttachmentMark) -> URL? {
+    func storedFile(of mark: AttachmentMark) -> URL? {
         guard mark.kind == .image || mark.kind == .file, let url = styler?.catalog?.fileURL(mark.id),
             FileManager.default.fileExists(atPath: url.path)
         else { return nil }
@@ -1154,6 +1154,16 @@ final class NoteTextView: NSTextView {
     @discardableResult
     func toggleCheckbox(atViewPoint point: NSPoint) -> Bool {
         guard isEditable, let marker = checkboxMarker(atViewPoint: point) else { return false }
+        return toggleCheckbox(at: marker)
+    }
+
+    /// Ticks or unticks the checkbox whose `[?]` is at `marker`, which a click on its box (above) and the context menu's
+    /// Mark as Checked (`toggleCheckboxFromMenu`) both come to. Returns false and does nothing when the view cannot be edited
+    /// or `marker` is no checkbox of the text any more. The selection is passed through, so the caret stays; the view takes
+    /// the keyboard, as a click in it does. One undo step.
+    @discardableResult
+    func toggleCheckbox(at marker: NSRange) -> Bool {
+        guard isEditable, styler.checkboxMarker(at: marker.location) == marker else { return false }
         let text = string as NSString
         var lineStart = 0
         var lineEnd = 0
@@ -1319,6 +1329,110 @@ final class NoteTextView: NSTextView {
             return
         }
         updateLinkCursor(atViewPoint: point, modifiers: event.modifierFlags)
+    }
+
+    // MARK: Accessibility
+
+    /// What VoiceOver reads for `range`: the note as the editor shows it, with the words of the markers and tokens in the place
+    /// of their characters, "unchecked" for `[ ]`, "image, dashboard.png" for a token and "code block, Swift" for a fence, and
+    /// nothing for the stars of bold (`SpokenText`, plan 6 task 8). The words are not a text of their own: `accessibilityValue()`
+    /// is the stored text, and a range and the caret that VoiceOver reports are the characters of that text.
+    override func accessibilityString(for range: NSRange) -> String? {
+        guard let storage = textStorage, range.location != NSNotFound, NSMaxRange(range) <= storage.length else {
+            return super.accessibilityString(for: range)
+        }
+        return SpokenText.spoken(storage, range: range)
+    }
+
+    /// The same words with attributes. A range that has no marker or token in it is AppKit's own answer, with every attribute
+    /// that it translates (the font, the colours, the underline of a link).
+    override func accessibilityAttributedString(for range: NSRange) -> NSAttributedString? {
+        guard let storage = textStorage, range.location != NSNotFound, NSMaxRange(range) <= storage.length else {
+            return super.accessibilityAttributedString(for: range)
+        }
+        let spoken = SpokenText.spoken(storage, range: range)
+        if spoken == (storage.string as NSString).substring(with: range),
+            let native = super.accessibilityAttributedString(for: range)
+        {
+            return native
+        }
+        return NSAttributedString(string: spoken)
+    }
+
+    /// The stored text, always: the characters that the markers are made of are in it, and every range that VoiceOver and the
+    /// caret use counts them (`accessibilityString(for:)` says what a range sounds like).
+    override func accessibilityValue() -> Any? {
+        string
+    }
+
+    // MARK: The context menu
+
+    /// The menu of a right click (or Control-click, or the menu key): what AppKit has for a text view, and in front of it,
+    /// where they apply to what is under the pointer, the items that make what a click does reachable without one
+    /// (`EditorContextMenu`: Mark as Checked, Open Link, Open Attachment and Code Block Language).
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let standard = super.menu(for: event)
+        let items = EditorContextMenu.items(for: self, atViewPoint: convert(event.locationInWindow, from: nil))
+        guard !items.isEmpty else { return standard }
+        let menu = standard ?? NSMenu()
+        for (index, item) in items.enumerated() { menu.insertItem(item, at: index) }
+        if menu.items.count > items.count { menu.insertItem(.separator(), at: items.count) }
+        return menu
+    }
+
+    /// The items of the context menu are the view's own and are always enabled as `EditorContextMenu` made them: AppKit
+    /// validates every item of this menu against the first responder, and how a text view answers for an action it does not
+    /// know is not documented.
+    override func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        let own = [
+            #selector(toggleCheckboxFromMenu(_:)), #selector(openLinkFromMenu(_:)),
+            #selector(openAttachmentFromMenu(_:)),
+        ]
+        if let action = item.action, own.contains(action) { return item.isEnabled }
+        return super.validateMenuItem(item)
+    }
+
+    /// Mark as Checked (or Unchecked) in the context menu: ticks the box that the menu was opened on, not the caret's line.
+    @objc func toggleCheckboxFromMenu(_ sender: Any?) {
+        guard let marker = ((sender as? NSMenuItem)?.representedObject as? NSValue)?.rangeValue else { return }
+        toggleCheckbox(at: marker)
+    }
+
+    /// Open Link in the context menu: the link that the menu was opened on, as a ⌘-click opens it.
+    @objc func openLinkFromMenu(_ sender: Any?) {
+        guard let url = (sender as? NSMenuItem)?.representedObject as? URL else { return }
+        openURL(url)
+    }
+
+    /// Open Attachment in the context menu: the stored file of the attachment that the menu was opened on, as a double-click
+    /// opens it.
+    @objc func openAttachmentFromMenu(_ sender: Any?) {
+        guard let mark = (sender as? NSMenuItem)?.representedObject as? AttachmentMark else { return }
+        openAttachment(mark)
+    }
+
+    /// The attachment whose token line is under `point` (in the coordinates of this view) and its mark, for the context menu:
+    /// the same rectangle that a click is judged by (`attachmentHit(atViewPoint:)`).
+    func attachmentMark(atViewPoint point: NSPoint) -> AttachmentMark? {
+        attachmentTarget(atViewPoint: point)?.mark
+    }
+
+    /// The code block that has the line under `point` (in the coordinates of this view), or nil: the point is not on a line of
+    /// a block, or its fence lines. Below the last line of the note it is nil, although the character nearest to it is the
+    /// block's. The label's own hit test is `labelHit(atViewPoint:)`.
+    func codeBlock(atViewPoint point: NSPoint) -> CodeBlockIndex.Block? {
+        guard let layoutManager, let container = textContainer, let styler, !styler.codeBlockList.isEmpty,
+            let length = textStorage?.length, length > 0
+        else { return nil }
+        let origin = textContainerOrigin
+        let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+        let index = layoutManager.characterIndex(
+            for: local, in: container, fractionOfDistanceBetweenInsertionPoints: nil)
+        guard index != NSNotFound, index < length else { return nil }
+        let glyph = layoutManager.glyphIndexForCharacter(at: index)
+        let line = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        guard local.y >= line.minY, local.y < line.maxY else { return nil }
+        return styler.codeBlock(containing: index)
     }
 
     // MARK: The Format menu

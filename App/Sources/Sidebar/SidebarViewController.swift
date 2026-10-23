@@ -46,6 +46,9 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
     private static let noteCellIdentifier = NSUserInterfaceItemIdentifier("note")
     private static let groupCellIdentifier = NSUserInterfaceItemIdentifier("group")
+    /// The cell of the header of Recently Deleted, which is a button for VoiceOver: kept apart from the other headers' cells,
+    /// so that none of them is ever made a button by being reused.
+    private static let recentlyDeletedCellIdentifier = NSUserInterfaceItemIdentifier("recentlyDeleted")
     private static let noteRowHeight: CGFloat = 44
     private static let groupRowHeight: CGFloat = 28
     /// The space between the search field and the sides of the sidebar, and above it (below the toolbar).
@@ -159,6 +162,9 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         }
     }
 
+    /// The two stops of the sidebar in the key view loop (`KeyViewLoop`), in order: the search field and the note list.
+    var keyViews: [NSView] { [searchField, tableView] }
+
     /// Makes the search field the first field of the keyboard (⌥⌘F), and shows the sidebar when it is hidden.
     func focusSearch() {
         if let split = parent as? NSSplitViewController, let item = split.splitViewItem(for: self), item.isCollapsed {
@@ -244,10 +250,12 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
             return cell
         case .recentlyDeletedHeader(let count, let expanded):
             let cell =
-                tableView.makeView(withIdentifier: Self.groupCellIdentifier, owner: nil) as? GroupRowCellView
+                tableView.makeView(withIdentifier: Self.recentlyDeletedCellIdentifier, owner: nil) as? GroupRowCellView
                 ?? GroupRowCellView()
-            cell.identifier = Self.groupCellIdentifier
+            cell.identifier = Self.recentlyDeletedCellIdentifier
             cell.configureRecentlyDeleted(count: count, expanded: expanded)
+            // A press from VoiceOver does what a click on the header does.
+            cell.onPress = { [weak self] in self?.toggleRecentlyDeleted() }
             return cell
         case .note(let summary):
             let cell =
@@ -255,6 +263,8 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
                 ?? NoteRowCellView()
             cell.identifier = Self.noteCellIdentifier
             cell.configure(with: summary, now: shownNow)
+            // A press from VoiceOver opens the note, as a click does (the arrow keys only move the highlight).
+            cell.onPress = { [weak self] in self?.onOpen?(summary.id, false) }
             return cell
         }
     }
@@ -281,10 +291,15 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     /// or hidden. A click on any other header is left to the table, which ignores it.
     private func takeClick(onRow row: Int) -> Bool {
         guard rows.indices.contains(row), case .recentlyDeletedHeader = rows[row] else { return false }
+        toggleRecentlyDeleted()
+        return true
+    }
+
+    /// Shows or hides the notes under the header of Recently Deleted: a click on it, or a press from VoiceOver.
+    private func toggleRecentlyDeleted() {
         onToggleRecentlyDeleted?()
         // The notes appear below the header, at the bottom of the list: bring them into view.
         if let last = rows.indices.last, case .note = rows[last] { tableView.scrollRowToVisible(last) }
-        return true
     }
 
     /// ⌘⌫ on the highlighted row deletes its note, unless the note is deleted already. Returns whether it did.

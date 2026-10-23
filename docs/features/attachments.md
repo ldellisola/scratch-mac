@@ -188,6 +188,10 @@ here changes the note.
   (without the outline). It is a copy and only a copy: a drop in Finder, Mail or Slack gets the file, and Scratch's own
   copy is never moved out of its storage. A drop on a note of Scratch makes another attachment, with a copy of its own. A
   missing or copying attachment cannot be dragged.
+- **The context menu opens it too.** A right click on the preview or the chip offers Open Attachment, which opens the stored
+  file as a double-click does, also in a note that cannot be edited. The item is disabled when there is no file to open (a
+  missing attachment, one still being copied). VoiceOver reads a token as "image, dashboard.png", "file, rollback-plan.txt"
+  or "missing attachment" (accessibility.md).
 - **Any other click is the text view's own**: one beside a chip or in the padding of a preview puts the caret at the end of
   the token line (a click never stops inside a token), and so does a click with ⇧, ⌘, ⌥ or ⌃ held (⇧ extends the selection
   over the token whole).

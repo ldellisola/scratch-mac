@@ -78,6 +78,9 @@ that then renders like typed text.
   selection and is one undo step. It beeps and does nothing when no line under the selection is a checkbox, when a fenced
   block is among the lines, for a rectangular selection and in a note that cannot be edited. It is the keyboard's way
   to what a click on a box does (the accessibility pass of plan 6 asks that every mouse action has a menu item).
+- **The context menu has it too.** A right click on a box offers Mark as Checked (Mark as Unchecked for a ticked one), which
+  ticks or unticks that box wherever the caret is, as one undo step, like a click (accessibility.md, "The context menu").
+  VoiceOver reads a box as "unchecked" or "checked" and a bullet as "bullet" (accessibility.md, "VoiceOver").
 - The commands that change the text (these, and ⌘B below) are in the **Format** menu, after Edit. Its items go to
   whoever has the keyboard: only the editor answers them.
 
@@ -179,6 +182,8 @@ text like any other, so that placing the caret in a link never opens a browser.
   selection stay where they were. It works in a note that cannot be edited (a note in Recently Deleted) too, since opening
   a link changes nothing. The URL is the link as the parser found it, so the period or the unmatched `)` after a link
   at the end of a sentence is not part of it.
+- **The context menu opens it too.** A right click on a link offers Open Link, which does what the ⌘-click does, also in a
+  note that cannot be edited (accessibility.md, "The context menu").
 - **A plain click on a link only places the caret.** So does a click with ⇧ or ⌥ and no ⌘. A ⌘-click anywhere that is
   not on a link is the text view's own click.
 - **The click has to be on a character of the link.** The space to the right of a link that ends its line, the margin and
@@ -248,6 +253,7 @@ text like any other, so that placing the caret in a link never opens a browser.
 | A click on a box ticks or unticks it, keeps the caret and the keyboard, and changes only that box | `CheckboxTests.testClickingCheckboxTogglesWithoutMovingCaret`, `testClickingATickedUppercaseBoxUnticksIt`, `testClickingOneBoxChangesOnlyThatBox`, `testClickingABoxMovesTheKeyboardToTheEditor` |
 | A click is one undo step | `testUndoAfterCheckboxClick` |
 | Only the box is a toggle: not the space after it, the item's text, a read-only note or a code block | `testClickRightOfBoxIsNotAToggle`, `testReadOnlyCheckboxIgnoresClick`, `testNothingInACodeBlockIsACheckbox` |
+| The context menu on a box ticks that box, and Open Link opens a link, as the clicks do (docs/features/accessibility.md) | `ContextMenuTests.testContextMenuOnABox`, `testContextMenuOnALink`, `testReadOnlyNoteStillOffersToOpenALink` |
 | ⇧⌘L makes a checklist and takes it away again, from a selection, a caret or bullets, as one undo step | `testToggleChecklistOnSelection`, `testToggleChecklistWithoutSelectionUsesTheCaretsLine`, `testToggleChecklistTurnsABulletIntoABox`, `testChecklistCommandIsOneUndoStep` |
 | ⇧⌘L from the keyboard goes through the Format menu, and ⌘Z after it takes back the checklist and not the typing before it | `ChecklistUITests.testChecklistShortcutTurnsTheLineIntoACheckbox`, `testCommandZAfterTheChecklistShortcutTakesBackOnlyTheChecklist` |
 | ⇧⌘L does nothing in a code block or a read-only note | `testToggleChecklistInACodeBlockDoesNothing`, `testToggleChecklistInAReadOnlyNoteDoesNothing`, ScratchCore `CodeBlockIndexTests.intersects…` |

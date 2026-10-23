@@ -24,6 +24,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
   of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). Task 7 is done: the tab strip is a
   toolbar item in the toolbar row, lines have air between them, inline code is a pill, code blocks have a border, and an open
   box is grey ([`docs/features/tabs.md`](docs/features/tabs.md), [`docs/features/formatting.md`](docs/features/formatting.md)).
+  Task 8 is done: VoiceOver hears the rendered note (`SpokenText`: "unchecked", "image, dashboard.png", "code block, Swift"),
+  a sidebar row is one element, a tab's close button names its tab, Tab walks the search field, the note list, the title and
+  the editor (`KeyViewLoop`), the editor's context menu has what a click does (`EditorContextMenu`), and every colour has an
+  Increase Contrast variant ([`docs/features/accessibility.md`](docs/features/accessibility.md)).
   Task 6 is done: what is typed,
   composed or pasted next to a token goes on a line of its own, a copy or a drag of a selection that holds a token also
   writes the note's text on a private type that a paste or a drop into Scratch reads first, and a copied image is written
@@ -103,7 +107,8 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   fixture on the real directory; `deletePermanently` and `purge`, which remove a note
                                   and then the files nothing names any more; its
                                   `database` is public so that tests can make writes fail, see section 7)
-  Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride.
+  Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride (light, dark,
+                                  and `light-contrast` and `dark-contrast`: Increase Contrast on).
                                   LaunchRecord (one launch: the date, the version, the boot time, the milliseconds from the
                                   process start to each of the phases `main`, `storage`, `restore`, `window` and `firstFrame`,
                                   and `isFirstAfterStartUp`) and LaunchLog (`<data dir>/launch-times.json`: the newest 50
@@ -173,7 +178,8 @@ App/Sources/Window/               MainWindowController (one window, closing it q
                                   pinning, attaching a file, searching, the font size and Help > Launch Times…), AboutCredits (the About
                                   panel's credits: the licences in `Acknowledgements.rtf`, in `labelColor`; `credits(in:)`,
                                   `panelOptions(in:)`), ToolbarController (sidebar button, the tab strip as an item of its
-                                  own, pin button, paperclip, new note button; `updateTabStripWidth`), TitlebarPocket (hides
+                                  own, pin button, paperclip, new note button; `updateTabStripWidth`), KeyViewLoop (the order
+                                  of Tab: search field, note list, title, editor), TitlebarPocket (hides
                                   the line macOS 26 draws under the toolbar, section 7), LaunchTimesPanel (the alert of
                                   Help > Launch Times…: the report in a selectable text view, with Copy and OK)
 App/Sources/Tabs/                 TabStripViewController (the glass tab strip, the view of a toolbar item: `TabStripItem`,
@@ -183,7 +189,9 @@ App/Sources/Tabs/                 TabStripViewController (the glass tab strip, t
 App/Sources/Sidebar/              SidebarViewController (the search field and the note list in the glass sidebar: an
                                   NSTableView with group headers; a click or Return opens a note, `onOpen`; `onSearch`,
                                   `onTogglePin`, `onDelete`, `onRestore`, `onDeletePermanently` and
-                                  `onToggleRecentlyDeleted`), SidebarRowViews (`NoteRowCellView`, `GroupRowCellView`),
+                                  `onToggleRecentlyDeleted`, `keyViews`), SidebarRowViews (`NoteRowCellView`: one accessibility
+                                  element with the label `<title>, <time>, <preview>`, `GroupRowCellView`: the Recently Deleted
+                                  header is a button),
                                   SidebarTableView (Return, ⌘⌫, the click on the Recently Deleted header, the row's
                                   context menu)
 App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore (the body of the active
@@ -250,7 +258,14 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   `deleteForward`), takes a click on a preview or a chip (`attachmentHit`: the drawn rect,
                                   `pressAttachment`: a click selects, a double-click opens through `openURL`, `mouseDragged`
                                   past 3 pt drags the file out, `attachmentDragPresenter`) and writes an attachment copy
-                                  (`writeSelection`). AttachmentDrag (`pasteboardWriter(for:)`, the stored file's NSURL, the
+                                  (`writeSelection`). Accessibility (plan 6 task 8): SpokenText (`spoken(_:range:)`: what
+                                  VoiceOver reads for a range of the styled note, from the marker roles, code block marks and
+                                  attachment marks; NoteTextView's `accessibilityString(for:)` and
+                                  `accessibilityAttributedString(for:)` ask it, `accessibilityValue()` is the stored text) and
+                                  EditorContextMenu (`items(for:atViewPoint:)`: Mark as Checked, Open Link, Open Attachment and
+                                  the Code Block Language submenu, which `NoteTextView.menu(for:)` puts before AppKit's items;
+                                  `toggleCheckbox(at:)`, `attachmentMark(atViewPoint:)`, `codeBlock(atViewPoint:)`,
+                                  `validateMenuItem`). AttachmentDrag (`pasteboardWriter(for:)`, the stored file's NSURL, the
                                   drag item and its picture, `AttachmentDragSource`: copy only) and AttachmentPasteboard
                                   (the one item of a copy of one attachment: its name, its file's URL, and for an image
                                   its PNG and TIFF, which `AttachmentImageProvider` makes when an application asks;
@@ -269,11 +284,15 @@ App/Sources/Support/              LaunchClock (the process start and the boot ti
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
                                   size, scroll anchor, scroll offset, pending paste work, the previews still to decode,
                                   the attachments of the note (id, `copied` and `fileExists`) and the newest 20 records of
-                                  the launch log (`launchTimes`) from, in isolated launches only)
+                                  the launch log (`launchTimes`) and which part of the window has the keyboard
+                                  (`firstResponder`: `editor`, `title`, `search`, `sidebar` or `other`) from, in isolated
+                                  launches only), AppearanceOverride+AppKit (`nsAppearanceName`: the appearance that
+                                  `-ScratchAppearance` forces, with the two accessibility ones for Increase Contrast)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code, `CodeBorder` of a code block's hairline and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
-                                  light and a dark variant), Acknowledgements.rtf (the licences of tree-sitter and of every
+                                  light and a dark variant and a high contrast one of each: Increase Contrast, section 7),
+                                  Acknowledgements.rtf (the licences of tree-sitter and of every
                                   grammar, generated by `scripts/make-acknowledgements.py`: never edit it by hand)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, and a 50,000-line JSON paste and its wrap do too,
@@ -302,7 +321,10 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   drag on an attachment, pasting what was copied; AttachmentTestHost is what they share,
                                   LaunchTimerTests: the five phases in order, `finish` writes after the queue and never fails
                                   on a log that is corrupt or unwritable, LaunchClockTests, LaunchTimesPanelTests: the alert
-                                  and Copy)
+                                  and Copy, SpokenTextTests: what VoiceOver reads for markers, tokens and blocks, and that the
+                                  value is the stored text, ContextMenuTests: the context menu's items and what they do,
+                                  AppearanceTests: every colour has a high contrast variant that reads, and the contrast
+                                  launch appearances)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
                                   SidebarUITests, TitleUITests (title, title undo, font size, scroll position), TabsUITests (the
@@ -312,6 +334,8 @@ App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an
                                   CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
                                   AttachmentUITests (⌘V of an image survives a relaunch, Backspace twice and ⌘Z bring it
                                   back), LaunchUITests (a launch is in the launch log, Help > Launch Times… and its Copy),
+                                  AccessibilityUITests (labels, a sidebar row as one element, the Recently Deleted button, the
+                                  close button's label, Tab through the window),
                                   ScreenshotTests (one test per screenshot, section 3)
 App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests
                                   (`testLaunch`, which also attaches the launch log's phases as `launch_phases`, and
@@ -413,7 +437,9 @@ macOS and runs on GitHub's Macs.
   `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), `formatting-light` and
   `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note), and `code-light` and
   `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured), and
-  `attachments-light` and `attachments-dark` (the `attachments` fixture: an image and a file chip). These are the
+  `attachments-light` and `attachments-dark` (the `attachments` fixture: an image and a file chip), and
+  `typical-contrast-light` and `code-contrast-dark` (Increase Contrast on: `-ScratchAppearance light-contrast` and
+  `dark-contrast`). These are the
   names in the Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
@@ -450,7 +476,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
 | `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code`, `attachments` | delete the database and the `attachments` folder in the data directory and seed that fixture |
-| `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
+| `-ScratchAppearance <light\|dark\|light-contrast\|dark-contrast>` | `light`, `dark`, `light-contrast` or `dark-contrast` | force the appearance; the contrast ones are `NSAppearance.Name.accessibilityHighContrastAqua` and `…DarkAqua`, which Increase Contrast turns on, so the high contrast variants of the colours show (screenshots) |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 | `-ScratchIdleMonitor <path>` | any path | 3.5 s after launch measure the app's CPU time and run loop wake-ups for 5 s of idle, and write them, as JSON, to `<path>` (performance tests) |
 
@@ -834,8 +860,8 @@ new kind of release file, with no change to the app, ships.
   1 x 1 point view in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its
   accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY`, `topInset`, and
   `pendingHighlights` and `pendingPastes`, which are zero when a paste is done, `pendingPreviews`, which is zero when
-  every image is decoded, and `attachments`): `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no
-  clicks, so it is not in a screenshot.
+  every image is decoded, `attachments`, and `firstResponder`: `editor`, `title`, `search`, `sidebar` or `other`):
+  `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no clicks, so it is not in a screenshot.
 - **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
   `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
   equivalents needs two items.
@@ -1458,3 +1484,42 @@ new kind of release file, with no change to the app, ships.
   the point: the file is there after a relaunch. A very large copy therefore delays a tab switch (`persistNow()`); the
   alternative is a queue of its own, which would not be waited for. The launch sweep (`sweepUnreferencedAttachments`) is
   queued after the purge in the same main-queue turn, and removes only attachments created more than 24 hours ago.
+- **What VoiceOver reads is `SpokenText`, made from the styler's attributes, and `accessibilityValue()` is the stored text**
+  (plan 6 task 8). `NoteTextView.accessibilityString(for:)` replaces the characters of a marker with its words ("bullet",
+  "unchecked", "checked"; a token: "image, <name>", "file, <name>", "missing attachment"; an opening fence "code block,
+  <label>", a closing one "end of code block") and says nothing for hidden and revealed markers, so a spoken range is not as
+  long as the range it was asked for, and only the value, which `accessibilityValue()` returns as `string`, fixes the
+  offsets that VoiceOver and the caret use. `spoken(_:range:)` goes paragraph by paragraph, reads the mark on the paragraph's
+  first character (`scratchAttachment`, `scratchCodeBlock`) and the `scratchMarker` runs inside it, and says a marker's words
+  when the range holds its first character. A new kind of marker or of drawn line needs its words there and a case in
+  `SpokenTextTests`. Nothing could be tried with VoiceOver itself (CI has no screen reader): the tests call the text
+  view's methods, and `accessibilityAttributedString(for:)` is AppKit's own for a range with nothing to replace.
+- **A sidebar row is an accessibility element that lists its children, and so is the Recently Deleted header.** The UI tests
+  read the row's title, time and preview by identifier, so `NoteRowCellView` and `GroupRowCellView` return their text fields
+  from `accessibilityChildren()` (a button's children are not what AppKit lists by default), and the row's label
+  (`accessibilityLabel(title:time:preview:isPinned:)`) is set in `configure`. The Recently Deleted header is a button with a
+  label, a value ("expanded", "collapsed") and a press (`onPress`), and is a cell kind of its own
+  (`recentlyDeletedCellIdentifier`): a cell that was a button and is reused for "Today" would still be one.
+- **The context menu's items are validated by the text view, not by AppKit's guess.** `NoteTextView.menu(for:)` puts
+  `EditorContextMenu.items(for:atViewPoint:)` before the standard items of an auto-enabling menu, so
+  `validateMenuItem(_:)` answers `item.isEnabled` for the three actions of its own (`toggleCheckboxFromMenu`,
+  `openLinkFromMenu`, `openAttachmentFromMenu`): how `NSTextView` validates an action it does not know is not documented.
+  The Code Block Language submenu is `CodeBlockMenu.menu`, whose items are enabled by hand. The items change a note only when
+  it can be edited; a hosted test chooses an item by sending its action (`NSApp.sendAction`) and never pops the menu up
+  (the tracking loop of `NSMenu.popUp` waits for a mouse, as in the label's menu).
+- **The key view loop is explicit.** `KeyViewLoop.connect(sidebar.keyViews + [titleField, textView])` in `AppDelegate.launch`
+  sets every `nextKeyView`, because AppKit's own order follows the position of the views and not how the window is read.
+  Tab in the title is the editor's `insertTab` handler (go to the text), Tab in the text is a tab character, and ⌃Tab is the
+  next tab, so the loop is walked from the search field (⌥⌘F) to the title and no further by keys alone. A test reads
+  `debug.state`'s `firstResponder`, which looks at the identifiers of the responder, of a field editor's delegate and of the
+  views above them.
+- **Increase Contrast is a set of colour variants, and nothing in the code asks for the setting.** Every colour set of
+  `Assets.xcassets` has four entries: light, dark, and the same two with `"appearances": [{"appearance": "contrast",
+  "value": "high"}]` (the dark one with `luminosity: dark` as well). AppKit takes the high contrast one when the effective
+  appearance is `accessibilityHighContrastAqua` or `…DarkAqua`, which Increase Contrast and `-ScratchAppearance
+  light-contrast` / `dark-contrast` both produce. A new colour set needs the four entries, and `AppearanceTests` fails
+  without them (it reads the catalog's folder from the source tree and asks each colour under both pairs of appearances). The
+  text colours' high contrast variants read at 7:1 on the editor's background and the tint in light mode, and at 7:1 and 5:1
+  in dark mode, which the same test measures: a hue moved along its lightness, never replaced. A colour that is made in code
+  (`TabItemView.updateLayer` picks its pill, shadow and outline) reads `effectiveAppearance.bestMatch` for the accessibility
+  names. Reduce Transparency needs nothing: only system materials are translucent.

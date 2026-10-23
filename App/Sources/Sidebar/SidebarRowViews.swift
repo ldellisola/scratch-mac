@@ -13,6 +13,10 @@ final class NoteRowCellView: NSTableCellView {
     private let timeField = NSTextField(labelWithString: "")
     private let previewField = NSTextField(labelWithString: "")
 
+    /// What a press from VoiceOver does: opens the note, as a click on the row and Return do (`SidebarViewController`). The
+    /// arrow keys only move the highlight, and a VoiceOver user selects a row with its press.
+    var onPress: (() -> Void)?
+
     /// The pin is 0 points wide, and the title starts at the row's edge, while the note is not pinned. Made in `init`
     /// once `self` exists: a constraint to the row's own anchors needs it.
     private var pinWidth: NSLayoutConstraint!
@@ -58,6 +62,9 @@ final class NoteRowCellView: NSTableCellView {
         pinView.imageScaling = .scaleProportionallyDown
         // The group header already says "Pinned", and the title's value is only the title.
         pinView.setAccessibilityElement(false)
+        // The row is one element that reads its title, its time and its preview (`accessibilityLabel(...)`). Its three texts
+        // are its children, with identifiers of their own, which the UI tests read.
+        setAccessibilityElement(true)
 
         for subview in [pinView, titleField, timeField, previewField] {
             subview.translatesAutoresizingMaskIntoConstraints = false
@@ -116,6 +123,34 @@ final class NoteRowCellView: NSTableCellView {
         pinView.isHidden = !isPinned
         pinWidth.constant = isPinned ? Self.pinSize : 0
         titleLeading.constant = isPinned ? 4 : 0
+
+        setAccessibilityLabel(
+            Self.accessibilityLabel(
+                title: titleField.stringValue, time: timeField.stringValue, preview: summary.preview, isPinned: isPinned
+            ))
+    }
+
+    /// What VoiceOver reads for the row (plan 6 task 8): "<title>, <time>, <preview>", with ", pinned" after it for a pinned
+    /// note, and no preview when there is none. The title is "Untitled" for a note with no text, as the row shows it.
+    static func accessibilityLabel(title: String, time: String, preview: String, isPinned: Bool) -> String {
+        var parts = [title, time]
+        if !preview.isEmpty { parts.append(preview) }
+        if isPinned { parts.append("pinned") }
+        return parts.joined(separator: ", ")
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard let onPress else { return false }
+        onPress()
+        return true
+    }
+
+    /// The row's children are its texts, in reading order: the title, the time and the preview when it has one. The pin is not
+    /// an element, and a hidden preview is not there.
+    override func accessibilityChildren() -> [Any]? {
+        var children: [NSView] = [titleField, timeField]
+        if !previewField.isHidden { children.append(previewField) }
+        return children
     }
 }
 
@@ -129,6 +164,10 @@ final class NoteRowCellView: NSTableCellView {
 final class GroupRowCellView: NSTableCellView {
     private let chevronView = NSImageView()
     private let label = NSTextField(labelWithString: "")
+
+    /// What a press does, for VoiceOver: the header of Recently Deleted shows or hides its notes, as a click on it does
+    /// (`SidebarViewController`). Nil for the other headers, which do nothing.
+    var onPress: (() -> Void)?
 
     /// The arrow is 0 points wide, and the title starts at the row's edge, in every header but Recently Deleted's.
     private var chevronWidth: NSLayoutConstraint!
@@ -185,9 +224,21 @@ final class GroupRowCellView: NSTableCellView {
         labelLeading.constant = 0
     }
 
+    /// What VoiceOver reads for the header of Recently Deleted, with `count` deleted notes: "Recently Deleted, 3 notes".
+    static func recentlyDeletedAccessibilityLabel(count: Int) -> String {
+        "Recently Deleted, \(count) \(count == 1 ? "note" : "notes")"
+    }
+
     /// Shows the header of Recently Deleted: "Recently Deleted (`count`)", with an arrow that says whether its notes are
-    /// `expanded` (shown under the header).
+    /// `expanded` (shown under the header). It is a button for VoiceOver, with a label that counts the notes and a value that
+    /// says "expanded" or "collapsed", and a press shows or hides the notes (`onPress`). Only a cell that shows this header
+    /// is made so, and it is never shown as another one (the table keeps these cells apart from the other headers').
     func configureRecentlyDeleted(count: Int, expanded: Bool) {
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(Self.recentlyDeletedAccessibilityLabel(count: count))
+        setAccessibilityValue(expanded ? "expanded" : "collapsed")
+        setAccessibilityExpanded(expanded)
         label.stringValue = "Recently Deleted (\(count))"
         label.setAccessibilityIdentifier(AccessibilityID.recentlyDeletedHeader)
         chevronView.image = NSImage(
@@ -195,5 +246,17 @@ final class GroupRowCellView: NSTableCellView {
         chevronView.isHidden = false
         chevronWidth.constant = Self.chevronSize
         labelLeading.constant = 4
+    }
+
+    /// The header's one child is its title, with its identifier, which the UI tests read: the header is a button for
+    /// VoiceOver (`configureRecentlyDeleted`), and a button's children are not what AppKit lists by default.
+    override func accessibilityChildren() -> [Any]? {
+        [label]
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard let onPress else { return false }
+        onPress()
+        return true
     }
 }

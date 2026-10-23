@@ -288,6 +288,8 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
                 // the previews that are waiting to be decoded, so a screenshot is taken when the images are drawn.
                 "attachments": self.attachmentStates(),
                 "pendingPreviews": self.textView.styler.previews.pendingCount,
+                // Which part of the window has the keyboard: `editor`, `title`, `search`, `sidebar` or `other`.
+                "firstResponder": DebugStateElement.firstResponderName(in: self.view.window),
             ]
         }
         view.addSubview(element)

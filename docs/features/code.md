@@ -189,6 +189,9 @@ back into plain text (`CodeBlockMenu`, `NoteTextView`).
 - **The caret stays where it was in the text.** A caret in the code stays in the same place of the code, one in the
   opening fence goes to the end of the new name (or to the start of the code, for "Not Code"), and one in the closing
   fence to the end of the code that is left. The view takes the keyboard, as a click in it does.
+- **The context menu has it too.** A right click on any line of a block, a fence line too, offers a Code Block Language
+  submenu with these same items (`EditorContextMenu`), which do what they do here. A note that cannot be edited has none.
+  VoiceOver reads the block as "code block, Swift", its code and "end of code block" (accessibility.md).
 - **No label, no menu.** A fence with no name whose code is not code, or is a language Scratch does not know, shows no
   label (see "The label" above), so it has nothing to click. Typing a name on its fence gives it one.
 
