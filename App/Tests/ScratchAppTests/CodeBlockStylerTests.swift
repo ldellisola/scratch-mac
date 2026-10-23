@@ -605,7 +605,11 @@ final class CodeBlockStylerTests: XCTestCase {
         XCTAssertEqual(host.editor.currentText, "intro\n```bash\n# note\nls -l\n")
         XCTAssertNil(codeStyler(of: host).language(ofBlockAt: comment), "an unclosed fence is no block")
         XCTAssertTrue(isTextColour(colour(at: comment, in: host)), "the colours went with the block")
-        XCTAssertNil(paragraphStyle(at: comment, in: host), "and so did the indent")
+        // A plain paragraph has the base style now (the spacing after the line), and no indent.
+        let style = paragraphStyle(at: comment, in: host)
+        XCTAssertEqual(style?.headIndent ?? 0, 0, "and so did the indent")
+        XCTAssertEqual(style?.tailIndent ?? 0, 0)
+        XCTAssertEqual(style?.lineSpacing, 4, "it is a plain line again")
         XCTAssertNil(role(at: text.range(of: "```bash").location, in: host), "the fence line is text again")
         XCTAssertFalse(isNullGlyph(at: text.range(of: "```bash").location + 1, in: host))
     }
@@ -860,7 +864,8 @@ final class CodeBlockStylerTests: XCTestCase {
             tailIndent(ofLineWith: "x := 1", in: body, host: host) ?? 0, firstLineTail(label: "Go"), accuracy: 0.01,
             "the one line of a block is its first")
         XCTAssertEqual(paragraphStyle(at: 0, in: host)?.tailIndent, -10, "the fence line of the empty block")
-        XCTAssertNil(tailIndent(ofLineWith: "text", in: body, host: host), "text between blocks is not code")
+        XCTAssertEqual(
+            tailIndent(ofLineWith: "text", in: body, host: host) ?? 0, 0, "text between blocks is not code")
         XCTAssertEqual(host.editor.currentText, body)
     }
 

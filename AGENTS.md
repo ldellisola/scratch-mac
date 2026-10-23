@@ -993,8 +993,9 @@ new kind of release file, with no change to the app, ships.
 - **A screenshot of code waits for its colours.** They are written from the highlight queue after the window is up, so
   `ScreenshotTests.testCodeLight` and `testCodeDark` wait for `debug.state`'s `pendingHighlights` to be zero before the
   picture (the request is made in `show`, before the window is visible, so zero means done). The `code` fixture's note is
-  44 lines and fits the 1024 x 674 window whole: a line added to it can push the last block, the one with no fence name
-  and the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
+  36 lines and fits the 1024 x 674 window whole (it was 39 until plan 6 task 7, when the 4 pt after every line pushed the
+  last block below the edge): a line added to it, or to the spacing, can push the last block, the one with no fence name and
+  the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
 - **A screenshot of attachments waits for its files and its previews.** `ScreenshotTests.testAttachmentsLight` and
   `testAttachmentsDark` wait until `debug.state` reports both attachments of the `attachments` fixture in place
   (`attachments`: `copied` and `fileExists`) and `pendingPreviews` at zero (an image is decoded on its own queue), then

@@ -206,7 +206,8 @@ struct FixtureContent {
 
     /// The note "Code", edited at `now` and open in the only tab: a fenced block for each of five languages and one with
     /// no name on its fence, with a line of prose between the blocks. Every line is short enough not to wrap in a window
-    /// of 1,024 points.
+    /// of 1,024 points, and the note is short enough to be on the screenshot whole at the line spacing of 1.0.0 (every line
+    /// has 4 pt after it): 36 lines, with the last block's last line above the bottom edge of a 674 pt window.
     private static func code(now: Date) -> FixtureContent {
         let body = [
             "Snippets, one block for each language.",
@@ -214,7 +215,6 @@ struct FixtureContent {
             "struct Note {",
             "    let id: UUID",
             #"    var title = "Untitled"  // shown in the sidebar"#,
-            "    var edits = 0",
             "}",
             "```",
             "A route in Python, and the query behind it.",
@@ -226,13 +226,11 @@ struct FixtureContent {
             "```sql",
             "SELECT title, modified_at FROM notes",
             "WHERE deleted_at IS NULL -- live notes only",
-            "ORDER BY modified_at DESC LIMIT 20;",
             "```",
             "What the route answers, and a shell loop to check it.",
             "```json",
             "{",
             #"  "title": "Standup","#,
-            #"  "pinned": true,"#,
             #"  "edits": 3"#,
             "}",
             "```",
