@@ -4,8 +4,9 @@ import XCTest
 
 @testable import Scratch
 
-/// Hosted in the app. Covers docs/features/code.md ("Late first colours"): after the first frame the coordinator hands the
-/// texts of the notes that were open at launch to `CodeBlockStyler.warmUp`, which compiles the queries of the languages their
+/// Hosted in the app. Covers docs/features/code.md ("Late first colours"): after the first frame the coordinator reads the
+/// texts of the notes that were open at launch on the storage queue (the launch itself reads the active note only, plan 6
+/// task 3) and hands them to `CodeBlockStyler.warmUp`, which compiles the queries of the languages their
 /// fences name on the highlight queue, so that the first block in such a language does not wait for its query (240 to 270 ms
 /// for Swift, docs/decisions/0007). The coordinator runs on a real storage in a directory of its own.
 @MainActor
@@ -48,12 +49,14 @@ final class SessionWarmUpTests: XCTestCase {
         let coordinator = SessionCoordinator(storage: storage, editor: editor, sidebar: sidebar, tabStrip: tabStrip)
         coordinator.restore()
         let styler = editor.textView.styler.codeBlockStyler
+        XCTAssertEqual(coordinator.notesReadAtRestore, 1, "the launch read the active note only: the others come later")
         XCTAssertEqual(styler.pendingWarmUps, 0, "nothing is compiled before the first frame is out")
         XCTAssertTrue(styler.warmedLanguages.isEmpty)
 
         coordinator.warmUpHighlighting()
 
-        XCTAssertGreaterThan(styler.pendingWarmUps, 0, "asked for, on the highlight queue")
+        XCTAssertGreaterThan(
+            styler.pendingWarmUps, 0, "asked for: the texts are read on the storage queue, then scanned")
         spin(until: { styler.pendingWarmUps == 0 })
         XCTAssertEqual(styler.pendingWarmUps, 0)
         XCTAssertEqual(

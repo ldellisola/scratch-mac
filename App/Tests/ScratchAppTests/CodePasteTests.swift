@@ -192,6 +192,94 @@ final class CodePasteTests: XCTestCase {
         XCTAssertEqual(text(of: host), "```\n" + Self.ruby + "\n```")
     }
 
+    // MARK: The colours are asked for before the block exists
+
+    /// `functions` functions of four lines each, with `seed` in the names so that nothing of it was coloured before.
+    private static func swift(functions: Int, seed: Int) -> String {
+        (0..<functions).flatMap { index in
+            [
+                "func prefetched\(seed)x\(index)(_ value: Int) -> Int {",
+                "    let doubled = value * 2",
+                "    return doubled + \(index)",
+                "}",
+            ]
+        }.joined(separator: "\n")
+    }
+
+    /// Plan 6 task 3, docs/features/code.md ("Pasting code"): the paste is looked at as soon as it is read, and when it is
+    /// going to be wrapped the colours of the block are asked for then, before the wrap makes the block. Right after the paste
+    /// (and before the wrap's turn) one highlight is on its queue. The block that the wrap makes finds its colours: no
+    /// request is made for it, and no result is dropped for want of a block.
+    func testPastedCodeIsPrefetched() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("", in: host)
+        let styler = host.editor.textView.styler.codeBlockStyler
+        let code = Self.swift(functions: 10, seed: 1)
+        XCTAssertEqual(code.split(separator: "\n").count, 40)
+        let dropped = styler.droppedResults
+        let submitted = styler.submittedRequests
+
+        XCTAssertTrue(paste(code, into: host))
+        XCTAssertEqual(text(of: host), code, "the plain paste comes first")
+        XCTAssertEqual(host.editor.textView.pendingPasteClassifications, 1, "the wrap waits for its turn")
+        XCTAssertEqual(styler.pendingHighlights, 1, "the colours are asked for before the block exists")
+        XCTAssertEqual(styler.submittedRequests - submitted, 1, "one request, made for the block to come")
+
+        waitForClassification(in: host)
+        waitForHighlights(in: host)
+
+        XCTAssertEqual(text(of: host), "```swift\n" + code + "\n```")
+        let language = styler.language(ofBlockAt: 0)
+        XCTAssertEqual(language?.0, .swift)
+        XCTAssertEqual(language?.name, "Swift")
+        let keyword = ("```swift\n" + code as NSString).range(of: "func").location
+        XCTAssertNotNil(
+            host.editor.textView.layoutManager?.temporaryAttribute(
+                .foregroundColor, atCharacterIndex: keyword, effectiveRange: nil),
+            "the keyword of the first line is coloured")
+        XCTAssertEqual(
+            styler.submittedRequests - submitted, 1, "the wrapped block asked for nothing: its colours were there")
+        XCTAssertEqual(styler.droppedResults, dropped, "no result was dropped for want of a block")
+    }
+
+    /// A paste that stays plain asks for nothing: prose, a single line, a paste into a block.
+    func testPlainPasteIsNotPrefetched() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("", in: host)
+        let styler = host.editor.textView.styler.codeBlockStyler
+
+        paste(Self.prose[0], into: host)
+        XCTAssertEqual(styler.pendingHighlights, 0)
+        waitForClassification(in: host)
+        XCTAssertEqual(text(of: host), Self.prose[0], "prose stays plain")
+        XCTAssertEqual(styler.submittedRequests, 0)
+
+        show("```swift\nlet a = 1\n```", caret: 18, in: host)
+        waitForHighlights(in: host)
+        let submitted = styler.submittedRequests
+        paste(Self.python, into: host)
+        XCTAssertEqual(
+            styler.submittedRequests, submitted, "a paste into a block is not wrapped, so it is not prefetched")
+        waitForClassification(in: host)
+    }
+
+    /// Typing before the wrap's turn drops the paste, whatever was prefetched for it: the text is not the one that was looked at.
+    func testTypingBeforeTheWrapDropsAPrefetchedPaste() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("", in: host)
+        let code = Self.swift(functions: 10, seed: 2)
+
+        paste(code, into: host)
+        host.editor.textView.insertText("!", replacementRange: NSRange(location: NSNotFound, length: 0))
+        waitForClassification(in: host)
+        waitForHighlights(in: host)
+
+        XCTAssertEqual(text(of: host), code + "!", "the owner typed before the wrap's turn: the paste stays plain")
+    }
+
     // MARK: The paste stays plain
 
     func testSingleLinePasteStaysPlain() {

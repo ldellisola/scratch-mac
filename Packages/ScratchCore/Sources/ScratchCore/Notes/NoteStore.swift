@@ -82,6 +82,51 @@ public final class NoteStore: Sendable {
         try database.execute("DELETE FROM notes WHERE id = ?", [.text(id.rawValue)])
     }
 
+    // MARK: Tabs
+
+    /// How many ids ``tabInfo(_:)`` puts in one statement. SQLite allows at least 999 `?` arguments.
+    static let tabInfoChunk = 500
+
+    /// The statement that reads the tab information of `count` notes: derived columns only, never `body`, which can be
+    /// megabytes (the tests check that it names none).
+    static func tabInfoSQL(count: Int) -> String {
+        let placeholders = Array(repeating: "?", count: count).joined(separator: ", ")
+        return """
+            SELECT id, display_title, has_title, deleted_at, (modified_at = created_at) AS is_unedited
+            FROM notes WHERE id IN (\(placeholders))
+            """
+    }
+
+    /// The tab information of the notes `ids`, in one query that reads no body, keyed by id (spec §7: a launch reads the
+    /// body of the active note only). An id that names no note is not in the result, and a deleted note is, with its
+    /// ``TabNoteInfo/deletedAt``: the caller decides what a tab does with either.
+    ///
+    /// A very long list of ids is read in queries of ``tabInfoChunk`` ids each.
+    public func tabInfo(_ ids: [NoteID]) throws -> [NoteID: TabNoteInfo] {
+        var found: [NoteID: TabNoteInfo] = [:]
+        var start = 0
+        while start < ids.count {
+            let chunk = ids[start..<min(start + Self.tabInfoChunk, ids.count)]
+            start += chunk.count
+            let rows = try database.query(
+                Self.tabInfoSQL(count: chunk.count), chunk.map { SQLValue.text($0.rawValue) })
+            for row in rows {
+                guard let rawID = row.string("id"), let displayTitle = row.string("display_title"),
+                    let hasTitle = row.int("has_title"), let isUnedited = row.int("is_unedited")
+                else { throw Self.malformedRow("notes") }
+                let id = NoteID(rawValue: rawID)
+                // The derived columns are what `Note` worked out from the title and the body when it was saved. No title
+                // and no line with words in the body, with the edit time still the creation time, is a note that was never
+                // typed in. (A body of fence lines or attachment lines only has no words either, and nothing of the app
+                // saves one without moving the edit time.)
+                found[id] = TabNoteInfo(
+                    id: id, displayTitle: displayTitle, hasTitle: hasTitle != 0, deletedAt: row.date("deleted_at"),
+                    isNeverUsed: isUnedited != 0 && hasTitle == 0 && displayTitle.isEmpty)
+            }
+        }
+        return found
+    }
+
     // MARK: Pin and delete
 
     /// How long a note stays in Recently Deleted before ``purge(deletedBefore:)`` may remove it: 30 days (spec §6.2).

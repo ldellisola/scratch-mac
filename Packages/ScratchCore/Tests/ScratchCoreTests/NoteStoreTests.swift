@@ -265,3 +265,104 @@ private func date(_ seconds: Double) -> Date { Date(timeIntervalSinceReferenceDa
     #expect(saveTime < .milliseconds(500), "save took \(saveTime)")
     #expect(loadTime < .milliseconds(500), "load took \(loadTime)")
 }
+
+// Plan 6 task 3 (docs/features/autosave-and-restore.md, "Launch"): a launch that restores several tabs reads the body of
+// the active note only. `tabInfo` is what the other tabs need: the title they show, whether the note is deleted, and
+// whether it was ever used, from the derived columns and never from the body.
+
+@Test func tabInfoReadsNoBody() throws {
+    let (store, db) = try noteStore()
+    // The statement names no body, for one id and for many.
+    #expect(!NoteStore.tabInfoSQL(count: 1).lowercased().contains("body"))
+    #expect(!NoteStore.tabInfoSQL(count: 40).lowercased().contains("body"))
+
+    // And its answer follows the derived columns: a body that was changed behind the store's back (the columns are
+    // written on a save only) is not what the title comes from.
+    let note = Note(
+        id: NoteID.make(), title: "", body: "first line\nsecond line", createdAt: date(1), modifiedAt: date(2))
+    try store.save(note)
+    try db.execute(
+        "UPDATE notes SET body = ? WHERE id = ?", [.text("something else entirely"), .text(note.id.rawValue)])
+    let info = try store.tabInfo([note.id])[note.id]
+    #expect(info?.displayTitle == "first line")
+    #expect(info?.hasTitle == false)
+}
+
+@Test func tabInfoHasTheTitleTheRowHas() throws {
+    let (store, _) = try noteStore()
+    let titled = Note(id: NoteID.make(), title: "  Plan  ", body: "text", createdAt: date(1), modifiedAt: date(2))
+    let untitled = Note(
+        id: NoteID.make(), title: "", body: "\n\nfirst words\nmore", createdAt: date(1), modifiedAt: date(2))
+    let fenceOnly = Note(id: NoteID.make(), title: "", body: "```swift\n```", createdAt: date(1), modifiedAt: date(2))
+    try store.saveAll([titled, untitled, fenceOnly])
+
+    let info = try store.tabInfo([titled.id, untitled.id, fenceOnly.id])
+    #expect(
+        info[titled.id]
+            == TabNoteInfo(id: titled.id, displayTitle: "Plan", hasTitle: true, deletedAt: nil, isNeverUsed: false))
+    #expect(
+        info[untitled.id]
+            == TabNoteInfo(
+                id: untitled.id, displayTitle: "first words", hasTitle: false, deletedAt: nil, isNeverUsed: false))
+    #expect(info[fenceOnly.id]?.displayTitle == "", "a note of fence lines has no title: its tab says Untitled")
+    #expect(info[fenceOnly.id]?.isNeverUsed == false, "its edit time is not its creation time")
+}
+
+@Test func tabInfoMarksNeverUsed() throws {
+    let (store, _) = try noteStore()
+    // A note nobody typed in: empty, and its edit time is its creation time.
+    let fresh = try store.create(now: date(5))
+    // One the owner emptied again: empty, but its edit time moved (docs/decisions/0004: it is theirs).
+    var emptied = try store.create(now: date(5))
+    emptied.body = "typed"
+    emptied.modifiedAt = date(9)
+    try store.save(emptied)
+    emptied.body = ""
+    emptied.modifiedAt = date(12)
+    try store.save(emptied)
+    // One with text whose two dates are equal (a fixture's notes are like that): it has words, so it was used.
+    let seeded = Note(id: NoteID.make(), title: "", body: "words", createdAt: date(5), modifiedAt: date(5))
+    try store.save(seeded)
+    // One with a title of its own and nothing else.
+    let titled = Note(id: NoteID.make(), title: "Only a title", body: "", createdAt: date(5), modifiedAt: date(5))
+    try store.save(titled)
+
+    let info = try store.tabInfo([fresh.id, emptied.id, seeded.id, titled.id])
+    #expect(info[fresh.id]?.isNeverUsed == true)
+    #expect(info[emptied.id]?.isNeverUsed == false)
+    #expect(info[seeded.id]?.isNeverUsed == false)
+    #expect(info[titled.id]?.isNeverUsed == false)
+    for id in [fresh.id, emptied.id] { #expect(info[id]?.displayTitle == "" && info[id]?.hasTitle == false) }
+}
+
+@Test func tabInfoOmitsMissingNotesAndReportsDeletedOnes() throws {
+    let (store, _) = try noteStore()
+    let live = Note(id: NoteID.make(), title: "", body: "live", createdAt: date(1), modifiedAt: date(2))
+    let gone = Note(id: NoteID.make(), title: "", body: "gone", createdAt: date(1), modifiedAt: date(2))
+    try store.saveAll([live, gone])
+    try store.delete(gone.id, now: date(30))
+    let unknown = NoteID.make()
+
+    let info = try store.tabInfo([live.id, unknown, gone.id, live.id])
+    #expect(Set(info.keys) == [live.id, gone.id], "an id that names no note is not in the answer")
+    #expect(info[live.id]?.deletedAt == nil)
+    #expect(info[gone.id]?.deletedAt == date(30), "a deleted note says so: the restore drops its tab")
+    #expect(try store.tabInfo([]).isEmpty)
+}
+
+@Test func tabInfoAnswersForMoreIDsThanOneStatementTakes() throws {
+    let (store, _) = try noteStore()
+    let count = NoteStore.tabInfoChunk * 2 + 17
+    var ids: [NoteID] = []
+    var notes: [Note] = []
+    for index in 0..<count {
+        let note = Note(
+            id: NoteID.make(), title: "", body: "note \(index)", createdAt: date(1), modifiedAt: date(2))
+        notes.append(note)
+        ids.append(note.id)
+    }
+    try store.saveAll(notes)
+    let info = try store.tabInfo(ids)
+    #expect(info.count == count)
+    #expect(info[ids[count - 1]]?.displayTitle == "note \(count - 1)")
+}
