@@ -21,7 +21,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
   (`idle_cpu_pct`), with `perf/tolerances.json` and report-only metrics (docs/decisions/0009). Task 3 is done: a launch reads
   the body of the active note only, and the colours of a pasted block are asked for before the block exists. Task 4 is done:
   a sidebar row and a tab show a line without its markers (`PlainLine`), and schema version 4 works the titles and previews
-  of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). The plan before it,
+  of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). Task 6 is done: what is typed,
+  composed or pasted next to a token goes on a line of its own, a copy or a drag of a selection that holds a token also
+  writes the note's text on a private type that a paste or a drop into Scratch reads first, and a copied image is written
+  with its data when Scratch quits ([`docs/features/attachments.md`](docs/features/attachments.md)). The plan before it,
   [`2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md), is done and released as 0.5.0
   (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
   and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
@@ -68,11 +71,15 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   `sweep`) and AttachmentEditing (what the keys and the pasteboard do around a token line,
                                   as `TextEdit`s and `KeyAction`s: `snappedSelection` keeps the caret and a selection from
                                   ending inside a token, `deletion` is Backspace and Delete next to one, `removal`,
-                                  `insertion`: the token lines of a paste, each on a line of its own; `token(touching:)`
-                                  reads at most 51 units each way of a position) and AttachmentCopying (what Copy puts on
-                                  the pasteboard: `text(of:in:name:ignoring:)` is the text with the file's name in place of
-                                  each token, `soleAttachment(in:of:ignoring:)` says that a selection is exactly one token,
-                                  which is the one that also copies the file)
+                                  `insertion`: the token lines of a paste, each on a line of its own; `lineBreaks(inserting:
+                                  at:in:isLiteral:)`: whether typed, composed or pasted text needs a line break before and
+                                  after it so that no token line shares its line, and `textInsertion(of:breaks:over:in:)`,
+                                  the edit that has them; `token(touching:)` reads at most 51 units each way of a position)
+                                  and AttachmentCopying (what Copy puts on the pasteboard: `text(of:in:name:ignoring:)` is
+                                  the text with the file's name in place of each token, `soleAttachment(in:of:ignoring:)`
+                                  says that a selection is exactly one token, which is the one that also copies the file,
+                                  and `holdsAttachment(in:of:ignoring:)` that a selection holds a token, which is the one
+                                  that also writes the note's text)
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores: the tabs, the active one, the
                                   font size, and each tab's cursor and `scrollAnchor`), SessionStore (JSON under key
                                   "state"), TabList (the tab rules: open, close, select, with TabOpening and
@@ -237,7 +244,10 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   (`writeSelection`). AttachmentDrag (`pasteboardWriter(for:)`, the stored file's NSURL, the
                                   drag item and its picture, `AttachmentDragSource`: copy only) and AttachmentPasteboard
                                   (the one item of a copy of one attachment: its name, its file's URL, and for an image
-                                  its PNG and TIFF, which `AttachmentImageProvider` makes when an application asks)
+                                  its PNG and TIFF, which `AttachmentImageProvider` makes when an application asks;
+                                  `noteTextType`, the private type of the note's own text; `write`, which remembers the
+                                  last copy of an image, and `materialize`, which writes it again with its data at quit:
+                                  `AppDelegate.applicationWillTerminate`)
 App/Sources/Support/              LaunchClock (the process start and the boot time, from `sysctl`), LaunchTimer (the launch's
                                   phase marks, and after the first frame the log's record: `mark`, `finish`, `current`, `log`),
                                   AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
@@ -1287,12 +1297,14 @@ new kind of release file, with no change to the app, ships.
   is an edit of nothing, which `apply` does not register as an undo step. The menu items have `NoteTextView` as their target and
   the menu has `autoenablesItems = false`, as the Format menu does.
 - **A paste or a drop is read in the order of the spec, by the code and not by AppKit** (`NoteTextView.readSelection(from:)`,
-  `paste(_:)`, `pasteAsPlainText(_:)`, `performDragOperation(_:)`): file URLs first (`attachmentSources(from:)`,
+  `paste(_:)`, `pasteAsPlainText(_:)`, `performDragOperation(_:)`): the note's own text of a copy first (below, "The note's
+  text is on the pasteboard too"), then file URLs (`attachmentSources(from:)`,
   `readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])`, files that exist), then any text, then
   an image with no text. `readablePasteboardTypes` lists `.fileURL`, `.png` and `.tiff` only because AppKit offers Paste
   and a drop, and validates the Paste menu item, only for a pasteboard that has a type of the list. It does not choose:
   `paste(_:)` and `pasteAsPlainText(_:)` make the attachments before they call `super`, the text path reads `.string`
-  explicitly (`super.readSelection(from:type:)`), and `preferredPasteboardType(from:restrictedToTypesFrom:)` answers
+  explicitly (`readSelection(from:type:)`, which the view overrides and which ends in `super`), and
+  `preferredPasteboardType(from:restrictedToTypesFrom:)` answers
   `.string` whenever there is text, so that an image next to the text (Excel, Word, browsers) can never be what AppKit reads
   (Review Focus 3). A paste that made attachments sets `attachmentPasteWasInserted`, and `endPaste` then skips the code
   classification: its text is token lines. Nothing of a picture is decoded or encoded on the main thread: `imageSource(on:)`
@@ -1313,8 +1325,22 @@ new kind of release file, with no change to the app, ships.
   line break before the first token unless the paste starts a line, and one after the last token unless one follows already
   (so a token at the end of the note is followed by a line break, which deviates from the plan's literal rule: the caret
   would otherwise be at the end of the token's line, where typing breaks the token). The caret ends at the start of the
-  line after the last token, which is where the Backspace rule selects the token. Typing at an end of a token line still
-  breaks the token (it is text then, and ⌘Z takes it back); nothing guards that.
+  line after the last token, which is where the Backspace rule selects the token. The caret can still be at an end of a
+  token line (a click beside a chip, ←, Backspace), and typing there is guarded now: see the next pitfall.
+- **Text typed, composed or pasted next to a token goes on a line of its own, as two edits** (plan 6 task 6).
+  `NoteTextView.makeRoomAtTokenEdge(for:replacementRange:)` runs in `insertText(_:replacementRange:)`, in the first
+  `setMarkedText` of a composition and in the fallback of `insertTab` (so Return, which only inserts a line break, and a
+  step of a composition that already has marked text need none). It asks `AttachmentEditing.lineBreaks(inserting:at:in:
+  isLiteral:)` (the end of a token line before the text, the start of one after it, a token line at an edge of the inserted
+  text that something shares its line with, never in a fenced block, never when the inserted text has a line break at that
+  end already, and nothing for a selection that replaces a whole token line), applies the break with `apply(_:)` and lets
+  `super` insert: for a break before, the caret follows it, for one after, it stays in front of it, so the text lands on the
+  new line. The break is its own edit, so ⌘Z takes the text back first (when the two fall in one run loop turn, which a
+  key press is, one ⌘Z may take both: neither leaves half a token). It reads a token's length each way, because it runs on
+  every key, and is skipped inside a paste (`pasteDepth`), which puts its breaks in its own edit: `insertTextWithTokenBreaks`
+  (plain text: only when `lineBreaks` says so, else AppKit's own paste) and `insertNoteText` (below) build one `TextEdit`
+  with `AttachmentEditing.textInsertion`, whose caret is after the text, or below it when the text ends in a token line. A
+  paste that added breaks sets `pasteBreaks`, which `endPaste` takes out of the range that it classifies as code.
 - **A token is kept whole by the selection delegate and two key overrides, and the rules are in Core.**
   `EditorViewController.textView(_:willChangeSelectionFromCharacterRange:toCharacterRange:)` is asked for every change of
   the selection, by a key, the mouse or code, and answers `AttachmentEditing.snappedSelection` (through
@@ -1358,7 +1384,27 @@ new kind of release file, with no change to the app, ships.
   (`AttachmentImageProvider`, a data provider that reads the stored file and runs ImageIO when an application asks, a PNG
   file as its own bytes) because decoding and encoding a full-size picture must never make Copy wait; the view keeps the
   provider of the last copy alive (`attachmentImageProvider`), since the pasteboard may ask after Copy has returned.
-  Pasting what was copied finds the file URL first (spec §6.5 order) and makes a new attachment with its own copy.
+  `AttachmentPasteboard.write` remembers the last copy of an image (the pasteboard's name and change count, the name, the
+  file's URL and the note's text), and `materialize(on:)`, which `AppDelegate.applicationWillTerminate` calls for the
+  general pasteboard, writes that item again with the PNG and the TIFF in place of the promise when nothing has written
+  to the pasteboard since: the promise goes when the app does. A test replaces `makeImageProvider` to see that the data
+  was not made by the promise.
+- **The note's text is on the pasteboard too, and a paste or a drop into Scratch reads it first** (plan 6 task 6). A
+  selection that holds a token (`AttachmentCopying.holdsAttachment`: a token outside a fenced block) also writes the
+  selection exactly as stored, token lines and all (ranges of a rectangular selection joined by line breaks), on
+  `AttachmentPasteboard.noteTextType` (`io.github.ldellisola.Scratch.note-text`), and on no selection without a token:
+  `writablePasteboardTypes` stays `[.string]`, and the extra types are written by `writeSelection(to:types:)`, as the file
+  URL is. Other applications see the same text, file and image as before. `readablePasteboardTypes` and
+  `acceptableDragTypes` list it. `NoteTextView.insertNoteText(from:)` is the one reader: `readAttachments(from:)` (Paste,
+  before the file URL that a copy of one attachment holds too), `readSelection(from:type:)` (an override: a read of `.string` or of the
+  private type, which is what AppKit calls for a text drop that it handles itself, so a drag within a note keeps its
+  tokens and AppKit still moves or copies as it always did) and `performDrop(of:atViewPoint:)`. It inserts the same ids, so
+  two notes (or one) may name one file, and it declines, so that the plain paste order goes on, in code (`isPastingIntoCode`:
+  a block is literal and the names go in), when text is being composed, for several selections, with no catalog, and when
+  an id has no row in this store (a copy from another Scratch: its file URL makes a new attachment, as before). A paste of
+  it is never classified as code. A drag of text with a token is judged by its types like any other drag: it is the text
+  view's own (`wouldMakeAttachments` is false) unless it also holds a file (one attachment, selected whole), and the
+  drop is `performDrop`'s.
 - **A copy runs on the storage queue, so `persistNow()` waits for it.** `AttachmentImporter` registers the row on the main
   thread, calls `AttachmentCatalog.markCopying`, and queues `copyIn` or `writeIn` on the coordinator's storage queue, then
   `markCopied` on the main queue. A copy that is under way when the app quits or the tab changes is waited for, which is

@@ -42,9 +42,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         true
     }
 
-    /// Quitting writes everything that is unsaved before the process ends (spec §6.6).
+    /// Quitting writes everything that is unsaved before the process ends (spec §6.6). It also keeps the image that the
+    /// owner copied last, if it is still on the pasteboard: its PNG and TIFF are promised, the promise is Scratch's, and it goes
+    /// with the app, so the data is written now (plan 6 task 6, `AttachmentPasteboard.materialize`). After the notes, which
+    /// matter more if the system is in a hurry.
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.persistNow()
+        _ = AttachmentPasteboard.materialize(on: .general)
     }
 
     /// So does switching to another app: whatever happens to Scratch next, the notes are on disk.

@@ -4,8 +4,9 @@ What the editor does with text that comes in and text that goes out, and what it
 Spec: [§6.5 Clipboard](../superpowers/specs/2026-10-19-scratchpad-design.md) and §6.4 (one font, no smart
 substitutions), guarding the anti-goals "Font contamination", "Rich-text leakage" and "Mangled code" (§4).
 
-Status: plan 1 (walking skeleton), since plan 4 code detection on paste, and since plan 5 file references and images on
-paste and the names and files of attachments on copy. Later plans may add rich copy-out.
+Status: plan 1 (walking skeleton), since plan 4 code detection on paste, since plan 5 file references and images on
+paste and the names and files of attachments on copy, and since plan 6 the note's own text on a private type when the
+selection holds an attachment. Later plans may add rich copy-out.
 
 ## Behaviour
 
@@ -18,13 +19,17 @@ paste and the names and files of attachments on copy. Later plans may add rich c
   before the turn), text of two lines or more that looks like code is wrapped in a fence with its language, an edit of
   its own: ⌘Z once gives back the plain pasted text, and ⌘Z again removes it. Prose, a single line, a paste into code and a
   paste that holds a fence line are left as pasted. The rules are in docs/features/code.md ("Pasting code"). File
-  references come before the text in this order and become attachments, and an image with no text comes after it and
+  references come before the text in this order and become attachments (and the private type of a copy that held an
+  attachment comes before them: a paste of what Scratch copied is what was copied), and an image with no text comes after it and
   becomes an image attachment, stored as PNG (plan 5; the rules are in docs/features/attachments.md, "Pasting and
   dropping"). Text that comes with an image (Excel, Word, browsers) is pasted as text.
 - **Copy and Cut put plain text only on the pasteboard.** No RTF, RTFD or HTML. Nothing of the note's font or colours
   reaches Slack, mail or a terminal. The text is exactly what the editor holds, except for attachments (plan 5, spec
   §6.5): each token line is written as the name of its file, and a selection that is exactly one attachment also puts the
-  file's URL there, and for an image its PNG and TIFF (docs/features/attachments.md, "Copying").
+  file's URL there, and for an image its PNG and TIFF (docs/features/attachments.md, "Copying"). A selection that holds an
+  attachment also writes the selection exactly as stored on a private type, `io.github.ldellisola.Scratch.note-text`
+  (plan 6): only Scratch reads it, so that a paste or a drop into a note keeps the attachment, and the other applications
+  still see plain text. No other selection writes it.
 - **Nothing is substituted while typing or pasting.** Smart quotes, smart dashes, text replacement, auto-correct,
   spell and grammar checking, link and data detection, text completion and smart insert/delete are all off. A straight
   quote stays straight, `--` stays two hyphens, and the characters of pasted code are never changed.
@@ -36,15 +41,18 @@ All of it is in `App/Sources/Editor/NoteTextView.swift`:
 
 - `applyScratchConfiguration()` makes the view a plain-text editor and turns every substitution off.
   `TextViewFactory.makeEditor()` calls it.
-- `readablePasteboardTypes` is `[.string, .fileURL, .png, .tiff]`: AppKit offers Paste, and accepts a drag, only for a
-  pasteboard that has one of them. The order of preference is not this list's: `readSelection(from:)` reads the files
-  first (`attachmentSources(from:)`), then text as `.string` and nothing else, then an image, and
+- `readablePasteboardTypes` is `[AttachmentPasteboard.noteTextType, .string, .fileURL, .png, .tiff]`: AppKit offers Paste,
+  and accepts a drag, only for a pasteboard that has one of them. The order of preference is not this list's:
+  `readSelection(from:)` reads the note's text first (`insertNoteText`), then the files (`attachmentSources(from:)`), then
+  text as `.string` and nothing else (`readSelection(from:type:)`, which puts the line breaks around text that is pasted next
+  to a token), then an image, and
   `preferredPasteboardType(from:restrictedToTypesFrom:)` makes AppKit's own choice `.string` whenever there is text.
 - `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` start and end a paste (`beginPaste`, `endPaste`), and the
   wrap of a paste of code is `PasteClassifier` (`App/Sources/Editor/PasteClassifier.swift`).
 - `writablePasteboardTypes` is `[.string]` and `writeSelection(to:types:)` writes the selected text as `.string` and
-  nothing else, except the one attachment that is selected whole (`AttachmentCopying`, `AttachmentPasteboard`): the one
-  place that decides what Copy, Cut, drags and Services put out. Rich copy-out would be added here (spec §6.5, "for now").
+  nothing else, except the one attachment that is selected whole and, for a selection that holds a token, the note's text
+  on the private type (`AttachmentCopying`, `AttachmentPasteboard`): the one place that decides what Copy, Cut, drags and
+  Services put out. Rich copy-out would be added here (spec §6.5, "for now").
 
 ## Tests
 
@@ -58,6 +66,8 @@ runs on the one editor `TextViewFactory.makeEditor` makes.
 | Every substitution flag is off, plain text mode, note font | `testSmartSubstitutionsAreOff` |
 | Typed straight quotes and `--` stay as typed | `testTypedStraightQuotesStayStraight` |
 | Copy writes `.string` and no `.rtf`, `.rtfd` or `.html` | `testCopyWritesOnlyPlainText` |
+| Copy of a selection with no token writes plain text and not the private type; with one it writes both | `AttachmentCopyTests.testCopyWithoutATokenWritesOnlyPlainText`, `testCopyWithATokenWritesNoteText` |
+| Text pasted next to a token goes on a line of its own, in one edit | `AttachmentPasteTests.testPastingTextAtATokenEdgeKeepsTheToken` |
 | The editor is TextKit 1 and keeps its text storage and layout manager after `makeEditor` returns | `testEditorKeepsItsTextKitOneStack` |
 | Loading and typing leave the editor on TextKit 1 (a layout manager, no text layout manager) | `testEditorStaysOnTextKitOneWhileEditing` |
 
