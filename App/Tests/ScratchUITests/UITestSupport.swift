@@ -118,6 +118,17 @@ enum UITestSupport {
         ).firstMatch
     }
 
+    /// The toolbar's paperclip, which attaches files. A view-less toolbar item like the others: found by its item
+    /// identifier or its label, "Attach File".
+    @MainActor
+    static func attachButton(in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(
+            NSPredicate(
+                format: "identifier == %@ OR label == %@ OR title == %@", AccessibilityID.attachButton, "Attach File",
+                "Attach File")
+        ).firstMatch
+    }
+
     /// The search field at the top of the sidebar. Its `value` is the text typed in it.
     @MainActor
     static func searchField(in app: XCUIApplication) -> XCUIElement {

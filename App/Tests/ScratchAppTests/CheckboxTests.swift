@@ -475,6 +475,112 @@ final class CheckboxTests: XCTestCase {
         XCTAssertGreaterThan(ticked, open, "a ticked box is filled, an open one is an outline")
     }
 
+    /// The colours of the pixels of the box over `marker` that are ink: not the colour of the background around it.
+    private func inkColours(over marker: NSRange, in host: Host) -> [NSColor] {
+        let textView = host.editor.textView
+        let rect = viewRect(ofCharacters: marker, in: host).integral
+        guard rect.width > 0, rect.height > 0, let rep = textView.bitmapImageRepForCachingDisplay(in: rect) else {
+            return []
+        }
+        textView.cacheDisplay(in: rect, to: rep)
+        guard let background = rep.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB) else { return [] }
+        var ink: [NSColor] = []
+        for y in 0..<rep.pixelsHigh {
+            for x in 0..<rep.pixelsWide {
+                guard let color = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                let distance =
+                    abs(color.redComponent - background.redComponent)
+                    + abs(color.greenComponent - background.greenComponent)
+                    + abs(color.blueComponent - background.blueComponent)
+                if distance > 0.15 { ink.append(color) }
+            }
+        }
+        return ink
+    }
+
+    /// An open box is drawn in `secondaryLabelColor`, a grey (plan 6 task 7, mockup B), and a ticked one stays filled with the
+    /// accent colour: the ink of the open box has no hue.
+    func testOpenBoxIsGrey() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("[ ] a\n[x] b", caret: 11, in: host)
+
+        let open = inkColours(over: NSRange(location: 0, length: 3), in: host)
+
+        XCTAssertGreaterThan(open.count, 10, "the open box is drawn")
+        for color in open {
+            let spread =
+                max(color.redComponent, color.greenComponent, color.blueComponent)
+                - min(color.redComponent, color.greenComponent, color.blueComponent)
+            XCTAssertLessThan(spread, 0.06, "r, g and b of \(color) are about the same")
+        }
+    }
+
+    /// The symbol is 85% of the font's line height. The line fragment's height includes the spacing after the line (plan 6
+    /// task 7), so a symbol made from it would grow with the spacing: the box of a line with no spacing and of one with the
+    /// 4 pt is as high.
+    func testCheckboxSizeIgnoresSpacing() throws {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("[ ] a\n[x] b", caret: 11, in: host)
+        let textView = host.editor.textView
+        let layoutManager = try XCTUnwrap(textView.layoutManager as? MarkupLayoutManager)
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: 11))
+        let font = NoteTextView.noteFont
+        let lineHeight = layoutManager.defaultLineHeight(for: font)
+        let fragment = layoutManager.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+
+        XCTAssertEqual(fragment.height, lineHeight + 4, accuracy: 1, "the fragment includes the spacing")
+        XCTAssertEqual(layoutManager.checkboxPointSize(for: font), 0.85 * lineHeight, accuracy: 0.01)
+
+        /// The height of the ink in the fragment of the first line, over the box.
+        func inkHeight() -> CGFloat {
+            let glyphs = layoutManager.glyphRange(
+                forCharacterRange: NSRange(location: 0, length: 3), actualCharacterRange: nil)
+            let container = textView.textContainer!
+            let box = layoutManager.boundingRect(forGlyphRange: glyphs, in: container)
+            let line = layoutManager.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+            let rect = NSRect(
+                x: textView.textContainerOrigin.x + box.minX - 2, y: textView.textContainerOrigin.y + line.minY,
+                width: box.width + 4, height: line.height
+            ).integral
+            guard let rep = textView.bitmapImageRepForCachingDisplay(in: rect) else { return -1 }
+            textView.cacheDisplay(in: rect, to: rep)
+            guard let background = rep.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB) else { return -1 }
+            var first: Int?
+            var last = 0
+            for y in 0..<rep.pixelsHigh {
+                for x in 0..<rep.pixelsWide {
+                    guard let color = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                    let distance =
+                        abs(color.redComponent - background.redComponent)
+                        + abs(color.greenComponent - background.greenComponent)
+                        + abs(color.blueComponent - background.blueComponent)
+                    if distance > 0.15 {
+                        first = first ?? y
+                        last = y
+                    }
+                }
+            }
+            guard let first else { return -1 }
+            return CGFloat(last - first + 1) * rect.height / CGFloat(rep.pixelsHigh)
+        }
+
+        let spaced = inkHeight()
+        XCTAssertGreaterThan(spaced, 8, "the box is drawn")
+        XCTAssertLessThanOrEqual(spaced, 0.85 * lineHeight * 1.2, "and is not made from the fragment's height")
+
+        // The same line with no spacing: the box is as high.
+        let plain = NSMutableParagraphStyle()
+        plain.lineSpacing = 0
+        textView.textStorage?.addAttribute(.paragraphStyle, value: plain, range: NSRange(location: 0, length: 6))
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: 11))
+        let flat = layoutManager.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+        XCTAssertEqual(flat.height, lineHeight, accuracy: 1, "the line has no spacing now")
+        let unspaced = inkHeight()
+        XCTAssertEqual(unspaced, spaced, accuracy: 1.5, "the box does not depend on the spacing")
+    }
+
     // MARK: The menu
 
     func testMarkAsCheckedMenuItem() {

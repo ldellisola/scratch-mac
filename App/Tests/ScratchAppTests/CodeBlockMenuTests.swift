@@ -254,7 +254,10 @@ final class CodeBlockMenuTests: XCTestCase {
             "the caret stays in the same place of the code")
         let comment = (expected as NSString).range(of: "# watch the rollout").location
         XCTAssertNil(codeStyler(of: host).language(ofBlockAt: comment), "it is not a block any more")
-        XCTAssertNil(paragraphStyle(at: comment, in: host), "its lines are not indented")
+        let style = paragraphStyle(at: comment, in: host)
+        XCTAssertEqual(style?.headIndent ?? 0, 0, "its lines are not indented")
+        XCTAssertEqual(style?.firstLineHeadIndent ?? 0, 0)
+        XCTAssertEqual(style?.tailIndent ?? 0, 0)
         XCTAssertTrue(isTextColour(colour(at: comment, in: host)), "and not coloured")
         XCTAssertTrue(isTextColour(colour(at: (expected as NSString).range(of: "kubectl").location, in: host)))
 

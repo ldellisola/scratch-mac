@@ -56,6 +56,76 @@ final class TabsUITests: XCTestCase {
         XCTAssertTrue(app.wait(for: .notRunning, timeout: 10), "the app did not quit")
     }
 
+    /// Plan 6 task 7: the tab strip is a toolbar item, in the row of the toolbar's buttons, left of them (mockup B).
+    func testTabStripIsInTheToolbarRow() throws {
+        continueAfterFailure = false
+        let app = launchTypical()
+        waitForActiveTab(0, in: app)
+        let button = UITestSupport.newNoteButton(in: app)
+        XCTAssertTrue(button.waitForExistence(timeout: 10), "the toolbar has no new note button")
+        let pin = UITestSupport.pinButton(in: app)
+        XCTAssertTrue(pin.waitForExistence(timeout: 10), "the toolbar has no pin button")
+
+        let active = try XCTUnwrap(UITestSupport.tabs(in: app).first { $0.isSelected }, "no tab is selected")
+
+        XCTAssertEqual(
+            active.frame.midY, button.frame.midY, accuracy: 4,
+            "the active tab's centre \(active.frame) is in the row of the new note button \(button.frame)")
+        let last = try XCTUnwrap(UITestSupport.tabs(in: app).last)
+        XCTAssertLessThan(last.frame.maxX, pin.frame.minX, "the strip is left of the buttons")
+        XCTAssertLessThan(
+            UITestSupport.editor(in: app).frame.minY - active.frame.maxY, 60,
+            "the strip is not above an empty band: the editor follows it closely")
+    }
+
+    /// Plan 6 task 7, Review Focus 4: twelve tabs are shared by a strip that stops where the buttons begin, with the sidebar
+    /// shown and hidden: the pin, the paperclip and the new note button stay where they can be clicked, and the last tab is
+    /// in the window.
+    func testTwelveTabsKeepTheToolbarButtons() throws {
+        continueAfterFailure = false
+        let app = launchTypical()
+        for _ in 0..<10 { app.typeKey("t", modifierFlags: .command) }
+        waitForTabs(12, in: app)
+        let window = app.windows.firstMatch
+
+        func assertToolbarIsIntact(_ moment: String, file: StaticString = #filePath, line: UInt = #line) {
+            let buttons = [
+                ("pin", UITestSupport.pinButton(in: app)), ("paperclip", UITestSupport.attachButton(in: app)),
+                ("new note", UITestSupport.newNoteButton(in: app)),
+            ]
+            for (name, button) in buttons {
+                XCTAssertTrue(button.exists, "\(moment): no \(name) button", file: file, line: line)
+                XCTAssertTrue(
+                    button.isHittable, "\(moment): the \(name) button is out of reach", file: file, line: line)
+            }
+            let tabs = UITestSupport.tabs(in: app)
+            XCTAssertEqual(tabs.count, 12, "\(moment): the tabs", file: file, line: line)
+            guard let last = tabs.last else { return }
+            XCTAssertTrue(
+                window.frame.contains(last.frame),
+                "\(moment): the last tab \(last.frame) is in the window \(window.frame)",
+                file: file, line: line)
+            XCTAssertLessThan(
+                last.frame.maxX, UITestSupport.pinButton(in: app).frame.minX,
+                "\(moment): the strip runs under the buttons", file: file, line: line)
+        }
+
+        assertToolbarIsIntact("with the sidebar")
+
+        let before = UITestSupport.tabs(in: app).first?.frame.minX ?? 0
+        app.typeKey("s", modifierFlags: [.command, .control])
+        let hidden = UITestSupport.wait { (UITestSupport.tabs(in: app).first?.frame.minX ?? before) < before - 50 }
+        XCTAssertTrue(
+            hidden,
+            "the strip moves left when the sidebar is hidden: \(UITestSupport.tabs(in: app).first?.frame ?? .zero)")
+        Thread.sleep(forTimeInterval: 0.5)
+        assertToolbarIsIntact("with the sidebar hidden")
+
+        app.typeKey("s", modifierFlags: [.command, .control])
+        Thread.sleep(forTimeInterval: 0.8)
+        assertToolbarIsIntact("with the sidebar shown again")
+    }
+
     func testRestoresBothTabsWithFirstActive() throws {
         continueAfterFailure = false
         let app = launchTypical()

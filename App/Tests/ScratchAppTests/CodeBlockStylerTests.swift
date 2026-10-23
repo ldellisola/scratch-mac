@@ -192,7 +192,8 @@ final class CodeBlockStylerTests: XCTestCase {
                 paragraphStyle(at: fence.location, in: host)?.maximumLineHeight, 6, "the paragraph style says so")
         }
         XCTAssertEqual(
-            lineHeight(at: opening.location - 1, in: host), 16, accuracy: 1, "the blank line above is a line")
+            lineHeight(at: opening.location - 1, in: host), 16 + 4, accuracy: 1,
+            "the blank line above is a line, with the 4 pt that every line has after it (plan 6 task 7)")
 
         // The lines of the block are 10 points in from both sides, and keep the note font. The first one is further in from
         // the right: the label reaches into it (`testFirstLineOfCodeWrapsBeforeLabel`).
@@ -214,6 +215,65 @@ final class CodeBlockStylerTests: XCTestCase {
             paragraphStyle(at: text.range(of: "- check").location, in: host)?.tailIndent, 0,
             "a list line is not a block line")
         XCTAssertEqual(host.editor.currentText, Self.typicalBody, "rendering never changes a character")
+    }
+
+    // MARK: The border and the corners (plan 6 task 7, docs/features/code.md "Rendering")
+
+    /// The text view drawn into a bitmap, for the part of it in `rect` (the view's coordinates).
+    private func render(_ rect: NSRect, in host: Host) -> NSBitmapImageRep? {
+        let textView = host.editor.textView
+        guard let rep = textView.bitmapImageRepForCachingDisplay(in: rect) else { return nil }
+        textView.cacheDisplay(in: rect, to: rep)
+        return rep
+    }
+
+    private func colour(at point: NSPoint, in rep: NSBitmapImageRep, from rect: NSRect) -> NSColor? {
+        let scale = CGFloat(rep.pixelsWide) / rect.width
+        let x = Int((point.x - rect.minX) * scale)
+        let y = Int((point.y - rect.minY) * scale)
+        guard x >= 0, y >= 0, x < rep.pixelsWide, y < rep.pixelsHigh else { return nil }
+        return rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)
+    }
+
+    private func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {
+        abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent)
+            + abs(a.blueComponent - b.blueComponent)
+    }
+
+    /// A block has rounded corners of 8 pt and a border of 1 pt in `CodeBorder` (black at 8% in light mode, white at 12% in dark
+    /// mode, more with Increase Contrast): a pixel on its left edge differs from its fill and from the page beside it.
+    func testCodeBlockHasABorder() throws {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let body = "intro\n```sh\necho one\necho two\n```\noutro"
+        let text = body as NSString
+        show(body, caret: text.length, in: host)
+        let textView = host.editor.textView
+        let layoutManager = try XCTUnwrap(textView.layoutManager)
+        let container = try XCTUnwrap(textView.textContainer)
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: text.length))
+
+        XCTAssertEqual(CodeBlockMetrics.cornerRadius, 8)
+        XCTAssertEqual(CodeBlockMetrics.borderWidth, 1)
+        XCTAssertNotNil(NSColor(named: "CodeBorder"), "the asset catalog has the border colour")
+
+        let second = text.range(of: "echo two")
+        let glyph = layoutManager.glyphIndexForCharacter(at: second.location)
+        let fragment = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        let left = textView.textContainerOrigin.x + container.lineFragmentPadding
+        let middle = textView.textContainerOrigin.y + fragment.midY
+        let area = NSRect(x: 0, y: textView.textContainerOrigin.y + fragment.minY, width: 400, height: fragment.height)
+            .integral
+        let rep = try XCTUnwrap(render(area, in: host))
+
+        let page = try XCTUnwrap(colour(at: NSPoint(x: left - 4, y: middle), in: rep, from: area))
+        let fill = try XCTUnwrap(colour(at: NSPoint(x: left + 6, y: middle), in: rep, from: area))
+        let edge = try XCTUnwrap(colour(at: NSPoint(x: left + 0.5, y: middle), in: rep, from: area))
+        XCTAssertGreaterThan(distance(fill, page), 0.1, "the block is tinted")
+        XCTAssertGreaterThan(
+            distance(edge, fill), 0.05, "the pixel on its edge is the border: it differs from the fill")
+        XCTAssertEqual(
+            host.editor.currentText, body, "styling never changes a character")
     }
 
     func testBlockLabelIsKnownAtOnceForANamedFence() {
