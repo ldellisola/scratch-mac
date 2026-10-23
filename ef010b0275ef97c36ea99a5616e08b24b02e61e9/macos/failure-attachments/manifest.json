@@ -1,0 +1,16 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "46462b5a37691b3b492371867ad6ae269edf22c5",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "3A7AF25D-72E8-417E-8739-45A19DA85C16.txt",
+        "isAssociatedWithFailure" : true,
+        "suggestedHumanReadableName" : "Complete Issue Description.txt"
+      }
+    ],
+    "testIdentifier" : "CodeBlockStylerTests/testRemovingTheClosingFenceTurnsTheBlockBackIntoProse()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/CodeBlockStylerTests/testRemovingTheClosingFenceTurnsTheBlockBackIntoProse"
+  }
+]

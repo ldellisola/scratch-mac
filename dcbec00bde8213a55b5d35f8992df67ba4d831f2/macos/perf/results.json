@@ -1,0 +1,14 @@
+{
+  "launch_ms": 610.734,
+  "launch_reference_ms": 324.659,
+  "launch_difference_ms": 286.075,
+  "launch_overhead_ms": 176.231,
+  "paste_code_ms": 101.44,
+  "idle_cpu_pct": 0.053,
+  "idle_wakeups": 3.0,
+  "launch_phase_main_ms": 84.2,
+  "launch_phase_storage_ms": 143.15,
+  "launch_phase_restore_ms": 368.1,
+  "launch_phase_window_ms": 437.6,
+  "launch_phase_firstFrame_ms": 621.35
+}

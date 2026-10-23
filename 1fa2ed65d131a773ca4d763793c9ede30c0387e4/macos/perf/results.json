@@ -1,0 +1,21 @@
+{
+  "launch_ms": 590.314,
+  "launch_reference_ms": 315.226,
+  "launch_difference_ms": 275.088,
+  "launch_overhead_ms": 174.534,
+  "keystroke_ms": 5.278,
+  "switch_small_ms": 16.124,
+  "switch_huge_ms": 33.992,
+  "paste_code_ms": 81.21,
+  "scroll_frame_ms": 0.528,
+  "scroll_frame_wall_ms": 0.536,
+  "scroll_frame_p95_ms": 10.123,
+  "scroll_frame_max_ms": 18.742,
+  "idle_cpu_pct": 0.071,
+  "idle_wakeups": 3.0,
+  "launch_phase_main_ms": 75.6,
+  "launch_phase_storage_ms": 135.4,
+  "launch_phase_restore_ms": 362.7,
+  "launch_phase_window_ms": 430.6,
+  "launch_phase_firstFrame_ms": 612.25
+}

@@ -1,0 +1,161 @@
+XCTAssertTrue failed - no element reads "Groceries, Oct 18, milk, eggs, coffee beans"
+Attributes: Application, 0xa3ca18f00, pid: 25554, title: 'Scratch', Disabled
+Element subtree:
+ →Application, 0xa3ca18f00, pid: 25554, title: 'Scratch', Disabled
+    Window (Main), 0xa3ca1b200, {{0.0, 31.0}, {1024.0, 674.0}}, title: 'Scratch', Disabled
+      SplitGroup, 0xa3ca197c0, {{0.0, 31.0}, {1024.0, 674.0}}, Disabled
+        ScrollView, 0xa3ca1b980, {{8.0, 121.0}, {220.0, 576.0}}, Disabled
+          Table, 0xa3ca1a440, {{7.0, 120.0}, {222.0, 578.0}}, identifier: 'sidebar.table', label: 'Notes'
+            TableRow, 0xa3ca1b480, {{8.0, 121.0}, {220.0, 28.0}}, Disabled
+              Cell, 0xa3ca19a40, {{8.0, 121.0}, {220.0, 28.0}}, Keyboard Focused
+                StaticText, 0xa3ca1b5c0, {{31.0, 131.0}, {40.0, 16.0}}, identifier: 'sidebar.group', value: Pinned
+            TableRow, 0xa3ca1a6c0, {{8.0, 149.0}, {220.0, 44.0}}, Disabled
+              Cell, 0xa3ca1aa80, {{24.0, 149.0}, {188.0, 44.0}}, Keyboard Focused
+                Image, 0xa3ca19680, {{31.0, 157.0}, {12.0, 12.0}}, label: 'pin'
+                StaticText, 0xa3ca1a300, {{45.0, 154.0}, {119.0, 18.0}}, identifier: 'sidebar.row.title', value: Snippets I keep re...
+                StaticText, 0xa3ca19e00, {{168.0, 156.0}, {37.0, 16.0}}, identifier: 'sidebar.row.time', value: Oct 16
+                StaticText, 0xa3ca19b80, {{31.0, 172.0}, {174.0, 17.0}}, identifier: 'sidebar.row.preview', value: git log --oneline ...
+            TableRow, 0xa3ca1a940, {{8.0, 206.0}, {220.0, 28.0}}, Disabled
+              Cell, 0xa3ca1abc0, {{8.0, 206.0}, {220.0, 28.0}}, Keyboard Focused
+                StaticText, 0xa3ca1af80, {{31.0, 216.0}, {35.0, 16.0}}, identifier: 'sidebar.group', value: Today
+            TableRow, 0xa3ca1bd40, {{8.0, 234.0}, {220.0, 44.0}}, Selected, Disabled
+              Cell, 0xa3ca18b40, {{24.0, 234.0}, {188.0, 44.0}}, Keyboard Focused, Selected
+                StaticText, 0xa3ca19cc0, {{31.0, 239.0}, {109.0, 18.0}}, identifier: 'sidebar.row.title', value: Deploy checklist
+                StaticText, 0xa3ca1bc00, {{156.0, 241.0}, {49.0, 16.0}}, identifier: 'sidebar.row.time', value: 10:10 AM
+                StaticText, 0xa3ca1be80, {{31.0, 257.0}, {174.0, 17.0}}, identifier: 'sidebar.row.preview', value: bump version to 2....
+            TableRow, 0xa3ca19540, {{8.0, 278.0}, {220.0, 44.0}}, Disabled
+              Cell, 0xa3ca1b840, {{24.0, 278.0}, {188.0, 44.0}}, Keyboard Focused
+                StaticText, 0xa3cb88000, {{31.0, 283.0}, {126.0, 18.0}}, identifier: 'sidebar.row.title', value: curl -X POST https...
+                StaticText, 0xa3cb88140, {{161.0, 285.0}, {44.0, 16.0}}, identifier: 'sidebar.row.time', value: 9:10 AM
+                StaticText, 0xa3cb88280, {{31.0, 301.0}, {174.0, 17.0}}, identifier: 'sidebar.row.preview', value: -H "Content-Type: ...
+            TableRow, 0xa3cb883c0, {{8.0, 335.0}, {220.0, 28.0}}, Disabled
+              Cell, 0xa3cb88500, {{8.0, 335.0}, {220.0, 28.0}}, Keyboard Focused
+                StaticText, 0xa3cb88640, {{31.0, 345.0}, {57.0, 16.0}}, identifier: 'sidebar.group', value: Yesterday
+            TableRow, 0xa3cb88780, {{8.0, 363.0}, {220.0, 44.0}}, Disabled
+              Cell, 0xa3cb888c0, {{24.0, 363.0}, {188.0, 44.0}}, Keyboard Focused
+                StaticText, 0xa3cb88a00, {{31.0, 368.0}, {57.0, 18.0}}, identifier: 'sidebar.row.title', value: Standup
+                StaticText, 0xa3cb88b40, {{158.0, 370.0}, {47.0, 16.0}}, identifier: 'sidebar.row.time', value: 11:10 AM
+                StaticText, 0xa3cb88c80, {{31.0, 386.0}, {174.0, 17.0}}, identifier: 'sidebar.row.preview', value: review PR for the ...
+            TableRow, 0xa3cb88dc0, {{8.0, 407.0}, {220.0, 44.0}}, Disabled
+              Cell, 0xa3cb88f00, {{24.0, 407.0}, {188.0, 44.0}}, Keyboard Focused
+                StaticText, 0xa3cb89040, {{31.0, 412.0}, {126.0, 18.0}}, identifier: 'sidebar.row.title', value: SELECT region, sum...
+                StaticText, 0xa3cb89180, {{161.0, 414.0}, {44.0, 16.0}}, identifier: 'sidebar.row.time', value: 8:10 AM
+                StaticText, 0xa3cb892c0, {{31.0, 430.0}, {174.0, 17.0}}, identifier: 'sidebar.row.preview', value: FROM production GR...
+            TableRow, 0xa3cb89400, {{8.0, 464.0}, {220.0, 28.0}}, Disabled
+              Cell, 0xa3cb89540, {{8.0, 464.0}, {220.0, 28.0}}, Keyboard Focused
+                StaticText, 0xa3cb89680, {{31.0, 474.0}, {38.0, 16.0}}, identifier: 'sidebar.group', value: Earlier
+            TableRow, 0xa3cb897c0, {{8.0, 492.0}, {220.0, 44.0}}, Disabled
+              Cell, 0xa3cb89900, {{24.0, 492.0}, {188.0, 44.0}}, Keyboard Focused
+                StaticText, 0xa3cb89a40, {{31.0, 497.0}, {65.0, 18.0}}, identifier: 'sidebar.row.title', value: Groceries
+                StaticText, 0xa3cb89b80, {{168.0, 499.0}, {37.0, 16.0}}, identifier: 'sidebar.row.time', value: Oct 18
+                StaticText, 0xa3cb89cc0, {{31.0, 515.0}, {174.0, 17.0}}, identifier: 'sidebar.row.preview', value: milk, eggs, coffee...
+            TableColumn, 0xa3cb89e00, {{18.0, 121.0}, {200.0, 576.0}}, identifier: 'note', Disabled
+        SearchField, 0xa3cb89f40, {{19.0, 90.0}, {198.0, 26.0}}, identifier: 'sidebar.search', label: 'Search', placeholderValue: 'Search'
+          Button, 0xa3cb8a080, {{26.0, 99.0}, {15.0, 9.0}}, label: 'Search'
+        Splitter, 0xa3cb8a1c0, {{228.0, 83.0}, {0.0, 622.0}}, value: 228, Disabled
+        ScrollView, 0xa3cb8a300, {{228.0, 116.0}, {796.0, 589.0}}, Disabled
+          TextView, 0xa3cb8a440, {{228.0, 116.0}, {796.0, 589.0}}, identifier: 'editor.textView', label: 'Note', value: [ ] bump version t..., Keyboard Focused, Disabled
+        TextField, 0xa3cb8a580, {{254.0, 92.0}, {747.0, 21.0}}, identifier: 'editor.titleField', label: 'Title', placeholderValue: 'Untitled', value: Deploy checklist
+        StaticText, 0xa3cb8a6c0, {{228.0, 704.0}, {1.0, 1.0}}, identifier: 'debug.state', label: 'Debug state', value: {"attachments":[],..., Disabled
+      Toolbar, 0xa3cb8a800, {{0.0, 31.0}, {1024.0, 52.0}}, Disabled
+        Button, 0xa3cb8a940, {{92.0, 31.0}, {44.0, 52.0}}, label: 'Sidebar'
+        Group, 0xa3cb8aa80, {{232.0, 31.0}, {396.0, 52.0}}, Disabled
+          Button, 0xa3cb8abc0, {{592.0, 44.0}, {30.0, 26.0}}, identifier: 'tab.new', label: 'New Tab'
+          Button, 0xa3cb8ad00, {{239.0, 43.0}, {150.0, 28.0}}, identifier: 'tab.item', title: 'Deploy checklist', label: 'Deploy checklist', Selected, Disabled
+            StaticText, 0xa3cb8ae40, {{252.0, 48.0}, {106.0, 17.0}}, value: Deploy checklist
+          Button, 0xa3cb8af80, {{364.0, 50.0}, {18.0, 14.0}}, identifier: 'tab.close', label: 'Close Deploy checklist'
+          Button, 0xa3cb8b0c0, {{391.0, 43.0}, {200.0, 28.0}}, identifier: 'tab.item', title: 'curl -X POST https://api.local/v1/notes \', label: 'curl -X POST https://api.local/v1/notes \', Disabled
+            StaticText, 0xa3cb8b200, {{404.0, 48.0}, {156.0, 18.0}}, value: curl -X POST https...
+          Button, 0xa3cb8b340, {{566.0, 50.0}, {18.0, 14.0}}, identifier: 'tab.close', label: 'Close curl -X POST https://api.local/v1/notes \'
+        Button, 0xa3cb8b480, {{885.0, 31.0}, {41.0, 52.0}}, label: 'Pin'
+        Button, 0xa3cb8b5c0, {{926.0, 31.0}, {41.0, 52.0}}, label: 'Attach File'
+        Button, 0xa3cb8b700, {{975.0, 31.0}, {45.0, 52.0}}, label: 'New Note'
+      Button, 0xa3cb8b840, {{18.0, 49.0}, {16.0, 16.0}}, identifier: '_XCUI:CloseWindow'
+      Button, 0xa3cb8b980, {{64.0, 49.0}, {16.0, 16.0}}, identifier: '_XCUI:FullScreenWindow'
+        Group, 0xa3cb8bac0, {{65.0, 50.0}, {14.0, 14.0}}, Disabled
+          Group, 0xa3cb8bc00, {{65.0, 50.0}, {14.0, 14.0}}, Disabled
+      Button, 0xa3cb8bd40, {{41.0, 49.0}, {16.0, 16.0}}, identifier: '_XCUI:MinimizeWindow'
+    MenuBar, 0xa3cb8be80, {{0.0, 0.0}, {1024.0, 30.0}}
+      MenuBarItem, 0xa3cbac000, {{10.0, 0.0}, {34.0, 30.0}}, title: 'Apple'
+        Menu, 0xa3cbac140, {{0.0, 768.0}, {0.0, 0.0}}
+          MenuItem, 0xa3cbac280, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_aboutThisMacRequested:', title: 'About This Mac'
+          MenuItem, 0xa3cbac3c0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_systemInformationRequested:', title: 'System Information'
+          MenuItem, 0xa3cbac500, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3cbac640, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_systemSettingsRequested:', title: 'System Settings…, 1 update'
+          MenuItem, 0xa3cbac780, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_appStoreRequested:', title: 'App Store'
+          MenuItem, 0xa3cbac8c0, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3cbaca00, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentsRequested:', title: 'Recent Items'
+            Menu, 0xa3cbacb40, {{0.0, 768.0}, {0.0, 0.0}}
+              MenuItem, 0xa3cbacc80, {{0.0, 768.0}, {0.0, 0.0}}, title: 'Applications', Disabled
+              MenuItem, 0xa3cbacdc0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'Installer'
+              MenuItem, 0xa3cbacf00, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'Show “Installer” in Finder'
+              MenuItem, 0xa3cbad040, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'Scratch'
+              MenuItem, 0xa3cbad180, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'Show “Scratch” in Finder'
+              MenuItem, 0xa3cbad2c0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'System Settings'
+              MenuItem, 0xa3cbad400, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'Show “System Settings” in Finder'
+              MenuItem, 0xa3cbad540, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+              MenuItem, 0xa3cbad680, {{0.0, 768.0}, {0.0, 0.0}}, title: 'Documents', Disabled
+              MenuItem, 0xa3cbad7c0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'AnkaGuestAddons.pkg'
+              MenuItem, 0xa3cbad900, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'Show “AnkaGuestAddons.pkg” in Finder'
+              MenuItem, 0xa3cbada40, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+              MenuItem, 0xa3cbadb80, {{0.0, 768.0}, {0.0, 0.0}}, title: 'Servers', Disabled
+              MenuItem, 0xa3cbadcc0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_recentItemRequested:', title: 'Macintosh HD'
+              MenuItem, 0xa3cbade00, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+              MenuItem, 0xa3cbadf40, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_clearRecentItemsRequested:', title: 'Clear Menu'
+          MenuItem, 0xa3cbae080, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3cbae1c0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_forceQuitPanelRequested:', title: 'Force Quit…'
+          MenuItem, 0xa3cbae300, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_forceQuitRequested:', title: 'Force Quit Scratch'
+          MenuItem, 0xa3cbae440, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3cbae580, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_sleepRequested:', title: 'Sleep'
+          MenuItem, 0xa3cbae6c0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_restartRequested:', title: 'Restart…'
+          MenuItem, 0xa3cbae800, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_restartNowRequested:', title: 'Restart'
+          MenuItem, 0xa3cbae940, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_shutDownRequested:', title: 'Shut Down…'
+          MenuItem, 0xa3cbaea80, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_shutDownNowRequested:', title: 'Shut Down'
+          MenuItem, 0xa3cbaebc0, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3cbaed00, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_lockScreenRequested:', title: 'Lock Screen'
+          MenuItem, 0xa3cbaee40, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_logOutRequested:', title: 'Log Out Anka…'
+          MenuItem, 0xa3cbaef80, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_logOutNowRequested:', title: 'Log Out Anka'
+          MenuItem, 0xa3cbaf0c0, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+      MenuBarItem, 0xa3cbaf200, {{44.0, 0.0}, {71.0, 30.0}}, title: 'Scratch'
+        Menu, 0xa3cbaf340, {{0.0, 768.0}, {0.0, 0.0}}
+          MenuItem, 0xa3cbaf480, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'showAbout:', title: 'About Scratch'
+          MenuItem, 0xa3cbaf5c0, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3cbaf700, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'hide:', title: 'Hide Scratch'
+          MenuItem, 0xa3cbaf840, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'hideOtherApplications:', title: 'Hide Others'
+          MenuItem, 0xa3cbaf980, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'unhideAllApplications:', title: 'Show All', Disabled
+          MenuItem, 0xa3cbafac0, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3cbafc00, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'terminate:', title: 'Quit Scratch'
+          MenuItem, 0xa3cbafd40, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'NSAlternateQuitMenuItem', title: 'Quit and Keep Windows'
+      MenuBarItem, 0xa3cbafe80, {{115.0, 0.0}, {42.0, 30.0}}, title: 'File'
+        Menu, 0xa3c400000, {{0.0, 768.0}, {0.0, 0.0}}
+          MenuItem, 0xa3c400140, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'newNote:', title: 'New Note'
+          MenuItem, 0xa3c400280, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'newNote:', title: 'New Tab'
+          MenuItem, 0xa3c4003c0, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3c400500, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'attachFile:', title: 'Attach File…'
+          MenuItem, 0xa3c400640, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'togglePin:', title: 'Pin Note'
+          MenuItem, 0xa3c400780, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3c4008c0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'closeTab:', title: 'Close Tab'
+          MenuItem, 0xa3c400a00, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'performClose:', title: 'Close Window'
+          MenuItem, 0xa3c400b40, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'closeAll:', title: 'Close All'
+      MenuBarItem, 0xa3c400c80, {{157.0, 0.0}, {44.0, 30.0}}, title: 'Edit'
+        Menu, 0xa3c400dc0, {{0.0, 768.0}, {0.0, 0.0}}
+          MenuItem, 0xa3c400f00, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'undo:', title: 'Undo', Disabled
+          MenuItem, 0xa3c401040, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'redo:', title: 'Redo', Disabled
+          MenuItem, 0xa3c401180, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3c4012c0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'cut:', title: 'Cut', Disabled
+          MenuItem, 0xa3c401400, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'copy:', title: 'Copy', Disabled
+          MenuItem, 0xa3c401540, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'paste:', title: 'Paste', Disabled
+          MenuItem, 0xa3c401680, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'pasteAsPlainText:', title: 'Paste and Match Style', Disabled
+          MenuItem, 0xa3c4017c0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'selectAll:', title: 'Select All'
+          MenuItem, 0xa3c401900, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3c401a40, {{0.0, 768.0}, {0.0, 0.0}}, title: 'Find'
+            Menu, 0xa3c401b80, {{0.0, 768.0}, {0.0, 0.0}}
+              MenuItem, 0xa3c401cc0, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'performTextFinderAction:', title: 'Find…'
+              MenuItem, 0xa3c401e00, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'performTextFinderAction:', title: 'Find Next'
+              MenuItem, 0xa3c401f40, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'performTextFinderAction:', title: 'Find Previous'
+          MenuItem, 0xa3c402080, {{0.0, 768.0}, {0.0, 0.0}}, identifier: 'focusSearch:', title: 'Search Notes'
+          MenuItem, 0xa3c4021c0, {{0.0, 768.0}, {0.0, 0.0}}, Disabled
+          MenuItem, 0xa3c402300, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_NSMenuItemAutoFillIdentifier', title: 'AutoFill'
+            Menu, 0xa3c402440, {{0.0, 768.0}, {0.0, 0.0}}
+              MenuItem, 0xa3c402580, {{0.0, 768.0}, {0.0, 0.0}}, identifier: '_handleInsertFromContactsCommand:', title: 'Contact…'
+   

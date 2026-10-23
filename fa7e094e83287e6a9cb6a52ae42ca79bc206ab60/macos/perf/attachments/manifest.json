@@ -1,0 +1,101 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "fff3d1e861ed4840eb9c14379417597060589622",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "32347D65-9792-43BB-A49F-A7B6FEC06FEE.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "paste-code-after_0_C198701D-B327-41BA-B6F0-2FF371DC5884.png",
+        "timestamp" : 1792758990.003
+      }
+    ],
+    "testIdentifier" : "CodePastePerfTests/testPasteFiveHundredLinesOfCode()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/CodePastePerfTests/testPasteFiveHundredLinesOfCode"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "fff3d1e861ed4840eb9c14379417597060589622",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "EF825D08-3B48-4955-84A5-F35BF1E7EF53.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "keystroke-after_0_68E4DA33-98ED-4BC7-8CE8-194F01DBFCBB.png",
+        "timestamp" : 1792759072.093
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "fff3d1e861ed4840eb9c14379417597060589622",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "F85F2151-2260-49BD-9873-4CEF883766F7.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "keystroke-before_0_5426FEC1-90E7-424D-A4D8-7050CEB6A891.png",
+        "timestamp" : 1792759005.501
+      }
+    ],
+    "testIdentifier" : "EditorPerfTests/testKeystroke()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testKeystroke"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "fff3d1e861ed4840eb9c14379417597060589622",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "AA065E4B-2484-4922-97C5-0C6942645456.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "scroll_frame_ms_0_24D108CB-8B39-4703-9E94-F9E5B532D169.txt",
+        "timestamp" : 1792759086.392
+      }
+    ],
+    "testIdentifier" : "EditorPerfTests/testScrollHugeNote()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testScrollHugeNote"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "fff3d1e861ed4840eb9c14379417597060589622",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "6F7A31CD-D51C-4965-BBBB-88653B81CB5C.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "idle_cpu_0_C98F919C-7303-419B-BC86-5B022151D0CC.txt",
+        "timestamp" : 1792759168.45
+      }
+    ],
+    "testIdentifier" : "IdlePerfTests/testIdle()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/IdlePerfTests/testIdle"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "fff3d1e861ed4840eb9c14379417597060589622",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "73F87F85-DB7D-46CE-A1BA-7EA89B0E6161.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "launch_phases_0_94E0378F-ACF0-41E8-835C-CF8CD7AFAAAC.txt",
+        "timestamp" : 1792759285.101
+      }
+    ],
+    "testIdentifier" : "LaunchPerfTests/testLaunch()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/LaunchPerfTests/testLaunch"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "fff3d1e861ed4840eb9c14379417597060589622",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "AA71D3FE-CAA3-4878-A98F-B435D2C75F87.txt",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "reference-app-location_0_924D5643-3A1D-4041-967D-E0A3FE2E400B.txt",
+        "timestamp" : 1792759286.25
+      }
+    ],
+    "testIdentifier" : "LaunchPerfTests/testReferenceLaunch()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/LaunchPerfTests/testReferenceLaunch"
+  }
+]

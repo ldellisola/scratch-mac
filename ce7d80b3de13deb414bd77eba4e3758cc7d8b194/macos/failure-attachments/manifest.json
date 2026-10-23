@@ -1,0 +1,16 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "491a5fc8380ca5fda13bca56b8abde43a91a6c91",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "49F6CA2C-4C36-473E-8BDD-28E4A554EB43.txt",
+        "isAssociatedWithFailure" : true,
+        "suggestedHumanReadableName" : "Complete Issue Description.txt"
+      }
+    ],
+    "testIdentifier" : "MarkupStylerTests/testDiagnosticMarkedTextAttributes()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/MarkupStylerTests/testDiagnosticMarkedTextAttributes"
+  }
+]

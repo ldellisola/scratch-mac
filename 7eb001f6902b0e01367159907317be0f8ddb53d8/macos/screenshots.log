@@ -1,0 +1,300 @@
+2026-10-23 02:48:38.468 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 02:48:38.468 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.82s         Wait for accessibility to load
+    t =     2.22s         Setting up automation session
+    t =     2.24s         Wait for io.github.ldellisola.Scratch to idle
+    t =     2.24s Waiting 20.0s for "editor.textView" TextView to exist
+    t =     3.27s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.28s         Checking existence of `"editor.textView" TextView`
+    t =     3.32s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.49s Find the "sidebar.row.title" StaticText
+    t =     3.59s Find the "sidebar.row.title" StaticText
+    t =     3.69s Find the "sidebar.row.title" StaticText
+    t =     3.76s Find the "sidebar.row.title" StaticText
+    t =     3.82s Waiting 10.0s for Window (First Match) to exist
+    t =     4.86s     Checking `Expect predicate `existsNoRetry == 1` for object Window (First Match)`
+    t =     4.86s         Checking existence of `Window (First Match)`
+    t =     4.86s Hover over Window (First Match)[0.90, 0.90]
+    t =     4.86s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.87s     Find the Window (First Match)
+    t =     4.88s     Check for interrupting elements affecting "Scratch" Window
+    t =     4.88s     Synthesize event
+    t =     4.88s         Find the "Scratch" Window
+    t =     4.89s         Find the "Scratch" Window
+    t =     5.00s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.02s Checking existence of `"Scratch" Window`
+    t =     6.02s Find the "Scratch" Window
+    t =     6.05s Added attachment named 'huge-note-light'
+    t =     6.06s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testHugeNoteLight]' passed (6.287 seconds).
+Test Case '-[ScratchUITests.ScreenshotTests testRecentlyDeletedLight]' started.
+    t =     0.00s Start Test at 2026-10-23 02:48:43.587
+    t =     0.09s Set Up
+    t =     0.09s Open io.github.ldellisola.Scratch
+    t =     0.09s     Launch io.github.ldellisola.Scratch
+    t =     0.09s         Terminate io.github.ldellisola.Scratch:38776
+2026-10-23 02:48:44.689 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 02:48:44.689 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.73s         Wait for accessibility to load
+    t =     1.97s         Setting up automation session
+    t =     1.99s         Wait for io.github.ldellisola.Scratch to idle
+    t =     2.03s Waiting 20.0s for "editor.textView" TextView to exist
+    t =     3.09s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.09s         Checking existence of `"editor.textView" TextView`
+    t =     3.14s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.25s Find the "sidebar.row.title" StaticText
+    t =     3.30s Waiting 10.0s for Window (First Match) to exist
+    t =     4.36s     Checking `Expect predicate `existsNoRetry == 1` for object Window (First Match)`
+    t =     4.36s         Checking existence of `Window (First Match)`
+    t =     4.36s Checking existence of `"sidebar.recentlyDeleted" StaticText`
+    t =     4.41s Find the "sidebar.recentlyDeleted" StaticText
+    t =     4.46s Click "sidebar.recentlyDeleted" StaticText
+    t =     4.46s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.46s     Find the "sidebar.recentlyDeleted" StaticText
+    t =     4.51s     Check for interrupting elements affecting "sidebar.recentlyDeleted" StaticText
+    t =     4.54s     Synthesize event
+    t =     4.89s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.89s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.95s Find the "sidebar.row.title" StaticText
+    t =     4.99s Find the "sidebar.row.title" StaticText
+    t =     5.02s Find the "sidebar.row.title" StaticText
+    t =     5.06s Find the "sidebar.row.title" StaticText
+    t =     5.09s Hover over Window (First Match)[0.90, 0.90]
+    t =     5.10s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.10s     Find the Window (First Match)
+    t =     5.10s     Check for interrupting elements affecting "Scratch" Window
+    t =     5.11s     Synthesize event
+    t =     5.11s         Find the "Scratch" Window
+    t =     5.12s         Find the "Scratch" Window
+    t =     5.24s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.26s Checking existence of `"Scratch" Window`
+    t =     6.27s Find the "Scratch" Window
+    t =     6.30s Added attachment named 'recently-deleted-light'
+    t =     6.30s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testRecentlyDeletedLight]' passed (6.522 seconds).
+Test Case '-[ScratchUITests.ScreenshotTests testSearchLight]' started.
+    t =     0.00s Start Test at 2026-10-23 02:48:50.109
+    t =     0.07s Set Up
+    t =     0.07s Open io.github.ldellisola.Scratch
+    t =     0.07s     Launch io.github.ldellisola.Scratch
+    t =     0.07s         Terminate io.github.ldellisola.Scratch:38798
+2026-10-23 02:48:51.269 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 02:48:51.270 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.72s         Wait for accessibility to load
+    t =     1.91s         Setting up automation session
+    t =     1.94s         Wait for io.github.ldellisola.Scratch to idle
+    t =     1.99s Waiting 20.0s for "editor.textView" TextView to exist
+    t =     3.02s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.02s         Checking existence of `"editor.textView" TextView`
+    t =     3.07s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.21s Find the "sidebar.row.title" StaticText
+    t =     3.27s Find the "sidebar.row.title" StaticText
+    t =     3.34s Find the "sidebar.row.title" StaticText
+    t =     3.41s Find the "sidebar.row.title" StaticText
+    t =     3.47s Find the "sidebar.row.title" StaticText
+    t =     3.52s Find the "sidebar.row.title" StaticText
+    t =     3.58s Find the "sidebar.row.title" StaticText
+    t =     3.64s Find the "sidebar.row.title" StaticText
+    t =     3.70s Find the "sidebar.row.title" StaticText
+    t =     3.76s Find the "sidebar.row.title" StaticText
+    t =     3.81s Find the "sidebar.row.title" StaticText
+    t =     3.85s Find the "sidebar.row.title" StaticText
+    t =     3.89s Find the "sidebar.row.title" StaticText
+    t =     3.94s Find the "sidebar.row.title" StaticText
+    t =     3.99s Find the "sidebar.row.title" StaticText
+    t =     4.06s Find the "sidebar.row.title" StaticText
+    t =     4.12s Waiting 10.0s for Window (First Match) to exist
+    t =     5.15s     Checking `Expect predicate `existsNoRetry == 1` for object Window (First Match)`
+    t =     5.15s         Checking existence of `Window (First Match)`
+    t =     5.15s Waiting 10.0s for "sidebar.search" Any to exist
+    t =     6.18s     Checking `Expect predicate `existsNoRetry == 1` for object "sidebar.search" Any`
+    t =     6.18s         Checking existence of `"sidebar.search" Any`
+    t =     6.20s Click "sidebar.search" Any
+    t =     6.20s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.20s     Find the "sidebar.search" Any
+    t =     6.21s     Check for interrupting elements affecting "sidebar.search" SearchField
+    t =     6.22s     Synthesize event
+    t =     6.56s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.57s Type 'kube' into "sidebar.search" SearchField
+    t =     6.57s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.58s     Find the "sidebar.search" SearchField
+    t =     6.60s     Check for interrupting elements affecting "sidebar.search" SearchField
+    t =     6.64s     Synthesize event
+    t =     6.85s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.86s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.89s Find the "sidebar.row.title" StaticText
+    t =     6.92s Hover over Window (First Match)[0.90, 0.90]
+    t =     6.92s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.93s     Find the Window (First Match)
+    t =     6.93s     Check for interrupting elements affecting "Scratch" Window
+    t =     6.94s     Synthesize event
+    t =     6.94s         Find the "Scratch" Window
+    t =     6.95s         Find the "Scratch" Window
+    t =     7.07s     Wait for io.github.ldellisola.Scratch to idle
+    t =     8.08s Checking existence of `"Scratch" Window`
+    t =     8.08s Find the "Scratch" Window
+    t =     8.13s Added attachment named 'search-light'
+    t =     8.13s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testSearchLight]' passed (8.415 seconds).
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalDark]' started.
+    t =     0.00s Start Test at 2026-10-23 02:48:58.525
+    t =     0.10s Set Up
+    t =     0.10s Open io.github.ldellisola.Scratch
+    t =     0.10s     Launch io.github.ldellisola.Scratch
+    t =     0.10s         Terminate io.github.ldellisola.Scratch:39121
+2026-10-23 02:48:59.627 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 02:48:59.627 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.72s         Wait for accessibility to load
+    t =     1.96s         Setting up automation session
+    t =     1.97s         Wait for io.github.ldellisola.Scratch to idle
+    t =     2.02s Waiting 20.0s for "editor.textView" TextView to exist
+    t =     3.04s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.04s         Checking existence of `"editor.textView" TextView`
+    t =     3.08s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.18s Find the "sidebar.row.title" StaticText
+    t =     3.23s Find the "sidebar.row.title" StaticText
+    t =     3.30s Find the "sidebar.row.title" StaticText
+    t =     3.34s Find the "sidebar.row.title" StaticText
+    t =     3.39s Find the "sidebar.row.title" StaticText
+    t =     3.46s Find the "sidebar.row.title" StaticText
+    t =     3.51s Find the "sidebar.row.title" StaticText
+    t =     3.58s Find the "sidebar.row.title" StaticText
+    t =     3.63s Find the "sidebar.row.title" StaticText
+    t =     3.69s Find the "sidebar.row.title" StaticText
+    t =     3.75s Find the "sidebar.row.title" StaticText
+    t =     3.80s Find the "sidebar.row.title" StaticText
+    t =     3.84s Find the "sidebar.row.title" StaticText
+    t =     3.88s Find the "sidebar.row.title" StaticText
+    t =     3.93s Find the "sidebar.row.title" StaticText
+    t =     3.98s Find the "sidebar.row.title" StaticText
+    t =     4.13s Waiting 10.0s for Window (First Match) to exist
+    t =     5.17s     Checking `Expect predicate `existsNoRetry == 1` for object Window (First Match)`
+    t =     5.17s         Checking existence of `Window (First Match)`
+    t =     5.18s Hover over Window (First Match)[0.90, 0.90]
+    t =     5.18s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.18s     Find the Window (First Match)
+    t =     5.19s     Check for interrupting elements affecting "Scratch" Window
+    t =     5.20s     Synthesize event
+    t =     5.20s         Find the "Scratch" Window
+    t =     5.21s         Find the "Scratch" Window
+    t =     5.32s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.35s Checking existence of `"Scratch" Window`
+    t =     6.35s Find the "Scratch" Window
+    t =     6.38s Added attachment named 'typical-dark'
+    t =     6.38s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalDark]' passed (6.591 seconds).
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalLight]' started.
+    t =     0.00s Start Test at 2026-10-23 02:49:05.117
+    t =     0.09s Set Up
+    t =     0.09s Open io.github.ldellisola.Scratch
+    t =     0.10s     Launch io.github.ldellisola.Scratch
+    t =     0.10s         Terminate io.github.ldellisola.Scratch:39353
+2026-10-23 02:49:06.290 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 02:49:06.290 xcodebuild[36135:97534] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.64s         Wait for accessibility to load
+    t =     1.77s         Setting up automation session
+    t =     1.79s         Wait for io.github.ldellisola.Scratch to idle
+    t =     1.85s Waiting 20.0s for "editor.textView" TextView to exist
+    t =     2.87s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     2.87s         Checking existence of `"editor.textView" TextView`
+    t =     2.90s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.02s Find the "sidebar.row.title" StaticText
+    t =     3.08s Find the "sidebar.row.title" StaticText
+    t =     3.16s Find the "sidebar.row.title" StaticText
+    t =     3.22s Find the "sidebar.row.title" StaticText
+    t =     3.26s Find the "sidebar.row.title" StaticText
+    t =     3.31s Find the "sidebar.row.title" StaticText
+    t =     3.35s Find the "sidebar.row.title" StaticText
+    t =     3.41s Find the "sidebar.row.title" StaticText
+    t =     3.47s Find the "sidebar.row.title" StaticText
+    t =     3.53s Find the "sidebar.row.title" StaticText
+    t =     3.59s Find the "sidebar.row.title" StaticText
+    t =     3.63s Find the "sidebar.row.title" StaticText
+    t =     3.68s Find the "sidebar.row.title" StaticText
+    t =     3.72s Find the "sidebar.row.title" StaticText
+    t =     3.76s Find the "sidebar.row.title" StaticText
+    t =     3.81s Find the "sidebar.row.title" StaticText
+    t =     3.86s Waiting 10.0s for Window (First Match) to exist
+    t =     4.89s     Checking `Expect predicate `existsNoRetry == 1` for object Window (First Match)`
+    t =     4.89s         Checking existence of `Window (First Match)`
+    t =     4.90s Hover over Window (First Match)[0.90, 0.90]
+    t =     4.90s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.90s     Find the Window (First Match)
+    t =     4.91s     Check for interrupting elements affecting "Scratch" Window
+    t =     4.92s     Synthesize event
+    t =     4.93s         Find the "Scratch" Window
+    t =     4.94s         Find the "Scratch" Window
+    t =     5.05s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.07s Checking existence of `"Scratch" Window`
+    t =     6.08s Find the "Scratch" Window
+    t =     6.13s Added attachment named 'typical-light'
+    t =     6.14s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalLight]' passed (6.355 seconds).
+Test Suite 'ScreenshotTests' passed at 2026-10-23 02:49:11.471.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 80.167 (80.177) seconds
+Test Suite 'ScratchUITests.xctest' passed at 2026-10-23 02:49:11.472.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 80.167 (80.178) seconds
+Test Suite 'Selected tests' passed at 2026-10-23 02:49:11.472.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 80.167 (80.179) seconds
+2026-10-23 02:49:11.889 xcodebuild[36135:97534] [MT] IDETestOperationsObserverDebug: 81.626 elapsed -- Testing started completed.
+2026-10-23 02:49:11.889 xcodebuild[36135:97534] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-10-23 02:49:11.889 xcodebuild[36135:97534] [MT] IDETestOperationsObserverDebug: 81.626 sec, +81.626 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/scratch-mac/scratch-mac/build/results/screenshots.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started
+xcrun xcresulttool export attachments --path build/results/screenshots.xcresult \
+	  --output-path build/screenshots/raw
+Exported 1 attachment for: ScreenshotTests/testAttachmentsDark():
+File: E0CC5031-9B4D-4353-B851-BE281A7AD6AB.png, suggested name: "attachments-dark_0_2E09F317-41D8-4D39-8662-DF6458DF629D.png"
+
+Exported 1 attachment for: ScreenshotTests/testAttachmentsLight():
+File: 0C64F670-0CDD-42EE-BC77-9945810A1F78.png, suggested name: "attachments-light_0_AAB75059-CAD0-42E7-AE23-656C282596D9.png"
+
+Exported 1 attachment for: ScreenshotTests/testCodeDark():
+File: 1B22562C-1A34-46D1-800F-98A6843576B1.png, suggested name: "code-dark_0_FF22A5C5-2D49-4EFF-9578-5F37FB8FD9F2.png"
+
+Exported 1 attachment for: ScreenshotTests/testCodeLight():
+File: 8B99041C-6708-469B-A4B4-800C2EDAC5F0.png, suggested name: "code-light_0_7BA587BF-246E-478F-B347-D2EF1FE01AB5.png"
+
+Exported 1 attachment for: ScreenshotTests/testEmptyLight():
+File: 93B82387-2F7D-4104-805A-CE527BC17558.png, suggested name: "empty-light_0_1BA276F1-2313-43EA-A3AA-B0CBA1220DF9.png"
+
+Exported 1 attachment for: ScreenshotTests/testFormattingDark():
+File: C5145434-D636-46ED-A322-C58595D8D21A.png, suggested name: "formatting-dark_0_440115FE-8409-487C-A935-760FA7DCD4FA.png"
+
+Exported 1 attachment for: ScreenshotTests/testFormattingLight():
+File: FF3CCAC4-E87D-41C9-A636-87385DE7B0F9.png, suggested name: "formatting-light_0_80146E54-0866-4136-B4D1-4ABADA9E894B.png"
+
+Exported 1 attachment for: ScreenshotTests/testHugeNoteLight():
+File: 29CEF1EE-771E-4D4E-93D5-1F642446464A.png, suggested name: "huge-note-light_0_9665D93E-6C31-42EC-9893-CA137F6F4776.png"
+
+Exported 1 attachment for: ScreenshotTests/testRecentlyDeletedLight():
+File: 7F353249-FB5E-4FA6-ADB5-4A6831091BB0.png, suggested name: "recently-deleted-light_0_DF89AD4F-0372-4F3F-9DA7-E481B32ED157.png"
+
+Exported 1 attachment for: ScreenshotTests/testSearchLight():
+File: 347AC1D0-CE25-4CC9-948B-6644012F98C3.png, suggested name: "search-light_0_F3837F39-B324-4F3F-9A2E-29B200D5BA43.png"
+
+Exported 1 attachment for: ScreenshotTests/testTypicalDark():
+File: CA15A66B-2489-498D-9030-5A2D9A6D7EB1.png, suggested name: "typical-dark_0_397BDD03-FC65-4E12-9DE6-50B032E4AAF3.png"
+
+Exported 1 attachment for: ScreenshotTests/testTypicalLight():
+File: CADDCA33-1795-4B9F-AAFD-EBAF70C67E40.png, suggested name: "typical-light_0_4A2BC15E-8746-4E89-887E-6E4338C75DAA.png"
+
+Generated manifest file with attachment details: /Users/runner/work/scratch-mac/scratch-mac/build/screenshots/raw/manifest.json
+python3 scripts/name-screenshots.py build/screenshots/raw build/screenshots typical-light typical-dark empty-light huge-note-light search-light recently-deleted-light formatting-light formatting-dark code-light code-dark attachments-light attachments-dark
+attachments-dark.png <- E0CC5031-9B4D-4353-B851-BE281A7AD6AB.png (attachments-dark_0_2E09F317-41D8-4D39-8662-DF6458DF629D.png)
+attachments-light.png <- 0C64F670-0CDD-42EE-BC77-9945810A1F78.png (attachments-light_0_AAB75059-CAD0-42E7-AE23-656C282596D9.png)
+code-dark.png <- 1B22562C-1A34-46D1-800F-98A6843576B1.png (code-dark_0_FF22A5C5-2D49-4EFF-9578-5F37FB8FD9F2.png)
+code-light.png <- 8B99041C-6708-469B-A4B4-800C2EDAC5F0.png (code-light_0_7BA587BF-246E-478F-B347-D2EF1FE01AB5.png)
+empty-light.png <- 93B82387-2F7D-4104-805A-CE527BC17558.png (empty-light_0_1BA276F1-2313-43EA-A3AA-B0CBA1220DF9.png)
+formatting-dark.png <- C5145434-D636-46ED-A322-C58595D8D21A.png (formatting-dark_0_440115FE-8409-487C-A935-760FA7DCD4FA.png)
+formatting-light.png <- FF3CCAC4-E87D-41C9-A636-87385DE7B0F9.png (formatting-light_0_80146E54-0866-4136-B4D1-4ABADA9E894B.png)
+huge-note-light.png <- 29CEF1EE-771E-4D4E-93D5-1F642446464A.png (huge-note-light_0_9665D93E-6C31-42EC-9893-CA137F6F4776.png)
+recently-deleted-light.png <- 7F353249-FB5E-4FA6-ADB5-4A6831091BB0.png (recently-deleted-light_0_DF89AD4F-0372-4F3F-9DA7-E481B32ED157.png)
+search-light.png <- 347AC1D0-CE25-4CC9-948B-6644012F98C3.png (search-light_0_F3837F39-B324-4F3F-9A2E-29B200D5BA43.png)
+typical-dark.png <- CA15A66B-2489-498D-9030-5A2D9A6D7EB1.png (typical-dark_0_397BDD03-FC65-4E12-9DE6-50B032E4AAF3.png)
+typical-light.png <- CADDCA33-1795-4B9F-AAFD-EBAF70C67E40.png (typical-light_0_4A2BC15E-8746-4E89-887E-6E4338C75DAA.png)

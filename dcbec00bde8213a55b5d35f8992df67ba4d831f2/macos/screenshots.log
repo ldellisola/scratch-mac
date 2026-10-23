@@ -1,0 +1,300 @@
+    t =     7.72s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.88s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.09s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.26s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.44s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.60s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.75s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.94s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.13s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.30s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.46s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.62s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.77s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.93s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.08s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.24s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.43s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.60s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.75s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.91s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.08s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.28s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.52s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.67s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.82s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.99s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.16s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.34s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.51s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.66s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.80s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.96s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    13.01s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchUITests/ScreenshotTests.swift:179: error: -[ScratchUITests.ScreenshotTests testSearchLight] : XCTAssertTrue failed - the sidebar rows: []
+    t =    13.06s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testSearchLight]' failed (13.271 seconds).
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalContrastLight]' started.
+    t =     0.00s Start Test at 2026-10-23 10:40:47.463
+    t =     0.06s Set Up
+    t =     0.06s Open io.github.ldellisola.Scratch
+    t =     0.06s     Launch io.github.ldellisola.Scratch
+    t =     0.06s         Terminate io.github.ldellisola.Scratch:59278
+2026-10-23 10:40:48.536 xcodebuild[53798:142685] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 10:40:48.536 xcodebuild[53798:142685] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.57s         Wait for accessibility to load
+    t =     1.76s         Setting up automation session
+    t =     1.78s         Wait for io.github.ldellisola.Scratch to idle
+    t =     1.86s Waiting 20.0s for "editor.textView" TextView to exist
+    t =     2.93s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     2.93s         Checking existence of `"editor.textView" TextView`
+    t =     2.99s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.27s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.46s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.62s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.76s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.91s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.13s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.30s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.46s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.61s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.75s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.89s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.04s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.21s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.38s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.55s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.69s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.84s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.01s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.18s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.34s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.51s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.66s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.80s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.95s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.10s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.26s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.44s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.61s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.76s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.91s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.08s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.25s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.40s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.55s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.71s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.85s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.01s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.18s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.33s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.50s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.66s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.81s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.01s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.19s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.39s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.55s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.69s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.84s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.99s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.14s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.30s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.45s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.60s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.73s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.88s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.04s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.21s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.37s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.53s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.72s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.87s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    13.04s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    13.10s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchUITests/ScreenshotTests.swift:179: error: -[ScratchUITests.ScreenshotTests testTypicalContrastLight] : XCTAssertTrue failed - the sidebar rows: []
+    t =    13.18s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalContrastLight]' failed (13.413 seconds).
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalDark]' started.
+    t =     0.00s Start Test at 2026-10-23 10:41:00.876
+    t =     0.06s Set Up
+    t =     0.06s Open io.github.ldellisola.Scratch
+    t =     0.06s     Launch io.github.ldellisola.Scratch
+    t =     0.06s         Terminate io.github.ldellisola.Scratch:60020
+2026-10-23 10:41:01.978 xcodebuild[53798:142685] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 10:41:01.978 xcodebuild[53798:142685] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.62s         Wait for accessibility to load
+    t =     1.83s         Setting up automation session
+    t =     1.87s         Wait for io.github.ldellisola.Scratch to idle
+    t =     1.88s Waiting 20.0s for "editor.textView" TextView to exist
+    t =     2.95s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     2.96s         Checking existence of `"editor.textView" TextView`
+    t =     2.99s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.25s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.40s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.56s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.70s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.85s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.01s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.19s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.35s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.52s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.66s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.82s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.97s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.12s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.28s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.44s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.59s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.75s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.97s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.18s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.37s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.58s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.73s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.88s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.07s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.25s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.42s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.59s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.73s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.92s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.11s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.30s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.48s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.63s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.80s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.01s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.22s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.42s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.60s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.75s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.93s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.14s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.33s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.52s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.68s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.87s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.06s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.25s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.42s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.59s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.73s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.90s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.08s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.28s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.46s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.62s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.77s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.97s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    13.17s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    13.28s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchUITests/ScreenshotTests.swift:179: error: -[ScratchUITests.ScreenshotTests testTypicalDark] : XCTAssertTrue failed - the sidebar rows: []
+    t =    13.38s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalDark]' failed (13.630 seconds).
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalLight]' started.
+    t =     0.00s Start Test at 2026-10-23 10:41:14.507
+    t =     0.08s Set Up
+    t =     0.08s Open io.github.ldellisola.Scratch
+    t =     0.08s     Launch io.github.ldellisola.Scratch
+    t =     0.08s         Terminate io.github.ldellisola.Scratch:60403
+2026-10-23 10:41:15.626 xcodebuild[53798:142685] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 10:41:15.626 xcodebuild[53798:142685] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.81s         Wait for accessibility to load
+    t =     2.05s         Setting up automation session
+    t =     2.07s         Wait for io.github.ldellisola.Scratch to idle
+    t =     2.12s Waiting 20.0s for "editor.textView" TextView to exist
+    t =     3.17s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.18s         Checking existence of `"editor.textView" TextView`
+    t =     3.28s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.69s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     3.91s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.07s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.26s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.45s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.67s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     4.87s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.03s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.20s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.40s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.58s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.77s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     5.96s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.11s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.31s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.48s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.65s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     6.84s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.02s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.18s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.37s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.55s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.73s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     7.91s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.05s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.21s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.38s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.55s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.72s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     8.91s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.06s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.22s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.38s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.56s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.74s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.93s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.08s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.25s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.41s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.57s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.73s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    10.93s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.08s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.26s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.45s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.65s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    11.83s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.01s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.18s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.37s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.57s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.76s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    12.96s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    13.12s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    13.32s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =    13.42s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchUITests/ScreenshotTests.swift:179: error: -[ScratchUITests.ScreenshotTests testTypicalLight] : XCTAssertTrue failed - the sidebar rows: []
+    t =    13.51s Tear Down
+Test Case '-[ScratchUITests.ScreenshotTests testTypicalLight]' failed (13.745 seconds).
+Test Suite 'ScreenshotTests' failed at 2026-10-23 10:41:28.252.
+	 Executed 14 tests, with 13 failures (0 unexpected) in 180.966 (180.975) seconds
+Test Suite 'ScratchUITests.xctest' failed at 2026-10-23 10:41:28.253.
+	 Executed 14 tests, with 13 failures (0 unexpected) in 180.966 (180.976) seconds
+Test Suite 'Selected tests' failed at 2026-10-23 10:41:28.253.
+	 Executed 14 tests, with 13 failures (0 unexpected) in 180.966 (180.977) seconds
+2026-10-23 10:41:32.273 xcodebuild[53798:142685] [MT] IDETestOperationsObserverDebug: 186.191 elapsed -- Testing started completed.
+2026-10-23 10:41:32.273 xcodebuild[53798:142685] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-10-23 10:41:32.273 xcodebuild[53798:142685] [MT] IDETestOperationsObserverDebug: 186.191 sec, +186.191 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/scratch-mac/scratch-mac/build/results/screenshots.xcresult
+
+Failing tests:
+	ScreenshotTests.testAttachmentsDark()
+	ScreenshotTests.testAttachmentsLight()
+	ScreenshotTests.testCodeContrastDark()
+	ScreenshotTests.testCodeDark()
+	ScreenshotTests.testCodeLight()
+	ScreenshotTests.testFormattingDark()
+	ScreenshotTests.testFormattingLight()
+	ScreenshotTests.testHugeNoteLight()
+	ScreenshotTests.testRecentlyDeletedLight()
+	ScreenshotTests.testSearchLight()
+	ScreenshotTests.testTypicalContrastLight()
+	ScreenshotTests.testTypicalDark()
+	ScreenshotTests.testTypicalLight()
+
+** TEST FAILED **
+
+Testing started
+make: *** [screenshots] Error 65

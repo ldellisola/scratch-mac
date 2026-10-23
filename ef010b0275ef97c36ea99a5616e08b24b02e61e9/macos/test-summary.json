@@ -1,0 +1,66 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "46462b5a37691b3b492371867ad6ae269edf22c5",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 2,
+      "passedTests" : 470,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 2,
+  "finishTime" : 1792743679.964,
+  "passedTests" : 470,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1792743077.691,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "XCTAssertNil failed: \"Alignment Natural, LineSpacing 4, ParagraphSpacing 0, ParagraphSpacingBefore 0, HeadIndent 0, TailIndent 0, FirstLineHeadIndent 0, LineHeight 0/0, LineHeightMultiple 0 LineBreakMode WordWrapping, Tabs (\n    28L,\n    56L,\n    84L,\n    112L,\n    140L,\n    168L,\n    196L,\n    224L,\n    252L,\n    280L,\n    308L,\n    336L\n), DefaultTabInterval 0, Blocks (\n), Lists (\n), BaseWritingDirection Natural, HyphenationFactor 0, TighteningForTruncation YES, HeaderLevel 0 LineBreakStrategy 0 PresentationIntents (\n) ListIntentOrdinal 0 CodeBlockIntentLanguageHint ''\" - and so did the indent",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 179,
+      "testIdentifierString" : "CodeBlockStylerTests/testRemovingTheClosingFenceTurnsTheBlockBackIntoProse()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/CodeBlockStylerTests/testRemovingTheClosingFenceTurnsTheBlockBackIntoProse",
+      "testName" : "testRemovingTheClosingFenceTurnsTheBlockBackIntoProse()"
+    },
+    {
+      "failureText" : "XCTAssertNil failed: \"0.0\" - text between blocks is not code",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 186,
+      "testIdentifierString" : "CodeBlockStylerTests/testTheOnlyLineOfABlockIsItsFirstAndAnEmptyBlockHasNone()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/CodeBlockStylerTests/testTheOnlyLineOfABlockIsItsFirstAndAnEmptyBlockHasNone",
+      "testName" : "testTheOnlyLineOfABlockIsItsFirstAndAnEmptyBlockHasNone()"
+    }
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "5% of duration",
+      "text" : "1 longest test run with outlier durations exceeding 19.83s (three standard deviations)"
+    },
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "26% of duration",
+      "text" : "6 longest test runs with outlier durations exceeding 0.43s (three standard deviations)"
+    }
+  ],
+  "totalTestCount" : 472
+}

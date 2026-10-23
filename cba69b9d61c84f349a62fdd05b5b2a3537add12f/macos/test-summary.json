@@ -1,0 +1,66 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "ea8f919a085fed16d95de16913353ce787051ade",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 2,
+      "passedTests" : 424,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 2,
+  "finishTime" : 1792727113.615,
+  "passedTests" : 424,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1792726563.999,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "XCTAssertEqual failed: (\"nil\") is not equal to (\"Optional(1)\") - the first composed character",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 313,
+      "testIdentifierString" : "MarkupStylerTests/testMarkedTextKeepsItsUnderline()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/MarkupStylerTests/testMarkedTextKeepsItsUnderline",
+      "testName" : "testMarkedTextKeepsItsUnderline()"
+    },
+    {
+      "failureText" : "XCTAssertFalse failed - so did the steps that the field editor registered in the note's manager",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 210,
+      "testIdentifierString" : "EditorViewControllerTests/testShowDropsTheUndoStepsOfTheTitle()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/EditorViewControllerTests/testShowDropsTheUndoStepsOfTheTitle",
+      "testName" : "testShowDropsTheUndoStepsOfTheTitle()"
+    }
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "5% of duration",
+      "text" : "1 longest test run with outlier durations exceeding 18.87s (three standard deviations)"
+    },
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "31% of duration",
+      "text" : "6 longest test runs with outlier durations exceeding 0.45s (three standard deviations)"
+    }
+  ],
+  "totalTestCount" : 426
+}

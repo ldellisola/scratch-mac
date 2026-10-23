@@ -1,0 +1,80 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "126c2c256f0f5f95b84156e8b311f0acf93f2b21",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 4,
+      "passedTests" : 4,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "ScratchPerf · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 4,
+  "finishTime" : 1792752566.464,
+  "passedTests" : 4,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1792752115.374,
+  "statistics" : [
+    {
+      "subtitle" : "3 test runs",
+      "title" : "3 tests collected performance metrics"
+    }
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchPerfTests",
+      "testIdentifier" : 2,
+      "testIdentifierString" : "EditorPerfTests/testKeystroke()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testKeystroke",
+      "testName" : "testKeystroke()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchPerfTests",
+      "testIdentifier" : 3,
+      "testIdentifierString" : "EditorPerfTests/testScrollHugeNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testScrollHugeNote",
+      "testName" : "testScrollHugeNote()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchPerfTests",
+      "testIdentifier" : 4,
+      "testIdentifierString" : "EditorPerfTests/testSwitchToHugeNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testSwitchToHugeNote",
+      "testName" : "testSwitchToHugeNote()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchPerfTests",
+      "testIdentifier" : 5,
+      "testIdentifierString" : "EditorPerfTests/testSwitchToSmallNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testSwitchToSmallNote",
+      "testName" : "testSwitchToSmallNote()"
+    }
+  ],
+  "title" : "Test - ScratchPerf",
+  "topInsights" : [
+    {
+      "category" : "Common Failures",
+      "impact" : "100% of failures",
+      "text" : "4 runs of 4 tests failed with XCTAssertTrue failed - the sidebar rows: []"
+    }
+  ],
+  "totalTestCount" : 8
+}

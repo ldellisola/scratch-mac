@@ -1,0 +1,300 @@
+[21/58] Compiling ScratchCore FenceScanner.swift
+[22/58] Compiling ScratchCore InlineEditing.swift
+[23/58] Compiling ScratchCore LinkScanner.swift
+[24/58] Compiling ScratchCore ListEditing.swift
+[25/58] Compiling ScratchCore MarkupParser.swift
+[26/58] Compiling ScratchCore MarkupPrefilter.swift
+[27/58] Compiling ScratchCore SessionState.swift
+[28/58] Compiling ScratchCore SessionStore.swift
+[29/58] Compiling ScratchCore TabList.swift
+[30/58] Compiling ScratchCore TextOffset.swift
+[31/58] Compiling ScratchCore NoteTimeLabel.swift
+[32/58] Compiling ScratchCore SidebarSections.swift
+[33/58] Compiling ScratchCore Connection.swift
+[34/58] Compiling ScratchCore Database.swift
+[35/58] Compiling ScratchCore SQLValue.swift
+[36/58] Compiling ScratchCore Schema.swift
+[37/58] Compiling ScratchCore ScratchStorage.swift
+[38/58] Compiling ScratchCore Attachment.swift
+[39/58] Compiling ScratchCore AttachmentCopying.swift
+[40/58] Compiling ScratchCore AttachmentEditing.swift
+[41/58] Compiling ScratchCore AttachmentID.swift
+[42/58] Compiling ScratchCore AttachmentStore.swift
+[43/58] Compiling ScratchCore AttachmentToken.swift
+[44/58] Compiling ScratchCore AutosaveScheduler.swift
+[45/58] Compiling ScratchCore Autosaver.swift
+[46/58] Compiling ScratchCore UnsavedNotes.swift
+[47/58] Compiling ScratchCore Fixture.swift
+[48/58] Compiling ScratchCore FixtureContent.swift
+[49/59] Wrapping AST for ScratchCore for debugging
+[51/89] Compiling ScratchCoreTests MarkupPrefilterTests.swift
+[52/89] Compiling ScratchCoreTests NoteStoreDeletionTests.swift
+[53/89] Compiling ScratchCoreTests NoteStoreSearchTests.swift
+[54/89] Compiling ScratchCoreTests NoteStoreTests.swift
+[55/89] Compiling ScratchCoreTests NoteTests.swift
+[56/89] Compiling ScratchCoreTests NoteTimeLabelTests.swift
+[57/89] Compiling ScratchCoreTests ParagraphLinesTests.swift
+[58/89] Compiling ScratchCoreTests PlainLineTests.swift
+[59/89] Compiling ScratchCoreTests SchemaTests.swift
+[60/98] Emitting module ScratchCoreTests
+[61/98] Compiling ScratchCoreTests AttachmentCopyingTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[62/98] Compiling ScratchCoreTests AttachmentEditingTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[63/98] Compiling ScratchCoreTests AttachmentIDTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[64/98] Compiling ScratchCoreTests AttachmentStoreTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[65/98] Compiling ScratchCoreTests AttachmentTestSupport.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[66/98] Compiling ScratchCoreTests AttachmentTokenTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[67/98] Compiling ScratchCoreTests AutosaverTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[68/98] Compiling ScratchCoreTests CodeBlockIndexTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[69/98] Compiling ScratchCoreTests DatabaseTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[70/98] Compiling ScratchCoreTests EditMappingTests.swift
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentCopyingTests.swift:150:30: error: type 'AttachmentCopying' has no member 'holdsAttachment'
+148 | private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+149 |     let whole = NSRange(location: 0, length: text.utf16.count)
+150 |     return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+    |                              `- error: type 'AttachmentCopying' has no member 'holdsAttachment'
+151 | }
+152 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:557:23: error: type 'AttachmentEditing' has no member 'lineBreaks'
+555 |     _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+556 | ) -> (before: Bool, after: Bool) {
+557 |     AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+    |                       `- error: type 'AttachmentEditing' has no member 'lineBreaks'
+558 | }
+559 | 
+
+/__w/scratch-mac/scratch-mac/Packages/ScratchCore/Tests/ScratchCoreTests/AttachmentEditingTests.swift:713:30: error: type 'AttachmentEditing' has no member 'textInsertion'
+711 | ) -> TextEdit {
+712 |     let found = breaks(inserted, in: text, at: selection)
+713 |     return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+    |                              `- error: type 'AttachmentEditing' has no member 'textInsertion'
+714 | }
+715 | 
+[71/98] Compiling ScratchCoreTests FenceScannerTests.swift
+[72/98] Compiling ScratchCoreTests FixtureTests.swift
+[73/98] Compiling ScratchCoreTests FontSizeTests.swift
+[74/98] Compiling ScratchCoreTests InlineEditingTests.swift
+[75/98] Compiling ScratchCoreTests LaunchLogTests.swift
+[76/98] Compiling ScratchCoreTests LaunchOptionsTests.swift
+[77/98] Compiling ScratchCoreTests LaunchRecordTests.swift
+[78/98] Compiling ScratchCoreTests LinkScannerTests.swift
+[79/98] Compiling ScratchCoreTests ListEditingTests.swift
+[80/98] Compiling ScratchCoreTests MarkupParserTests.swift
+[81/98] Compiling ScratchCoreTests ScratchStorageTests.swift
+[82/98] Compiling ScratchCoreTests SearchQueryTests.swift
+[83/98] Compiling ScratchCoreTests SessionStoreTests.swift
+[84/98] Compiling ScratchCoreTests SidebarSectionsTests.swift
+[85/98] Compiling ScratchCoreTests TabListTests.swift
+[86/98] Compiling ScratchCoreTests TextEditSupport.swift
+[87/98] Compiling ScratchCoreTests TextLinesTests.swift
+[88/98] Compiling ScratchCoreTests TextOffsetTests.swift
+[89/98] Compiling ScratchCoreTests UnsavedNotesTests.swift
+error: fatalError
+make: *** [Makefile:17: core-test] Error 1

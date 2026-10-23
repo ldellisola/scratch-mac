@@ -1,0 +1,37 @@
+failed - DIAGNOSTIC
+markedTextAttributes=NSBackgroundColor=Catalog color: #$dynamic Catal, NSColor=Catalog color: System textColo
+validAttributesForMarkedText=["NSFont", "NSUnderline", "NSColor", "NSBackgroundColor", "NSUnderlineColor", "NSMarkedClauseSegment", "NSLanguage", "NSTextInputReplacementRangeAttributeName", "NSGlyphInfo", "NSTextAlternatives", "NSTextInsertionUndoable", "NSAttachment"]
+A1 bare, attributed: marked={6, 2} text="a **bonild** b"
+  [4] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [5] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [6] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [7] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [8] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [9] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+A2 bare, plain string: marked={6, 3} text="a **bonihld** b"
+  [4] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [5] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [6] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [7] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [8] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [9] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [10] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+B1 editor, attributed: marked={6, 2} text="a **bonild** b"
+  [3] storage {NSColor=Catalog color: System tertiary, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0, io.github.ldellisola.Scratch.marker=revealed} temp {}
+  [4] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}
+  [5] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}
+  [6] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [7] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [8] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}
+  [9] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}
+  styler: composedAttributes range={6, 2} setting=true hasMarked=true markedRange={14, 0} text="a **bonild** b" attrs=["NSColor", "NSFont"]
+B2 editor, plain string: marked={6, 3} text="a **bonihld** b"
+  [3] storage {NSColor=Catalog color: System tertiary, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0, io.github.ldellisola.Scratch.marker=revealed} temp {}
+  [4] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}
+  [5] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}
+  [6] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [7] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [8] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}
+  [9] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}
+  [10] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}
+  styler: composedAttributes range={6, 3} setting=true hasMarked=true markedRange={6, 2} text="a **bonihld** b" attrs=["NSColor", "NSFont"]

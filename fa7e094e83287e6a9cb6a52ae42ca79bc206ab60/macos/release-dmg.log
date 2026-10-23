@@ -1,0 +1,38 @@
+rm -rf build/release/dmg-staging build/release/Scratch-1.0.0.dmg
+mkdir -p build/release/dmg-staging
+ditto build/release/Scratch.app build/release/dmg-staging/Scratch.app
+ln -s /Applications build/release/dmg-staging/Applications
+attempt=1; \
+	until hdiutil create -volname "Scratch 1.0.0" -srcfolder build/release/dmg-staging -ov -format UDZO \
+	  build/release/Scratch-1.0.0.dmg; do \
+	  test $attempt -lt 3 || exit 1; \
+	  attempt=$((attempt + 1)); echo "hdiutil create failed, trying again ($attempt of 3)" >&2; sleep 5; \
+	done
+created: /Users/runner/work/scratch-mac/scratch-mac/build/release/Scratch-1.0.0.dmg
+rm -rf build/release/dmg-staging
+bash scripts/check-release-dmg.sh build/release/Scratch-1.0.0.dmg 1.0.0
+check-release-dmg.sh: Scratch-1.0.0.dmg: version 1.0.0 (build 1.0.0), io.github.ldellisola.Scratch, arm64
+  codesign: Executable=/private/var/folders/n6/hn37q6pj7sj_9dmqqc2113800000gn/T/tmp.uIGXBBv6YM/volume/Scratch.app/Contents/MacOS/Scratch
+  codesign: Identifier=io.github.ldellisola.Scratch
+  codesign: Format=app bundle with Mach-O thin (arm64)
+  codesign: CodeDirectory v=20400 size=71509 flags=0x2(adhoc) hashes=2224+7 location=embedded
+  codesign: VersionPlatform=1
+  codesign: VersionMin=1703936
+  codesign: VersionSDK=1705216
+  codesign: Hash type=sha256 size=32
+  codesign: CandidateCDHash sha256=75b845fdde674d3538d5e776c5bdc46a162be54b
+  codesign: CandidateCDHashFull sha256=75b845fdde674d3538d5e776c5bdc46a162be54b367e909e760256c43e88b6ef
+  codesign: Hash choices=sha256
+  codesign: CMSDigest=75b845fdde674d3538d5e776c5bdc46a162be54b367e909e760256c43e88b6ef
+  codesign: CMSDigestType=2
+  codesign: Executable Segment base=0
+  codesign: Executable Segment limit=34652160
+  codesign: Executable Segment flags=0x1
+  codesign: Page size=16384
+  codesign: CDHash=75b845fdde674d3538d5e776c5bdc46a162be54b
+  codesign: Signature=adhoc
+  codesign: Info.plist entries=24
+  codesign: TeamIdentifier=not set
+  codesign: Sealed Resources version=2 rules=13 files=77
+  codesign: Internal requirements count=0 size=12
+check-release-dmg.sh: ok

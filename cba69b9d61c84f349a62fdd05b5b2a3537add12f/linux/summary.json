@@ -1,0 +1,37 @@
+{
+  "sha": "cba69b9d61c84f349a62fdd05b5b2a3537add12f",
+  "job": "linux",
+  "status": "success",
+  "steps": [
+    {
+      "name": "deps",
+      "outcome": "success"
+    },
+    {
+      "name": "checkout",
+      "outcome": "success"
+    },
+    {
+      "name": "safe-directory",
+      "outcome": "success"
+    },
+    {
+      "name": "lint",
+      "outcome": "success"
+    },
+    {
+      "name": "core-test",
+      "outcome": "success"
+    },
+    {
+      "name": "script-test",
+      "outcome": "success"
+    },
+    {
+      "name": "version-bump",
+      "outcome": "success"
+    }
+  ],
+  "run_url": "https://github.com/ldellisola/scratch-mac/actions/runs/39895129788",
+  "finished_at": "2026-10-23T03:33:45.184975Z"
+}

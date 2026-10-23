@@ -1,0 +1,29 @@
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:426:35: error: type 'NSAttributedString.Key' has no member 'scratchInlineCode'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:429:33: error: type 'NSAttributedString.Key' has no member 'scratchInlineCode'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:478:41: error: type 'MarkupAppearance' has no member 'lineSpacing'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:479:41: error: type 'MarkupAppearance' has no member 'lineSpacing'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:480:41: error: type 'MarkupAppearance' has no member 'lineSpacing'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:526:35: error: type 'NSAttributedString.Key' has no member 'scratchInlineCode'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:527:35: error: type 'NSAttributedString.Key' has no member 'scratchInlineCode'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:529:33: error: type 'NSAttributedString.Key' has no member 'scratchInlineCode'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/MarkupStylerTests.swift:530:33: error: type 'NSAttributedString.Key' has no member 'scratchInlineCode'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:203:20: error: value of type 'TabStripViewController' has no member 'maximumWidth'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:215:20: error: value of type 'TabStripViewController' has no member 'maximumWidth'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:229:20: error: value of type 'TabStripViewController' has no member 'maximumWidth'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:232:68: error: type 'TabStripLayout' has no member 'minimumStripWidth'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:239:105: error: type 'TabStripLayout' has no member 'trailingReserve'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:239:28: error: type 'TabStripLayout' has no member 'maximumWidth'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:240:100: error: type 'TabStripLayout' has no member 'minimumStripWidth'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:240:39: error: type 'TabStripLayout' has no member 'maximumWidth'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:242:28: error: type 'TabStripLayout' has no member 'trailingReserve'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:248:54: error: argument passed to call that takes no arguments
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:252:67: error: cannot infer key path type from context; consider explicitly specifying a root type
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:255:93: error: type 'AccessibilityID' has no member 'tabStrip'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:266:54: error: argument passed to call that takes no arguments
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:269:24: error: generic parameter 'T' could not be inferred
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:271:90: error: type 'AccessibilityID' has no member 'tabStrip'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:278:50: error: type 'Equatable' has no member 'high'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:280:30: error: generic parameter 'T' could not be inferred
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:285:56: error: type 'Equatable' has no member 'user'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:303:38: error: type 'AccessibilityID' has no member 'tabStrip'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/TabStripViewControllerTests.swift:314:45: error: missing argument for parameter 'tabStrip' in call

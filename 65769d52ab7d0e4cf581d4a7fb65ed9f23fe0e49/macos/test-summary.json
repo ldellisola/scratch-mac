@@ -1,0 +1,58 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "854f396761e851f53c3404fb3a19ff916f77d9e6",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 1,
+      "passedTests" : 458,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 1,
+  "finishTime" : 1792737078.137,
+  "passedTests" : 458,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1792736434.978,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "XCTAssertEqual failed: (\"1\") is not equal to (\"2\") - two selections",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 13,
+      "testIdentifierString" : "AttachmentCopyTests/testCopyOfSeveralSelectionsWritesNoteTextToo()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AttachmentCopyTests/testCopyOfSeveralSelectionsWritesNoteTextToo",
+      "testName" : "testCopyOfSeveralSelectionsWritesNoteTextToo()"
+    }
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "5% of duration",
+      "text" : "1 longest test run with outlier durations exceeding 20.01s (three standard deviations)"
+    },
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "28% of duration",
+      "text" : "7 longest test runs with outlier durations exceeding 0.45s (three standard deviations)"
+    }
+  ],
+  "totalTestCount" : 459
+}

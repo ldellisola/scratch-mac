@@ -1,0 +1,54 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "a1cf5b3de978b0fc795a852dc9d7daaa17cf9ca2",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "82C61E6F-E77D-4E09-815F-C72403A809B3.ips",
+        "isAssociatedWithFailure" : true,
+        "suggestedHumanReadableName" : "Crash Log 2026-10-23 at 09.36.01 AM.ips",
+        "timestamp" : 1792748161.626
+      }
+    ],
+    "testIdentifier" : "ContextMenuTests/testContextMenuOnALink()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/ContextMenuTests/testContextMenuOnALink"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "a1cf5b3de978b0fc795a852dc9d7daaa17cf9ca2",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "D78EDD62-DAA5-4C0E-87B5-AD09CFCAF697.ips",
+        "isAssociatedWithFailure" : true,
+        "suggestedHumanReadableName" : "Crash Log 2026-10-23 at 09.36.06 AM.ips",
+        "timestamp" : 1792748166.079
+      }
+    ],
+    "testIdentifier" : "ContextMenuTests/testContextMenuOnAToken()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/ContextMenuTests/testContextMenuOnAToken"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "a1cf5b3de978b0fc795a852dc9d7daaa17cf9ca2",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "3521B790-719C-4427-BC72-ECA1380EC3B8.txt",
+        "isAssociatedWithFailure" : true,
+        "suggestedHumanReadableName" : "Complete Issue Description.txt"
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "a1cf5b3de978b0fc795a852dc9d7daaa17cf9ca2",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "9CD30C02-3D2B-4D85-8A56-B6586EA4220C.txt",
+        "isAssociatedWithFailure" : true,
+        "suggestedHumanReadableName" : "Complete Issue Description.txt"
+      }
+    ],
+    "testIdentifier" : "SpokenTextTests/testSpokenToken()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testSpokenToken"
+  }
+]

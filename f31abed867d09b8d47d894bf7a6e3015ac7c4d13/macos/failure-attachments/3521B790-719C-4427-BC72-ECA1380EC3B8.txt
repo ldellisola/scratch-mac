@@ -1,0 +1,9 @@
+XCTAssertEqual failed: ("The dashboard after the deploy.
+[[attachment:5c1f0a7e-3b2d-4c8e-9a41-0d6e7f8a9b01]]
+The steps to roll it back.
+[[attachment:5c1f0a7e-3b2d-4c8e-9a41-0d6e7f8a9b02]]
+[[attachment:7aa9b29f-5a4a-4b33-9e48-e2944185bfcc]]") is not equal to ("The dashboard after the deploy.
+image, dashboard.png
+The steps to roll it back.
+file, rollback-plan.txt
+missing attachment")

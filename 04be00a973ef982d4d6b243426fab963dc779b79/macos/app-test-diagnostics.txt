@@ -1,0 +1,1 @@
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/SpokenTextTests.swift:184:66: warning: conditional downcast from 'String?' to 'String' does nothing

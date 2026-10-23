@@ -1,0 +1,212 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "44D51B4C-ABD0-43FF-A25D-11978CDA393A.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "attachments-dark_0_BE4A9FB8-515A-4D65-BDD6-FCA6F78C3E79.png",
+        "timestamp" : 1792756528.686
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testAttachmentsDark()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testAttachmentsDark"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "FB8C24E0-4910-4EA5-A778-EC53ABCA4A8D.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "attachments-light_0_80AEC6E5-A9CB-4A6A-B6A9-2524718A571A.png",
+        "timestamp" : 1792756536.218
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testAttachmentsLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testAttachmentsLight"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "EAEB2066-46A8-4BC3-B543-7DCE59B7742D.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "code-contrast-dark_0_7EF5CF66-9740-4A7C-A039-F1A5446620D2.png",
+        "timestamp" : 1792756542.603
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testCodeContrastDark()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testCodeContrastDark"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "DB6171D8-F0C9-4DA6-9601-ADA7F14DD940.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "code-dark_0_A45A1A0A-8687-4142-BF53-5DA4D0A99EF4.png",
+        "timestamp" : 1792756548.855
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testCodeDark()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testCodeDark"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "63CF4CD2-6246-48FA-B865-601E93BFA014.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "code-light_0_DBE0ABF9-5C42-4FD4-B06D-354C4F309947.png",
+        "timestamp" : 1792756555.116
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testCodeLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testCodeLight"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "99282601-BE28-4335-997E-394FD65A4F74.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "empty-light_0_3214C5DA-DDE7-44CE-8462-BFCC411F2CF1.png",
+        "timestamp" : 1792756560.435
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testEmptyLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testEmptyLight"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "6E354EB1-BACA-4067-B676-F5BB9C3A2963.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "formatting-dark_0_0191F063-603D-4F8F-8499-3D6A7857ABF3.png",
+        "timestamp" : 1792756565.812
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testFormattingDark()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testFormattingDark"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "5CCCB426-DD99-4AE9-AE05-8682062EA6E7.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "formatting-light_0_4CA6C9B7-53F4-47DD-9A11-4FF7A0A90E6C.png",
+        "timestamp" : 1792756571.206
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testFormattingLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testFormattingLight"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "CF276F52-3D7E-4D3B-9D5C-382B28D1D1EA.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "huge-note-light_0_23DAB81E-730E-4A32-9180-85A7DC8FF530.png",
+        "timestamp" : 1792756576.881
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testHugeNoteLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testHugeNoteLight"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "32C6E43A-EDE5-4CAE-81F7-4747BE9275FF.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "recently-deleted-light_0_A4FCFE24-19EB-469A-A818-70719953D822.png",
+        "timestamp" : 1792756582.867
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testRecentlyDeletedLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testRecentlyDeletedLight"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "CBE462F3-455E-4C14-8FD7-98A107FC9719.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "search-light_0_F419C78D-ED5C-4966-B778-C88BE719CF65.png",
+        "timestamp" : 1792756590.801
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testSearchLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testSearchLight"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "3D01213F-9EC7-4CA1-AB3E-2A955FD657E3.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "typical-contrast-light_0_5838F60C-E5E9-44A5-BF0B-E5772F10E70D.png",
+        "timestamp" : 1792756596.946
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testTypicalContrastLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testTypicalContrastLight"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "41AF9A78-1915-4534-91ED-321AC18D964D.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "typical-dark_0_85A7A18C-100C-4E5B-874D-79488C759C98.png",
+        "timestamp" : 1792756602.912
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testTypicalDark()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testTypicalDark"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "b80630d69f4c688e6fd1a8979886a75041509243",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "9B010BD2-F5B2-4B3B-B6E2-3E188F8E6DD1.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "typical-light_0_8BBD40B3-B921-49ED-AA7A-6BD067F348B7.png",
+        "timestamp" : 1792756609.126
+      }
+    ],
+    "testIdentifier" : "ScreenshotTests/testTypicalLight()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testTypicalLight"
+  }
+]

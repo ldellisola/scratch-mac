@@ -1,0 +1,66 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "491a5fc8380ca5fda13bca56b8abde43a91a6c91",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 2,
+      "passedTests" : 425,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 2,
+  "finishTime" : 1792728879.193,
+  "passedTests" : 425,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1792728364.663,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "failed - DIAGNOSTIC\nmarkedTextAttributes=NSBackgroundColor=Catalog color: #$dynamic Catal, NSColor=Catalog color: System textColo\nvalidAttributesForMarkedText=[\"NSFont\", \"NSUnderline\", \"NSColor\", \"NSBackgroundColor\", \"NSUnderlineColor\", \"NSMarkedClauseSegment\", \"NSLanguage\", \"NSTextInputReplacementRangeAttributeName\", \"NSGlyphInfo\", \"NSTextAlternatives\", \"NSTextInsertionUndoable\", \"NSAttachment\"]\nA1 bare, attributed: marked={6, 2} text=\"a **bonild** b\"\n  [4] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [5] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [6] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [7] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [8] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [9] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\nA2 bare, plain string: marked={6, 3} text=\"a **bonihld** b\"\n  [4] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [5] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [6] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [7] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [8] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [9] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [10] storage {NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\nB1 editor, attributed: marked={6, 2} text=\"a **bonild** b\"\n  [3] storage {NSColor=Catalog color: System tertiary, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0, io.github.ldellisola.Scratch.marker=revealed} temp {}\n  [4] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}\n  [5] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}\n  [6] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [7] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [8] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}\n  [9] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}\n  styler: composedAttributes range={6, 2} setting=true hasMarked=true markedRange={14, 0} text=\"a **bonild** b\" attrs=[\"NSColor\", \"NSFont\"]\nB2 editor, plain string: marked={6, 3} text=\"a **bonihld** b\"\n  [3] storage {NSColor=Catalog color: System tertiary, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0, io.github.ldellisola.Scratch.marker=revealed} temp {}\n  [4] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}\n  [5] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}\n  [6] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [7] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [8] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Regular 13.0} temp {}\n  [9] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}\n  [10] storage {NSColor=Catalog color: System textColo, NSFont=.AppleSystemUIFontMonospaced-Bold 13.0} temp {}\n  styler: composedAttributes range={6, 3} setting=true hasMarked=true markedRange={6, 2} text=\"a **bonihld** b\" attrs=[\"NSColor\", \"NSFont\"]",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 308,
+      "testIdentifierString" : "MarkupStylerTests/testDiagnosticMarkedTextAttributes()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/MarkupStylerTests/testDiagnosticMarkedTextAttributes",
+      "testName" : "testDiagnosticMarkedTextAttributes()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"nil\") is not equal to (\"Optional(1)\") - the first composed character",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 314,
+      "testIdentifierString" : "MarkupStylerTests/testMarkedTextKeepsItsUnderline()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/MarkupStylerTests/testMarkedTextKeepsItsUnderline",
+      "testName" : "testMarkedTextKeepsItsUnderline()"
+    }
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "6% of duration",
+      "text" : "1 longest test run with outlier durations exceeding 18.62s (three standard deviations)"
+    },
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "36% of duration",
+      "text" : "6 longest test runs with outlier durations exceeding 0.44s (three standard deviations)"
+    }
+  ],
+  "totalTestCount" : 427
+}

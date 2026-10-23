@@ -1,0 +1,300 @@
+ok   a metrics file that is not JSON is an error
+all perf-extract tests passed
+bash scripts/tests/test-version-bump.sh
+== prerequisites
+ok   scripts/check-version-bump.sh exists
+== the four cases of the plan
+ok   a change under App/ without a bump exits 1
+ok   it says that VERSION has to change
+ok   the same change with VERSION 0.1.1 exits 0
+ok   a docs-only change exits 0
+ok   VERSION set to 0.1 exits 1
+ok   it names the format
+== which paths need a bump
+ok   a change under Packages/ without a bump exits 1
+ok   a change under Packages/ with a bump exits 0
+ok   a new file deep under App/ without a bump exits 1
+ok   deleting a file under App/ without a bump exits 1
+ok   moving a file out of App/ without a bump exits 1
+ok   a file under App/ with an unusual name without a bump exits 1
+ok   files that only start like App/ or Packages/, workflows and scripts exit 0
+ok   a VERSION bump on its own exits 0
+== the version must go up, compared number by number
+ok   a change under App/ with a lower VERSION than the base exits 1
+ok   it says what has to be greater than what
+ok   VERSION 0.10.0 over 0.9.0 exits 0 (numeric, not lexical)
+ok   VERSION 1.0.0 over 0.9.9 exits 0
+ok   a lower major with a higher minor and patch exits 1
+ok   a lower patch, 0.1.9 under 0.1.10, exits 1
+ok   a higher patch, 0.1.10 over 0.1.9, exits 0
+ok   an equal VERSION still exits 1
+ok   an equal VERSION says it is still the base's
+ok   numbers too big for shell arithmetic still compare right
+ok   a huge major number over a small one exits 0
+== the whole branch counts, not the last commit
+ok   an app change followed by a docs commit exits 1
+ok   a bump followed by an app change exits 0
+ok   a bump that is reverted before the end exits 1
+== changes on main after the branch point do not count
+ok   an app change that is only on main exits 0 for a docs-only branch
+ok   an app change on the branch exits 1 whatever main did
+== main itself
+ok   HEAD equal to the base ref exits 0
+ok   main compared with itself exits 0 even after an app change
+ok   a branch with no commits of its own exits 0
+== the base has no VERSION file
+ok   a base without VERSION counts as a bump
+ok   a base without VERSION and a branch without VERSION exits 1
+ok   a base without VERSION does not excuse a malformed VERSION
+== the format of VERSION
+ok   VERSION '0.1' exits 1
+ok   VERSION '1' exits 1
+ok   VERSION '1.2.3.4' exits 1
+ok   VERSION 'v0.1.1' exits 1
+ok   VERSION '0.1.1-beta' exits 1
+ok   VERSION '0.1.x' exits 1
+ok   VERSION '01.2.3' exits 1
+ok   VERSION '0.01.2' exits 1
+ok   VERSION '1.2.-3' exits 1
+ok   VERSION ' 0.1.1' exits 1
+ok   VERSION '0.1.1 ' exits 1
+ok   VERSION 'a.b.c' exits 1
+ok   VERSION '' exits 1
+ok   VERSION '0.1.1' exits 0
+ok   VERSION '0.2.0' exits 0
+ok   VERSION '1.0.0' exits 0
+ok   VERSION '10.20.30' exits 0
+ok   VERSION '0.0.0' exits 0
+ok   VERSION without a trailing newline exits 0
+ok   VERSION with a Windows line ending exits 1
+ok   a deleted VERSION exits 1
+ok   a bump that is not committed does not count
+== usage and errors
+ok   no argument is a usage error
+ok   two arguments are a usage error
+ok   a base ref that does not exist is an error
+ok   the error names the ref
+ok   outside a git repository is an error
+== it runs from a subdirectory
+ok   a subdirectory of the repository gives the same answer
+all version-bump tests passed
+bash scripts/tests/test-release-notes.sh
+== prerequisites
+ok   scripts/release-notes.sh exists
+ok   the footer has a <version> placeholder to fill
+== the version is filled in
+ok   release-notes.sh 0.2.0 exits 0
+ok   it names the DMG of that version
+ok   it names the zip of that version
+ok   no <version> is left
+ok   it keeps the install steps
+ok   it keeps the quarantine alternative
+ok   it says the notes live outside the app
+ok   release-notes.sh 10.20.30 exits 0
+ok   a two-digit version is filled in, in the DMG
+ok   and in the zip
+== the DMG comes first
+ok   the DMG is named before the zip
+== only the placeholder changes
+ok   the output is the footer with every <version> replaced
+== it works from any directory
+ok   run from another directory it still finds the footer
+ok   and fills in the version
+== usage errors
+ok   no argument exits 64
+ok   two arguments exit 64
+ok   an empty version exits 64
+ok   a version that is not MAJOR.MINOR.PATCH exits 64
+ok   a version with sed or shell syntax exits 64
+ok   an option is not a version
+ok   a usage error prints the usage on stderr and nothing on stdout
+all release-notes tests passed
+bash scripts/tests/test-release-dmg.sh
+== prerequisites
+ok   scripts/check-release-dmg.sh exists
+== usage and prerequisites
+ok   no argument exits 64
+ok   one argument exits 64
+ok   three arguments exit 64
+ok   a usage error prints the usage
+ok   on a machine that is not a Mac it exits 70
+ok   and says it needs macOS
+ok   a missing image exits 70
+ok   and names the image
+== a good image
+ok   a good image exits 0
+ok   and prints ok
+ok   it attached the image read-only
+ok   it attached the image without showing it in the Finder
+ok   it attached it at a mount point of its own
+ok   it detached the same mount point
+ok   attach and detach name one mount point
+ok   the temporary mount point is removed
+== hidden files on the volume are not content
+ok   a volume with .fseventsd and .DS_Store still passes
+== every failed check is reported, and the image is detached anyway
+ok   a wrong CFBundleShortVersionString fails
+ok   and names it
+ok   and the image was detached
+ok   a wrong CFBundleVersion fails
+ok   and names it
+ok   a wrong bundle identifier fails
+ok   and names it
+ok   an app with two architectures fails
+ok   and names them
+ok   a signature that does not verify fails
+ok   and says so
+ok   a signature that is not ad hoc fails
+ok   and says so
+ok   two problems at once report both
+ok   the version
+ok   the identifier
+ok   and how many failed
+== what is in the window
+ok   no Applications symlink fails
+ok   and says so
+ok   and the image was detached
+ok   an Applications link to another folder fails
+ok   and names where it points
+ok   an Applications folder instead of a link fails
+ok   a visible extra file fails
+ok   and lists what is there
+ok   no Scratch.app fails
+ok   and the image was detached
+== an image that cannot be attached
+ok   an image that does not attach fails
+ok   and says why
+ok   and nothing is detached that was never attached
+all release-dmg tests passed
+bash scripts/tests/test-release-zip.sh
+== prerequisites
+ok   scripts/check-release-zip.sh exists
+== usage and prerequisites
+ok   no argument exits 64
+ok   one argument exits 64
+ok   a usage error prints the usage
+ok   on a machine that is not a Mac it exits 70
+ok   and says it needs macOS
+ok   a missing zip exits 70
+ok   and names the zip
+== a good zip
+ok   a good zip exits 0
+ok   and prints ok
+ok   and the sizes
+== the acknowledgements (plan 5 task 7)
+ok   a zip with no Acknowledgements.rtf fails
+ok   and says which file is missing
+ok   and it is the only problem
+ok   an empty Acknowledgements.rtf fails
+ok   and says it is empty
+ok   an Acknowledgements.rtf that does not name tree-sitter fails
+ok   and says what it lacks
+ok   an Acknowledgements.rtf outside Contents/Resources fails
+ok   and names where it must be
+== the app icon (plan 6 task 9)
+ok   a zip with no AppIcon.icns fails
+ok   and names the file
+ok   and it is the only problem
+ok   an empty AppIcon.icns fails
+ok   and says it is empty
+ok   an AppIcon.icns outside Contents/Resources fails
+ok   and names where it must be
+ok   a CFBundleIconName that is not AppIcon fails
+ok   and names it
+ok   an Info.plist with no CFBundleIconName fails
+ok   and says it is missing
+== the other checks still stand
+ok   a zip with no highlight queries fails
+ok   and names them
+ok   a wrong CFBundleShortVersionString fails
+ok   and names it
+ok   a wrong bundle identifier fails
+ok   and names it
+ok   an app with two architectures fails
+ok   and names them
+ok   a signature that does not verify fails
+ok   and says so
+ok   a signature that is not ad hoc fails
+ok   and says so
+ok   two problems at once report both
+ok   the file
+ok   the identifier
+ok   and how many failed
+ok   a zip with something next to Scratch.app fails
+ok   and says so
+all release-zip tests passed
+bash scripts/tests/test-acknowledgements.sh
+== prerequisites
+ok   scripts/make-acknowledgements.py exists
+== generating
+ok   a tree with every licence generates the file
+ok   the file is where the app expects it (App/Resources/Acknowledgements.rtf)
+ok   it is RTF
+ok   it has a title
+ok   it names tree-sitter and its version
+ok   it names swift-tree-sitter and its version
+ok   it names a grammar and its version
+ok   it names a vendored grammar and its tag
+ok   it says where each is from
+ok   it says where a vendored one is from
+ok   it says MIT
+ok   it says BSD for the BSD licence
+ok   it has the text of a licence
+ok   it has the text of the BSD licence
+ok   it has the copyright line of a vendored grammar
+ok   braces in a licence are escaped
+ok   a backslash in a licence is escaped
+ok   a character outside ASCII is a unicode escape
+== the file is well formed
+ok   7-bit text, braces in pairs, starts with {\rtf1
+== the order is fixed, and so is the output
+ok   a second run exits 0
+ok   and writes the same bytes
+ok   components are in alphabetical order, vendored ones among them
+== a new grammar adds itself
+ok   --check fails while the file lacks the new grammar
+ok   and says to run the script
+ok   generating again succeeds
+ok   the new grammar is in the file
+ok   with its licence
+ok   --check passes on a file that is current
+ok   and says it is current
+== a changed licence is noticed
+ok   --check fails when a licence changed
+== a vendored grammar is found by its folder
+ok   a vendored grammar with a commit and no tag generates
+ok   it is listed under its repository's name and its commit
+ok   a folder that is not a Grammar* folder is not read
+ok   and is not listed
+== what is wrong is said
+ok   a checkout with no LICENSE fails
+ok   and names the package
+ok   and says how to fetch it
+ok   and writes nothing
+ok   no checkouts at all fails
+ok   --check without checkouts still checks the names and versions
+ok   and says the file is missing
+ok   --check without checkouts passes when every name and version is in the file
+ok   and says what it could not compare
+ok   --check without checkouts fails when a version is not the one in the file
+ok   and names it
+ok   no Package.resolved fails
+ok   and names it
+== the real file
+ok   App/Resources/Acknowledgements.rtf is checked in
+ok   it is up to date with Package.resolved, the checkouts and the vendored grammars
+ok   it names tree-sitter
+ok   it says MIT
+ok   it names every vendored grammar: Python
+ok   PowerShell
+ok   SQL
+ok   it has the BSD licence of swift-tree-sitter
+ok   and the licence text of a grammar
+all acknowledgements tests passed
+python3 scripts/tests/test_make_app_icon.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 3.654s
+
+OK
+all make-app-icon tests passed

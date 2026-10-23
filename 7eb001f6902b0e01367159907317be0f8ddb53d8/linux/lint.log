@@ -1,0 +1,1 @@
+swift format lint --strict --recursive Packages App

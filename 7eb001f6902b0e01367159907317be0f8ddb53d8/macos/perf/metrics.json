@@ -1,0 +1,394 @@
+[
+  {
+    "testIdentifier" : "CodePastePerfTests/testPasteFiveHundredLinesOfCode()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/CodePastePerfTests/testPasteFiveHundredLinesOfCode",
+    "testRuns" : [
+      {
+        "device" : {
+          "deviceId" : "da0a0f3fd845a3e2a67b1ca875adb6ac778f11b8",
+          "deviceName" : "My Mac"
+        },
+        "metrics" : [
+          {
+            "baselineAverage" : 0,
+            "baselineName" : "",
+            "displayName" : "Duration (paste-code)",
+            "identifier" : "com.apple.dt.XCTMetric_OSSignpost-paste-code.duration",
+            "maxPercentRegression" : 10,
+            "maxPercentRelativeStandardDeviation" : 10,
+            "maxRegression" : 0,
+            "maxStandardDeviation" : 10,
+            "measurements" : [
+              0.099645708,
+              0.07211616700000001,
+              0.10148433300000001,
+              0.06838087500000001,
+              0.09121375000000001,
+              0.098248584,
+              0.052696708,
+              0.062168083000000006,
+              0.07020254100000001,
+              0.059920291
+            ],
+            "polarity" : "prefers smaller",
+            "unitOfMeasurement" : "s"
+          }
+        ],
+        "testPlanConfiguration" : {
+          "configurationId" : "1",
+          "configurationName" : "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  {
+    "testIdentifier" : "EditorPerfTests/testKeystroke()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testKeystroke",
+    "testRuns" : [
+      {
+        "device" : {
+          "deviceId" : "da0a0f3fd845a3e2a67b1ca875adb6ac778f11b8",
+          "deviceName" : "My Mac"
+        },
+        "metrics" : [
+          {
+            "baselineAverage" : 0,
+            "baselineName" : "",
+            "displayName" : "Duration (keystroke)",
+            "identifier" : "com.apple.dt.XCTMetric_OSSignpost-keystroke.duration",
+            "maxPercentRegression" : 10,
+            "maxPercentRelativeStandardDeviation" : 10,
+            "maxRegression" : 0,
+            "maxStandardDeviation" : 10,
+            "measurements" : [
+              0.004795542000000001,
+              0.0050008330000000005,
+              0.005232542000000001,
+              0.005332042,
+              0.003988208,
+              0.0052249160000000005,
+              0.004174542,
+              0.005634500000000001,
+              0.004562625000000001,
+              0.005868458,
+              0.006483667,
+              0.00533375,
+              0.005117542,
+              0.004467916000000001,
+              0.00418825,
+              0.004705333,
+              0.009739583000000001,
+              0.004851209,
+              0.004920125,
+              0.004252208,
+              0.004709833,
+              0.0041325830000000004,
+              0.004083083,
+              0.004256709,
+              0.00412425,
+              0.005635709,
+              0.005196667,
+              0.009027333,
+              0.005125833000000001,
+              0.010340208,
+              0.0068395,
+              0.004888041,
+              0.005083291,
+              0.007007958000000001,
+              0.004323083,
+              0.004014875,
+              0.004711833,
+              0.0048924170000000005,
+              0.0048295410000000006,
+              0.005094834,
+              0.005051959,
+              0.004349250000000001,
+              0.0038689590000000004,
+              0.004132292,
+              0.003860417,
+              0.006339542,
+              0.003327417,
+              0.009143542000000001,
+              0.005279041,
+              0.004530959,
+              0.005306542,
+              0.006076125000000001,
+              0.003615459,
+              0.004919541,
+              0.004057458,
+              0.0034820000000000003,
+              0.004162417,
+              0.0031620000000000003,
+              0.003410667,
+              0.003363333,
+              0.0035822080000000004,
+              0.003745125,
+              0.005599084000000001,
+              0.003598375,
+              0.003417541,
+              0.003659625,
+              0.003799583,
+              0.0036190830000000004,
+              0.003962792000000001,
+              0.005194958,
+              0.003676958,
+              0.0035022910000000003,
+              0.003336917,
+              0.011070625,
+              0.008449125,
+              0.006147375,
+              0.0037343750000000003,
+              0.003731292,
+              0.004199709,
+              0.0036187500000000004,
+              0.003919084000000001,
+              0.004665959,
+              0.0040224580000000005,
+              0.003986208000000001,
+              0.003962083,
+              0.005138666,
+              0.007134375,
+              0.004147375,
+              0.004714167,
+              0.004082292,
+              0.0045399590000000005,
+              0.004528917,
+              0.0040720420000000005,
+              0.004318333000000001,
+              0.0033985,
+              0.0040805,
+              0.004383042,
+              0.005450833,
+              0.004063167,
+              0.009800000000000001
+            ],
+            "polarity" : "prefers smaller",
+            "unitOfMeasurement" : "s"
+          }
+        ],
+        "testPlanConfiguration" : {
+          "configurationId" : "1",
+          "configurationName" : "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  {
+    "testIdentifier" : "EditorPerfTests/testSwitchToHugeNote()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testSwitchToHugeNote",
+    "testRuns" : [
+      {
+        "device" : {
+          "deviceId" : "da0a0f3fd845a3e2a67b1ca875adb6ac778f11b8",
+          "deviceName" : "My Mac"
+        },
+        "metrics" : [
+          {
+            "baselineAverage" : 0,
+            "baselineName" : "",
+            "displayName" : "Duration (switch-note)",
+            "identifier" : "com.apple.dt.XCTMetric_OSSignpost-switch-note.duration",
+            "maxPercentRegression" : 10,
+            "maxPercentRelativeStandardDeviation" : 10,
+            "maxRegression" : 0,
+            "maxStandardDeviation" : 10,
+            "measurements" : [
+              0.028816209000000002,
+              0.021546417,
+              0.023493583000000002,
+              0.022716125,
+              0.029720917000000003,
+              0.023664292,
+              0.024486417,
+              0.02677525,
+              0.042573125,
+              0.025778792000000002,
+              0.031281666,
+              0.024949916000000003,
+              0.032793958000000005,
+              0.024229916,
+              0.028543791000000002
+            ],
+            "polarity" : "prefers smaller",
+            "unitOfMeasurement" : "s"
+          }
+        ],
+        "testPlanConfiguration" : {
+          "configurationId" : "1",
+          "configurationName" : "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  {
+    "testIdentifier" : "EditorPerfTests/testSwitchToSmallNote()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/EditorPerfTests/testSwitchToSmallNote",
+    "testRuns" : [
+      {
+        "device" : {
+          "deviceId" : "da0a0f3fd845a3e2a67b1ca875adb6ac778f11b8",
+          "deviceName" : "My Mac"
+        },
+        "metrics" : [
+          {
+            "baselineAverage" : 0,
+            "baselineName" : "",
+            "displayName" : "Duration (switch-note)",
+            "identifier" : "com.apple.dt.XCTMetric_OSSignpost-switch-note.duration",
+            "maxPercentRegression" : 10,
+            "maxPercentRelativeStandardDeviation" : 10,
+            "maxRegression" : 0,
+            "maxStandardDeviation" : 10,
+            "measurements" : [
+              0.0111745,
+              0.008295750000000001,
+              0.009163458000000001,
+              0.009991,
+              0.008404541,
+              0.005949542,
+              0.008954834,
+              0.013305083,
+              0.012193458,
+              0.0084215,
+              0.007190208,
+              0.011121500000000001,
+              0.009952791,
+              0.011225875000000001,
+              0.009727417
+            ],
+            "polarity" : "prefers smaller",
+            "unitOfMeasurement" : "s"
+          }
+        ],
+        "testPlanConfiguration" : {
+          "configurationId" : "1",
+          "configurationName" : "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  {
+    "testIdentifier" : "LaunchPerfTests/testLaunch()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/LaunchPerfTests/testLaunch",
+    "testRuns" : [
+      {
+        "device" : {
+          "deviceId" : "da0a0f3fd845a3e2a67b1ca875adb6ac778f11b8",
+          "deviceName" : "My Mac"
+        },
+        "metrics" : [
+          {
+            "baselineAverage" : 0,
+            "baselineName" : "",
+            "displayName" : "Duration (ApplicationLaunch)",
+            "identifier" : "com.apple.dt.XCTMetric_ApplicationLaunch-ApplicationLaunch.duration",
+            "maxPercentRegression" : 10,
+            "maxPercentRelativeStandardDeviation" : 10,
+            "maxRegression" : 0,
+            "maxStandardDeviation" : 10,
+            "measurements" : [
+              0.360796375,
+              0.5004865000000001,
+              0.412018084,
+              0.474656208,
+              0.42587762500000004,
+              0.452681792,
+              0.714763083,
+              0.439751375,
+              0.60272075,
+              0.47926737500000005,
+              0.43835104100000005,
+              0.590686291,
+              0.44216879200000003,
+              0.5083334580000001,
+              0.42684479200000003,
+              0.48330062500000004,
+              0.56724775,
+              0.456875291,
+              0.47970100000000004,
+              0.612371416,
+              0.620313042,
+              0.576199459,
+              0.44452133400000005,
+              0.5529045410000001,
+              0.616550083,
+              0.619876583,
+              0.610663708,
+              0.5851300420000001,
+              0.6154876250000001,
+              0.591259292
+            ],
+            "polarity" : "prefers smaller",
+            "unitOfMeasurement" : "s"
+          }
+        ],
+        "testPlanConfiguration" : {
+          "configurationId" : "1",
+          "configurationName" : "Test Scheme Action"
+        }
+      }
+    ]
+  },
+  {
+    "testIdentifier" : "LaunchPerfTests/testReferenceLaunch()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchPerfTests/LaunchPerfTests/testReferenceLaunch",
+    "testRuns" : [
+      {
+        "device" : {
+          "deviceId" : "da0a0f3fd845a3e2a67b1ca875adb6ac778f11b8",
+          "deviceName" : "My Mac"
+        },
+        "metrics" : [
+          {
+            "baselineAverage" : 0,
+            "baselineName" : "",
+            "displayName" : "Duration (ApplicationLaunch)",
+            "identifier" : "com.apple.dt.XCTMetric_ApplicationLaunch-ApplicationLaunch.duration",
+            "maxPercentRegression" : 10,
+            "maxPercentRelativeStandardDeviation" : 10,
+            "maxRegression" : 0,
+            "maxStandardDeviation" : 10,
+            "measurements" : [
+              0.25855041700000003,
+              0.261368292,
+              0.25375925,
+              0.25821387500000004,
+              0.28053900000000004,
+              0.290807625,
+              0.259651083,
+              0.289921541,
+              0.27380058300000004,
+              0.268652583,
+              0.25464933300000003,
+              0.268688292,
+              0.27179712500000003,
+              0.273714042,
+              0.279667667,
+              0.26702991600000003,
+              0.29530758300000004,
+              0.31275504200000004,
+              0.336181667,
+              0.281936583,
+              0.24643175,
+              0.5013529170000001,
+              0.261191709,
+              0.231583209,
+              0.24529920800000002,
+              0.28955525000000004,
+              0.250176583,
+              0.21798208400000002,
+              0.27200525000000003,
+              0.23634200000000002
+            ],
+            "polarity" : "prefers smaller",
+            "unitOfMeasurement" : "s"
+          }
+        ],
+        "testPlanConfiguration" : {
+          "configurationId" : "1",
+          "configurationName" : "Test Scheme Action"
+        }
+      }
+    ]
+  }
+]

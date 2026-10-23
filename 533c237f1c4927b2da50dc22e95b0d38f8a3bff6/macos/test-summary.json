@@ -1,0 +1,51 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "bbede790993c21fdb31cbfaa1be023be0fa9154d",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 0,
+      "passedTests" : 513,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 0,
+  "finishTime" : 1792771868.299,
+  "passedTests" : 513,
+  "result" : "Passed",
+  "skippedTests" : 0,
+  "startTime" : 1792771156.045,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "4% of duration",
+      "text" : "1 longest test run with outlier durations exceeding 20.15s (three standard deviations)"
+    },
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "26% of duration",
+      "text" : "10 longest test runs with outlier durations exceeding 0.49s (three standard deviations)"
+    }
+  ],
+  "totalTestCount" : 513
+}

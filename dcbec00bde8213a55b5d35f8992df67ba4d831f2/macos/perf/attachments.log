@@ -1,0 +1,25 @@
+Exported 1 attachment for: CodePastePerfTests/testPasteFiveHundredLinesOfCode():
+File: 0F3D69F4-2844-4E84-8814-4D1D9FC30A5E.png, suggested name: "paste-code-after_0_AC8EF6BC-1629-4C25-835F-6D1C1BEC5D83.png"
+
+Exported 1 attachment for: EditorPerfTests/testKeystroke():
+File: B52064D1-7E41-4FF7-A6D2-178590958304.mp4, suggested name: "Screen Recording 2026-10-23 at 10.44.16 AM.mp4"
+
+Exported 1 attachment for: EditorPerfTests/testScrollHugeNote():
+File: 0D6AB240-CEF7-45DF-BEC5-3490AE4E7D16.mp4, suggested name: "Screen Recording 2026-10-23 at 10.44.49 AM.mp4"
+
+Exported 1 attachment for: EditorPerfTests/testSwitchToHugeNote():
+File: EF125CC2-D1B9-44C5-AE19-DC4461F3DD9D.mp4, suggested name: "Screen Recording 2026-10-23 at 10.45.23 AM.mp4"
+
+Exported 1 attachment for: EditorPerfTests/testSwitchToSmallNote():
+File: D43BE011-38A7-4E5F-B5C5-4F4BC9674408.mp4, suggested name: "Screen Recording 2026-10-23 at 10.45.57 AM.mp4"
+
+Exported 1 attachment for: IdlePerfTests/testIdle():
+File: 99B4C83A-0EE5-49A6-A73F-BFCE9E65B1AC.txt, suggested name: "idle_cpu_0_4ED6C7F4-9278-4680-B360-8DA02E0CF4C7.txt"
+
+Exported 1 attachment for: LaunchPerfTests/testLaunch():
+File: 3BFFB927-AC16-464B-841C-6422FF1D5BC9.txt, suggested name: "launch_phases_0_216F8E8C-DCD7-4942-BEFE-EA71BD0F2A29.txt"
+
+Exported 1 attachment for: LaunchPerfTests/testReferenceLaunch():
+File: A242A4BB-CB57-4ADA-A965-655ED2DD2ABD.txt, suggested name: "reference-app-location_0_EFA1835C-01A4-4AD7-B6A5-5CB9210AF827.txt"
+
+Generated manifest file with attachment details: /Users/runner/work/scratch-mac/scratch-mac/build/ci/macos/perf/attachments/manifest.json

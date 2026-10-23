@@ -1,0 +1,300 @@
+    t =     8.65s Find the "sidebar.row.title" StaticText
+    t =     8.70s Find the "sidebar.row.title" StaticText
+    t =     8.76s Find the "sidebar.row.title" StaticText
+    t =     8.83s Find the "sidebar.row.title" StaticText
+    t =     8.92s Find the "sidebar.row.title" StaticText
+    t =     8.99s Find the "sidebar.row.title" StaticText
+    t =     9.07s Find the "sidebar.row.title" StaticText
+    t =     9.13s Find the "sidebar.row.title" StaticText
+    t =     9.21s Find the "sidebar.row.title" StaticText
+    t =     9.31s Get all elements bound by index for: Elements matching predicate '"sidebar.row.title" IN identifiers'
+    t =     9.39s Find the "sidebar.row.title" StaticText
+    t =     9.45s Find the "sidebar.row.title" StaticText
+    t =     9.52s Find the "sidebar.row.title" StaticText
+    t =     9.58s Find the "sidebar.row.title" StaticText
+    t =     9.64s Find the "sidebar.row.title" StaticText
+    t =     9.70s Find the "sidebar.row.title" StaticText
+    t =     9.76s Find the "sidebar.row.title" StaticText
+    t =     9.82s Find the "sidebar.row.title" StaticText
+    t =     9.89s Find the "sidebar.row.title" StaticText
+    t =     9.97s Find the "sidebar.row.title" StaticText
+    t =    10.03s Find the "sidebar.row.title" StaticText
+    t =    10.09s Find the "sidebar.row.title" StaticText
+    t =    10.14s Find the "sidebar.row.title" StaticText
+    t =    10.21s Find the "sidebar.row.title" StaticText
+    t =    10.28s Find the "sidebar.row.title" StaticText
+    t =    10.35s Find the "sidebar.row.title" StaticText
+    t =    10.41s Tear Down
+    t =    10.45s Checking for crash reports corresponding to unexpected termination of io.github.ldellisola.Scratch
+Test Case '-[ScratchUITests.TabsUITests testUntypedNewTabIsDiscardedOnClose]' passed (11.488 seconds).
+Test Suite 'TabsUITests' passed at 2026-10-22 23:51:34.169.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 106.443 (106.459) seconds
+Test Suite 'TitleUITests' started at 2026-10-22 23:51:34.170.
+Test Case '-[ScratchUITests.TitleUITests testFontSizeIsRemembered]' started.
+    t =     0.00s Start Test at 2026-10-22 23:51:34.173
+    t =     0.11s Set Up
+    t =     0.12s Open io.github.ldellisola.Scratch
+    t =     0.12s     Launch io.github.ldellisola.Scratch
+    t =     0.12s         Terminate io.github.ldellisola.Scratch:39495
+2026-10-22 23:51:35.339 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-22 23:51:35.339 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.80s         Wait for accessibility to load
+    t =     2.04s         Setting up automation session
+    t =     2.08s         Wait for io.github.ldellisola.Scratch to idle
+    t =     2.09s Waiting 10.0s for "editor.textView" TextView to exist
+    t =     3.16s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.16s         Checking existence of `"editor.textView" TextView`
+    t =     3.23s Waiting 5.0s for "debug.state" Any to exist
+    t =     4.32s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =     4.33s         Checking existence of `"debug.state" Any`
+    t =     4.36s Find the "debug.state" Any
+    t =     4.37s Type '=' key with modifiers '⌘' (0x10)
+    t =     4.37s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.37s     Find the Target Application 'io.github.ldellisola.Scratch'
+    t =     4.50s     Check for interrupting elements affecting "Scratch" Application
+    t =     4.50s     Synthesize event
+    t =     4.58s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.58s Type '=' key with modifiers '⌘' (0x10)
+    t =     4.58s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.58s     Find the Target Application 'io.github.ldellisola.Scratch'
+    t =     4.62s     Check for interrupting elements affecting "Scratch" Application
+    t =     4.62s     Synthesize event
+    t =     4.67s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.67s Waiting 5.0s for "debug.state" Any to exist
+    t =     5.72s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =     5.73s         Checking existence of `"debug.state" Any`
+    t =     5.75s Find the "debug.state" Any
+    t =     5.76s Type 'q' key with modifiers '⌘' (0x10)
+    t =     5.76s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.76s     Find the Target Application 'io.github.ldellisola.Scratch'
+    t =     5.81s     Check for interrupting elements affecting "Scratch" Application
+    t =     5.81s     Synthesize event
+    t =     6.16s     Wait for io.github.ldellisola.Scratch to idle
+    t =     6.16s Wait for io.github.ldellisola.Scratch to become Not Running
+    t =     6.16s Open io.github.ldellisola.Scratch
+    t =     6.16s     Launch io.github.ldellisola.Scratch
+2026-10-22 23:51:40.337 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-22 23:51:40.337 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     6.92s         Wait for accessibility to load
+    t =     7.08s         Setting up automation session
+    t =     7.12s         Wait for io.github.ldellisola.Scratch to idle
+    t =     7.13s Waiting 10.0s for "editor.textView" TextView to exist
+    t =     8.21s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     8.21s         Checking existence of `"editor.textView" TextView`
+    t =     8.26s Waiting 5.0s for "debug.state" Any to exist
+    t =     9.31s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =     9.31s         Checking existence of `"debug.state" Any`
+    t =     9.33s Find the "debug.state" Any
+    t =     9.35s Tear Down
+    t =     9.38s Checking for crash reports corresponding to unexpected termination of io.github.ldellisola.Scratch
+Test Case '-[ScratchUITests.TitleUITests testFontSizeIsRemembered]' passed (10.392 seconds).
+Test Case '-[ScratchUITests.TitleUITests testHugeNoteShowsItsTopInsetAtLaunch]' started.
+    t =     0.00s Start Test at 2026-10-22 23:51:44.565
+    t =     0.11s Set Up
+    t =     0.12s Open io.github.ldellisola.Scratch
+    t =     0.12s     Launch io.github.ldellisola.Scratch
+    t =     0.12s         Terminate io.github.ldellisola.Scratch:39821
+2026-10-22 23:51:45.726 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-22 23:51:45.726 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.85s         Wait for accessibility to load
+    t =     2.40s         Setting up automation session
+    t =     2.44s         Wait for io.github.ldellisola.Scratch to idle
+    t =     2.45s Waiting 30.0s for "editor.textView" TextView to exist
+    t =     3.48s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.48s         Checking existence of `"editor.textView" TextView`
+    t =     6.54s Waiting 5.0s for "debug.state" Any to exist
+    t =     7.56s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =     7.56s         Checking existence of `"debug.state" Any`
+    t =     7.62s Find the "debug.state" Any
+    t =     7.66s Tear Down
+Test Case '-[ScratchUITests.TitleUITests testHugeNoteShowsItsTopInsetAtLaunch]' passed (7.905 seconds).
+Test Case '-[ScratchUITests.TitleUITests testScrollPositionSurvivesRelaunch]' started.
+    t =     0.00s Start Test at 2026-10-22 23:51:52.471
+    t =     0.12s Set Up
+    t =     0.13s Open io.github.ldellisola.Scratch
+    t =     0.13s     Launch io.github.ldellisola.Scratch
+    t =     0.13s         Terminate io.github.ldellisola.Scratch:40218
+2026-10-22 23:51:53.660 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-22 23:51:53.660 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.86s         Wait for accessibility to load
+    t =     2.24s         Setting up automation session
+    t =     2.26s         Wait for io.github.ldellisola.Scratch to idle
+    t =     2.27s Waiting 30.0s for "editor.textView" TextView to exist
+    t =     3.34s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.34s         Checking existence of `"editor.textView" TextView`
+    t =     3.41s Waiting 5.0s for "debug.state" Any to exist
+    t =     4.50s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =     4.50s         Checking existence of `"debug.state" Any`
+    t =     4.55s Find the "debug.state" Any
+    t =     4.59s Scroll "editor.textView" TextView by dx: 0.00, dy: -20000.00
+    t =     4.60s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.60s     Find the "editor.textView" TextView
+    t =     4.61s     Check for interrupting elements affecting "editor.textView" TextView
+    t =     4.64s     Synthesize event
+    t =     8.85s     Wait for io.github.ldellisola.Scratch to idle
+    t =     8.86s Waiting 5.0s for "debug.state" Any to exist
+    t =     9.87s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =     9.87s         Checking existence of `"debug.state" Any`
+    t =     9.92s Find the "debug.state" Any
+    t =    11.47s Waiting 5.0s for "debug.state" Any to exist
+    t =    12.51s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =    12.51s         Checking existence of `"debug.state" Any`
+    t =    12.57s Find the "debug.state" Any
+    t =    12.60s Type 'q' key with modifiers '⌘' (0x10)
+    t =    12.60s     Wait for io.github.ldellisola.Scratch to idle
+    t =    12.61s     Find the Target Application 'io.github.ldellisola.Scratch'
+    t =    12.73s     Check for interrupting elements affecting "Scratch" Application
+    t =    12.73s     Synthesize event
+    t =    13.14s     Wait for io.github.ldellisola.Scratch to idle
+    t =    13.15s Wait for io.github.ldellisola.Scratch to become Not Running
+    t =    13.15s Open io.github.ldellisola.Scratch
+    t =    13.15s     Launch io.github.ldellisola.Scratch
+2026-10-22 23:52:05.626 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-22 23:52:05.626 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    13.92s         Wait for accessibility to load
+    t =    14.30s         Setting up automation session
+    t =    14.32s         Wait for io.github.ldellisola.Scratch to idle
+    t =    14.33s Waiting 30.0s for "editor.textView" TextView to exist
+    t =    15.34s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =    15.34s         Checking existence of `"editor.textView" TextView`
+    t =    15.39s Waiting 5.0s for "debug.state" Any to exist
+    t =    16.40s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =    16.40s         Checking existence of `"debug.state" Any`
+    t =    16.45s Find the "debug.state" Any
+    t =    16.49s Waiting 5.0s for "debug.state" Any to exist
+    t =    17.52s     Checking `Expect predicate `existsNoRetry == 1` for object "debug.state" Any`
+    t =    17.53s         Checking existence of `"debug.state" Any`
+    t =    17.57s Find the "debug.state" Any
+    t =    17.61s Find the "editor.textView" TextView
+    t =    17.65s Tear Down
+    t =    17.75s Checking for crash reports corresponding to unexpected termination of io.github.ldellisola.Scratch
+Test Case '-[ScratchUITests.TitleUITests testScrollPositionSurvivesRelaunch]' passed (18.794 seconds).
+Test Case '-[ScratchUITests.TitleUITests testTitleBecomesSidebarTitle]' started.
+    t =     0.00s Start Test at 2026-10-22 23:52:11.266
+    t =     0.10s Set Up
+    t =     0.10s Open io.github.ldellisola.Scratch
+    t =     0.10s     Launch io.github.ldellisola.Scratch
+    t =     0.10s         Terminate io.github.ldellisola.Scratch:40894
+2026-10-22 23:52:12.376 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-22 23:52:12.377 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.72s         Wait for accessibility to load
+    t =     1.92s         Setting up automation session
+    t =     1.95s         Wait for io.github.ldellisola.Scratch to idle
+    t =     1.95s Waiting 10.0s for "editor.textView" TextView to exist
+    t =     3.01s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.01s         Checking existence of `"editor.textView" TextView`
+    t =     3.06s Waiting 10.0s for "editor.titleField" TextField to exist
+    t =     4.10s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.titleField" TextField`
+    t =     4.10s         Checking existence of `"editor.titleField" TextField`
+    t =     4.11s Click "editor.titleField" TextField
+    t =     4.11s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.11s     Find the "editor.titleField" TextField
+    t =     4.12s     Check for interrupting elements affecting "editor.titleField" TextField
+    t =     4.14s     Synthesize event
+    t =     4.50s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.51s Type 'Groceries 2' into "editor.titleField" TextField
+    t =     4.51s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.52s     Find the "editor.titleField" TextField
+    t =     4.53s     Check for interrupting elements affecting "editor.titleField" TextField
+    t =     4.55s     Synthesize event
+    t =     4.98s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.99s Type '↩' key (XCUIKeyboardKeyReturn) with no modifiers
+    t =     4.99s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.99s     Find the Target Application 'io.github.ldellisola.Scratch'
+    t =     5.07s     Check for interrupting elements affecting "Scratch" Application
+    t =     5.07s     Synthesize event
+    t =     5.11s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.12s Type 'milk' into "editor.textView" TextView
+    t =     5.12s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.13s     Find the "editor.textView" TextView
+    t =     5.14s     Check for interrupting elements affecting "editor.textView" TextView
+    t =     5.16s     Synthesize event
+    t =     5.29s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.30s Waiting 5.0s for "sidebar.row.title" StaticText to exist
+    t =     6.31s     Checking `Expect predicate `existsNoRetry == 1` for object "sidebar.row.title" StaticText`
+    t =     6.31s         Checking existence of `"sidebar.row.title" StaticText`
+    t =     6.38s Find the "editor.textView" TextView
+    t =     6.39s Tear Down
+Test Case '-[ScratchUITests.TitleUITests testTitleBecomesSidebarTitle]' passed (6.628 seconds).
+Test Case '-[ScratchUITests.TitleUITests testTitleSurvivesRelaunch]' started.
+    t =     0.00s Start Test at 2026-10-22 23:52:17.895
+    t =     0.10s Set Up
+    t =     0.11s Open io.github.ldellisola.Scratch
+    t =     0.11s     Launch io.github.ldellisola.Scratch
+    t =     0.11s         Terminate io.github.ldellisola.Scratch:41207
+2026-10-22 23:52:19.054 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-22 23:52:19.054 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.89s         Wait for accessibility to load
+    t =     2.15s         Setting up automation session
+    t =     2.18s         Wait for io.github.ldellisola.Scratch to idle
+    t =     2.18s Waiting 10.0s for "editor.textView" TextView to exist
+    t =     3.19s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     3.19s         Checking existence of `"editor.textView" TextView`
+    t =     3.23s Waiting 10.0s for "editor.titleField" TextField to exist
+    t =     4.26s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.titleField" TextField`
+    t =     4.26s         Checking existence of `"editor.titleField" TextField`
+    t =     4.28s Click "editor.titleField" TextField
+    t =     4.28s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.28s     Find the "editor.titleField" TextField
+    t =     4.29s     Check for interrupting elements affecting "editor.titleField" TextField
+    t =     4.31s     Synthesize event
+    t =     4.65s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.65s Type 'Kept title' into "editor.titleField" TextField
+    t =     4.65s     Wait for io.github.ldellisola.Scratch to idle
+    t =     4.66s     Find the "editor.titleField" TextField
+    t =     4.68s     Check for interrupting elements affecting "editor.titleField" TextField
+    t =     4.70s     Synthesize event
+    t =     5.09s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.09s Type '↩' key (XCUIKeyboardKeyReturn) with no modifiers
+    t =     5.09s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.09s     Find the Target Application 'io.github.ldellisola.Scratch'
+    t =     5.17s     Check for interrupting elements affecting "Scratch" Application
+    t =     5.17s     Synthesize event
+    t =     5.22s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.22s Type 'kept text' into "editor.textView" TextView
+    t =     5.22s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.23s     Find the "editor.textView" TextView
+    t =     5.25s     Check for interrupting elements affecting "editor.textView" TextView
+    t =     5.27s     Synthesize event
+    t =     5.62s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.62s Type 'q' key with modifiers '⌘' (0x10)
+    t =     5.62s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.62s     Find the Target Application 'io.github.ldellisola.Scratch'
+    t =     5.67s     Check for interrupting elements affecting "Scratch" Application
+    t =     5.67s     Synthesize event
+    t =     5.95s     Wait for io.github.ldellisola.Scratch to idle
+    t =     5.95s Wait for io.github.ldellisola.Scratch to become Not Running
+    t =     5.95s Open io.github.ldellisola.Scratch
+    t =     5.95s     Launch io.github.ldellisola.Scratch
+2026-10-22 23:52:23.854 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-22 23:52:23.854 xcodebuild[18906:52146] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     6.65s         Wait for accessibility to load
+    t =     6.89s         Setting up automation session
+    t =     6.93s         Wait for io.github.ldellisola.Scratch to idle
+    t =     6.93s Waiting 10.0s for "editor.textView" TextView to exist
+    t =     8.01s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.textView" TextView`
+    t =     8.01s         Checking existence of `"editor.textView" TextView`
+    t =     8.06s Waiting 10.0s for "editor.titleField" TextField to exist
+    t =     9.12s     Checking `Expect predicate `existsNoRetry == 1` for object "editor.titleField" TextField`
+    t =     9.12s         Checking existence of `"editor.titleField" TextField`
+    t =     9.24s Find the "editor.titleField" TextField
+    t =     9.25s Find the "editor.textView" TextView
+    t =     9.26s Tear Down
+    t =     9.30s Checking for crash reports corresponding to unexpected termination of io.github.ldellisola.Scratch
+Test Case '-[ScratchUITests.TitleUITests testTitleSurvivesRelaunch]' passed (10.345 seconds).
+Test Suite 'TitleUITests' passed at 2026-10-22 23:52:28.241.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 54.065 (54.070) seconds
+Test Suite 'ScratchUITests.xctest' passed at 2026-10-22 23:52:28.242.
+	 Executed 62 tests, with 0 failures (0 unexpected) in 525.307 (525.394) seconds
+Test Suite 'Selected tests' passed at 2026-10-22 23:52:28.244.
+	 Executed 62 tests, with 0 failures (0 unexpected) in 525.307 (525.395) seconds
+2026-10-22 23:52:28.790 xcodebuild[18906:52146] [MT] IDETestOperationsObserverDebug: 553.427 elapsed -- Testing started completed.
+2026-10-22 23:52:28.790 xcodebuild[18906:52146] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-10-22 23:52:28.790 xcodebuild[18906:52146] [MT] IDETestOperationsObserverDebug: 553.427 sec, +553.427 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/scratch-mac/scratch-mac/build/results/app.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

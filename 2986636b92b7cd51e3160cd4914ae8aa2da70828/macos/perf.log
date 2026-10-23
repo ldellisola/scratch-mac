@@ -1,0 +1,300 @@
+    t =    93.07s         Checking existence of `"debug.state" Any`
+    t =    93.11s Find the "debug.state" Any
+    t =    93.12s Added attachment named 'launch_phases'
+    t =    93.12s Terminate io.github.ldellisola.Scratch:59136
+    t =    94.21s Tear Down
+Test Case '-[ScratchPerfTests.LaunchPerfTests testLaunch]' passed (94.255 seconds).
+Test Case '-[ScratchPerfTests.LaunchPerfTests testReferenceLaunch]' started.
+    t =     0.00s Start Test at 2026-10-23 05:36:26.600
+    t =     0.08s Set Up
+    t =     0.08s Added attachment named 'reference-app-location'
+    t =     0.09s Open io.github.ldellisola.Scratch.LaunchReference
+    t =     0.09s     Launch io.github.ldellisola.Scratch.LaunchReference
+2026-10-23 05:36:26.695 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:26.695 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     0.52s         Wait for accessibility to load
+    t =     0.87s         Setting up automation session
+    t =     0.91s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =     0.91s Terminate io.github.ldellisola.Scratch.LaunchReference:59150
+    t =     1.95s Open io.github.ldellisola.Scratch.LaunchReference
+    t =     1.95s     Launch io.github.ldellisola.Scratch.LaunchReference
+2026-10-23 05:36:28.550 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:28.550 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     2.19s         Wait for accessibility to load
+    t =     2.60s         Setting up automation session
+    t =     2.64s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =     2.65s Terminate io.github.ldellisola.Scratch.LaunchReference:59160
+    t =     3.67s Open io.github.ldellisola.Scratch.LaunchReference
+2026-10-23 05:36:30.274 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:30.274 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     3.67s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =     3.90s         Wait for accessibility to load
+    t =     4.23s         Setting up automation session
+    t =     4.25s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =     4.25s Terminate io.github.ldellisola.Scratch.LaunchReference:59315
+    t =     5.27s Open io.github.ldellisola.Scratch.LaunchReference
+    t =     5.27s     Launch io.github.ldellisola.Scratch.LaunchReference
+2026-10-23 05:36:31.876 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:31.876 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     5.51s         Wait for accessibility to load
+    t =     5.79s         Setting up automation session
+    t =     5.81s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =     6.53s Open io.github.ldellisola.Scratch.LaunchReference
+    t =     6.53s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =     6.54s         Terminate io.github.ldellisola.Scratch.LaunchReference:59477
+2026-10-23 05:36:34.204 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:34.204 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     7.84s         Wait for accessibility to load
+    t =     8.14s         Setting up automation session
+    t =     8.15s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =     8.77s Open io.github.ldellisola.Scratch.LaunchReference
+    t =     8.77s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =     8.77s         Terminate io.github.ldellisola.Scratch.LaunchReference:59561
+2026-10-23 05:36:36.399 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:36.399 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    10.04s         Wait for accessibility to load
+    t =    10.37s         Setting up automation session
+    t =    10.39s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    11.01s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    11.01s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    11.01s         Terminate io.github.ldellisola.Scratch.LaunchReference:59658
+2026-10-23 05:36:38.706 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:38.706 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    12.34s         Wait for accessibility to load
+    t =    12.60s         Setting up automation session
+    t =    12.63s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    13.29s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    13.29s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    13.29s         Terminate io.github.ldellisola.Scratch.LaunchReference:59751
+2026-10-23 05:36:40.922 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:40.922 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    14.54s         Wait for accessibility to load
+    t =    14.84s         Setting up automation session
+    t =    14.87s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    15.58s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    15.58s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    15.58s         Terminate io.github.ldellisola.Scratch.LaunchReference:59844
+2026-10-23 05:36:43.209 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:43.209 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    16.85s         Wait for accessibility to load
+    t =    17.20s         Setting up automation session
+    t =    17.22s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    17.87s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    17.87s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    17.87s         Terminate io.github.ldellisola.Scratch.LaunchReference:60113
+2026-10-23 05:36:45.477 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:45.477 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    19.09s         Setting up automation session
+    t =    19.10s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    19.91s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    19.92s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    19.92s         Terminate io.github.ldellisola.Scratch.LaunchReference:60250
+2026-10-23 05:36:47.528 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:47.528 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    21.14s         Wait for accessibility to load
+    t =    21.37s         Setting up automation session
+    t =    21.40s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    22.04s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    22.04s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    22.04s         Terminate io.github.ldellisola.Scratch.LaunchReference:60260
+2026-10-23 05:36:49.722 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:49.722 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    23.35s         Wait for accessibility to load
+    t =    23.58s         Setting up automation session
+    t =    23.60s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    24.24s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    24.24s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    24.24s         Terminate io.github.ldellisola.Scratch.LaunchReference:60270
+2026-10-23 05:36:51.909 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:51.909 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    25.54s         Wait for accessibility to load
+    t =    25.82s         Setting up automation session
+    t =    25.85s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    26.48s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    26.48s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    26.48s         Terminate io.github.ldellisola.Scratch.LaunchReference:60280
+2026-10-23 05:36:54.176 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:54.176 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    27.82s         Wait for accessibility to load
+    t =    28.15s         Setting up automation session
+    t =    28.17s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    28.84s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    28.84s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    28.84s         Terminate io.github.ldellisola.Scratch.LaunchReference:60295
+2026-10-23 05:36:56.472 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:56.472 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    30.10s         Wait for accessibility to load
+    t =    30.37s         Setting up automation session
+    t =    30.40s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    31.04s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    31.04s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    31.04s         Terminate io.github.ldellisola.Scratch.LaunchReference:60552
+2026-10-23 05:36:58.720 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:36:58.720 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    32.34s         Wait for accessibility to load
+    t =    32.57s         Setting up automation session
+    t =    32.59s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    33.24s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    33.24s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    33.24s         Terminate io.github.ldellisola.Scratch.LaunchReference:60613
+2026-10-23 05:37:00.854 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:00.854 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    34.49s         Wait for accessibility to load
+    t =    34.77s         Setting up automation session
+    t =    34.79s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    35.46s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    35.46s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    35.46s         Terminate io.github.ldellisola.Scratch.LaunchReference:60623
+2026-10-23 05:37:03.128 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:03.128 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    36.76s         Wait for accessibility to load
+    t =    37.00s         Setting up automation session
+    t =    37.01s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    37.65s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    37.65s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    37.65s         Terminate io.github.ldellisola.Scratch.LaunchReference:60634
+2026-10-23 05:37:05.290 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:05.290 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    38.92s         Wait for accessibility to load
+    t =    39.18s         Setting up automation session
+    t =    39.20s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    39.86s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    39.86s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    39.86s         Terminate io.github.ldellisola.Scratch.LaunchReference:60644
+2026-10-23 05:37:07.498 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:07.498 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    41.12s         Wait for accessibility to load
+    t =    41.39s         Setting up automation session
+    t =    41.42s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    42.07s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    42.07s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    42.07s         Terminate io.github.ldellisola.Scratch.LaunchReference:60737
+2026-10-23 05:37:09.680 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:09.680 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    43.31s         Wait for accessibility to load
+    t =    43.57s         Setting up automation session
+    t =    43.61s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    44.24s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    44.24s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    44.24s         Terminate io.github.ldellisola.Scratch.LaunchReference:60969
+2026-10-23 05:37:11.942 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:11.942 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    45.57s         Wait for accessibility to load
+    t =    45.80s         Setting up automation session
+    t =    45.82s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    46.44s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    46.44s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    46.44s         Terminate io.github.ldellisola.Scratch.LaunchReference:60979
+2026-10-23 05:37:14.099 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:14.099 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    47.71s         Wait for accessibility to load
+    t =    47.93s         Setting up automation session
+    t =    47.95s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    48.62s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    48.62s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    48.62s         Terminate io.github.ldellisola.Scratch.LaunchReference:60990
+2026-10-23 05:37:16.237 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:16.237 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    49.89s         Wait for accessibility to load
+    t =    50.17s         Setting up automation session
+    t =    50.19s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    50.89s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    50.90s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    50.90s         Terminate io.github.ldellisola.Scratch.LaunchReference:61000
+2026-10-23 05:37:18.561 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:18.561 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    52.19s         Wait for accessibility to load
+    t =    52.44s         Setting up automation session
+    t =    52.47s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    53.24s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    53.24s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    53.24s         Terminate io.github.ldellisola.Scratch.LaunchReference:61010
+2026-10-23 05:37:20.856 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:20.856 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    54.57s         Wait for accessibility to load
+    t =    54.90s         Setting up automation session
+    t =    54.94s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    55.61s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    55.62s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    55.62s         Terminate io.github.ldellisola.Scratch.LaunchReference:61215
+2026-10-23 05:37:23.223 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:23.223 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    56.85s         Wait for accessibility to load
+    t =    57.11s         Setting up automation session
+    t =    57.15s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    57.79s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    57.79s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    57.79s         Terminate io.github.ldellisola.Scratch.LaunchReference:61333
+2026-10-23 05:37:25.458 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:25.458 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    59.09s         Wait for accessibility to load
+    t =    59.35s         Setting up automation session
+    t =    59.37s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    60.00s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    60.00s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    60.00s         Terminate io.github.ldellisola.Scratch.LaunchReference:61343
+2026-10-23 05:37:27.626 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:27.626 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    61.26s         Wait for accessibility to load
+    t =    61.57s         Setting up automation session
+    t =    61.61s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    62.24s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    62.24s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    62.24s         Terminate io.github.ldellisola.Scratch.LaunchReference:61353
+2026-10-23 05:37:29.936 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:29.936 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    63.55s         Wait for accessibility to load
+    t =    63.79s         Setting up automation session
+    t =    63.80s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    64.43s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    64.43s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    64.43s         Terminate io.github.ldellisola.Scratch.LaunchReference:61363
+2026-10-23 05:37:32.045 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:32.045 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    65.68s         Wait for accessibility to load
+    t =    65.91s         Setting up automation session
+    t =    65.93s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    66.59s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    66.59s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    66.59s         Terminate io.github.ldellisola.Scratch.LaunchReference:61408
+2026-10-23 05:37:34.251 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:34.251 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    67.87s         Wait for accessibility to load
+    t =    68.09s         Setting up automation session
+    t =    68.12s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    68.73s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    68.73s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    68.73s         Terminate io.github.ldellisola.Scratch.LaunchReference:61682
+2026-10-23 05:37:36.404 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:36.404 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    70.04s         Wait for accessibility to load
+    t =    70.29s         Setting up automation session
+    t =    70.32s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+    t =    70.97s Open io.github.ldellisola.Scratch.LaunchReference
+    t =    70.97s     Launch io.github.ldellisola.Scratch.LaunchReference
+    t =    70.97s         Terminate io.github.ldellisola.Scratch.LaunchReference:61692
+2026-10-23 05:37:38.632 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-10-23 05:37:38.632 xcodebuild[43895:118552] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =    72.29s         Wait for accessibility to load
+    t =    72.56s         Setting up automation session
+    t =    72.60s         Wait for io.github.ldellisola.Scratch.LaunchReference to idle
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchPerfTests/LaunchPerfTests.swift:96: Test Case '-[ScratchPerfTests.LaunchPerfTests testReferenceLaunch]' measured [Duration (ApplicationLaunch), s] average: 0.423, relative standard deviation: 18.209%, values: [0.465559, 0.515046, 0.464479, 0.371065, 0.532339, 0.326306, 0.332627, 0.345519, 0.451005, 0.514266, 0.463361, 0.333225, 0.380261, 0.348282, 0.456256, 0.454557, 0.452042, 0.343731, 0.321922, 0.496038, 0.355107, 0.610490, 0.445995, 0.459001, 0.510032, 0.329119, 0.341028, 0.339322, 0.447493, 0.491767], performanceMetricID:com.apple.dt.XCTMetric_ApplicationLaunch-ApplicationLaunch.duration, baselineName: "", baselineAverage: , polarity: prefers smaller, maxPercentRegression: 10.000%, maxPercentRelativeStandardDeviation: 10.000%, maxRegression: 0.000, maxStandardDeviation: 0.000
+    t =    73.25s Terminate io.github.ldellisola.Scratch.LaunchReference:61702
+    t =    74.26s Tear Down
+Test Case '-[ScratchPerfTests.LaunchPerfTests testReferenceLaunch]' passed (74.311 seconds).
+Test Suite 'LaunchPerfTests' passed at 2026-10-23 05:37:40.912.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 168.566 (168.568) seconds
+Test Suite 'ScratchPerfTests.xctest' passed at 2026-10-23 05:37:40.913.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 372.667 (372.682) seconds
+Test Suite 'All tests' passed at 2026-10-23 05:37:40.913.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 372.667 (372.685) seconds
+2026-10-23 05:37:41.266 xcodebuild[43895:118552] [MT] IDETestOperationsObserverDebug: 374.334 elapsed -- Testing started completed.
+2026-10-23 05:37:41.266 xcodebuild[43895:118552] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-10-23 05:37:41.266 xcodebuild[43895:118552] [MT] IDETestOperationsObserverDebug: 374.334 sec, +374.334 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/scratch-mac/scratch-mac/build/results/perf.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

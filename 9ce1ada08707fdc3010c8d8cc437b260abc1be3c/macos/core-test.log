@@ -1,0 +1,300 @@
+[88/92] Compiling SwiftTreeSitter TSRange.swift
+[89/92] Compiling SwiftTreeSitter Tree.swift
+[90/92] Compiling SwiftTreeSitter TreeCursor.swift
+[91/101] Compiling ScratchCode Grammars.swift
+[92/101] Compiling ScratchCode HighlightToken.swift
+[93/101] Compiling ScratchCode Highlighter.swift
+[94/101] Compiling ScratchCode JSONShape.swift
+[95/104] Emitting module ScratchCode
+[96/104] Compiling ScratchCode CaptureMapping.swift
+[97/104] Compiling ScratchCode CodeDetector.swift
+[98/104] Compiling ScratchCode CodeLanguage.swift
+[99/104] Compiling ScratchCode DetectionFeatures.swift
+[100/104] Compiling ScratchCode LanguageSignals.swift
+[101/104] Compiling ScratchCode QueryInheritance.swift
+[102/104] Compiling ScratchCode resource_bundle_accessor.swift
+[103/110] Compiling ScratchCodeTests GrammarsTests.swift
+[104/110] Compiling ScratchCodeTests HighlighterTests.swift
+[105/112] Emitting module ScratchCodeTests
+[106/112] Compiling ScratchCodeTests CaptureMappingTests.swift
+[107/112] Compiling ScratchCodeTests CodeDetectorTests.swift
+[108/112] Compiling ScratchCodeTests CodeLanguageTests.swift
+[109/112] Compiling ScratchCodeTests QueryInheritanceTests.swift
+[110/112] Compiling ScratchCodeTests resource_bundle_accessor.swift
+[111/114] Emitting module ScratchCodePackageTests
+[112/114] Compiling ScratchCodePackageTests runner.swift
+[112/114] Write Objects.LinkFileList
+[113/114] Linking ScratchCodePackageTests
+Build complete! (252.92s)
+Test Suite 'All tests' started at 2026-10-23 10:06:02.488.
+Test Suite 'All tests' passed at 2026-10-23 10:06:02.491.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.003) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test ofTheSameWidthTheLaterCaptureWins() started.
+◇ Test onlyTheLeadingCommentsAreRead() started.
+◇ Test sqlNeedsAStatementAndAClause() started.
+◇ Test aMissingParentIsAnError() started.
+◇ Test swiftAndRustBothHaveLet() started.
+◇ Test preparingEveryLanguageSucceeds() started.
+◇ Test moreProseStaysProse() started.
+◇ Test inlineCodeIsAWordOfTheSentence() started.
+◇ Test phpAndXMLAreCodeOfAnUnknownLanguage() started.
+◇ Test sqlBuildsFromVendoredSources() started.
+◇ Test thereAreSeventeenLanguages() started.
+◇ Test everyCodeSampleIsCodeWithItsLanguage() started.
+◇ Test confidenceIsBetweenZeroAndOne() started.
+◇ Test sqlKeywordsInAnyCaseAndNumbers() started.
+◇ Test yamlNeedsStructureNotJustIndentation() started.
+◇ Test goLiteralsAndBuiltins() started.
+◇ Test featuresSeeShebangsAndDeclarations() started.
+◇ Test bashVariableExpansionIsNotAnError() started.
+◇ Test aCycleDoesNotLoop() started.
+◇ Test aTextOverTheCapIsCutAtALineForTheErrorRate() started.
+◇ Test emptyTextHasNoTokens() started.
+◇ Test everySampleParsesWithoutErrors(language:) started.
+◇ Test rustNumbersAreNumbersAndLiteralsAreKeywords() started.
+◇ Test aFolderWithoutParentsIsAlone() started.
+◇ Test aHugePasteIsLookedAtInPart() started.
+◇ Test nestedCapturesOfSeveralLevels() started.
+◇ Test everyAliasOfThePlanResolves() started.
+◇ Test errorRateOfAHugeTextIsJudgedOnItsFirstLines() started.
+◇ Test concurrentCallsAreSafe() started.
+◇ Test featuresReadTheLines() started.
+◇ Test theInheritsLineNamesTheParents() started.
+◇ Test aQueryIsCompiledOnlyWhenAskedFor() started.
+◇ Test errorRateIsBetweenZeroAndOne() started.
+◇ Test jsonShapeDecides() started.
+◇ Test jsxIsPartOfJavaScript() started.
+◇ Test yamlNeedsAStructuralCue() started.
+◇ Test errorRateOfProseIsHigh() started.
+◇ Test pythonDecoratorIsAttribute() started.
+◇ Test aliasesResolve() started.
+◇ Test theCorpusHasEnoughSamples() started.
+◇ Test fiveHundredLinesIsFast() started.
+◇ Test anEscapeStaysPartOfItsString() started.
+◇ Test errorRateSeparatesTheLanguages() started.
+◇ Test parentsComeBeforeTheirChildren() started.
+◇ Test theCorpusHasNoFolderThatIsNotALanguage() started.
+◇ Test swiftKeywordsStringsComments() started.
+◇ Test yamlKeysAreNotValues() started.
+◇ Test noDirectiveNoParents() started.
+◇ Test aPrefixNeedsAWholeWord() started.
+◇ Test typescriptAndCppInheritFromTheirParents() started.
+◇ Test severalParentsAndOptionalMarks() started.
+◇ Test everyProseSampleStaysProse() started.
+◇ Test numbers() started.
+◇ Test lineEndingsAndBlankLinesDoNotMatter() started.
+◇ Test htmlTagsAreKeywords() started.
+◇ Test theSamplesAreColouredTheWayAReaderExpects() started.
+◇ Test eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test typeAnnotationsTellTypeScriptFromJavaScript() started.
+◇ Test utf16RangesAfterEmoji() started.
+◇ Test cppInheritsC() started.
+◇ Test singleLineIsNeverCode() started.
+◇ Test includeIsAPreprocessorDirectiveInCAndCpp() started.
+◇ Test codeWithoutPunctuationIsStillCode() started.
+◇ Test everythingElseIsTheTextColour() started.
+◇ Test fiveHundredLinesOfEveryLanguageIsFast() started.
+◇ Test aShebangNamesTheLanguage() started.
+◇ Test touchingTokensOfOneKindAreOne() started.
+◇ Test theCapItselfIsStillColoured() started.
+◇ Test cppFeaturesTellCPlusPlusFromC() started.
+◇ Test tokensAreTheSameWhetherOrNotTheQueryWasPrepared() started.
+◇ Test detectionIsDeterministic() started.
+◇ Test aLanguageThatInheritsAQueryIsPrepared() started.
+◇ Test whiteSpaceAroundANameIsIgnored() started.
+◇ Test aFolderIsReadOnceWhoeverInheritsIt() started.
+◇ Test swiftAttributeTypeAndNumber() started.
+◇ Test anUnsignalledTieNamesNoLanguage() started.
+◇ Test textWithNoCodeHasFewTokens() started.
+◇ Test keywords() started.
+◇ Test theSharedHighlighterIsTheOneThatIsPrepared() started.
+◇ Test pythonFunctionsTypesAndNumbers() started.
+◇ Test theInnermostCaptureWins() started.
+◇ Test fenceNamesAreCanonical() started.
+◇ Test labels() started.
+◇ Test linesAreCountedLikeAnEditorDoes() started.
+◇ Test overCapReturnsNil() started.
+◇ Test oddInputNeverCrashesAndStaysDeterministic() started.
+◇ Test flatKeyValueNotesAreProse() started.
+◇ Test everyLanguageHasAGrammarAndItsQueryFiles() started.
+◇ Test errorRateOfValidCodeIsLow() started.
+◇ Test typescriptInheritsJavaScript() started.
+◇ Test typesFunctionsAttributes() started.
+◇ Test tokensAreSortedAndDoNotOverlap() started.
+◇ Test labelsOfAPlainNoteAreNotYAML() started.
+◇ Test jsonKeysAndValues() started.
+◇ Test everyQueryFolderBelongsToALanguage() started.
+◇ Test cCharacterLiteralsAreStrings() started.
+◇ Test noNameIsALanguage() started.
+◇ Test rangesAreUTF16InEveryGrammar() started.
+◇ Test everyLanguageHighlightsItsSample(language:) started.
+◇ Test commentsAndStrings() started.
+◇ Test aliasesBelongToOneLanguageOnly() started.
+◇ Test codeOfAnUnknownLanguageIsCodeWithNoLanguage() started.
+◇ Test onlyAPrefixOfALongTextIsRead() started.
+◇ Test aFiftyThousandLineJSONDocumentIsFoundQuickly() started.
+◇ Test powershellKeywordsInAnyCase() started.
+◇ Test preparingTwiceIsHarmless() started.
+◇ Test tokensWithAGapBetweenThemStayTwo() started.
+◇ Test case passing 1 argument language → .swift to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .python to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .javascript to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .typescript to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .json to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .bash to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .sql to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .yaml to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .html to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .css to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .csharp to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .go to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .rust to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .c to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .cpp to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .java to everySampleParsesWithoutErrors(language:) started.
+◇ Test case passing 1 argument language → .powershell to everySampleParsesWithoutErrors(language:) started.
+✔ Test ofTheSameWidthTheLaterCaptureWins() passed after 0.957 seconds.
+✔ Test onlyTheLeadingCommentsAreRead() passed after 0.957 seconds.
+◇ Test case passing 1 argument language → .swift to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .python to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .javascript to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .typescript to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .json to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .bash to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .sql to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .yaml to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .html to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .css to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .csharp to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .go to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .rust to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .c to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .cpp to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .java to eachSampleShowsTheKindsAReaderExpects(language:) started.
+◇ Test case passing 1 argument language → .powershell to eachSampleShowsTheKindsAReaderExpects(language:) started.
+✔ Test aMissingParentIsAnError() passed after 1.400 seconds.
+✔ Test sqlNeedsAStatementAndAClause() passed after 1.887 seconds.
+✔ Test swiftAndRustBothHaveLet() passed after 2.354 seconds.
+✔ Test inlineCodeIsAWordOfTheSentence() passed after 2.354 seconds.
+✔ Test phpAndXMLAreCodeOfAnUnknownLanguage() passed after 3.849 seconds.
+✔ Test moreProseStaysProse() passed after 3.852 seconds.
+✔ Test thereAreSeventeenLanguages() passed after 3.852 seconds.
+✔ Test sqlBuildsFromVendoredSources() passed after 3.866 seconds.
+✔ Test sqlKeywordsInAnyCaseAndNumbers() passed after 5.537 seconds.
+✔ Test everyCodeSampleIsCodeWithItsLanguage() passed after 5.537 seconds.
+✔ Test yamlNeedsStructureNotJustIndentation() passed after 5.543 seconds.
+◇ Test case passing 1 argument language → .swift to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .python to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .javascript to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .typescript to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .json to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .bash to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .sql to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .yaml to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .html to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .css to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .csharp to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .go to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .rust to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .c to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .cpp to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .java to everyLanguageHighlightsItsSample(language:) started.
+◇ Test case passing 1 argument language → .powershell to everyLanguageHighlightsItsSample(language:) started.
+✔ Test goLiteralsAndBuiltins() passed after 5.578 seconds.
+✔ Test featuresSeeShebangsAndDeclarations() passed after 5.820 seconds.
+✔ Test bashVariableExpansionIsNotAnError() passed after 5.820 seconds.
+✔ Test aCycleDoesNotLoop() passed after 5.820 seconds.
+✔ Test aTextOverTheCapIsCutAtALineForTheErrorRate() passed after 5.820 seconds.
+✔ Test emptyTextHasNoTokens() passed after 5.820 seconds.
+✔ Test everySampleParsesWithoutErrors(language:) with 17 test cases passed after 5.820 seconds.
+✔ Test confidenceIsBetweenZeroAndOne() passed after 5.820 seconds.
+✔ Test aFolderWithoutParentsIsAlone() passed after 5.820 seconds.
+✔ Test rustNumbersAreNumbersAndLiteralsAreKeywords() passed after 5.820 seconds.
+✔ Test nestedCapturesOfSeveralLevels() passed after 5.820 seconds.
+✔ Test everyAliasOfThePlanResolves() passed after 5.820 seconds.
+✔ Test aHugePasteIsLookedAtInPart() passed after 5.820 seconds.
+✔ Test errorRateOfAHugeTextIsJudgedOnItsFirstLines() passed after 5.820 seconds.
+✔ Test featuresReadTheLines() passed after 5.820 seconds.
+✔ Test theInheritsLineNamesTheParents() passed after 5.820 seconds.
+✔ Test aQueryIsCompiledOnlyWhenAskedFor() passed after 5.820 seconds.
+✔ Test errorRateIsBetweenZeroAndOne() passed after 5.820 seconds.
+✔ Test jsonShapeDecides() passed after 5.820 seconds.
+✔ Test jsxIsPartOfJavaScript() passed after 5.820 seconds.
+✔ Test yamlNeedsAStructuralCue() passed after 5.820 seconds.
+✔ Test errorRateOfProseIsHigh() passed after 5.820 seconds.
+✔ Test pythonDecoratorIsAttribute() passed after 5.820 seconds.
+✔ Test aliasesResolve() passed after 5.820 seconds.
+✔ Test theCorpusHasEnoughSamples() passed after 5.820 seconds.
+✔ Test anEscapeStaysPartOfItsString() passed after 5.820 seconds.
+✔ Test fiveHundredLinesIsFast() passed after 5.820 seconds.
+✔ Test errorRateSeparatesTheLanguages() passed after 5.820 seconds.
+✔ Test parentsComeBeforeTheirChildren() passed after 5.820 seconds.
+✔ Test theCorpusHasNoFolderThatIsNotALanguage() passed after 5.820 seconds.
+✔ Test swiftKeywordsStringsComments() passed after 5.820 seconds.
+✔ Test yamlKeysAreNotValues() passed after 5.820 seconds.
+✔ Test noDirectiveNoParents() passed after 5.820 seconds.
+✔ Test aPrefixNeedsAWholeWord() passed after 5.820 seconds.
+✔ Test typescriptAndCppInheritFromTheirParents() passed after 5.820 seconds.
+✔ Test severalParentsAndOptionalMarks() passed after 5.820 seconds.
+✔ Test everyProseSampleStaysProse() passed after 5.820 seconds.
+✔ Test numbers() passed after 5.820 seconds.
+✔ Test preparingEveryLanguageSucceeds() passed after 5.821 seconds.
+✔ Test htmlTagsAreKeywords() passed after 5.820 seconds.
+✔ Test theSamplesAreColouredTheWayAReaderExpects() passed after 5.820 seconds.
+✔ Test eachSampleShowsTheKindsAReaderExpects(language:) with 17 test cases passed after 5.820 seconds.
+✔ Test typeAnnotationsTellTypeScriptFromJavaScript() passed after 5.820 seconds.
+✔ Test utf16RangesAfterEmoji() passed after 5.820 seconds.
+✔ Test cppInheritsC() passed after 5.820 seconds.
+✔ Test singleLineIsNeverCode() passed after 5.820 seconds.
+✔ Test includeIsAPreprocessorDirectiveInCAndCpp() passed after 5.820 seconds.
+✔ Test codeWithoutPunctuationIsStillCode() passed after 5.820 seconds.
+✔ Test everythingElseIsTheTextColour() passed after 5.820 seconds.
+✔ Test lineEndingsAndBlankLinesDoNotMatter() passed after 5.820 seconds.
+✔ Test aShebangNamesTheLanguage() passed after 5.818 seconds.
+✔ Test touchingTokensOfOneKindAreOne() passed after 5.818 seconds.
+✔ Test concurrentCallsAreSafe() passed after 5.821 seconds.
+✔ Test cppFeaturesTellCPlusPlusFromC() passed after 5.818 seconds.
+✔ Test theCapItselfIsStillColoured() passed after 5.818 seconds.
+✔ Test tokensAreTheSameWhetherOrNotTheQueryWasPrepared() passed after 5.818 seconds.
+✔ Test aLanguageThatInheritsAQueryIsPrepared() passed after 5.815 seconds.
+✔ Test whiteSpaceAroundANameIsIgnored() passed after 5.815 seconds.
+✔ Test aFolderIsReadOnceWhoeverInheritsIt() passed after 5.815 seconds.
+✔ Test swiftAttributeTypeAndNumber() passed after 5.815 seconds.
+✔ Test anUnsignalledTieNamesNoLanguage() passed after 5.815 seconds.
+✔ Test textWithNoCodeHasFewTokens() passed after 5.815 seconds.
+✔ Test keywords() passed after 5.815 seconds.
+✔ Test theSharedHighlighterIsTheOneThatIsPrepared() passed after 5.815 seconds.
+✔ Test pythonFunctionsTypesAndNumbers() passed after 5.813 seconds.
+✔ Test theInnermostCaptureWins() passed after 5.813 seconds.
+✔ Test fenceNamesAreCanonical() passed after 5.813 seconds.
+✔ Test labels() passed after 5.813 seconds.
+✔ Test linesAreCountedLikeAnEditorDoes() passed after 5.813 seconds.
+✔ Test overCapReturnsNil() passed after 5.813 seconds.
+✔ Test oddInputNeverCrashesAndStaysDeterministic() passed after 5.722 seconds.
+✔ Test flatKeyValueNotesAreProse() passed after 5.722 seconds.
+✔ Test everyLanguageHasAGrammarAndItsQueryFiles() passed after 5.722 seconds.
+✔ Test errorRateOfValidCodeIsLow() passed after 5.722 seconds.
+✔ Test typescriptInheritsJavaScript() passed after 5.721 seconds.
+✔ Test typesFunctionsAttributes() passed after 5.663 seconds.
+✔ Test tokensAreSortedAndDoNotOverlap() passed after 5.663 seconds.
+✔ Test labelsOfAPlainNoteAreNotYAML() passed after 5.663 seconds.
+✔ Test jsonKeysAndValues() passed after 5.663 seconds.
+✔ Test everyQueryFolderBelongsToALanguage() passed after 5.663 seconds.
+✔ Test cCharacterLiteralsAreStrings() passed after 5.663 seconds.
+✔ Test noNameIsALanguage() passed after 5.663 seconds.
+✔ Test rangesAreUTF16InEveryGrammar() passed after 5.663 seconds.
+✔ Test everyLanguageHighlightsItsSample(language:) with 17 test cases passed after 5.662 seconds.
+✔ Test commentsAndStrings() passed after 5.662 seconds.
+✔ Test aliasesBelongToOneLanguageOnly() passed after 5.662 seconds.
+✔ Test codeOfAnUnknownLanguageIsCodeWithNoLanguage() passed after 5.662 seconds.
+✔ Test onlyAPrefixOfALongTextIsRead() passed after 5.656 seconds.
+✔ Test aFiftyThousandLineJSONDocumentIsFoundQuickly() passed after 5.656 seconds.
+✔ Test powershellKeywordsInAnyCase() passed after 5.656 seconds.
+✔ Test preparingTwiceIsHarmless() passed after 5.656 seconds.
+✔ Test tokensWithAGapBetweenThemStayTwo() passed after 5.656 seconds.
+✔ Test detectionIsDeterministic() passed after 6.537 seconds.
+✔ Test fiveHundredLinesOfEveryLanguageIsFast() passed after 6.713 seconds.
+✔ Test run with 107 tests in 0 suites passed after 6.716 seconds.

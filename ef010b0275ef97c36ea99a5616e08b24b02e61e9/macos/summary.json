@@ -1,0 +1,53 @@
+{
+  "sha": "ef010b0275ef97c36ea99a5616e08b24b02e61e9",
+  "job": "macos",
+  "status": "failure",
+  "steps": [
+    {
+      "name": "checkout",
+      "outcome": "success"
+    },
+    {
+      "name": "xcode",
+      "outcome": "success"
+    },
+    {
+      "name": "xcodegen",
+      "outcome": "success"
+    },
+    {
+      "name": "project",
+      "outcome": "success"
+    },
+    {
+      "name": "core-test",
+      "outcome": "success"
+    },
+    {
+      "name": "app-test",
+      "outcome": "failure"
+    },
+    {
+      "name": "screenshots",
+      "outcome": "success"
+    },
+    {
+      "name": "perf",
+      "outcome": "success"
+    },
+    {
+      "name": "perf-check",
+      "outcome": "success"
+    },
+    {
+      "name": "release-zip",
+      "outcome": "success"
+    },
+    {
+      "name": "release-dmg",
+      "outcome": "success"
+    }
+  ],
+  "run_url": "https://github.com/ldellisola/scratch-mac/actions/runs/39922075598",
+  "finished_at": "2026-10-23T08:30:45.748863Z"
+}

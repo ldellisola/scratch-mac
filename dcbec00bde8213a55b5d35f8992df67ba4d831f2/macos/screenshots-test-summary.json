@@ -1,0 +1,149 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "126c2c256f0f5f95b84156e8b311f0acf93f2b21",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 13,
+      "passedTests" : 1,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 13,
+  "finishTime" : 1792752092.34,
+  "passedTests" : 1,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1792751892.538,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 1,
+      "testIdentifierString" : "ScreenshotTests/testAttachmentsDark()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testAttachmentsDark",
+      "testName" : "testAttachmentsDark()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 2,
+      "testIdentifierString" : "ScreenshotTests/testAttachmentsLight()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testAttachmentsLight",
+      "testName" : "testAttachmentsLight()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 3,
+      "testIdentifierString" : "ScreenshotTests/testCodeContrastDark()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testCodeContrastDark",
+      "testName" : "testCodeContrastDark()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 4,
+      "testIdentifierString" : "ScreenshotTests/testCodeDark()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testCodeDark",
+      "testName" : "testCodeDark()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 5,
+      "testIdentifierString" : "ScreenshotTests/testCodeLight()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testCodeLight",
+      "testName" : "testCodeLight()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 7,
+      "testIdentifierString" : "ScreenshotTests/testFormattingDark()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testFormattingDark",
+      "testName" : "testFormattingDark()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 8,
+      "testIdentifierString" : "ScreenshotTests/testFormattingLight()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testFormattingLight",
+      "testName" : "testFormattingLight()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 9,
+      "testIdentifierString" : "ScreenshotTests/testHugeNoteLight()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testHugeNoteLight",
+      "testName" : "testHugeNoteLight()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 10,
+      "testIdentifierString" : "ScreenshotTests/testRecentlyDeletedLight()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testRecentlyDeletedLight",
+      "testName" : "testRecentlyDeletedLight()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 11,
+      "testIdentifierString" : "ScreenshotTests/testSearchLight()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testSearchLight",
+      "testName" : "testSearchLight()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 12,
+      "testIdentifierString" : "ScreenshotTests/testTypicalContrastLight()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testTypicalContrastLight",
+      "testName" : "testTypicalContrastLight()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 13,
+      "testIdentifierString" : "ScreenshotTests/testTypicalDark()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testTypicalDark",
+      "testName" : "testTypicalDark()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 14,
+      "testIdentifierString" : "ScreenshotTests/testTypicalLight()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/ScreenshotTests/testTypicalLight",
+      "testName" : "testTypicalLight()"
+    }
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+    {
+      "category" : "Common Failures",
+      "impact" : "100% of failures",
+      "text" : "13 runs of 13 tests failed with XCTAssertTrue failed - the sidebar rows: []"
+    }
+  ],
+  "totalTestCount" : 14
+}

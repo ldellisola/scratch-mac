@@ -1,0 +1,1 @@
+/Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/NoteTextView.swift:1364:19: error: method does not override any method from its superclass

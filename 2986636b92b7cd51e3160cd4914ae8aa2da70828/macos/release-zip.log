@@ -1,0 +1,300 @@
+    Target 'TreeSitterGo_TreeSitterGo' in project 'TreeSitterGo' (no dependencies)
+    Target 'TreeSitterCSharp' in project 'TreeSitterCSharp'
+        ➜ Explicit dependency on target 'TreeSitterCSharp' in project 'TreeSitterCSharp'
+        ➜ Explicit dependency on target 'TreeSitterCSharp_TreeSitterCSharp' in project 'TreeSitterCSharp'
+    Target 'TreeSitterCSharp' in project 'TreeSitterCSharp'
+        ➜ Explicit dependency on target 'TreeSitterCSharp_TreeSitterCSharp' in project 'TreeSitterCSharp'
+    Target 'TreeSitterCSharp_TreeSitterCSharp' in project 'TreeSitterCSharp' (no dependencies)
+    Target 'TreeSitterCSS' in project 'TreeSitterCSS'
+        ➜ Explicit dependency on target 'TreeSitterCSS' in project 'TreeSitterCSS'
+        ➜ Explicit dependency on target 'TreeSitterCSS_TreeSitterCSS' in project 'TreeSitterCSS'
+    Target 'TreeSitterCSS' in project 'TreeSitterCSS'
+        ➜ Explicit dependency on target 'TreeSitterCSS_TreeSitterCSS' in project 'TreeSitterCSS'
+    Target 'TreeSitterCSS_TreeSitterCSS' in project 'TreeSitterCSS' (no dependencies)
+    Target 'TreeSitterHTML' in project 'TreeSitterHTML'
+        ➜ Explicit dependency on target 'TreeSitterHTML' in project 'TreeSitterHTML'
+        ➜ Explicit dependency on target 'TreeSitterHTML_TreeSitterHTML' in project 'TreeSitterHTML'
+    Target 'TreeSitterHTML' in project 'TreeSitterHTML'
+        ➜ Explicit dependency on target 'TreeSitterHTML_TreeSitterHTML' in project 'TreeSitterHTML'
+    Target 'TreeSitterHTML_TreeSitterHTML' in project 'TreeSitterHTML' (no dependencies)
+    Target 'TreeSitterYAML' in project 'TreeSitterYAML'
+        ➜ Explicit dependency on target 'TreeSitterYAML' in project 'TreeSitterYAML'
+        ➜ Explicit dependency on target 'TreeSitterYAML_TreeSitterYAML' in project 'TreeSitterYAML'
+    Target 'TreeSitterYAML' in project 'TreeSitterYAML'
+        ➜ Explicit dependency on target 'TreeSitterYAML_TreeSitterYAML' in project 'TreeSitterYAML'
+    Target 'TreeSitterYAML_TreeSitterYAML' in project 'TreeSitterYAML' (no dependencies)
+    Target 'TreeSitterBash' in project 'TreeSitterBash'
+        ➜ Explicit dependency on target 'TreeSitterBash' in project 'TreeSitterBash'
+        ➜ Explicit dependency on target 'TreeSitterBash_TreeSitterBash' in project 'TreeSitterBash'
+    Target 'TreeSitterBash' in project 'TreeSitterBash'
+        ➜ Explicit dependency on target 'TreeSitterBash_TreeSitterBash' in project 'TreeSitterBash'
+    Target 'TreeSitterBash_TreeSitterBash' in project 'TreeSitterBash' (no dependencies)
+    Target 'TreeSitterJSON' in project 'TreeSitterJSON'
+        ➜ Explicit dependency on target 'TreeSitterJSON' in project 'TreeSitterJSON'
+        ➜ Explicit dependency on target 'TreeSitterJSON_TreeSitterJSON' in project 'TreeSitterJSON'
+    Target 'TreeSitterJSON' in project 'TreeSitterJSON'
+        ➜ Explicit dependency on target 'TreeSitterJSON_TreeSitterJSON' in project 'TreeSitterJSON'
+    Target 'TreeSitterJSON_TreeSitterJSON' in project 'TreeSitterJSON' (no dependencies)
+    Target 'TreeSitterTypeScript' in project 'TreeSitterTypeScript'
+        ➜ Explicit dependency on target 'TreeSitterTypeScript' in project 'TreeSitterTypeScript'
+        ➜ Explicit dependency on target 'TreeSitterTSX' in project 'TreeSitterTypeScript'
+        ➜ Explicit dependency on target 'TreeSitterTypeScript_TreeSitterTypeScript' in project 'TreeSitterTypeScript'
+        ➜ Explicit dependency on target 'TreeSitterTypeScript_TreeSitterTSX' in project 'TreeSitterTypeScript'
+    Target 'TreeSitterTSX' in project 'TreeSitterTypeScript'
+        ➜ Explicit dependency on target 'TreeSitterTypeScript_TreeSitterTSX' in project 'TreeSitterTypeScript'
+    Target 'TreeSitterTypeScript_TreeSitterTSX' in project 'TreeSitterTypeScript' (no dependencies)
+    Target 'TreeSitterTypeScript' in project 'TreeSitterTypeScript'
+        ➜ Explicit dependency on target 'TreeSitterTypeScript_TreeSitterTypeScript' in project 'TreeSitterTypeScript'
+    Target 'TreeSitterTypeScript_TreeSitterTypeScript' in project 'TreeSitterTypeScript' (no dependencies)
+    Target 'TreeSitterJavaScript' in project 'TreeSitterJavaScript'
+        ➜ Explicit dependency on target 'TreeSitterJavaScript' in project 'TreeSitterJavaScript'
+        ➜ Explicit dependency on target 'TreeSitterJavaScript_TreeSitterJavaScript' in project 'TreeSitterJavaScript'
+    Target 'TreeSitterJavaScript' in project 'TreeSitterJavaScript'
+        ➜ Explicit dependency on target 'TreeSitterJavaScript_TreeSitterJavaScript' in project 'TreeSitterJavaScript'
+    Target 'TreeSitterJavaScript_TreeSitterJavaScript' in project 'TreeSitterJavaScript' (no dependencies)
+    Target 'TreeSitterSwift' in project 'TreeSitterSwift'
+        ➜ Explicit dependency on target 'TreeSitterSwift' in project 'TreeSitterSwift'
+        ➜ Explicit dependency on target 'TreeSitterSwift_TreeSitterSwift' in project 'TreeSitterSwift'
+    Target 'TreeSitterSwift' in project 'TreeSitterSwift'
+        ➜ Explicit dependency on target 'TreeSitterSwift_TreeSitterSwift' in project 'TreeSitterSwift'
+    Target 'TreeSitterSwift_TreeSitterSwift' in project 'TreeSitterSwift' (no dependencies)
+    Target 'SwiftTreeSitter' in project 'SwiftTreeSitter'
+        ➜ Explicit dependency on target 'SwiftTreeSitter' in project 'SwiftTreeSitter'
+        ➜ Explicit dependency on target 'TreeSitter' in project 'TreeSitter'
+    Target 'SwiftTreeSitter' in project 'SwiftTreeSitter'
+        ➜ Explicit dependency on target 'TreeSitter' in project 'TreeSitter'
+    Target 'TreeSitter' in project 'TreeSitter'
+        ➜ Explicit dependency on target 'TreeSitter' in project 'TreeSitter'
+    Target 'TreeSitter' in project 'TreeSitter' (no dependencies)
+    Target 'GrammarSQL' in project 'ScratchCode' (no dependencies)
+    Target 'GrammarPowerShell' in project 'ScratchCode' (no dependencies)
+    Target 'GrammarPython' in project 'ScratchCode' (no dependencies)
+    Target 'ScratchCode_ScratchCode' in project 'ScratchCode' (no dependencies)
+    Target 'ScratchCore' in project 'ScratchCore'
+        ➜ Explicit dependency on target 'ScratchCore' in project 'ScratchCore'
+    Target 'ScratchCore' in project 'ScratchCore'
+        ➜ Explicit dependency on target 'CSQLite' in project 'ScratchCore'
+    Target 'CSQLite' in project 'ScratchCore' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch x86_64 -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ReadFileContents /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/share/docc/features.json
+
+Build description signature: c1ef6e80b6f0d7af1831ea1a0a8c686f
+Build description path: /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/XCBuildData/c1ef6e80b6f0d7af1831ea1a0a8c686f.xcbuilddata
+ClangStatCache /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fee0e6409aa6676c5e6c013d148225433.sdkstatcache
+    cd /Users/runner/work/scratch-mac/scratch-mac/App/Scratch.xcodeproj
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fee0e6409aa6676c5e6c013d148225433.sdkstatcache
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterYAML_TreeSitterYAML.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterYAML.build/Release/TreeSitterYAML_TreeSitterYAML.build/empty-TreeSitterYAML_TreeSitterYAML.plist (in target 'TreeSitterYAML_TreeSitterYAML' from project 'TreeSitterYAML')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-yaml
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterYAML.build/Release/TreeSitterYAML_TreeSitterYAML.build/empty-TreeSitterYAML_TreeSitterYAML.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterYAML_TreeSitterYAML.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterTypeScript_TreeSitterTypeScript.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterTypeScript.build/Release/TreeSitterTypeScript_TreeSitterTypeScript.build/empty-TreeSitterTypeScript_TreeSitterTypeScript.plist (in target 'TreeSitterTypeScript_TreeSitterTypeScript' from project 'TreeSitterTypeScript')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-typescript
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterTypeScript.build/Release/TreeSitterTypeScript_TreeSitterTypeScript.build/empty-TreeSitterTypeScript_TreeSitterTypeScript.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterTypeScript_TreeSitterTypeScript.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterSwift.build/Release/TreeSitterSwift_TreeSitterSwift.build/empty-TreeSitterSwift_TreeSitterSwift.plist (in target 'TreeSitterSwift_TreeSitterSwift' from project 'TreeSitterSwift')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-swift
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterSwift.build/Release/TreeSitterSwift_TreeSitterSwift.build/empty-TreeSitterSwift_TreeSitterSwift.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterSwift_TreeSitterSwift.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterRust_TreeSitterRust.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterRust.build/Release/TreeSitterRust_TreeSitterRust.build/empty-TreeSitterRust_TreeSitterRust.plist (in target 'TreeSitterRust_TreeSitterRust' from project 'TreeSitterRust')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-rust
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterRust.build/Release/TreeSitterRust_TreeSitterRust.build/empty-TreeSitterRust_TreeSitterRust.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterRust_TreeSitterRust.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJava_TreeSitterJava.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterJava.build/Release/TreeSitterJava_TreeSitterJava.build/empty-TreeSitterJava_TreeSitterJava.plist (in target 'TreeSitterJava_TreeSitterJava' from project 'TreeSitterJava')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-java
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterJava.build/Release/TreeSitterJava_TreeSitterJava.build/empty-TreeSitterJava_TreeSitterJava.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJava_TreeSitterJava.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJavaScript_TreeSitterJavaScript.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterJavaScript.build/Release/TreeSitterJavaScript_TreeSitterJavaScript.build/empty-TreeSitterJavaScript_TreeSitterJavaScript.plist (in target 'TreeSitterJavaScript_TreeSitterJavaScript' from project 'TreeSitterJavaScript')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-javascript
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterJavaScript.build/Release/TreeSitterJavaScript_TreeSitterJavaScript.build/empty-TreeSitterJavaScript_TreeSitterJavaScript.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJavaScript_TreeSitterJavaScript.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJSON_TreeSitterJSON.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterJSON.build/Release/TreeSitterJSON_TreeSitterJSON.build/empty-TreeSitterJSON_TreeSitterJSON.plist (in target 'TreeSitterJSON_TreeSitterJSON' from project 'TreeSitterJSON')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-json
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterJSON.build/Release/TreeSitterJSON_TreeSitterJSON.build/empty-TreeSitterJSON_TreeSitterJSON.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJSON_TreeSitterJSON.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterHTML_TreeSitterHTML.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterHTML.build/Release/TreeSitterHTML_TreeSitterHTML.build/empty-TreeSitterHTML_TreeSitterHTML.plist (in target 'TreeSitterHTML_TreeSitterHTML' from project 'TreeSitterHTML')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-html
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterHTML.build/Release/TreeSitterHTML_TreeSitterHTML.build/empty-TreeSitterHTML_TreeSitterHTML.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterHTML_TreeSitterHTML.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterGo_TreeSitterGo.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterGo.build/Release/TreeSitterGo_TreeSitterGo.build/empty-TreeSitterGo_TreeSitterGo.plist (in target 'TreeSitterGo_TreeSitterGo' from project 'TreeSitterGo')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-go
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterGo.build/Release/TreeSitterGo_TreeSitterGo.build/empty-TreeSitterGo_TreeSitterGo.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterGo_TreeSitterGo.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterC_TreeSitterC.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterC.build/Release/TreeSitterC_TreeSitterC.build/empty-TreeSitterC_TreeSitterC.plist (in target 'TreeSitterC_TreeSitterC' from project 'TreeSitterC')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-c
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterC.build/Release/TreeSitterC_TreeSitterC.build/empty-TreeSitterC_TreeSitterC.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterC_TreeSitterC.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCSharp_TreeSitterCSharp.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterCSharp.build/Release/TreeSitterCSharp_TreeSitterCSharp.build/empty-TreeSitterCSharp_TreeSitterCSharp.plist (in target 'TreeSitterCSharp_TreeSitterCSharp' from project 'TreeSitterCSharp')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-c-sharp
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterCSharp.build/Release/TreeSitterCSharp_TreeSitterCSharp.build/empty-TreeSitterCSharp_TreeSitterCSharp.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCSharp_TreeSitterCSharp.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCSS_TreeSitterCSS.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterCSS.build/Release/TreeSitterCSS_TreeSitterCSS.build/empty-TreeSitterCSS_TreeSitterCSS.plist (in target 'TreeSitterCSS_TreeSitterCSS' from project 'TreeSitterCSS')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-css
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterCSS.build/Release/TreeSitterCSS_TreeSitterCSS.build/empty-TreeSitterCSS_TreeSitterCSS.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCSS_TreeSitterCSS.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCPP_TreeSitterCPP.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterCPP.build/Release/TreeSitterCPP_TreeSitterCPP.build/empty-TreeSitterCPP_TreeSitterCPP.plist (in target 'TreeSitterCPP_TreeSitterCPP' from project 'TreeSitterCPP')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-cpp
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterCPP.build/Release/TreeSitterCPP_TreeSitterCPP.build/empty-TreeSitterCPP_TreeSitterCPP.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCPP_TreeSitterCPP.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterBash_TreeSitterBash.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterBash.build/Release/TreeSitterBash_TreeSitterBash.build/empty-TreeSitterBash_TreeSitterBash.plist (in target 'TreeSitterBash_TreeSitterBash' from project 'TreeSitterBash')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-bash
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterBash.build/Release/TreeSitterBash_TreeSitterBash.build/empty-TreeSitterBash_TreeSitterBash.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterBash_TreeSitterBash.bundle/Contents/Info.plist
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/ScratchCode_ScratchCode.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/ScratchCode.build/Release/ScratchCode_ScratchCode.build/empty-ScratchCode_ScratchCode.plist (in target 'ScratchCode_ScratchCode' from project 'ScratchCode')
+    cd /Users/runner/work/scratch-mac/scratch-mac/Packages/ScratchCode
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/ScratchCode.build/Release/ScratchCode_ScratchCode.build/empty-ScratchCode_ScratchCode.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/ScratchCode_ScratchCode.bundle/Contents/Info.plist
+
+ProcessProductPackaging "" /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/Scratch.app.xcent (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+    Entitlements:
+    
+    {
+    "com.apple.security.get-task-allow" = 1;
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/Scratch.app.xcent
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterTypeScript_TreeSitterTSX.bundle/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterTypeScript.build/Release/TreeSitterTypeScript_TreeSitterTSX.build/empty-TreeSitterTypeScript_TreeSitterTSX.plist (in target 'TreeSitterTypeScript_TreeSitterTSX' from project 'TreeSitterTypeScript')
+    cd /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-typescript
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/TreeSitterTypeScript.build/Release/TreeSitterTypeScript_TreeSitterTSX.build/empty-TreeSitterTypeScript_TreeSitterTSX.plist -producttype com.apple.product-type.bundle -expandbuildsettings -platform macosx -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterTypeScript_TreeSitterTSX.bundle/Contents/Info.plist
+
+ProcessProductPackagingDER /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/Scratch.app.xcent /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/Scratch.app.xcent.der (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    /usr/bin/derq query -f xml -i /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/Scratch.app.xcent -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/Scratch.app.xcent.der --raw
+
+CopySwiftLibs /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/MacOS/Scratch --scan-folder /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Frameworks --scan-folder /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/PlugIns --scan-folder /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Library/SystemExtensions --scan-folder /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.109.0.P7GsW2/Metal.xctoolchain --toolchain /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterYAML_TreeSitterYAML.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterYAML_TreeSitterYAML.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterYAML_TreeSitterYAML.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterTypeScript_TreeSitterTypeScript.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterTypeScript_TreeSitterTypeScript.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterTypeScript_TreeSitterTypeScript.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterTypeScript_TreeSitterTSX.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterTypeScript_TreeSitterTSX.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterTypeScript_TreeSitterTSX.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterSwift_TreeSitterSwift.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterSwift_TreeSitterSwift.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterRust_TreeSitterRust.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterRust_TreeSitterRust.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterRust_TreeSitterRust.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterJava_TreeSitterJava.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJava_TreeSitterJava.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJava_TreeSitterJava.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScript.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJavaScript_TreeSitterJavaScript.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJavaScript_TreeSitterJavaScript.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterJSON_TreeSitterJSON.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJSON_TreeSitterJSON.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterJSON_TreeSitterJSON.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterHTML_TreeSitterHTML.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterHTML_TreeSitterHTML.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterHTML_TreeSitterHTML.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterGo_TreeSitterGo.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterGo_TreeSitterGo.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterGo_TreeSitterGo.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterC_TreeSitterC.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterC_TreeSitterC.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterC_TreeSitterC.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterCSharp_TreeSitterCSharp.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCSharp_TreeSitterCSharp.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCSharp_TreeSitterCSharp.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterCSS_TreeSitterCSS.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCSS_TreeSitterCSS.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCSS_TreeSitterCSS.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterCPP_TreeSitterCPP.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCPP_TreeSitterCPP.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterCPP_TreeSitterCPP.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterBash_TreeSitterBash.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterBash_TreeSitterBash.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/TreeSitterBash_TreeSitterBash.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+Copy /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/ScratchCode_ScratchCode.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/ScratchCode_ScratchCode.bundle (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/ScratchCode_ScratchCode.bundle /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/empty-Scratch.plist (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/empty-Scratch.plist -producttype com.apple.product-type.application -genpkginfo /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/assetcatalog_generated_info.plist -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/ScratchCode_ScratchCode.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterBash_TreeSitterBash.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterCPP_TreeSitterCPP.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterCSS_TreeSitterCSS.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterCSharp_TreeSitterCSharp.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterC_TreeSitterC.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterGo_TreeSitterGo.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterHTML_TreeSitterHTML.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterJSON_TreeSitterJSON.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScript.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterJava_TreeSitterJava.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterRust_TreeSitterRust.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterTypeScript_TreeSitterTSX.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterTypeScript_TreeSitterTypeScript.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Resources/TreeSitterYAML_TreeSitterYAML.bundle -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app/Contents/Info.plist
+
+CodeSign /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --entitlements /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Release/Scratch.build/Scratch.app.xcent --timestamp\=none --generate-entitlement-der /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app
+/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app: replacing existing signature
+
+Validate /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-validationUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+RegisterWithLaunchServices /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Release/Scratch.app
+
+** BUILD SUCCEEDED **
+
+ditto build/DerivedData/Build/Products/Release/Scratch.app build/release/Scratch.app
+ditto -c -k --keepParent build/release/Scratch.app build/release/Scratch-1.0.0.zip
+bash scripts/check-release-zip.sh build/release/Scratch-1.0.0.zip 1.0.0
+check-release-zip.sh: Scratch-1.0.0.zip: version 1.0.0 (build 1.0.0), io.github.ldellisola.Scratch, arm64
+check-release-zip.sh: sizes: zip 3908919 bytes, Scratch.app 36016 KB, executable 36426352 bytes
+  codesign: Executable=/private/var/folders/n6/hn37q6pj7sj_9dmqqc2113800000gn/T/tmp.YRL7yLnH31/Scratch.app/Contents/MacOS/Scratch
+  codesign: Identifier=io.github.ldellisola.Scratch
+  codesign: Format=app bundle with Mach-O thin (arm64)
+  codesign: CodeDirectory v=20400 size=71317 flags=0x2(adhoc) hashes=2218+7 location=embedded
+  codesign: VersionPlatform=1
+  codesign: VersionMin=1703936
+  codesign: VersionSDK=1705216
+  codesign: Hash type=sha256 size=32
+  codesign: CandidateCDHash sha256=7540a9cb95f3f82e5c8ae53f18c94835305e0932
+  codesign: CandidateCDHashFull sha256=7540a9cb95f3f82e5c8ae53f18c94835305e093256794923461806b30c220c69
+  codesign: Hash choices=sha256
+  codesign: CMSDigest=7540a9cb95f3f82e5c8ae53f18c94835305e093256794923461806b30c220c69
+  codesign: CMSDigestType=2
+  codesign: Executable Segment base=0
+  codesign: Executable Segment limit=34603008
+  codesign: Executable Segment flags=0x1
+  codesign: Page size=16384
+  codesign: CDHash=7540a9cb95f3f82e5c8ae53f18c94835305e0932
+  codesign: Signature=adhoc
+  codesign: Info.plist entries=24
+  codesign: TeamIdentifier=not set
+  codesign: Sealed Resources version=2 rules=13 files=77
+  codesign: Internal requirements count=0 size=12
+check-release-zip.sh: ok

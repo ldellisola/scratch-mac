@@ -1,0 +1,474 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "126c2c256f0f5f95b84156e8b311f0acf93f2b21",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 53,
+      "passedTests" : 449,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 53,
+  "finishTime" : 1792751865.539,
+  "passedTests" : 449,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1792750740.313,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "XCTAssertGreaterThan failed: (\"0.05999999865889549\") is not greater than (\"0.05999999865889549\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 7,
+      "testIdentifierString" : "AppearanceTests/testCodeBlockColoursFollowTheAppearance()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testCodeBlockColoursFollowTheAppearance",
+      "testName" : "testCodeBlockColoursFollowTheAppearance()"
+    },
+    {
+      "failureText" : "XCTAssertNotEqual failed: (\"[0.5058823529411764, 0.37254901960784315, 0.011764705882352941, 1.0]\") is equal to (\"[0.5058823529411764, 0.37254901960784315, 0.011764705882352941, 1.0]\") - CodeAttribute has no light high contrast variant",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 9,
+      "testIdentifierString" : "AppearanceTests/testEveryColourHasAHighContrastVariant()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testEveryColourHasAHighContrastVariant",
+      "testName" : "testEveryColourHasAHighContrastVariant()"
+    },
+    {
+      "failureText" : "XCTAssertGreaterThan failed: (\"0.07999999821186066\") is not greater than (\"0.07999999821186066\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 10,
+      "testIdentifierString" : "AppearanceTests/testHighContrastBorderIsStrongerThanTheUsualOne()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testHighContrastBorderIsStrongerThanTheUsualOne",
+      "testName" : "testHighContrastBorderIsStrongerThanTheUsualOne()"
+    },
+    {
+      "failureText" : "XCTAssertGreaterThan failed: (\"0.05999999865889549\") is not greater than (\"0.05999999865889549\") - the tint is stronger in NSAppearanceName(_rawValue: NSAppearanceNameAccessibilityAqua)",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 11,
+      "testIdentifierString" : "AppearanceTests/testHighContrastTextReadsOnTheBackgroundAndTheTint()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testHighContrastTextReadsOnTheBackgroundAndTheTint",
+      "testName" : "testHighContrastTextReadsOnTheBackgroundAndTheTint()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 468,
+      "testIdentifierString" : "SidebarUITests/testClearingSearchRestoresList()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testClearingSearchRestoresList",
+      "testName" : "testClearingSearchRestoresList()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 482,
+      "testIdentifierString" : "TabsUITests/testClickingNoteOpenInOtherTabFocusesIt()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testClickingNoteOpenInOtherTabFocusesIt",
+      "testName" : "testClickingNoteOpenInOtherTabFocusesIt()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar has no row titled Groceries",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 469,
+      "testIdentifierString" : "SidebarUITests/testClickingRowShowsNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testClickingRowShowsNote",
+      "testName" : "testClickingRowShowsNote()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 429,
+      "testIdentifierString" : "AccessibilityUITests/testCloseButtonNamesItsTab()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testCloseButtonNamesItsTab",
+      "testName" : "testCloseButtonNamesItsTab()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 483,
+      "testIdentifierString" : "TabsUITests/testClosingLastTabLeavesEmptyNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testClosingLastTabLeavesEmptyNote",
+      "testName" : "testClosingLastTabLeavesEmptyNote()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 484,
+      "testIdentifierString" : "TabsUITests/testClosingTabKeepsNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testClosingTabKeepsNote",
+      "testName" : "testClosingTabKeepsNote()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 443,
+      "testIdentifierString" : "DeleteUITests/testCommandBackspaceInEditorKeepsNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testCommandBackspaceInEditorKeepsNote",
+      "testName" : "testCommandBackspaceInEditorKeepsNote()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 444,
+      "testIdentifierString" : "DeleteUITests/testCommandBackspaceInSidebarDeletes()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testCommandBackspaceInSidebarDeletes",
+      "testName" : "testCommandBackspaceInSidebarDeletes()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 485,
+      "testIdentifierString" : "TabsUITests/testCommandClickOpensNoteInNewTab()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testCommandClickOpensNoteInNewTab",
+      "testName" : "testCommandClickOpensNoteInNewTab()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 486,
+      "testIdentifierString" : "TabsUITests/testCommandNineSelectsLastTab()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testCommandNineSelectsLastTab",
+      "testName" : "testCommandNineSelectsLastTab()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 487,
+      "testIdentifierString" : "TabsUITests/testCommandTOpensNewEmptyTab()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testCommandTOpensNewEmptyTab",
+      "testName" : "testCommandTOpensNewEmptyTab()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 445,
+      "testIdentifierString" : "DeleteUITests/testContextMenuDeleteMovesNoteToRecentlyDeleted()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testContextMenuDeleteMovesNoteToRecentlyDeleted",
+      "testName" : "testContextMenuDeleteMovesNoteToRecentlyDeleted()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 470,
+      "testIdentifierString" : "SidebarUITests/testContextMenuUnpins()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testContextMenuUnpins",
+      "testName" : "testContextMenuUnpins()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 488,
+      "testIdentifierString" : "TabsUITests/testControlTabCyclesAndWraps()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testControlTabCyclesAndWraps",
+      "testName" : "testControlTabCyclesAndWraps()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 446,
+      "testIdentifierString" : "DeleteUITests/testDeletedNoteIsReadOnly()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testDeletedNoteIsReadOnly",
+      "testName" : "testDeletedNoteIsReadOnly()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 447,
+      "testIdentifierString" : "DeleteUITests/testDeletedNoteTabIsDroppedAtRelaunch()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testDeletedNoteTabIsDroppedAtRelaunch",
+      "testName" : "testDeletedNoteTabIsDroppedAtRelaunch()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 448,
+      "testIdentifierString" : "DeleteUITests/testDeletePermanentlyAsksThenRemoves()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testDeletePermanentlyAsksThenRemoves",
+      "testName" : "testDeletePermanentlyAsksThenRemoves()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 449,
+      "testIdentifierString" : "DeleteUITests/testDeleteWhileTypingKeepsTheTyping()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testDeleteWhileTypingKeepsTheTyping",
+      "testName" : "testDeleteWhileTypingKeepsTheTyping()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 450,
+      "testIdentifierString" : "DeleteUITests/testDeletingNoteInOnlyTabLeavesEmptyNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testDeletingNoteInOnlyTabLeavesEmptyNote",
+      "testName" : "testDeletingNoteInOnlyTabLeavesEmptyNote()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 451,
+      "testIdentifierString" : "DeleteUITests/testDeletingOpenNoteClosesItsTab()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testDeletingOpenNoteClosesItsTab",
+      "testName" : "testDeletingOpenNoteClosesItsTab()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 430,
+      "testIdentifierString" : "AccessibilityUITests/testEditorAndTitleHaveLabels()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testEditorAndTitleHaveLabels",
+      "testName" : "testEditorAndTitleHaveLabels()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 489,
+      "testIdentifierString" : "TabsUITests/testEmptiedNoteSurvivesRelaunch()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testEmptiedNoteSurvivesRelaunch",
+      "testName" : "testEmptiedNoteSurvivesRelaunch()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 471,
+      "testIdentifierString" : "SidebarUITests/testEscapeClearsSearch()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testEscapeClearsSearch",
+      "testName" : "testEscapeClearsSearch()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 452,
+      "testIdentifierString" : "DeleteUITests/testExpiredNotesArePurgedAtLaunch()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testExpiredNotesArePurgedAtLaunch",
+      "testName" : "testExpiredNotesArePurgedAtLaunch()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 472,
+      "testIdentifierString" : "SidebarUITests/testGroupHeadersInOrder()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testGroupHeadersInOrder",
+      "testName" : "testGroupHeadersInOrder()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 473,
+      "testIdentifierString" : "SidebarUITests/testNewNoteButtonCreatesListedNote()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testNewNoteButtonCreatesListedNote",
+      "testName" : "testNewNoteButtonCreatesListedNote()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 474,
+      "testIdentifierString" : "SidebarUITests/testPinButtonMovesNoteToPinned()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testPinButtonMovesNoteToPinned",
+      "testName" : "testPinButtonMovesNoteToPinned()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 475,
+      "testIdentifierString" : "SidebarUITests/testPinWhileTypingSticks()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testPinWhileTypingSticks",
+      "testName" : "testPinWhileTypingSticks()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 431,
+      "testIdentifierString" : "AccessibilityUITests/testRecentlyDeletedHeaderIsAButton()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testRecentlyDeletedHeaderIsAButton",
+      "testName" : "testRecentlyDeletedHeaderIsAButton()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 453,
+      "testIdentifierString" : "DeleteUITests/testRecentlyDeletedStartsCollapsedAndToggles()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testRecentlyDeletedStartsCollapsedAndToggles",
+      "testName" : "testRecentlyDeletedStartsCollapsedAndToggles()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 454,
+      "testIdentifierString" : "DeleteUITests/testRestoreBringsNoteBack()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testRestoreBringsNoteBack",
+      "testName" : "testRestoreBringsNoteBack()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 490,
+      "testIdentifierString" : "TabsUITests/testRestoresBothTabsWithFirstActive()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testRestoresBothTabsWithFirstActive",
+      "testName" : "testRestoresBothTabsWithFirstActive()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 455,
+      "testIdentifierString" : "DeleteUITests/testRestoringOpenNoteMakesItEditable()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/DeleteUITests/testRestoringOpenNoteMakesItEditable",
+      "testName" : "testRestoringOpenNoteMakesItEditable()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 476,
+      "testIdentifierString" : "SidebarUITests/testRowShowsTimeLabel()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testRowShowsTimeLabel",
+      "testName" : "testRowShowsTimeLabel()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 477,
+      "testIdentifierString" : "SidebarUITests/testSearchFiltersByBodyText()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testSearchFiltersByBodyText",
+      "testName" : "testSearchFiltersByBodyText()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 478,
+      "testIdentifierString" : "SidebarUITests/testSearchMatchesTitlesCaseInsensitively()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testSearchMatchesTitlesCaseInsensitively",
+      "testName" : "testSearchMatchesTitlesCaseInsensitively()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 479,
+      "testIdentifierString" : "SidebarUITests/testShiftCommandPTogglesPin()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testShiftCommandPTogglesPin",
+      "testName" : "testShiftCommandPTogglesPin()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 480,
+      "testIdentifierString" : "SidebarUITests/testSidebarListsFixtureNotesPinnedFirst()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testSidebarListsFixtureNotesPinnedFirst",
+      "testName" : "testSidebarListsFixtureNotesPinnedFirst()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 432,
+      "testIdentifierString" : "AccessibilityUITests/testSidebarRowReadsAsOneElement()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testSidebarRowReadsAsOneElement",
+      "testName" : "testSidebarRowReadsAsOneElement()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 433,
+      "testIdentifierString" : "AccessibilityUITests/testTabFromSearchReachesTheNoteList()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testTabFromSearchReachesTheNoteList",
+      "testName" : "testTabFromSearchReachesTheNoteList()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 491,
+      "testIdentifierString" : "TabsUITests/testTabsAndActiveTabSurviveRelaunch()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testTabsAndActiveTabSurviveRelaunch",
+      "testName" : "testTabsAndActiveTabSurviveRelaunch()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 492,
+      "testIdentifierString" : "TabsUITests/testTabStripIsInTheToolbarRow()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testTabStripIsInTheToolbarRow",
+      "testName" : "testTabStripIsInTheToolbarRow()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 500,
+      "testIdentifierString" : "TitleUITests/testTitleBecomesSidebarTitle()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TitleUITests/testTitleBecomesSidebarTitle",
+      "testName" : "testTitleBecomesSidebarTitle()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 434,
+      "testIdentifierString" : "AccessibilityUITests/testToolbarButtonsHaveLabels()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testToolbarButtonsHaveLabels",
+      "testName" : "testToolbarButtonsHaveLabels()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 493,
+      "testIdentifierString" : "TabsUITests/testTwelveTabsKeepTheToolbarButtons()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testTwelveTabsKeepTheToolbarButtons",
+      "testName" : "testTwelveTabsKeepTheToolbarButtons()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 494,
+      "testIdentifierString" : "TabsUITests/testTypedThenEmptiedNoteIsKeptWhenItsTabCloses()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testTypedThenEmptiedNoteIsKeptWhenItsTabCloses",
+      "testName" : "testTypedThenEmptiedNoteIsKeptWhenItsTabCloses()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 495,
+      "testIdentifierString" : "TabsUITests/testUndoSurvivesTabSwitch()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testUndoSurvivesTabSwitch",
+      "testName" : "testUndoSurvivesTabSwitch()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 481,
+      "testIdentifierString" : "SidebarUITests/testUntouchedNewNoteIsDiscarded()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/SidebarUITests/testUntouchedNewNoteIsDiscarded",
+      "testName" : "testUntouchedNewNoteIsDiscarded()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - the sidebar rows: []",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 496,
+      "testIdentifierString" : "TabsUITests/testUntypedNewTabIsDiscardedOnClose()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/TabsUITests/testUntypedNewTabIsDiscardedOnClose",
+      "testName" : "testUntypedNewTabIsDiscardedOnClose()"
+    }
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+    {
+      "category" : "Common Failures",
+      "impact" : "90% of failures",
+      "text" : "48 runs of 48 tests failed with XCTAssertTrue failed - the sidebar rows: []"
+    },
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "32% of duration",
+      "text" : "11 longest test runs with outlier durations exceeding 0.46s (three standard deviations)"
+    }
+  ],
+  "totalTestCount" : 502
+}

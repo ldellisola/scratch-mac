@@ -1,0 +1,255 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "a1cf5b3de978b0fc795a852dc9d7daaa17cf9ca2",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 25,
+      "passedTests" : 477,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 25,
+  "finishTime" : 1792748859.377,
+  "passedTests" : 477,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1792748008.808,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "XCTAssertNotEqual failed: (\"[ ] buy **milk**\n- a `thing`\n```swift\nlet x = 1\n```\") is equal to (\"[ ] buy **milk**\n- a `thing`\n```swift\nlet x = 1\n```\") - while what is read for a range is not",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 399,
+      "testIdentifierString" : "SpokenTextTests/testAccessibilityValueIsTheStoredText()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testAccessibilityValueIsTheStoredText",
+      "testName" : "testAccessibilityValueIsTheStoredText()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"Optional(\"[x] done\\nplain line\")\") is not equal to (\"Optional(\"checked done\\nplain line\")\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 400,
+      "testIdentifierString" : "SpokenTextTests/testAttributedStringIsTheSameWords()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testAttributedStringIsTheSameWords",
+      "testName" : "testAttributedStringIsTheSameWords()"
+    },
+    {
+      "failureText" : "XCTAssertGreaterThan failed: (\"0.05999999865889549\") is not greater than (\"0.05999999865889549\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 7,
+      "testIdentifierString" : "AppearanceTests/testCodeBlockColoursFollowTheAppearance()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testCodeBlockColoursFollowTheAppearance",
+      "testName" : "testCodeBlockColoursFollowTheAppearance()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"[]\") is not equal to (\"[\"Code Block Language\"]\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 232,
+      "testIdentifierString" : "ContextMenuTests/testContextMenuInABlock()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/ContextMenuTests/testContextMenuInABlock",
+      "testName" : "testContextMenuInABlock()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"[]\") is not equal to (\"[\"Mark as Checked\"]\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 233,
+      "testIdentifierString" : "ContextMenuTests/testContextMenuOnABox()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/ContextMenuTests/testContextMenuOnABox",
+      "testName" : "testContextMenuOnABox()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"[]\") is not equal to (\"[\"Open Link\"]\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 234,
+      "testIdentifierString" : "ContextMenuTests/testContextMenuOnALink()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/ContextMenuTests/testContextMenuOnALink",
+      "testName" : "testContextMenuOnALink()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"[]\") is not equal to (\"[\"Open Attachment\"]\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 235,
+      "testIdentifierString" : "ContextMenuTests/testContextMenuOnAToken()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/ContextMenuTests/testContextMenuOnAToken",
+      "testName" : "testContextMenuOnAToken()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"NSAppearanceName(_rawValue: NSAppearanceNameAqua)\") is not equal to (\"NSAppearanceName(_rawValue: NSAppearanceNameAccessibilityAqua)\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 8,
+      "testIdentifierString" : "AppearanceTests/testContrastLaunchAppearancesAreTheAccessibilityOnes()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testContrastLaunchAppearancesAreTheAccessibilityOnes",
+      "testName" : "testContrastLaunchAppearancesAreTheAccessibilityOnes()"
+    },
+    {
+      "failureText" : "XCTAssertNotEqual failed: (\"[0.5058823529411764, 0.37254901960784315, 0.011764705882352941, 1.0]\") is equal to (\"[0.5058823529411764, 0.37254901960784315, 0.011764705882352941, 1.0]\") - CodeAttribute has no light high contrast variant",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 9,
+      "testIdentifierString" : "AppearanceTests/testEveryColourHasAHighContrastVariant()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testEveryColourHasAHighContrastVariant",
+      "testName" : "testEveryColourHasAHighContrastVariant()"
+    },
+    {
+      "failureText" : "XCTAssertGreaterThan failed: (\"0.07999999821186066\") is not greater than (\"0.07999999821186066\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 10,
+      "testIdentifierString" : "AppearanceTests/testHighContrastBorderIsStrongerThanTheUsualOne()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testHighContrastBorderIsStrongerThanTheUsualOne",
+      "testName" : "testHighContrastBorderIsStrongerThanTheUsualOne()"
+    },
+    {
+      "failureText" : "XCTAssertGreaterThan failed: (\"0.05999999865889549\") is not greater than (\"0.05999999865889549\") - the tint is stronger in NSAppearanceName(_rawValue: NSAppearanceNameAccessibilityAqua)",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 11,
+      "testIdentifierString" : "AppearanceTests/testHighContrastTextReadsOnTheBackgroundAndTheTint()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/AppearanceTests/testHighContrastTextReadsOnTheBackgroundAndTheTint",
+      "testName" : "testHighContrastTextReadsOnTheBackgroundAndTheTint()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"[]\") is not equal to (\"[\"Open Link\"]\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 237,
+      "testIdentifierString" : "ContextMenuTests/testReadOnlyNoteStillOffersToOpenALink()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/ContextMenuTests/testReadOnlyNoteStillOffersToOpenALink",
+      "testName" : "testReadOnlyNoteStillOffersToOpenALink()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - AppKit's own items follow a separator",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 238,
+      "testIdentifierString" : "ContextMenuTests/testRightClickMenuPutsTheItemsFirst()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/ContextMenuTests/testRightClickMenuPutsTheItemsFirst",
+      "testName" : "testRightClickMenuPutsTheItemsFirst()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"a **bold** word and `code` here\") is not equal to (\"a bold word and code here\") - the markers are hidden while the caret is away",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 401,
+      "testIdentifierString" : "SpokenTextTests/testSpokenBoldHasNoStars()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testSpokenBoldHasNoStars",
+      "testName" : "testSpokenBoldHasNoStars()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"- first\n  - nested\n  [ ] a task under it\") is not equal to (\"bullet first\n  bullet nested\n  unchecked a task under it\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 402,
+      "testIdentifierString" : "SpokenTextTests/testSpokenBulletsAndNestedItems()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testSpokenBulletsAndNestedItems",
+      "testName" : "testSpokenBulletsAndNestedItems()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"[ ] buy milk\n[x] send the mail\") is not equal to (\"unchecked buy milk\nchecked send the mail\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 403,
+      "testIdentifierString" : "SpokenTextTests/testSpokenChecklist()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testSpokenChecklist",
+      "testName" : "testSpokenChecklist()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"```swift\nlet x = 1\n```\") is not equal to (\"code block, Swift\nlet x = 1\nend of code block\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 404,
+      "testIdentifierString" : "SpokenTextTests/testSpokenCodeBlock()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testSpokenCodeBlock",
+      "testName" : "testSpokenCodeBlock()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"before\n```\nplain words\nmore words\n```\nafter\") is not equal to (\"before\ncode block\nplain words\nmore words\nend of code block\nafter\") - a fence with no name and no detected language has no label to read",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 405,
+      "testIdentifierString" : "SpokenTextTests/testSpokenCodeBlockWithNoLabel()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testSpokenCodeBlockWithNoLabel",
+      "testName" : "testSpokenCodeBlockWithNoLabel()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"[ ] b\") is not equal to (\"unchecked b\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 406,
+      "testIdentifierString" : "SpokenTextTests/testSpokenRangesAreClippedToTheRange()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testSpokenRangesAreClippedToTheRange",
+      "testName" : "testSpokenRangesAreClippedToTheRange()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"The dashboard after the deploy.\n[[attachment:5c1f0a7e-3b2d-4c8e-9a41-0d6e7f8a9b01]]\nThe steps to roll it back.\n[[attachment:5c1f0a7e-3b2d-4c8e-9a41-0d6e7f8a9b02]]\n[[attachment:7aa9b29f-5a4a-4b33-9e48-e2944185bfcc]]\") is not equal to (\"The dashboard after the deploy.\nimage, dashboard.png\nThe steps to roll it back.\nfile, rollback-plan.txt\nmissing attachment\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 407,
+      "testIdentifierString" : "SpokenTextTests/testSpokenToken()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testSpokenToken",
+      "testName" : "testSpokenToken()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"```text\n- not a bullet\n[ ] not a box\n**not bold**\n```\") is not equal to (\"code block, text\n- not a bullet\n[ ] not a box\n**not bold**\nend of code block\")",
+      "targetName" : "ScratchAppTests",
+      "testIdentifier" : 408,
+      "testIdentifierString" : "SpokenTextTests/testTextInsideABlockIsNotMarkup()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchAppTests/SpokenTextTests/testTextInsideABlockIsNotMarkup",
+      "testName" : "testTextInsideABlockIsNotMarkup()"
+    },
+    {
+      "failureText" : "XCTAssertEqual failed: (\"[\"Close Tab\", \"Close Tab\"]\") is not equal to (\"[\"Close Deploy checklist\", \"Close curl -X POST https://api.local/v1/notes \\\\\"]\")",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 429,
+      "testIdentifierString" : "AccessibilityUITests/testCloseButtonNamesItsTab()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testCloseButtonNamesItsTab",
+      "testName" : "testCloseButtonNamesItsTab()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - no element is labelled \"Recently Deleted, …\"",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 431,
+      "testIdentifierString" : "AccessibilityUITests/testRecentlyDeletedHeaderIsAButton()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testRecentlyDeletedHeaderIsAButton",
+      "testName" : "testRecentlyDeletedHeaderIsAButton()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - no element reads \"Groceries, Oct 18, milk, eggs, coffee beans\"",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 432,
+      "testIdentifierString" : "AccessibilityUITests/testSidebarRowReadsAsOneElement()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testSidebarRowReadsAsOneElement",
+      "testName" : "testSidebarRowReadsAsOneElement()"
+    },
+    {
+      "failureText" : "XCTAssertTrue failed - expected editor to have the keyboard, and  has it",
+      "targetName" : "ScratchUITests",
+      "testIdentifier" : 433,
+      "testIdentifierString" : "AccessibilityUITests/testTabFromSearchReachesTheNoteList()",
+      "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testTabFromSearchReachesTheNoteList",
+      "testName" : "testTabFromSearchReachesTheNoteList()"
+    }
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+    {
+      "category" : "Common Failures",
+      "impact" : "4% of failures",
+      "text" : "2 runs of 1 test failed with XCTAssertEqual failed: (\"```swift"
+    },
+    {
+      "category" : "Common Failures",
+      "impact" : "8% of failures",
+      "text" : "2 runs of 2 tests failed with XCTAssertEqual failed: (\"[]\") is not equal to (\"[\"Open Link\"]\")"
+    },
+    {
+      "category" : "Longest Test Runs",
+      "impact" : "7% of duration",
+      "text" : "2 longest test runs with outlier durations exceeding 22.23s (three standard deviations)"
+    }
+  ],
+  "totalTestCount" : 502
+}

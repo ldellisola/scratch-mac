@@ -1,0 +1,11 @@
+perf-extract.py: warning: no measurement for launch_ms (test LaunchPerfTests/testLaunch)
+perf-extract.py: warning: no measurement for launch_reference_ms (test LaunchPerfTests/testReferenceLaunch)
+perf-extract.py: warning: no measurement for keystroke_ms (test EditorPerfTests/testKeystroke)
+perf-extract.py: warning: no measurement for switch_small_ms (test EditorPerfTests/testSwitchToSmallNote)
+perf-extract.py: warning: no measurement for switch_huge_ms (test EditorPerfTests/testSwitchToHugeNote)
+perf-extract.py: warning: no measurement for paste_code_ms (test CodePastePerfTests/testPasteFiveHundredLinesOfCode)
+perf-extract.py: warning: no measurement for launch_overhead_ms (it needs launch_ms and launch_reference_ms)
+perf-extract.py: warning: no measurement for scroll_frame_ms (no attachment scroll_frame_ms)
+perf-extract.py: warning: no measurement for idle_cpu_pct (no attachment idle_cpu)
+perf-extract.py: warning: no measurement for launch_phase_<name>_ms (no attachment launch_phases)
+perf-extract.py: no performance numbers found in the result bundle

@@ -1,0 +1,16 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "4c5d2da65a5a8992665e78dbc9e9e41b15f3dd31",
+        "deviceName" : "My Mac",
+        "exportedFileName" : "72F79B3D-EABC-4D39-A64D-A7A1FDB1004A.txt",
+        "isAssociatedWithFailure" : true,
+        "suggestedHumanReadableName" : "Complete Issue Description.txt"
+      }
+    ],
+    "testIdentifier" : "AccessibilityUITests/testSidebarRowReadsAsOneElement()",
+    "testIdentifierURL" : "test://com.apple.xcode/Scratch/ScratchUITests/AccessibilityUITests/testSidebarRowReadsAsOneElement"
+  }
+]

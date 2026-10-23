@@ -1,0 +1,300 @@
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterCSS_16178EFCC74C5901_PackageProduct.framework/Versions/A
+/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterCSS_16178EFCC74C5901_PackageProduct.framework/Versions/A: replacing existing signature
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/ObjectiveC-3QC5FHCTODA1SR7SWVRYGSUHY.pcm
+
+CodeSign /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterCPP_16178EFCC6EB95FB_PackageProduct.framework/Versions/A (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterCPP_16178EFCC6EB95FB_PackageProduct.framework/Versions/A
+/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterCPP_16178EFCC6EB95FB_PackageProduct.framework/Versions/A: replacing existing signature
+
+CodeSign /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterBash_1AA30C11B8314197_PackageProduct.framework/Versions/A (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterBash_1AA30C11B8314197_PackageProduct.framework/Versions/A
+/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterBash_1AA30C11B8314197_PackageProduct.framework/Versions/A: replacing existing signature
+
+CodeSign /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/Testing.framework (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/Testing.framework
+/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/Testing.framework: replacing existing signature
+
+CodeSign /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/SwiftTreeSitter_2A3772C8AF086327_PackageProduct.framework/Versions/A (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/SwiftTreeSitter_2A3772C8AF086327_PackageProduct.framework/Versions/A
+/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/SwiftTreeSitter_2A3772C8AF086327_PackageProduct.framework/Versions/A: replacing existing signature
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/os_object-I08AY130XMVBFS3BTJYBXVTY.pcm
+
+CodeSign /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/ScratchCore_-42D9C08598E052A4_PackageProduct.framework/Versions/A (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/ScratchCore_-42D9C08598E052A4_PackageProduct.framework/Versions/A
+/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/ScratchCore_-42D9C08598E052A4_PackageProduct.framework/Versions/A: replacing existing signature
+
+CodeSign /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/ScratchCode_-42D9C0859950D0B2_PackageProduct.framework/Versions/A (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/ScratchCode_-42D9C0859950D0B2_PackageProduct.framework/Versions/A
+/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/ScratchCode_-42D9C0859950D0B2_PackageProduct.framework/Versions/A: replacing existing signature
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/os_workgroup-9TVSJEYE16HWSRIFEAGXO0P0J.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/Dispatch-B18K538EGG0LIDCNZ0GSELF0Q.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/XPC-8IGIOR50PVZS7PCR3XC0A2LDJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CoreFoundation-B652532DJS0KP4W8XQOZJ9F5D.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/os-UQZGI88KDKO4BD9BZ5FPIJ1X.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/ColorSync-112M7TWOQW0219LGJH0XNNTJC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/Security-DV5RQR4XX8KSD4L0LGXNVOPUH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CFNetwork-C56AGZWRT7CDFT03DU72V3TU1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/IOKit-4FYLPR3QXDUT5JL0GA2G9YS6U.pcm
+
+LinkAssetCatalog /Users/runner/work/scratch-mac/scratch-mac/App/Resources/Assets.xcassets (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-linkAssetCatalog --thinned /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/assetcatalog_output/thinned --thinned-dependencies /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/assetcatalog_generated_info.plist_unthinned --output /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources --plist-output /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/assetcatalog_generated_info.plist
+note: Emplaced /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/Assets.car (in target 'Scratch' from project 'Scratch')
+note: Emplaced /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/AppIcon.icns (in target 'Scratch' from project 'Scratch')
+
+ProcessInfoPlistFile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Info.plist /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/empty-Scratch.plist (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    builtin-infoPlistUtility /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/empty-Scratch.plist -producttype com.apple.product-type.application -genpkginfo /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/assetcatalog_generated_info.plist -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/ScratchCode_-42D9C0859950D0B2_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/ScratchCore_-42D9C08598E052A4_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/SwiftTreeSitter_2A3772C8AF086327_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterBash_1AA30C11B8314197_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterCPP_16178EFCC6EB95FB_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterCSS_16178EFCC74C5901_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterCSharp_-4845440607C01FA4_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterC_-11479313FD311EA7_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterGo_-6799F76E4573AD33_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterHTML_1AA30D92F2A3D34E_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterJSON_1AA30E14362A1953_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterJavaScript_-68AEE1A5C03283EA_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterJava_1AA30E17C70A5C9B_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterRust_1AA31022DE8199C7_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterSwift_3192F70611681827_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterTypeScript_-59FD8E89346B7BCA_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitterYAML_1AA311DB0703604C_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Frameworks/TreeSitter_-5E75B4324747B2EB_PackageProduct.framework -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/ScratchCode_ScratchCode.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterBash_TreeSitterBash.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterCPP_TreeSitterCPP.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterCSS_TreeSitterCSS.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterCSharp_TreeSitterCSharp.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterC_TreeSitterC.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterGo_TreeSitterGo.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterHTML_TreeSitterHTML.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterJSON_TreeSitterJSON.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterJavaScript_TreeSitterJavaScript.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterJava_TreeSitterJava.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterRust_TreeSitterRust.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterSwift_TreeSitterSwift.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterTypeScript_TreeSitterTSX.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterTypeScript_TreeSitterTypeScript.bundle -scanforprivacyfile /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Resources/TreeSitterYAML_TreeSitterYAML.bundle -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/Scratch.app/Contents/Info.plist
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/DiskArbitration-571EENMZ2BZVJBOMUNKKE2CGO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CoreGraphics-Z0KONC8ANNSQMOJ1V8DZT8VV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CoreServices-6O87LMK45I1TF25H1A26YOOOS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CoreText-E1JWCM8DNWF2U714XO6VKZ59O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/ImageIO-1EH49IIPQX5IJYQU9FN7SX9XA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/Foundation-B4W55J0YIKAW4RSYQR5UNT0XM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CoreData-2F057DRVUAF5IYZJS6FL00KO3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/UniformTypeIdentifiers-31OXSBF8O2QSB6Z06WLIW53K7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/OSLog-87V4ODWV0GFBP6BMA6ZIZDBK4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/IOSurface-B6PQJZQ02LZEX3LKOCXZIFVFQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/Accessibility-E1NC9FXV9RL56NVNTWJZEZQ4C.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/DataDetection-QNVDT9X3P0NKNWAQP6ZGFS7D.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/Metal-D3NC4TR3638BGVWQFGXRTZJGZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/ApplicationServices-AEBT8R5ENJY1RFXGIMY6C7VLP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/Symbols-20F5IK5FIV1N8AK47USSFM1MX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CoreTransferable-7OGJINATFBZNF4JJJ18NNDCPU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CoreVideo-D8MOQKX1QGXGQ7B6DIKEBSC3Q.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/CoreImage-85TZNUKMBO8EW4ZP1NQX3KFQV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/QuartzCore-DC9JETDZWZ5ITES26XWSNQN7I.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/SwiftUICore-AFTXVKS0MOTAECDBN3EVZUADT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/AppKit-DQSC2IW6Q4U2UAIILP0MNNMGM.pcm
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ Scratch (in target 'Scratch' from project 'Scratch')
+
+EmitSwiftModule normal arm64 (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+/Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/NoteTextView.swift:1364:19: error: method does not override any method from its superclass
+    override func accessibilityValue() -> Any? {
+                  ^
+AppKit.NSTextView.accessibilityValue:2:11: note: potential overridden instance method 'accessibilityValue()' here
+open func accessibilityValue() -> String?}
+          ^
+
+Failed frontend command:
+/Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -emit-module -experimental-skip-non-inlinable-function-bodies-without-types /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/AboutCredits.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/AccessibilityID.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/AppCommands.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/AppDelegate.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/AppEnvironment.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/AppearanceOverride+AppKit.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentCatalog.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentDrag.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentDrawing.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Session/AttachmentImporter.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentImporting.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentPasteboard.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentPreviews.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockMenu.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockParts.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockStyler.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/DebugStateElement.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/EditorAreaViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/EditorContextMenu.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/EditorViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/FrameMonitor.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/IdleMonitor.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/KeyViewLoop.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/LaunchClock.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/LaunchTimer.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/LaunchTimesPanel.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainMenu.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainSplitViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainWindowController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupAppearance.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupAttributes.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupLayoutManager.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupStyler.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Session/NoteListModel.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/NoteTextView.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/ParagraphBatch.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/PasteClassifier.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/RunLoopIdle.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Session/SessionCoordinator.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Sidebar/SidebarRowViews.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Sidebar/SidebarTableView.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Sidebar/SidebarViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/Signposts.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/SpokenText.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Tabs/TabStripViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/TextViewFactory.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/TitleField.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/TitlebarPocket.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/ToolbarController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/main.swift /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/DerivedSources/GeneratedAssetSymbols.swift -target arm64-apple-macos26.0 -module-can-import-version DeveloperToolsSupport 23.40.26 23.40.26 -load-resolved-plugin /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libPreviewsMacros.dylib\#/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#PreviewsMacros -load-resolved-plugin /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -load-resolved-plugin /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib\#/Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftUIMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode_26.6.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -I /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/PackageFrameworks -F /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug -no-color-diagnostics -Xcc -fno-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -module-cache-path /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -swift-version 6 -Onone -D DEBUG -serialize-debugging-options -const-gather-protocols-file /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -default-isolation\=MainActor -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/runner/work/scratch-mac/scratch-mac/App -enable-anonymous-context-mangled-names -file-compilation-dir /Users/runner/work/scratch-mac/scratch-mac/App -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/Packages/ScratchCore/Sources/CSQLite/module.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitter.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterSwift.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJavaScript.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTSX.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterTypeScript.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJSON.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterBash.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterYAML.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterHTML.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCSS.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCSharp.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterGo.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterRust.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterC.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterCPP.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/TreeSitterJava.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/GrammarSQL.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/GrammarPowerShell.modulemap -Xcc -fmodule-map-file\=/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/GrammarPython.modulemap -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fee0e6409aa6676c5e6c013d148225433.sdkstatcache -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Scratch-generated-files.hmap -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Scratch-own-target-headers.hmap -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Scratch-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch-d7d04309efbd4d65de7af808746e2098-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Scratch-project-headers.hmap -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter/lib/include -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-swift/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-javascript/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-typescript/bindings/swift/tsx -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-typescript/bindings/swift/typescript -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-json/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-bash/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-yaml/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-html/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-css/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-c-sharp/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-go/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-rust/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-c/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-cpp/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/SourcePackages/checkouts/tree-sitter-java/bindings/swift -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/Packages/ScratchCode/Sources/GrammarSQL/include -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/Packages/ScratchCode/Sources/GrammarPowerShell/include -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/Packages/ScratchCode/Sources/GrammarPython/include -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Products/Debug/include -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/DerivedSources -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name Scratch -frontend-parseable-output -disable-clang-spi -clang-target arm64-apple-macos26.5 -target-sdk-version 26.5 -target-sdk-name macosx26.5 -in-process-plugin-server-path /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -emit-module-doc-path /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch.swiftdoc -emit-module-source-info-path /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch.swiftsourceinfo -emit-objc-header-path /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch-Swift.h -serialize-diagnostics-path /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch-primary-emit-module.dia -emit-dependencies-path /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch-primary-emit-module.d -o /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch.swiftmodule -emit-abi-descriptor-path /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/Objects-normal/arm64/Scratch.abi.json
+SwiftCompile normal arm64 Compiling\ EditorAreaViewController.swift,\ EditorContextMenu.swift,\ EditorViewController.swift,\ FrameMonitor.swift,\ IdleMonitor.swift,\ KeyViewLoop.swift,\ LaunchClock.swift,\ LaunchTimer.swift,\ LaunchTimesPanel.swift,\ MainMenu.swift,\ MainSplitViewController.swift,\ MainWindowController.swift,\ MarkupAppearance.swift,\ MarkupAttributes.swift,\ MarkupLayoutManager.swift,\ MarkupStyler.swift,\ NoteListModel.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/EditorAreaViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/EditorContextMenu.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/EditorViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/FrameMonitor.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/IdleMonitor.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/KeyViewLoop.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/LaunchClock.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/LaunchTimer.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/LaunchTimesPanel.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainMenu.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainSplitViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainWindowController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupAppearance.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupAttributes.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupLayoutManager.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupStyler.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Session/NoteListModel.swift (in target 'Scratch' from project 'Scratch')
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/EditorAreaViewController.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/EditorContextMenu.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/EditorViewController.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/FrameMonitor.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/IdleMonitor.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/KeyViewLoop.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/LaunchClock.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/LaunchTimer.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/LaunchTimesPanel.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainMenu.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainSplitViewController.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/MainWindowController.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupAppearance.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupAttributes.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupLayoutManager.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/MarkupStyler.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Session/NoteListModel.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 Compiling\ AboutCredits.swift,\ AccessibilityID.swift,\ AppCommands.swift,\ AppDelegate.swift,\ AppEnvironment.swift,\ AppearanceOverride+AppKit.swift,\ AttachmentCatalog.swift,\ AttachmentDrag.swift,\ AttachmentDrawing.swift,\ AttachmentImporter.swift,\ AttachmentImporting.swift,\ AttachmentPasteboard.swift,\ AttachmentPreviews.swift,\ CodeBlockMenu.swift,\ CodeBlockParts.swift,\ CodeBlockStyler.swift,\ DebugStateElement.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/AboutCredits.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/AccessibilityID.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/AppCommands.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/AppDelegate.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/AppEnvironment.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/AppearanceOverride+AppKit.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentCatalog.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentDrag.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentDrawing.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Session/AttachmentImporter.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentImporting.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentPasteboard.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentPreviews.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockMenu.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockParts.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockStyler.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/DebugStateElement.swift (in target 'Scratch' from project 'Scratch')
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/AboutCredits.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/AccessibilityID.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/AppCommands.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/AppDelegate.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/AppEnvironment.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/AppearanceOverride+AppKit.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentCatalog.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentDrag.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentDrawing.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Session/AttachmentImporter.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentImporting.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentPasteboard.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/AttachmentPreviews.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockMenu.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockParts.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/CodeBlockStyler.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/DebugStateElement.swift (in target 'Scratch' from project 'Scratch')
+    cd /Users/runner/work/scratch-mac/scratch-mac/App
+    
+
+SwiftCompile normal arm64 Compiling\ NoteTextView.swift,\ ParagraphBatch.swift,\ PasteClassifier.swift,\ RunLoopIdle.swift,\ SessionCoordinator.swift,\ SidebarRowViews.swift,\ SidebarTableView.swift,\ SidebarViewController.swift,\ Signposts.swift,\ SpokenText.swift,\ TabStripViewController.swift,\ TextViewFactory.swift,\ TitleField.swift,\ TitlebarPocket.swift,\ ToolbarController.swift,\ main.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/NoteTextView.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/ParagraphBatch.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/PasteClassifier.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/RunLoopIdle.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Session/SessionCoordinator.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Sidebar/SidebarRowViews.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Sidebar/SidebarTableView.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Sidebar/SidebarViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Support/Signposts.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/SpokenText.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Tabs/TabStripViewController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/TextViewFactory.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Editor/TitleField.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/TitlebarPocket.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/ToolbarController.swift /Users/runner/work/scratch-mac/scratch-mac/App/Sources/main.swift /Users/runner/work/scratch-mac/scratch-mac/build/DerivedData/Build/Intermediates.noindex/Scratch.build/Debug/Scratch.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'Scratch' from project 'Scratch')
+
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/scratch-mac/scratch-mac/build/results/app.xcresult
+
+Testing failed:
+	Method does not override any method from its superclass
+	Testing cancelled because the build failed.
+
+** TEST FAILED **
+
+
+The following build commands failed:
+	EmitSwiftModule normal arm64 (in target 'Scratch' from project 'Scratch')
+	SwiftEmitModule normal arm64 Emitting\ module\ for\ Scratch (in target 'Scratch' from project 'Scratch')
+	Testing project Scratch with scheme Scratch
+(3 failures)
+make: *** [app-test] Error 65

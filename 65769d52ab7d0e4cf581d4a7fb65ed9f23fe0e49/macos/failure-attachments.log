@@ -1,0 +1,300 @@
+
+Skipped export for ListKeyTests/testReturnInsideCodeBlockIsPlain(): no matching attachments
+
+Skipped export for ListKeyTests/testReturnKeepsTheIndentation(): no matching attachments
+
+Skipped export for ListKeyTests/testReturnOnAListLineBesideABlockStillContinuesTheList(): no matching attachments
+
+Skipped export for ListKeyTests/testReturnOnAPlainLineIsPlain(): no matching attachments
+
+Skipped export for ListKeyTests/testReturnOnATickedItemAddsAnOpenBox(): no matching attachments
+
+Skipped export for ListKeyTests/testReturnOnEmptyItemEndsList(): no matching attachments
+
+Skipped export for ListKeyTests/testReturnOnEmptyNestedItemOutdentsIt(): no matching attachments
+
+Skipped export for ListKeyTests/testReturnSplitsTheItemAtTheCaret(): no matching attachments
+
+Skipped export for ListKeyTests/testReturnWithASelectionReplacesIt(): no matching attachments
+
+Skipped export for ListKeyTests/testShiftTabOnAPlainLineChangesNoText(): no matching attachments
+
+Skipped export for ListKeyTests/testShiftTabOnATopLevelListLineChangesNothing(): no matching attachments
+
+Skipped export for ListKeyTests/testShiftTabOutdents(): no matching attachments
+
+Skipped export for ListKeyTests/testTabInAReadOnlyNoteChangesNothing(): no matching attachments
+
+Skipped export for ListKeyTests/testTabIndentsEveryListLineOfTheSelection(): no matching attachments
+
+Skipped export for ListKeyTests/testTabIndentsListLine(): no matching attachments
+
+Skipped export for ListKeyTests/testTabInsideCodeBlockInsertsATab(): no matching attachments
+
+Skipped export for ListKeyTests/testTabOnAPlainLineInsertsATab(): no matching attachments
+
+Skipped export for MarkupStylerTests/testABigPasteIsStyledAfterwards(): no matching attachments
+
+Skipped export for MarkupStylerTests/testAnEditWhileTheRestOfANoteIsStyledKeepsTheRestRight(): no matching attachments
+
+Skipped export for MarkupStylerTests/testAnEmptyNoteAndDeletingAllTextAreHandled(): no matching attachments
+
+Skipped export for MarkupStylerTests/testASelectionThatTouchesTheRunRevealsItsMarkers(): no matching attachments
+
+Skipped export for MarkupStylerTests/testBackspaceAfterBoldDeletesOneVisibleStar(): no matching attachments
+
+Skipped export for MarkupStylerTests/testBoldContentIsBoldAndMarkersAreNullGlyphs(): no matching attachments
+
+Skipped export for MarkupStylerTests/testBulletParagraphHasHangingIndent(): no matching attachments
+
+Skipped export for MarkupStylerTests/testCheckedLineIsStruckThrough(): no matching attachments
+
+Skipped export for MarkupStylerTests/testComposedColourIsKeptOnlyAtTheMarkedTextValue(): no matching attachments
+
+Skipped export for MarkupStylerTests/testComposedTextKeepsMarkedTextAttributesButNotTheNeighboursLook(): no matching attachments
+
+Skipped export for MarkupStylerTests/testCopyKeepsMarkers(): no matching attachments
+
+Skipped export for MarkupStylerTests/testFencedBlockIsNotStyled(): no matching attachments
+
+Skipped export for MarkupStylerTests/testFontSizeChangeKeepsBold(): no matching attachments
+
+Skipped export for MarkupStylerTests/testHugeNoteIsFullyStyledSoon(): no matching attachments
+
+Skipped export for MarkupStylerTests/testInlineCodeColours(): no matching attachments
+
+Skipped export for MarkupStylerTests/testLinkIsColouredAndUnderlined(): no matching attachments
+
+Skipped export for MarkupStylerTests/testMarkedTextKeepsItsUnderline(): no matching attachments
+
+Skipped export for MarkupStylerTests/testMarkersAreRevealedAtBothEdgesOfTheRun(): no matching attachments
+
+Skipped export for MarkupStylerTests/testMarkersInsideInlineCodeAreLiteral(): no matching attachments
+
+Skipped export for MarkupStylerTests/testMarkersRevealedWhenCaretTouchesRun(): no matching attachments
+
+Skipped export for MarkupStylerTests/testPastedTextRendersLikeTypedText(): no matching attachments
+
+Skipped export for MarkupStylerTests/testSetMarkedTextRestylesTheLineAndEndsTheComposing(): no matching attachments
+
+Skipped export for MarkupStylerTests/testStylingDoesNotRegisterUndo(): no matching attachments
+
+Skipped export for MarkupStylerTests/testTextThatIsNotComposedHasNoUnderlineFromTheStyler(): no matching attachments
+
+Skipped export for MarkupStylerTests/testTheCodeColoursComeFromTheAssets(): no matching attachments
+
+Skipped export for MarkupStylerTests/testTypingAClosingFenceTurnsTheLinesBetweenIntoCode(): no matching attachments
+
+Skipped export for MarkupStylerTests/testTypingClosesBoldRun(): no matching attachments
+
+Skipped export for MarkupStylerTests/testTypingInsideABlockKeepsTheBlock(): no matching attachments
+
+Skipped export for MarkupStylerTests/testTypingInStyledTextIsOneUndoStepThatStylesTheTextAgain(): no matching attachments
+
+Skipped export for MarkupStylerTests/testUnclosedMarkersArePlain(): no matching attachments
+
+Skipped export for NoteTextViewTests/testCopyWritesOnlyPlainText(): no matching attachments
+
+Skipped export for NoteTextViewTests/testEditorKeepsItsTextKitOneStack(): no matching attachments
+
+Skipped export for NoteTextViewTests/testEditorStaysOnTextKitOneWhileEditing(): no matching attachments
+
+Skipped export for NoteTextViewTests/testPastingRichTextUsesNoteFont(): no matching attachments
+
+Skipped export for NoteTextViewTests/testSmartSubstitutionsAreOff(): no matching attachments
+
+Skipped export for NoteTextViewTests/testTypedStraightQuotesStayStraight(): no matching attachments
+
+Skipped export for SaveFailureTests/testFailedFirstSaveOfLeftNoteIsRetried(): no matching attachments
+
+Skipped export for SaveFailureTests/testFailedSaveOfLeftNoteIsRetried(): no matching attachments
+
+Skipped export for SaveFailureTests/testNewerTypingWinsOverAFailedOlderCopy(): no matching attachments
+
+Skipped export for SaveFailureTests/testRestoredEmptiedNoteIsKeptAndRestoredUntouchedNoteIsDiscarded(): no matching attachments
+
+Skipped export for SaveFailureTests/testSwitchingBackShowsUnsavedText(): no matching attachments
+
+Skipped export for SaveFailureTests/testTypedThenEmptiedNoteIsKeptWhenItsTabCloses(): no matching attachments
+
+Skipped export for SaveFailureTests/testUntouchedNewNoteIsStillDiscardedWhenItsTabCloses(): no matching attachments
+
+Skipped export for SessionRestoreTests/testRestoreDropsTabsOfDeletedNotes(): no matching attachments
+
+Skipped export for SessionRestoreTests/testRestoreKeepsTheActiveNeverUsedNoteUntouched(): no matching attachments
+
+Skipped export for SessionRestoreTests/testRestoreKeepsTheUntouchedNotesOfOtherTabsUntouched(): no matching attachments
+
+Skipped export for SessionRestoreTests/testRestoreReadsTheBodyOfTheActiveNoteOnly(): no matching attachments
+
+Skipped export for SessionRestoreTests/testRestoreWithADeletedActiveTabShowsTheFirstTabThatIsLeft(): no matching attachments
+
+Skipped export for SessionRestoreTests/testRestoreWithOnlyDeletedNotesStartsANewNote(): no matching attachments
+
+Skipped export for SessionRestoreTests/testRestoreWithoutASessionReadsNoNote(): no matching attachments
+
+Skipped export for SessionRestoreTests/testTabsShowTheirTitlesWithoutMarkers(): no matching attachments
+
+Skipped export for SessionWarmUpTests/testWarmUpHighlightingNamesTheLanguagesOfTheOpenTabs(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testClickingATabReportsItsIndex(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testManyTabsShareTheStrip(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testShowAddsAndRemovesTabs(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testShowMakesOneAccessibleButtonPerTab(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testShowReusesTheTabViews(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testStripSitsAboveTheEditor(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testTabsKeepTheirWidthWhenTheyFit(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testTabsNeverGetNarrowerThanTheMinimum(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testTabWidthsStayBetween120And200(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testTitleFitsItsTab(): no matching attachments
+
+Skipped export for TabStripViewControllerTests/testWidestTabsAreCutBackFirst(): no matching attachments
+
+Skipped export for TitlebarPocketTests/testTheTitlebarPocketIsHiddenOnceTheWindowIsShown(): no matching attachments
+
+Skipped export for TitlebarPocketTests/testTheTitlebarPocketStaysHiddenAfterAResize(): no matching attachments
+
+Skipped export for TitlebarPocketTests/testTheTitlebarPocketStaysHiddenWhenTheSidebarIsCollapsedAndShownAgain(): no matching attachments
+
+Skipped export for AttachmentUITests/testPastedImageShowsAndSurvivesRelaunch(): no matching attachments
+
+Skipped export for AttachmentUITests/testTypingNextToAnImageKeepsIt(): no matching attachments
+
+Skipped export for AttachmentUITests/testUndoAfterDeletingAnAttachmentBringsItBack(): no matching attachments
+
+Skipped export for ChecklistUITests/testChecklistShortcutTurnsTheLineIntoACheckbox(): no matching attachments
+
+Skipped export for ChecklistUITests/testCommandZAfterTheChecklistShortcutTakesBackOnlyTheChecklist(): no matching attachments
+
+Skipped export for CodePasteUITests/testCodePastedMidLineGetsFenceLinesOfItsOwn(): no matching attachments
+
+Skipped export for CodePasteUITests/testPastingAnEmailStaysPlain(): no matching attachments
+
+Skipped export for CodePasteUITests/testUndoAfterCodePasteRestoresPlainText(): no matching attachments
+
+Skipped export for DeleteUITests/testCommandBackspaceInEditorKeepsNote(): no matching attachments
+
+Skipped export for DeleteUITests/testCommandBackspaceInSidebarDeletes(): no matching attachments
+
+Skipped export for DeleteUITests/testContextMenuDeleteMovesNoteToRecentlyDeleted(): no matching attachments
+
+Skipped export for DeleteUITests/testDeletedNoteIsReadOnly(): no matching attachments
+
+Skipped export for DeleteUITests/testDeletedNoteTabIsDroppedAtRelaunch(): no matching attachments
+
+Skipped export for DeleteUITests/testDeletePermanentlyAsksThenRemoves(): no matching attachments
+
+Skipped export for DeleteUITests/testDeleteWhileTypingKeepsTheTyping(): no matching attachments
+
+Skipped export for DeleteUITests/testDeletingNoteInOnlyTabLeavesEmptyNote(): no matching attachments
+
+Skipped export for DeleteUITests/testDeletingOpenNoteClosesItsTab(): no matching attachments
+
+Skipped export for DeleteUITests/testExpiredNotesArePurgedAtLaunch(): no matching attachments
+
+Skipped export for DeleteUITests/testRecentlyDeletedStartsCollapsedAndToggles(): no matching attachments
+
+Skipped export for DeleteUITests/testRestoreBringsNoteBack(): no matching attachments
+
+Skipped export for DeleteUITests/testRestoringOpenNoteMakesItEditable(): no matching attachments
+
+Skipped export for FormattingUITests/testChecklistShortcutThenReturn(): no matching attachments
+
+Skipped export for FormattingUITests/testCommandBThenCopyKeepsMarkers(): no matching attachments
+
+Skipped export for FormattingUITests/testCommandBTwiceOnAWordRestoresIt(): no matching attachments
+
+Skipped export for FormattingUITests/testMarkAsCheckedShortcutTicksAndUnticks(): no matching attachments
+
+Skipped export for FormattingUITests/testTabIndentsNestedBullet(): no matching attachments
+
+Skipped export for FormattingUITests/testTypingAListByKeyboard(): no matching attachments
+
+Skipped export for LaunchUITests/testHelpMenuShowsLaunchTimes(): no matching attachments
+
+Skipped export for LaunchUITests/testLaunchesAreRecordedInTheLaunchLog(): no matching attachments
+
+Skipped export for LaunchUITests/testLaunchShowsActiveNoteFromFixture(): no matching attachments
+
+Skipped export for PersistenceUITests/testCursorRestoredAfterRelaunch(): no matching attachments
+
+Skipped export for PersistenceUITests/testQuitImmediatelyAfterTypingKeepsText(): no matching attachments
+
+Skipped export for PersistenceUITests/testTypedTextSurvivesForceKill(): no matching attachments
+
+Skipped export for SidebarUITests/testClearingSearchRestoresList(): no matching attachments
+
+Skipped export for SidebarUITests/testClickingRowShowsNote(): no matching attachments
+
+Skipped export for SidebarUITests/testContextMenuUnpins(): no matching attachments
+
+Skipped export for SidebarUITests/testEscapeClearsSearch(): no matching attachments
+
+Skipped export for SidebarUITests/testGroupHeadersInOrder(): no matching attachments
+
+Skipped export for SidebarUITests/testNewNoteButtonCreatesListedNote(): no matching attachments
+
+Skipped export for SidebarUITests/testPinButtonMovesNoteToPinned(): no matching attachments
+
+Skipped export for SidebarUITests/testPinWhileTypingSticks(): no matching attachments
+
+Skipped export for SidebarUITests/testRowShowsTimeLabel(): no matching attachments
+
+Skipped export for SidebarUITests/testSearchFiltersByBodyText(): no matching attachments
+
+Skipped export for SidebarUITests/testSearchMatchesTitlesCaseInsensitively(): no matching attachments
+
+Skipped export for SidebarUITests/testShiftCommandPTogglesPin(): no matching attachments
+
+Skipped export for SidebarUITests/testSidebarListsFixtureNotesPinnedFirst(): no matching attachments
+
+Skipped export for SidebarUITests/testUntouchedNewNoteIsDiscarded(): no matching attachments
+
+Skipped export for TabsUITests/testClickingNoteOpenInOtherTabFocusesIt(): no matching attachments
+
+Skipped export for TabsUITests/testClosingLastTabLeavesEmptyNote(): no matching attachments
+
+Skipped export for TabsUITests/testClosingTabKeepsNote(): no matching attachments
+
+Skipped export for TabsUITests/testCommandClickOpensNoteInNewTab(): no matching attachments
+
+Skipped export for TabsUITests/testCommandNineSelectsLastTab(): no matching attachments
+
+Skipped export for TabsUITests/testCommandTOpensNewEmptyTab(): no matching attachments
+
+Skipped export for TabsUITests/testControlTabCyclesAndWraps(): no matching attachments
+
+Skipped export for TabsUITests/testEmptiedNoteSurvivesRelaunch(): no matching attachments
+
+Skipped export for TabsUITests/testRestoresBothTabsWithFirstActive(): no matching attachments
+
+Skipped export for TabsUITests/testTabsAndActiveTabSurviveRelaunch(): no matching attachments
+
+Skipped export for TabsUITests/testTypedThenEmptiedNoteIsKeptWhenItsTabCloses(): no matching attachments
+
+Skipped export for TabsUITests/testUndoSurvivesTabSwitch(): no matching attachments
+
+Skipped export for TabsUITests/testUntypedNewTabIsDiscardedOnClose(): no matching attachments
+
+Skipped export for TitleUITests/testFontSizeIsRemembered(): no matching attachments
+
+Skipped export for TitleUITests/testHugeNoteShowsItsTopInsetAtLaunch(): no matching attachments
+
+Skipped export for TitleUITests/testScrollPositionSurvivesRelaunch(): no matching attachments
+
+Skipped export for TitleUITests/testTitleBecomesSidebarTitle(): no matching attachments
+
+Skipped export for TitleUITests/testTitleSurvivesRelaunch(): no matching attachments
+
+Skipped export for TitleUITests/testTitleUndoStaysWithItsNote(): no matching attachments
+
+Generated manifest file with attachment details: /Users/runner/work/scratch-mac/scratch-mac/build/ci/macos/failure-attachments/manifest.json

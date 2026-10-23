@@ -1,0 +1,24 @@
+Exported 1 attachment for: CodePastePerfTests/testPasteFiveHundredLinesOfCode():
+File: 19F85521-D8EC-4588-9929-F51E4D4037FE.png, suggested name: "paste-code-after_0_FC4BF8B3-7238-4933-936D-8E1954A445C1.png"
+
+Exported 2 attachments for: EditorPerfTests/testKeystroke():
+File: 697F6C21-273A-4753-80DB-870CBE536643.png, suggested name: "keystroke-after_0_CA9D0313-681C-4C8D-ADF9-1380951A9C83.png"
+File: 33BA69A5-5075-4E35-AB19-766376577275.png, suggested name: "keystroke-before_0_60CD6B7A-3140-409F-8553-86F13FE6DC06.png"
+
+Exported 1 attachment for: EditorPerfTests/testScrollHugeNote():
+File: 3A6E4D41-C208-4A93-85BA-CA5FC7858EA8.txt, suggested name: "scroll_frame_ms_0_57830D3E-2674-45EE-9C4C-BA2AA8A01BFC.txt"
+
+Skipped export for EditorPerfTests/testSwitchToHugeNote(): no matching attachments
+
+Skipped export for EditorPerfTests/testSwitchToSmallNote(): no matching attachments
+
+Exported 1 attachment for: IdlePerfTests/testIdle():
+File: 6A4E2A2F-20F1-49C7-995B-2CC50291F7BA.txt, suggested name: "idle_cpu_0_FF6F26C9-A2BD-46AA-BCDF-F0F1E741BF3F.txt"
+
+Exported 1 attachment for: LaunchPerfTests/testLaunch():
+File: A315A178-6FFB-42DB-84B9-0135FC293441.txt, suggested name: "launch_phases_0_B5ABCA75-8CA4-44B1-8D19-9F156849DB51.txt"
+
+Exported 1 attachment for: LaunchPerfTests/testReferenceLaunch():
+File: B2D8BAA9-36DF-4E55-A4D2-1066B9F7326E.txt, suggested name: "reference-app-location_0_2DAC9016-B388-489A-A9F5-C2F64251B169.txt"
+
+Generated manifest file with attachment details: /Users/runner/work/scratch-mac/scratch-mac/build/ci/macos/perf/attachments/manifest.json

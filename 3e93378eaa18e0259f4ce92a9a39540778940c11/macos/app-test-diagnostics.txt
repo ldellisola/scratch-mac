@@ -1,0 +1,6 @@
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/CodePasteTests.swift:221:32: error: value of type 'CodeBlockStyler' has no member 'submittedRequests'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/CodePasteTests.swift:227:31: error: value of type 'CodeBlockStyler' has no member 'submittedRequests'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/CodePasteTests.swift:242:20: error: value of type 'CodeBlockStyler' has no member 'submittedRequests'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/CodePasteTests.swift:257:31: error: value of type 'CodeBlockStyler' has no member 'submittedRequests'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/CodePasteTests.swift:261:32: error: value of type 'CodeBlockStyler' has no member 'submittedRequests'
+/Users/runner/work/scratch-mac/scratch-mac/App/Tests/ScratchAppTests/CodePasteTests.swift:264:20: error: value of type 'CodeBlockStyler' has no member 'submittedRequests'

@@ -1,0 +1,1 @@
+/Users/runner/work/scratch-mac/scratch-mac/App/Sources/Window/ToolbarController.swift:115:14: error: value of type 'NSToolbarItem' has no member 'hidesSharedBackground'
