@@ -142,6 +142,9 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         isLoadingNote = true
         defer { isLoadingNote = false }
 
+        // The title of the note that is left is not edited any more, and what was typed in it cannot be undone from
+        // another note.
+        endTitleEditing()
         // End the typing run of the note that is left, so that it does not take in the next typing.
         textView.breakUndoCoalescing()
         textView.noteUndoManager = undoManager
@@ -165,6 +168,19 @@ final class EditorViewController: NSViewController, NSTextViewDelegate, NSTextFi
         // shown here.
         textView.styler.selectionDidChange(textView.selectedRange())
         showScrollPosition(of: tab, in: note)
+    }
+
+    /// Leaving a note ends the editing of its title and drops the title's undo steps (plan 6 task 5, "Title undo"). The
+    /// title field's editor is shared, and keeps showing what was typed until the next note's title is put in: a step that
+    /// is undone then would change that text with the range of the one before, in the note that was left, or fail with
+    /// a range that is not there. The keyboard goes to the text, as it does when the title is left with Return. The steps
+    /// are the title's own (`TitleField.titleUndoManager`), and also taken out of the note's manager, in case the text
+    /// system registered some there: whatever has the field editor as its target.
+    private func endTitleEditing() {
+        let fieldEditor = view.window?.fieldEditor(false, for: titleField)
+        if titleField.currentEditor() != nil { view.window?.makeFirstResponder(textView) }
+        titleField.titleUndoManager.removeAllActions()
+        if let fieldEditor { textView.noteUndoManager?.removeAllActions(withTarget: fieldEditor) }
     }
 
     /// Makes the text and the title uneditable (`true`, the note is in Recently Deleted) or editable again (`false`, the

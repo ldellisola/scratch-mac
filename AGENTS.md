@@ -105,9 +105,10 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   (the `http(s)://` URLs of a line), FenceScanner (the fenced code blocks, inside which
                                   nothing is formatting), TextLines (internal: line splitting and white space over UTF-16
                                   units). The editing rules answer an action with a `TextEdit` (a range, its
-                                  replacement and the selection afterwards): ListEditing (Return, Tab, ⇧Tab, ⇧⌘L and a
-                                  click on a checkbox) and InlineEditing (⌘B, and `touchesAttachment`: whether the
-                                  selection touches a token line, which ⌘B must not wrap). They read only the paragraphs
+                                  replacement and the selection afterwards): ListEditing (Return, Tab, ⇧Tab, ⇧⌘L, ⇧⌘U
+                                  `toggleCheckmarks` and a click on a checkbox) and InlineEditing (⌘B: `toggleBold` on a
+                                  selection, on a caret in a word and on several lines, nil when the key beeps, and
+                                  `touchesAttachment`: whether the selection touches a token line, which ⌘B must not wrap). They read only the paragraphs
                                   that cover the selection (`ParagraphLines`, internal: those lines with document offsets,
                                   and how a selection moves when they change; `isAttachmentLine`, which ⇧⌘L
                                   skips). The editor's styling reads CodeBlockIndex (the fenced blocks of a note, carried
@@ -183,10 +184,14 @@ App/Sources/Session/              SessionCoordinator (the tabs and which is acti
                                   at once on the main thread, the copy on the storage queue, `pendingCopies`)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
-                                  TitleField (the optional title above the text), EditorViewController (the title field
-                                  and the editor: shows a note, reports edits, cursor and scroll anchor). NoteTextView
+                                  TitleField (the optional title above the text, with the undo manager that the field
+                                  editor gets from it), EditorViewController (the title field
+                                  and the editor: shows a note, reports edits, cursor and scroll anchor, and ends the
+                                  title's editing when it leaves a note). NoteTextView
                                   also applies the editing rules' `TextEdit`s (`apply`, one undo step), ticks a checkbox
-                                  on a click (`mouseDown`), answers ⇧⌘L (`toggleChecklist`) and ⌘B (`toggleBoldMarkers`),
+                                  on a click (`mouseDown`), answers ⇧⌘L (`toggleChecklist`), ⇧⌘U (`toggleCheckmarks`) and
+                                  ⌘B (`toggleBoldMarkers`), tells the styler that an edit is composed text
+                                  (`setMarkedText`, `isSettingMarkedText`),
                                   and handles Return, Tab and ⇧Tab on list lines (`insertNewline` and the like). The markers
                                   are rendered by MarkupStyler (the text storage's delegate: styles paragraphs from the
                                   core's parser, hides and reveals markers, styles a shown note in chunks),
@@ -256,11 +261,13 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   AboutCreditsTests: the About credits list tree-sitter and every grammar,
                                   SessionWarmUpTests: the open tabs' languages are warmed up, SessionRestoreTests: a launch
                                   reads the active note only and keeps every rule of the restore, FrameMonitorTests, IdleMonitorTests, EditorViewControllerTests:
-                                  the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
+                                  the title, font size, per-note undo, the title's undo steps, read-only and scroll anchor,
+                                  TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
-                                  reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
-                                  click ticks a box, ⇧⌘L, the drawn symbol, the Format menu, ListKeyTests: Return, Tab,
-                                  ⇧Tab and ⌘B, LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
+                                  reveal, fenced blocks are literal, a long note is styled in chunks, composed text keeps
+                                  its underline, CheckboxTests: a
+                                  click ticks a box, a double-click ticks it once, ⇧⌘L, ⇧⌘U, the drawn symbol, the Format
+                                  menu, ListKeyTests: Return, Tab, ⇧Tab and ⌘B (on a word, on lines), LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
                                   coordinator on a failing disk keeps and retries the notes it could not write, and
                                   the emptied-note rules, CodeBlockStylerTests: a fenced block is tinted with hidden
                                   fences, indented lines, colours and a label, CodeBlockPartsTests, CodePasteTests: a
@@ -279,10 +286,10 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   and Copy)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
-                                  SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
+                                  SidebarUITests, TitleUITests (title, title undo, font size, scroll position), TabsUITests (the
                                   tab strip, opening, closing and switching tabs), DeleteUITests (delete, Recently
                                   Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
-                                  FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
+                                  FormattingUITests (a list, a checklist, ⇧⌘U and bold on a word typed with real keys, and copy),
                                   CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
                                   AttachmentUITests (⌘V of an image survives a relaunch, Backspace twice and ⌘Z bring it
                                   back), LaunchUITests (a launch is in the launch log, Help > Launch Times… and its Copy),
@@ -798,6 +805,12 @@ new kind of release file, with no change to the app, ships.
   return, so they cannot disagree. Loading a note's text runs between `disableUndoRegistration()` and
   `enableUndoRegistration()` of its manager and is not an undo step, and `breakUndoCoalescing()` ends the typing run of
   the note being left. Show a note with the text it had when it was left: an undo step holds ranges of that text.
+  **The title's steps are not the note's.** `TitleField.undoManager` is `titleUndoManager`, which the title's field editor
+  asks (a responder asks the next one), so typing in the title never registers in a note's manager, where a step would
+  have the window's shared field editor as its target and change whatever title that editor shows by the time it is
+  undone. `EditorViewController.show` starts with `endTitleEditing`: it moves the keyboard to the text when the title is
+  being edited, empties `titleUndoManager` and removes from the leaving note's manager every action whose target is the
+  field editor. `TitleUITests.testTitleUndoStaysWithItsNote` is the test that would crash or change a title.
 - **UI tests read the font size, the scroll anchor and the scroll offset from `debug.state`.** `DebugStateElement` is a
   1 x 1 point view in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its
   accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY`, `topInset`, and
@@ -1027,7 +1040,10 @@ new kind of release file, with no change to the app, ships.
 - **A click on a checkbox is handled in `NoteTextView.mouseDown` and never reaches `super.mouseDown`.** A plain click
   whose point is inside the rectangle of the three `[?]` glyphs (`checkboxMarker(atViewPoint:)`, which asks the layout
   manager for the character under the point, not the nearest insertion point) ticks or unticks the item through
-  `apply(_:)` and leaves the caret where it was; the view takes the keyboard. Any other click, one with ⇧, ⌘, ⌥ or ⌃
+  `apply(_:)` and leaves the caret where it was; the view takes the keyboard. The second click of a double-click on a box
+  (`clickCount > 1`, in an editable note) is taken too and does nothing: it would untick the box again or select a word,
+  so a hosted test sends clicks with `clickCount` 1, 2 and 3 to the view's `mouseDown`, which is safe because none
+  reaches `super`. Any other click, one with ⇧, ⌘, ⌥ or ⌃
   held (except a ⌘-click on a link, below), and every click in a read-only note is AppKit's. **A hosted test must not send a click that ends in
   `super.mouseDown`:** it runs a tracking loop until the mouse button is released, and the test hangs for its two
   minutes. `CheckboxTests.clickBox` checks that the point is on a box first, and the cases that are not a toggle call
@@ -1083,9 +1099,23 @@ new kind of release file, with no change to the app, ships.
   does not reach AppKit's `insertBacktab:`; ⇧Tab on any other line does.
 - **⌘B is `toggleBoldMarkers(_:)`, not `toggleBold(_:)`.** `toggleBold:` is AppKit's font-panel action, which a
   plain-text view must not answer. The Format > Bold item has no target, like Checklist, so the first responder gets it.
+  `InlineEditing.toggleBold` answers nil for what the key cannot do (a selection of white space only) and the view beeps.
+  A caret is the word under it (`word(around:)`: letters and digits of any script and an apostrophe between two of them,
+  so the stars always make a run: its edges are never next to a letter or a digit), several lines are a run each, and
+  the stars never go into a list marker. ⇧⌘U is `toggleCheckmarks(_:)` on the same terms (Format > Mark as Checked,
+  no target), and `ListEditing.toggleCheckmarks` is nil when no line is a checkbox.
   The hosted `ListKeyTests` call `insertNewline(nil)`, `insertTab(nil)`, `insertBacktab(nil)` and `toggleBoldMarkers(nil)`
   directly, with one editor and one `UndoManager` for each edit that is undone (see the undo pitfall above), and
   `FormattingUITests` presses the keys, so that the menu bar and the responder chain are in the path.
+- **Composed (IME) text is an edit at every key, and the styler resets the paragraph of every edit.** An input method
+  puts its text in the storage with an underline and a clause segment (`markedTextAttributes`), and `setMarkedText`
+  replaces it at every step, so `storageDidEdit`'s `setAttributes(appearance.base, …)` took the underline away.
+  `NoteTextView.setMarkedText` sets `isSettingMarkedText` around `super`, and the styler reads the underline, the underline
+  colour, the clause segment and the keys of `markedTextAttributes` from the characters that edit put in
+  (`composedAttributes`) before the reset and puts them back after the styling (`restoreComposedAttributes`). Typing, a
+  paste and the final `insertText` of an input method are not composed, and get nothing back. The hosted
+  `MarkupStylerTests.testMarkedTextKeepsItsUnderline` hands over an attributed string like an input method's, and looks for
+  the underline in the storage and, failing that, in the layout manager's temporary attributes.
 - **The Format menu is not auto-enabled** (`menu.autoenablesItems = false`, `MainMenu.formatMenu`): AppKit would ask the
   first responder, and the way `NSTextView` validates an action it does not know is not documented. A Format item has
   no target, so the first responder gets it, and a command that cannot work beeps (`NSSound.beep()`).

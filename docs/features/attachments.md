@@ -134,7 +134,8 @@ gone and the raw token shows. (⌘Z brings it back, and the file is kept: a stor
   `NoteTextView.toggleBoldMarkers`): an attachment that a click selected, a selection that holds one or part of one, or a
   caret at either end of the token line (where a click beside a chip puts it, and where Backspace next to a token leaves
   it). A caret on the line below a token (where a paste leaves it) and a selection that only ends where a token starts are
-  not on it, and ⌘B works there as it always did.
+  not on it, and ⌘B works there as on any other line (plan 6 task 5: a caret in a word bolds the word, and on an empty line
+  the pairs of stars go in).
 - **A line that holds more than the token is text** (a space before it, any character after it), judged as typed
   (`AttachmentToken.id(inLine:)`): the commands treat it as any text.
 - **Return, Tab and ⇧Tab need nothing of this**: they act on bullet and checkbox lines only, and a token line is neither.
@@ -236,7 +237,7 @@ release: the preview, the chip and the sidebar are as above in light and dark. T
 | Typing over a selected token replaces it whole | `testTypingOverSelectedTokenReplacesWholeToken` |
 | The paperclip inserts the chosen files, and nothing when cancelled or read-only | `testPaperclipInsertsChosenFiles`, `testPaperclipCancelledOrReadOnlyInsertsNothing` |
 | ⇧⌘L leaves a token line alone: boxes on the text lines of Select All and no box in front of the token; nothing to change on an attachment | `AttachmentEditingTests.testChecklistCommandLeavesTheTokenAlone`, `testChecklistCommandOnAnAttachmentChangesNothing` |
-| ⌘B on an attachment, a selection that holds one or a caret at the end of its line changes nothing; below a token it still works; in a block nothing | `testBoldCommandLeavesAnAttachmentAlone`, `testBoldCommandBelowAnAttachmentStillWorks`, `testFormatCommandsInATokenInACodeBlockDoNothing` |
+| ⌘B on an attachment, a selection that holds one or a caret at the end of its line changes nothing; below a token it still works; in a block nothing | `testBoldCommandLeavesAnAttachmentAlone`, `testBoldCommandBelowAnAttachmentStillWorks`, `testBoldCommandOnTheEmptyLineBelowAnAttachmentPutsThePairsIn`, `testFormatCommandsInATokenInACodeBlockDoNothing` |
 | The rules (Linux): the checklist skips token lines and the blank lines around them, judges a line as typed, and the list keys never touch one; ⌘B's test of the selection | ScratchCore `ListEditingTests.toggleChecklistSkipsTokenLines`, `toggleChecklistOnlyOnATokenChangesNothing`, `toggleChecklistLeavesTheBlankLinesAroundATokenEmpty`, `toggleChecklistDoesNotCountATokenLineAsText`, `toggleChecklistJudgesATokenLineAsTyped`, `theOtherListRulesLeaveTokenLinesAlone`; `InlineEditingTests.aSelectedAttachmentIsTouched`, `aSelectionThatHoldsATokenLineIsTouched`, `aCaretAtEitherEndOfATokenLineTouchesIt`, `aCaretOrSelectionNextToATokenLineButNotOnItIsNotTouched`, `boldTreatsALineThatHoldsMoreThanTheTokenAsText` |
 | The rules themselves (Linux) | `AttachmentEditingTests.swift` in ScratchCoreTests |
 | The text of a copy has names for tokens, a token in a block as typed, one token alone is an attachment (Linux) | `AttachmentCopyingTests.swift` in ScratchCoreTests |

@@ -319,8 +319,8 @@ final class AttachmentEditingTests: XCTestCase {
         XCTAssertFalse(host.undo.canUndo, "and nothing is there to undo")
     }
 
-    /// ⌘B next to an attachment but not on its line is as it always was: the caret a paste leaves is below the token, and
-    /// ⌘B there puts the pairs of stars in.
+    /// ⌘B next to an attachment but not on its line works as on any line: the caret a paste leaves is below the token,
+    /// and ⌘B there bolds the word at the caret (plan 6 task 5), or puts the pairs of stars in when there is none.
     func testBoldCommandBelowAnAttachmentStillWorks() throws {
         let text = "abc\n\(token)\ndef"
         let host = try AttachmentTestHost(text: text, caret: 4 + size + 1)
@@ -329,7 +329,20 @@ final class AttachmentEditingTests: XCTestCase {
 
         view.toggleBoldMarkers(nil)
 
-        XCTAssertEqual(host.text, "abc\n\(token)\n****def")
+        XCTAssertEqual(host.text, "abc\n\(token)\n**def**")
+        XCTAssertEqual(view.selectedRange(), caret(4 + size + 3))
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    func testBoldCommandOnTheEmptyLineBelowAnAttachmentPutsThePairsIn() throws {
+        let text = "abc\n\(token)\n"
+        let host = try AttachmentTestHost(text: text, caret: 4 + size + 1)
+        defer { host.cleanUp() }
+        let view = host.textView
+
+        view.toggleBoldMarkers(nil)
+
+        XCTAssertEqual(host.text, "abc\n\(token)\n****")
         XCTAssertEqual(view.selectedRange(), caret(4 + size + 3))
         XCTAssertEqual(host.tokenIDs, [id])
     }

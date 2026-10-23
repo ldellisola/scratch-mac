@@ -325,7 +325,8 @@ final class ListKeyTests: XCTestCase {
                 isBold(host.editor.textView.textStorage?.attribute(.font, at: index, effectiveRange: nil) as? NSFont),
                 "the character at \(index) is bold")
         }
-        XCTAssertFalse(isBold(host.editor.textView.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont))
+        XCTAssertFalse(
+            isBold(host.editor.textView.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont))
 
         host.editor.textView.toggleBoldMarkers(nil)
 

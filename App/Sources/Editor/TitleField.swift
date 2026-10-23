@@ -41,6 +41,15 @@ final class TitleField: NSTextField {
         fatalError("TitleField is created in code")
     }
 
+    /// The undo steps of what is typed in the title: the title's own, and not the note's. The field editor asks the field
+    /// for its undo manager (a responder asks the next one), and the note's manager would hold steps whose target is the
+    /// field editor, which shows another note's title as soon as another note is shown, so that undoing one of them would
+    /// change the wrong title or ask a text that is not there. `EditorViewController.show` drops them when it leaves the
+    /// note.
+    let titleUndoManager = UndoManager()
+
+    override var undoManager: UndoManager? { titleUndoManager }
+
     /// Sets the title font, and the placeholder's, for a note font of `noteSize` points.
     func applyFontSize(_ noteSize: Double) {
         let titleFont = Self.titleFont(noteSize: noteSize)

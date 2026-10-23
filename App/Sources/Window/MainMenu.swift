@@ -154,11 +154,11 @@ enum MainMenu {
         return menu
     }
 
-    /// The commands that change the text of the note (spec §6.4): Bold, ⌘B, and Checklist, ⇧⌘L. They go to the first
-    /// responder, so only the editor answers them (`NoteTextView`). The items are not validated by AppKit: it would ask
-    /// the first responder, which is a text view whose own validation of an action it does not know is not documented,
-    /// and a command that cannot work (a read-only note, a code block) beeps instead of being greyed out. The action of
-    /// Bold is `toggleBoldMarkers:` and not AppKit's `toggleBold:`, which is the font panel's.
+    /// The commands that change the text of the note (spec §6.4): Bold, ⌘B, Checklist, ⇧⌘L, and Mark as Checked, ⇧⌘U. They
+    /// go to the first responder, so only the editor answers them (`NoteTextView`). The items are not validated by
+    /// AppKit: it would ask the first responder, which is a text view whose own validation of an action it does not know
+    /// is not documented, and a command that cannot work (a read-only note, a code block) beeps instead of being greyed
+    /// out. The action of Bold is `toggleBoldMarkers:` and not AppKit's `toggleBold:`, which is the font panel's.
     static func formatMenu() -> NSMenu {
         let menu = NSMenu(title: "Format")
         menu.autoenablesItems = false
@@ -167,6 +167,11 @@ enum MainMenu {
         let checklist = menu.addItem(
             withTitle: "Checklist", action: #selector(NoteTextView.toggleChecklist(_:)), keyEquivalent: "l")
         checklist.keyEquivalentModifierMask = [.command, .shift]
+        // Ticks the checklist lines under the selection, or unticks them when all are ticked (plan 6 task 5): the
+        // keyboard's way to what a click on a box does.
+        let markAsChecked = menu.addItem(
+            withTitle: "Mark as Checked", action: #selector(NoteTextView.toggleCheckmarks(_:)), keyEquivalent: "u")
+        markAsChecked.keyEquivalentModifierMask = [.command, .shift]
         return menu
     }
 

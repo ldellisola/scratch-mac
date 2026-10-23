@@ -409,11 +409,13 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         let batch = ParagraphBatch(
             in: text, from: paragraphs.location, upTo: NSMaxRange(paragraphs), maxParagraphs: .max)
         let moved = touchesFence || batch.containsFenceLine() ? rescanCodeBlocks(in: storage) : []
+        let composed = composedAttributes(in: editedRange, storage: storage)
 
         isApplying = true
         storage.beginEditing()
         resetAttributes(of: paragraphs, batch: batch, keepingCodeOf: blocksBeforeRescan, in: storage)
         _ = styleBatch(batch, in: storage)
+        restoreComposedAttributes(composed, in: storage)
         // The paragraphs that moved into or out of a block, other than the ones just styled.
         let movedChanged = restyle(moved.filter { !Self.contains(paragraphs, $0) }, text: text, storage: storage)
         refreshFirstCodeLines(near: paragraphs, in: storage)
@@ -423,6 +425,47 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         coloursToClearAfterEdit.append(contentsOf: moved)
         // The blocks that the edit is in, or that it changed, are coloured again for the text they have now.
         requestBlocks(intersecting: [paragraphs] + moved, in: storage)
+    }
+
+    // MARK: Composed text
+
+    /// What AppKit puts on the characters of composed (marked) text, which an input method has not entered yet: the
+    /// underline and the clause segment that it hands over with the text, and whatever else the view's
+    /// `markedTextAttributes` hold. Resetting a paragraph's attributes would take them off the text that is still being
+    /// composed, and the owner would no longer see which part of the text is not entered yet.
+    private func composedKeys(of textView: NoteTextView) -> Set<NSAttributedString.Key> {
+        var keys: Set<NSAttributedString.Key> = [.underlineStyle, .underlineColor, .markedClauseSegment]
+        // Typed as an optional, whichever way the SDK declares the property.
+        let marked: [NSAttributedString.Key: Any]? = textView.markedTextAttributes
+        if let marked { keys.formUnion(marked.keys) }
+        return keys
+    }
+
+    /// The attributes of composed text in `range`, which holds what an edit has just put in, to put back after the
+    /// paragraph has been styled. Only text that `setMarkedText` is putting in is composed: the edit of typing, a paste or
+    /// an input method's final `insertText` is never given an underline here, so a link's underline that typed text took
+    /// from the text before it is the styler's to settle. Empty when nothing is being composed.
+    private func composedAttributes(
+        in range: NSRange, storage: NSTextStorage
+    ) -> [(range: NSRange, attributes: [NSAttributedString.Key: Any])] {
+        guard let textView, textView.isSettingMarkedText, range.length > 0, NSMaxRange(range) <= storage.length else {
+            return []
+        }
+        let keys = composedKeys(of: textView)
+        var runs: [(range: NSRange, attributes: [NSAttributedString.Key: Any])] = []
+        storage.enumerateAttributes(in: range, options: []) { attributes, run, _ in
+            let kept = attributes.filter { keys.contains($0.key) }
+            if !kept.isEmpty { runs.append((run, kept)) }
+        }
+        return runs
+    }
+
+    private func restoreComposedAttributes(
+        _ runs: [(range: NSRange, attributes: [NSAttributedString.Key: Any])], in storage: NSTextStorage
+    ) {
+        for run in runs where NSMaxRange(run.range) <= storage.length {
+            storage.addAttributes(run.attributes, range: run.range)
+        }
     }
 
     /// Called when the edit that `storageDidEdit` styled is over (`NoteTextView.didChangeText`), which is when the layout

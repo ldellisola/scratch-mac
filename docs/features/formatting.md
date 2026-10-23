@@ -7,6 +7,8 @@ behaviour, marker rules) and §6.5 (copy-out keeps the markers), guarding the an
 
 Status: released in 0.3.0 (plan 3): styling, checkboxes, ⇧⌘L, the keyboard (Return, Tab, ⇧Tab and ⌘B) and ⌘-click on
 links. From 0.4.0 (plan 4, task 1) bold needs word boundaries: [ADR 0006](../decisions/0006-bold-word-boundaries.md).
+From 1.0.0 (plan 6, task 5): ⌘B on a caret and on several lines, ⇧⌘U (Mark as Checked), a double-click on a box ticks it
+once, and composed (IME) text keeps its underline.
 
 ## Behaviour: what renders
 
@@ -51,6 +53,10 @@ that then renders like typed text.
   changes `[ ]` to `[x]` or back, and does nothing else: the caret and the selection stay where they were, so a box can
   be clicked while typing somewhere else, and the editor takes the keyboard. It is one undo step (⌘Z unticks it again).
   `[X]` counts as ticked. The edit is a single character, so nothing of the stored text changes but that one.
+- **A double-click on a box ticks it once.** The second click of a double-click (and a third) on a box is taken by the
+  editor and does nothing: it does not untick the box again and it selects no word. A click after the double-click
+  interval is a first click again and toggles. In a note that cannot be edited the box is not a toggle, so a double-click
+  there is the text view's own.
 - **A click anywhere else is a normal click.** To the right of the box (the space and the text of the item) it places the
   caret. So does a click with ⇧, ⌘, ⌥ or ⌃ held, on a box too, and any click in a note that is read-only (a note in
   Recently Deleted): it never ticks a box. In a fenced block nothing is a checkbox.
@@ -64,7 +70,14 @@ that then renders like typed text.
   hold nothing it may change, which is a token line of an attachment and nothing else.
 - **A token line is never changed.** The line of an attachment (`[[attachment:<id>]]`, attachments.md) gets no box and is not
   a line with text: Select All over text and a picture gives the text lines boxes and leaves the picture.
-- The commands that change the text (this one, and ⌘B below) are in the **Format** menu, after Edit. Its items go to
+- **⇧⌘U (Format > Mark as Checked) ticks and unticks the checklist lines** under the selection (the caret's line when
+  there is none). When any of them is open, every open one is ticked (`[ ]` to `[x]`; a ticked `[x]` or `[X]` stays as
+  typed). When all are ticked, they are all unticked. Lines that are not checkboxes (a bullet, a plain line, a token line,
+  `- [ ] a`, which is a bullet) are left alone and have no say. It changes one character for each box, keeps the
+  selection and is one undo step. It beeps and does nothing when no line under the selection is a checkbox, when a fenced
+  block is among the lines, for a rectangular selection and in a note that cannot be edited. It is the keyboard's way
+  to what a click on a box does (the accessibility pass of plan 6 asks that every mouse action has a menu item).
+- The commands that change the text (these, and ⌘B below) are in the **Format** menu, after Edit. Its items go to
   whoever has the keyboard: only the editor answers them.
 
 ## Behaviour: Return, Tab, ⇧Tab and ⌘B
@@ -90,20 +103,49 @@ spaces.
   indented, because a block is code: Tab then replaces the selection with a tab, as it does in any text view.
 - **⇧Tab on a list line that is not indented does nothing.** On a line that is not a list line it is AppKit's own.
 - **⌘B (Format > Bold)** puts `**` around the selection, and the selection then covers the text between the stars. A
-  selection that is exactly the text of a bold run, or the whole run with its stars, loses the stars instead. White space
-  at the ends of the selection (a triple click takes the line break) stays outside the stars, because a run that starts
-  or ends with white space is not bold. With no selection `****` goes in and the caret between the pairs, so what is
-  typed next is bold. The stored text is the only thing that changes: bold is not a font setting.
+  selection that is exactly the text of a bold run, or the whole run with its stars (or the text and one pair of stars),
+  loses the stars instead. White space at the ends of the selection (a triple click takes the line break) stays outside
+  the stars, because a run that starts or ends with white space is not bold. A selection is clipped to the text after
+  the list marker of its line: a triple click on `- one` makes `- **one**`, never `**- one**`. The stored text is the only
+  thing that changes: bold is not a font setting.
+- **⌘B with a caret** (plan 6 task 5) works on the word, so it needs no selection:
+  - In a word, or at either edge of one (outside a run), it wraps the word and the caret stays at its place in it: `say
+    he|llo now` becomes `say **he|llo** now`. A word is a run of letters and digits of any script, with an apostrophe
+    between two of them (`don't`); punctuation, white space and emoji end it.
+  - In a bold run, or touching one (its text, or right outside either pair of stars), it takes that run's stars off, so
+    ⌘B twice on a word puts the text back.
+  - Between the two pairs of an empty `****` it removes all four stars.
+  - Anywhere else (white space, an empty line, after punctuation) `****` goes in and the caret between the pairs, so what
+    is typed next is bold.
+  - A caret in the marker of a list item (`- `, `[ ] `) acts at the start of the text after it: the stars never go into
+    the marker.
+- **⌘B on several lines** wraps each line separately, because bold is one line only. The part of each line that is
+  selected counts: after its list marker, white space at its ends left out, a blank line skipped (`- one` and `- two`
+  selected whole become `- **one**` and `- **two**`). When every one of those parts is a bold run the stars come off all
+  of them, else the lines that are not bold yet are wrapped (as ⇧⌘L gives boxes to the lines that have none). The
+  selection afterwards covers the text from the first line's to the last line's, so ⌘B again undoes it.
+- **⌘B on white space only** (a selection of spaces, or of a list marker alone) does nothing and beeps.
 - **⌘B inside a word inserts stars that are not bold.** With `c` selected in `abcd`, ⌘B gives `ab**c**d` (the selection
   covers `c`, as always), and the stars stay visible because a run inside a word is plain text (see "Bold needs word
   boundaries" above). ⌘B on the same selection again wraps it once more and does not take the stars off: there is no
   bold run to unwrap. Next to white space or punctuation, as in `(word)`, the stars make a run, and ⌘B again takes them
   off.
-- **⌘B does nothing, with a beep,** in a note that cannot be edited, when a fenced block is under the selection, and for
-  a rectangular selection (several selections, which no key rule handles either). It does nothing either when the selection
+- **⌘B does nothing, with a beep,** in a note that cannot be edited, when a fenced block is under the selection, for
+  a rectangular selection (several selections, which no key rule handles either) and when the selection holds nothing to
+  make bold (white space only). It does nothing either when the selection
   touches the token line of an attachment (an attachment that a click selected, a selection that holds one, or a caret at
   either end of its line): stars there would make the token text (attachments.md, "Format commands").
 - **Copy still keeps the stars:** after ⌘B and a select-all, ⌘C puts `**word**` on the pasteboard.
+
+## Behaviour: composed text
+
+An input method (Japanese, Chinese, Korean, the accent menu) puts the text it composes in the note, underlined, until the
+owner enters it. Every step of the composition replaces that text, which is an edit, and the styler styles the paragraph
+of every edit again from its base attributes. The underline that AppKit gave the composed text (and its clause segment)
+is therefore put back after the paragraph has been styled (`MarkupStyler.composedAttributes`, for the edit that
+`NoteTextView.setMarkedText` makes): the owner can always see which part of the text is not entered yet, also inside a bold
+run, a list line or inline code. The composed text is part of the note's text like any other, and what is entered is
+styled as typed.
 
 ## Behaviour: links open with ⌘-click
 
@@ -153,7 +195,9 @@ text like any other, so that placing the caret in a link never opens a browser.
   character of the link) and `updateLinkCursor(atViewPoint:modifiers:)`, which `mouseMoved(with:)` and
   `flagsChanged(with:)` call, with the tracking area of `updateTrackingAreas()` (the pointing hand).
   `MainMenu.formatMenu` is the Format menu. The core rules are `ListEditing` (`newline`, `indent`, `outdent`,
-  `toggleChecklist`, `toggleCheckmark`) and `InlineEditing.toggleBold`.
+  `toggleChecklist`, `toggleCheckmarks` (⇧⌘U), `toggleCheckmark`) and `InlineEditing.toggleBold`, which answers nil when the
+  key beeps. `NoteTextView.toggleCheckmarks(_:)` is ⇧⌘U, `setMarkedText` (with `isSettingMarkedText`) tells the styler
+  that an edit is composed text, and `mouseDown` takes the second click of a double-click on a box.
 - `NoteTextView.load` and `applyFontSize` go through the styler. `TextViewFactory` builds the stack with the styler
   and the layout manager.
 
@@ -190,11 +234,17 @@ text like any other, so that placing the caret in a link never opens a browser.
 | Tab indents the list lines of the selection and ⇧Tab outdents them | `testTabIndentsListLine`, `testTabIndentsEveryListLineOfTheSelection`, `testShiftTabOutdents`, `testShiftTabOnATopLevelListLineChangesNothing`, `FormattingUITests.testTabIndentsNestedBullet` |
 | Tab is a tab on a plain line and in a block, and nothing in a read-only note | `testTabOnAPlainLineInsertsATab`, `testTabInsideCodeBlockInsertsATab`, `testTabInAReadOnlyNoteChangesNothing`, `testShiftTabOnAPlainLineChangesNoText` |
 | ⌘B wraps the selection, takes the stars off a bold run, or puts the caret between a pair | `testCommandBWrapsSelection`, `testCommandBOnABoldRunTakesTheStarsAway`, `testCommandBWithoutSelectionPutsTheCaretBetweenTheStars` |
+| ⌘B with a caret wraps the word under it and keeps the caret, takes a run's stars off, and removes an empty pair (ScratchCore, then the editor) | `InlineEditingTests.boldCaretInWordWrapsWord`, `boldCaretAtTheEdgeOfAWordWrapsIt`, `boldCaretNextToPunctuationWrapsTheWordOnly`, `boldCaretWrapsTheWordOfALaterLine`, `boldCaretTakesAnApostropheInsideAWord`, `boldCaretKnowsLettersAndDigitsOfAnyScriptAndNotEmoji`, `boldCaretInAListItemWrapsTheWordAfterTheMarker`, `boldCaretInAMarkerActsAtTheStartOfTheText`, `boldCaretInRunUnwraps`, `boldCaretInOneRunOfSeveralUnwrapsThatRun`, `boldCaretInARunInAListItemUnwraps`, `boldCaretInEmptyPairRemovesIt`, `boldTwiceInWordRestoresText`, `boldTwiceOnTheEmptyPairRestoresText`, `boldCaretWrapsAWordThatIsARun`, `boldCaretOutsideTheParagraphsIsNil`, `ListKeyTests.testBoldOnCaretInWord`, `testBoldOnCaretBetweenEmptyPairRemovesIt`, `FormattingUITests.testCommandBTwiceOnAWordRestoresIt` |
+| ⌘B on several lines wraps each line after its marker, skips blank lines, takes the stars off when all are bold, and twice restores the text; on white space only it is nil | `InlineEditingTests.wrapSelectionAcrossLinesWrapsEachLine`, `aSelectionOfOnlyWhiteSpaceIsNil`, `boldLinesWrapEachLine`, `boldLinesWrapAfterTheListMarkerAndKeepTheIndent`, `boldLinesLeaveWhiteSpaceAtTheEndsOutside`, `boldLinesStartAndEndInTheMiddleOfTheirLines`, `boldLinesSkipBlankLines`, `boldLinesUnwrapWhenAllBold`, `boldLinesUnwrapWhenTheSelectionIsTheContent`, `boldLinesTwiceRestoreTheText`, `boldLinesWrapOnlyTheLinesThatAreNotRunsYet`, `boldLinesOfOnlyWhiteSpaceAreNil`, `boldLinesOfALongerDocumentUseTheStartOffset`, `boldLinesWithCRLF`, `aTripleClickOnAListLineWrapsTheTextAfterTheMarker`, `ListKeyTests.testCommandBOnSeveralLinesWrapsEachLine`, `testCommandBOnWhiteSpaceOnlyDoesNothing` |
+| ⇧⌘U ticks every open box under the selection, unticks them when all are ticked, ignores the lines that are no boxes, keeps the selection and is nil without a box (ScratchCore) | `ListEditingTests.checkmarksTickAllWhenAnyOpen`, `checkmarksUntickWhenAllTicked`, `checkmarksTwiceRestoreTheText`, `checkmarksNilWithoutChecklist`, `checkmarksKeepIndentAndText`, `checkmarksOnlyTouchTheLinesOfTheSelection`, `checkmarksIgnoreTheLinesThatAreNotCheckboxes`, `checkmarksTickTheOpenOnesWhenSomeAreAlreadyTicked`, `checkmarksKeepTheSelectionWhereItWas`, `checkmarksOfAnAttachmentAreNothing`, `checkmarksCountUTF16AndStartOffsets`, `checkmarksWithCRLFLines`, `checkmarksOutsideTheParagraphsAreNil` |
+| Mark as Checked is in the Format menu on ⇧⌘U, ticks the selected lines in one undo step, beeps in a code block and without a box, and works from the keyboard | `CheckboxTests.testMarkAsCheckedMenuItem`, `testMarkAsCheckedTicksTheSelectedLines`, `testMarkAsCheckedUntickWhenEveryBoxIsTicked`, `testMarkAsCheckedUsesTheCaretsLine`, `testMarkAsCheckedBeepsInCodeBlock`, `testMarkAsCheckedWithoutACheckboxDoesNothing`, `testMarkAsCheckedInAReadOnlyNoteDoesNothing`, `FormattingUITests.testMarkAsCheckedShortcutTicksAndUnticks` |
+| A double-click on a box ticks it once, in one undo step, and a click after it toggles again | `CheckboxTests.testDoubleClickOnABoxTicksItOnce`, `testASingleClickAfterADoubleClickTicksAgain` |
+| Composed text keeps its underline through the restyle of its paragraph, and typed text gets none | `MarkupStylerTests.testMarkedTextKeepsItsUnderline`, `testTextThatIsNotComposedHasNoUnderlineFromTheStyler` |
 | ⌘B inside a word wraps the selection, and the stars are not a run (the core's rule); next to punctuation they are | ScratchCore `InlineEditingTests.wrapInsideAWordStillInsertsStarsButTheyAreNotBold`, `unwrapNextToPunctuationStillWorks`, `wrapNextToPunctuationMakesARun` |
 | ⌘B does nothing in a block or a read-only note | `testCommandBInsideCodeBlockDoesNothing`, `testCommandBInAReadOnlyNoteDoesNothing` |
 | ⌘B does nothing when the selection touches the token line of an attachment, and works on the line below it | `AttachmentEditingTests.testBoldCommandLeavesAnAttachmentAlone`, `testBoldCommandBelowAnAttachmentStillWorks`, ScratchCore `InlineEditingTests.aSelectedAttachmentIsTouched`, `aSelectionThatHoldsATokenLineIsTouched`, `aCaretAtEitherEndOfATokenLineTouchesIt`, `aCaretOrSelectionNextToATokenLineButNotOnItIsNotTouched` |
 | ⌘B is Format > Bold, and copy after it keeps the stars | `testFormatMenuHasBoldOnCommandB`, `FormattingUITests.testCommandBThenCopyKeepsMarkers` |
-| Each of these edits is one undo step | `testEachEditIsOneUndoStep` |
+| Each of these edits is one undo step (⌘B on nothing, on a word, on an empty pair and on two lines, ⇧⌘U on a line and on lines too) | `testEachEditIsOneUndoStep` |
 | Markers in a fenced block and in inline code are literal | `testFencedBlockIsNotStyled`, `testMarkersInsideInlineCodeAreLiteral` |
 | Unclosed markers are plain | `testUnclosedMarkersArePlain` |
 | A closing fence turns the lines between into code, and removing it turns them back | `testTypingAClosingFenceTurnsTheLinesBetweenIntoCode`, `testTypingInsideABlockKeepsTheBlock` |

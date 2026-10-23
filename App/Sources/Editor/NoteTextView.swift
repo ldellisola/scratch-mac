@@ -133,6 +133,21 @@ final class NoteTextView: NSTextView {
         super.insertText(string, replacementRange: replacementRange)
     }
 
+    /// True while `setMarkedText(_:selectedRange:replacementRange:)` runs: the edit that it makes puts composed text in the
+    /// note, and the styler keeps the attributes that AppKit gave that text (`MarkupStyler.composedAttributes`).
+    private(set) var isSettingMarkedText = false
+
+    /// An input method is composing text (the owner types, say, pinyin, and has not chosen the characters yet): the text
+    /// is in the note, underlined, until it is entered. Every step replaces it, which is an edit that the styler styles
+    /// the paragraph for, and composed text must keep its underline through that. A note that cannot be edited takes
+    /// nothing, as in `insertText(_:replacementRange:)`.
+    override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        guard isEditable else { return }
+        isSettingMarkedText = true
+        defer { isSettingMarkedText = false }
+        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+    }
+
     /// The text was edited and AppKit has processed the edit. The styler may have moved paragraphs into or out of a code
     /// block that the edit did not change, and the layout manager can only be told to generate their glyphs again now
     /// (`MarkupStyler.editDidFinish`). It is before the delegate hears of the edit, so that everything it does (scroll
@@ -929,23 +944,29 @@ final class NoteTextView: NSTextView {
     // MARK: Checkboxes
 
     /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
-    /// it was, so the box can be clicked while typing somewhere else. A plain click on the language label of a code block
-    /// opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A plain click on
-    /// the preview or the chip of an attachment selects it, and a double-click opens its file (`pressAttachment`), in a note
-    /// that cannot be edited as well: a drag from it then takes the file out (`mouseDragged(with:)`). A ⌘-click on a
-    /// link opens it (`openURL`) and goes no further: it places no caret, and it also works in a note that cannot be
-    /// edited. Any other click, also one on a box, a label or an attachment with a modifier key held (⇧ extends the
-    /// selection) or in a note that cannot be edited, is the text view's own: a plain click on a link places the caret and
-    /// never opens anything.
+    /// it was, so the box can be clicked while typing somewhere else. The second click of a double-click on a box (and a
+    /// third) is taken and does nothing, so a double-click ticks the box once. A plain click on the language label of a
+    /// code block opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A
+    /// plain click on the preview or the chip of an attachment selects it, and a double-click opens its file
+    /// (`pressAttachment`), in a note that cannot be edited as well: a drag from it then takes the file out
+    /// (`mouseDragged(with:)`). A ⌘-click on a link opens it (`openURL`) and goes no further: it places no caret, and it
+    /// also works in a note that cannot be edited. Any other click, also one on a box, a label or an attachment with a
+    /// modifier key held (⇧ extends the selection) or in a note that cannot be edited, is the text view's own: a plain
+    /// click on a link places the caret and never opens anything.
     override func mouseDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
         attachmentPress = nil
-        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]),
-            toggleCheckbox(atViewPoint: point) || showCodeBlockMenu(atViewPoint: point)
+        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]) {
+            // The second click of a double-click on a box is part of the gesture that the first one made: it would
+            // untick the box again, or select a word. It is taken, and does nothing (a click that is not the first of its
+            // series is not a toggle).
+            if event.clickCount > 1, isEditable, checkboxMarker(atViewPoint: point) != nil { return }
+            if toggleCheckbox(atViewPoint: point) || showCodeBlockMenu(atViewPoint: point)
                 || pressAttachment(with: event, atViewPoint: point)
-        {
-            return
+            {
+                return
+            }
         }
         if modifiers.contains(.command), let url = link(atViewPoint: point) {
             openURL(url)
@@ -1161,13 +1182,15 @@ final class NoteTextView: NSTextView {
         apply(edit)
     }
 
-    /// ⌘B (Format > Bold): the selection becomes `**selection**`, or loses its stars when it is a bold run, or, with no
-    /// selection, `****` goes in with the caret between the pairs (`InlineEditing.toggleBold`). One undo step. It does
-    /// nothing but beep when the note cannot be edited, when a fenced block is under the selection (inside a block
-    /// every character is literal), for a rectangular selection and when the selection touches the token line of an
-    /// attachment (a selected attachment, a selection that holds one, or a caret at either end of its line: stars
-    /// there would make the token text, `InlineEditing.touchesAttachment`). The name is not `toggleBold`: that is
-    /// AppKit's action for the font panel, which a plain-text view must not answer.
+    /// ⌘B (Format > Bold): the selection becomes `**selection**`, or loses its stars when it is a bold run; each line of a
+    /// selection of several lines is its own run; a caret in a word makes the word bold, and in a run takes its stars off;
+    /// and with a caret anywhere else `****` goes in with the caret between the pairs (`InlineEditing.toggleBold`). One
+    /// undo step. It does nothing but beep when the note cannot be edited, when a fenced block is under the selection
+    /// (inside a block every character is literal), for a rectangular selection, when the selection touches the token
+    /// line of an attachment (a selected attachment, a selection that holds one, or a caret at either end of its line:
+    /// stars there would make the token text, `InlineEditing.touchesAttachment`) and when the rule has nothing to bold (a
+    /// selection of white space only). The name is not `toggleBold`: that is AppKit's action for the font panel, which a
+    /// plain-text view must not answer.
     @objc func toggleBoldMarkers(_ sender: Any?) {
         guard isEditable, selectedRanges.count == 1 else { return NSSound.beep() }
         let paragraphs = coveringParagraphs()
@@ -1176,8 +1199,25 @@ final class NoteTextView: NSTextView {
             !InlineEditing.touchesAttachment(
                 paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
         else { return NSSound.beep() }
-        applyAndReveal(
-            InlineEditing.toggleBold(
-                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))
+        guard
+            let edit = InlineEditing.toggleBold(
+                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
+        else { return NSSound.beep() }
+        applyAndReveal(edit)
+    }
+
+    /// ⇧⌘U (Format > Mark as Checked): the checklist lines of the selection (the caret's line when there is none) are
+    /// ticked when any of them is open, and unticked when all are ticked (`ListEditing.toggleCheckmarks`). One undo step,
+    /// and the selection stays. It does nothing but beep when the note cannot be edited, when a fenced block is among the
+    /// lines (nothing in a block is a checkbox), for a rectangular selection and when none of the lines is a checkbox.
+    @objc func toggleCheckmarks(_ sender: Any?) {
+        guard isEditable, selectedRanges.count == 1 else { return NSSound.beep() }
+        let paragraphs = coveringParagraphs()
+        guard !styler.intersectsCodeBlock(paragraphs.range) else { return NSSound.beep() }
+        guard
+            let edit = ListEditing.toggleCheckmarks(
+                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
+        else { return NSSound.beep() }
+        apply(edit)
     }
 }
