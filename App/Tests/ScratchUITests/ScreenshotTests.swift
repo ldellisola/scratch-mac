@@ -137,8 +137,7 @@ final class ScreenshotTests: XCTestCase {
     /// The About panel (plan 6 task 9): Scratch > About Scratch, with the app's icon, its name and version and the licences
     /// of tree-sitter and its grammars as credits. The picture is of the panel, not of the main window. A person (or an agent
     /// that opens the PNG) checks: the new icon (a yellow notepad with a ticked checkbox) and not the generic one, the
-    /// version 1.0.0 and the credits' first lines. The panel has no title and no identifier, so it is found as the window
-    /// that does not hold the editor.
+    /// version 1.0.0 and the credits' first lines. XCTest sees the panel as a dialog of the app (`aboutPanel(in:)`).
     func testAboutLight() {
         capture(
             "about-light", fixture: "typical", appearance: "light", sidebarRows: 6,
@@ -159,12 +158,12 @@ final class ScreenshotTests: XCTestCase {
             })
     }
 
-    /// The About panel: the window of the app that does not hold the editor, or nil while there is none. A standard About
-    /// panel is a window of its own with no title and no identifier.
+    /// The About panel, or nil while it is not on screen. XCTest reports it as a Dialog (its subrole is `AXDialog`) and not as
+    /// a window, with no title and an identifier of AppKit's own (`_NS:154` on CI), so it is the app's only dialog: the
+    /// Launch Times alert is a sheet.
     private func aboutPanel(in app: XCUIApplication) -> XCUIElement? {
-        app.windows.allElementsBoundByIndex.first { window in
-            window.exists && !window.textViews.matching(identifier: AccessibilityID.editorTextView).firstMatch.exists
-        }
+        let panel = app.dialogs.firstMatch
+        return panel.exists ? panel : nil
     }
 
     /// Waits until the app has both attachments of the note in place (`debug.state`: each one `copied`, with its file on

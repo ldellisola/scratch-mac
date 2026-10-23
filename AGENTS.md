@@ -771,8 +771,8 @@ new kind of release file, with no change to the app, ships.
   script's own output) and needs Pillow, which the `linux` job gets as `python3-pil`. Xcode makes `AppIcon.icns` and
   `Assets.car` from the set (`ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon`), `scripts/check-release-zip.sh` fails an app
   without a non-empty `Contents/Resources/AppIcon.icns` and `CFBundleIconName` = `AppIcon`, and `about-light` is the picture
-  to look at (the About panel is a window of its own with no identifier: `ScreenshotTests.aboutPanel(in:)` finds it as the
-  window that does not hold the editor).
+  to look at (XCTest reports the About panel as a Dialog of the app, not as a window, with no title and an identifier of
+  AppKit's own: `ScreenshotTests.aboutPanel(in:)` is `app.dialogs.firstMatch`, and its picture is of that element).
 - **The first line of code of a block with a label is further in from the right than the others.** The label is drawn at the
   top right and reaches into that line, so its paragraph style has a tail indent of `inset + label width + 12 pt`
   (`MarkupAppearance.firstCodeLineStyle`, `CodeBlockMetrics.labelReserve`, at most 240 pt, none without a label); every other
