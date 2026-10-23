@@ -335,7 +335,7 @@ private func date(_ seconds: Double) -> Date { Date(timeIntervalSinceReferenceDa
     for id in [fresh.id, emptied.id] { #expect(info[id]?.displayTitle == "" && info[id]?.hasTitle == false) }
 }
 
-@Test func tabInfoOmitsMissingNotesAndReportsDeletedOnes() throws {
+@Test func tabInfoOmitsMissing() throws {
     let (store, _) = try noteStore()
     let live = Note(id: NoteID.make(), title: "", body: "live", createdAt: date(1), modifiedAt: date(2))
     let gone = Note(id: NoteID.make(), title: "", body: "gone", createdAt: date(1), modifiedAt: date(2))

@@ -1,6 +1,6 @@
 # 0009: Performance at 1.0: the launch gates on Scratch's own work, and idle is measured
 
-Status: accepted, 2026-10-22 (Plan 6, task 2, Scratch 1.0.0). Amends [0003](0003-ci-performance-checks.md): the launch
+Status: accepted, 2026-10-22 (Plan 6, tasks 2 and 3, Scratch 1.0.0). Amends [0003](0003-ci-performance-checks.md): the launch
 budget, the launch baseline and the way a result is compared. Adds two gated metrics, `launch_overhead_ms` and `idle_cpu_pct`,
 and a file of tolerances. No new dependency: the reference app is an AppKit app of this repository, and the idle monitor
 reads `getrusage`.
@@ -132,6 +132,81 @@ next one the gated number.
   ms, showing the window 50 ms and the first frame another 150 ms, and in the slower runs every phase is 1.3 to 2.2 times as
   far from the process start as in the fastest one. These are the numbers that task 3 of Plan 6 (less work before the first
   frame) is measured against, and it records its own beside them.
+
+## Task 3: less work before the first frame, and colours sooner after a paste
+
+Plan 6, task 3. Two changes of the app, neither of which needs a new budget or a new dependency.
+
+8. **A launch reads one body** (spec §7: "before the first frame, the launch reads the body of the active tab's note and no
+   other"). `SessionCoordinator.restoredTabs` used to read the note of every saved tab in full. It now asks
+   `NoteStore.tabInfo(_:)` for all of them, one query over the derived columns (`display_title`, `has_title`, `deleted_at`, and
+   `modified_at = created_at`) that names no `body`, and reads the active note in full. The tabs keep every rule they had: a
+   tab of a missing or deleted note is dropped, so is a second tab for one note, the saved active tab stays active (else the first
+   that is left), and a note that nobody ever typed in stays untouched. The other tabs' bodies are read once the first frame is
+   out, on the storage queue, for the query warm-up (`warmUpHighlighting`).
+   - **`TabNoteInfo.isNeverUsed` is worked out from the columns:** no title, no line with words, and an edit time equal to the
+     creation time. It differs from the old rule (`Note.isEmpty` and equal times) only for a body of fence lines and attachment
+     lines alone with two equal dates, which only a fixture writes, and the active note's answer is still the exact one (it is
+     read in full). `discardIfUnused` and `isUntouched` still ask `Note.isEmpty` of the note itself before anything is discarded.
+   - **What it saves.** One read of a body costs less than a millisecond: on Linux (Release, SQLite, a file database), with 12
+     tabs of which one holds a 936 KB note of 10,000 lines, the reads of the old restore took 0.88 ms in all (0.74 ms for the
+     big note alone), and the new ones take 0.07 ms with the big note in a tab that is not active (`tabInfo` of the 12 notes is
+     0.05 ms), 0.75 ms with it active. The `typical` fixture, which the launch tests use, has two tabs and no big note, so the
+     CI cannot see a difference: the saving is real for an owner with several large notes open, and it is milliseconds. It is the
+     spec's rule and it makes the launch independent of how many notes are open.
+9. **A paste is looked at when it is read** (`NoteTextView.endPaste`), and the colours of the block it will become are asked
+   for at once (`CodeBlockStyler.prefetch(block:)`). `PasteClassifier.wrap` reads only the text, so it runs in `endPaste`
+   instead of on the next turn of the run loop, and for a wrap the highlighter starts on the code of the block on its queue
+   while the main thread waits for that turn (which has to wait for the paste's undo group to close, and then applies the
+   same edit: no second detection). The request is the one the block will make (same fence name and code, same hash), so the
+   block finds its colours in the cache or in the request that is running (`request` looks there first), and a prefetched
+   result that arrives before its block is only cached: it is not counted as a dropped result, and `pump` keeps such a
+   request though no block holds its code yet.
+   - **A deviation from the plan, found by thinking about the 50,000-line test:** a paste of more than `Highlighter.maximumLength`
+     (300,000 UTF-16 units, `PasteClassifier.earlyWrapLimit`) is not looked at in `endPaste`. Such a block is never coloured,
+     so there is nothing to get ahead with, and `LargeInsertTests` holds the paste and the wrap of 50,000 lines of JSON (760 KB,
+     which `CodeDetector` reads whole) to 500 ms each, in a Debug build: moving a detection of that size into the paste's own turn
+     would take from the paste what it gives the wrap. Pastes up to the cap behave as the plan says.
+
+### Measured numbers (task 3)
+
+The macOS job's runs of the app before and after (the red commit `3e93378` ran the app of `e5b09c1` unchanged, so it is a second
+sample of the old code). Single runs on runners that differ by a factor of two, as above, so the differences between the rows
+are mostly the runner: the reference app launched in 302, 319 and 354 ms.
+
+| Commit | App | `launch_overhead_ms` | `launch_ms` | `launch_reference_ms` | `paste_code_ms` | restore phase (`restore` less `storage`) |
+|---|---|---|---|---|---|---|
+| `e5b09c1` | before | 174.1 | 564.7 | 301.9 | 73.0 | 214.0 |
+| `3e93378` | before | 151.0 | 559.0 | 318.5 | 53.4 | 222.4 |
+| `81b0a64` | after | 111.4 | 551.5 | 354.1 | 50.2 | 193.5 |
+
+Phases of `81b0a64` (milliseconds from the process start, medians): `main` 70.0, `storage` 119.9, `restore` 313.4, `window` 368.3,
+`firstFrame` 528.8. The two runs of the old app had `main` 76.8 and 83.3, `storage` 133.5 and 140.6, `restore` 347.5 and 363.0,
+`window` 402.1 and 420.4, `firstFrame` 600.7 and 617.6.
+
+- **`launch_overhead_ms` is under its budget of 150 in this run** (111.4), against 174.1 and 151.0 before, and every phase is
+  12% to 14% earlier than in the two old runs (`firstFrame` 528.8 against 600.7 and 617.6 ms), while `launch_ms` itself is the same
+  (551.5 against 564.7 and 559.0) and the reference app was the slowest of the three (354.1 against 301.9 and 318.5 ms). I do
+  not claim that this is the change: the reads that it removes are under a millisecond for the fixture (above), so it cannot
+  account for 70 ms of `firstFrame`, and the phases moved by that much between the runs of task 2 with the same code (`restore`
+  alone was 170 to 332 ms from the `storage` mark in five runs, and `main`, which no code of Scratch has run before, was 60 to
+  130 ms). The two sets of launches that the numbers come from are different launches too: `launch_ms` is the median of the 30
+  that `XCTApplicationLaunchMetric` measures, the phases the median of the 20 newest records of the log. What this run does say is
+  that the change costs nothing, and the overhead budget is met when the runner is kind and warns when it is not, as it did
+  before; the baseline of task 10 is the slowest of three runs for that reason.
+- **`paste_code_ms` is 50.2**, the lowest of the runs of this plan (53.2 to 83.7 in task 2's five runs with the metric and 53.4 in `3e93378`,
+  and 73.0 in `e5b09c1`, the same code). That is what the prefetch is for, and it is within the noise of the runner: a
+  single sample cannot separate a gain of 10 to 20 ms (the turn that waits for the undo group, the apply of the edit and the
+  restyle, which the highlighting now overlaps) from a fast runner. The hosted test `testPastedCodeIsPrefetched` is what shows
+  that the colours are asked for before the wrap and that the block asks for nothing of its own.
+- **Where the launch goes now.** The phase from `storage` to `restore` is still about 190 ms of the 530 ms to the first frame, and
+  the first frame after the window another 160 ms. Neither is in the reads of the notes. The first phase is everything
+  `AppDelegate.launch()` builds before the window shows: the editor, sidebar, tab strip and split view controllers (their glass
+  views and the text view's TextKit 1 stack), the window and its toolbar, the coordinator, and then `restore()` (the session
+  read, the active note's `show`: the base attributes of its text, the styling of the paragraphs around the scroll anchor and
+  the layout the anchor needs, the first render of the tabs and the sidebar). The second is the first layout and draw. The phases
+  do not split the first one further: a launch mark inside `launch()` would, and so would Instruments on a Mac. What was tried is
+  what the plan names, and no further change is required by it: a later change would start from those two phases.
 
 ## The owner's Mac
 

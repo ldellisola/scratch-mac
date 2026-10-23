@@ -109,7 +109,7 @@ clicking the editor first, which also proves that the editor is ready to type at
 | A launch with several tabs, one of them the 10,000-line note, reads the active note's body only, and every tab has its title | `SessionRestoreTests.testRestoreReadsTheBodyOfTheActiveNoteOnly` |
 | The restore drops the tabs of deleted and missing notes and of a note's second tab, and keeps the active tab | `SessionRestoreTests.testRestoreDropsTabsOfDeletedNotes`, `testRestoreWithADeletedActiveTabShowsTheFirstTabThatIsLeft`, `testRestoreWithOnlyDeletedNotesStartsANewNote` |
 | A note nobody ever typed in stays untouched after the restore, in the active tab and in the others | `SessionRestoreTests.testRestoreKeepsTheUntouchedNotesOfOtherTabsUntouched`, `testRestoreKeepsTheActiveNeverUsedNoteUntouched` |
-| What a tab needs of its note is read from the derived columns, without the body | ScratchCore `NoteStoreTests.tabInfoReadsNoBody`, `tabInfoHasTheTitleTheRowHas`, `tabInfoMarksNeverUsed`, `tabInfoOmitsMissingNotesAndReportsDeletedOnes` |
+| What a tab needs of its note is read from the derived columns, without the body | ScratchCore `NoteStoreTests.tabInfoReadsNoBody`, `tabInfoHasTheTitleTheRowHas`, `tabInfoMarksNeverUsed`, `tabInfoOmitsMissing` |
 | The sidebar lists the fixture's notes, pinned first | `SidebarUITests.testSidebarListsFixtureNotesPinnedFirst` |
 | Clicking a row shows that note | `SidebarUITests.testClickingRowShowsNote` |
 | The new note button starts a note that is listed once it has text | `SidebarUITests.testNewNoteButtonCreatesListedNote` |
