@@ -544,3 +544,242 @@ private func apply(_ edit: TextEdit, to text: String) -> String {
     #expect(edit.replacement.isEmpty)
     #expect(edit.selection == NSRange(location: 1, length: 2))
 }
+
+// MARK: Line breaks around typed and pasted text (plan 6, Task 6)
+//
+// docs/features/attachments.md ("Typing and pasting next to a token"): no token line ever shares its line with other
+// characters. `lineBreaks` says whether a line break must go before and after what is put at a range, and
+// `textInsertion` builds the edit that has them.
+
+private func breaks(
+    _ inserted: String, in text: String, at range: NSRange, literal: @escaping (Int) -> Bool = { _ in false }
+) -> (before: Bool, after: Bool) {
+    AttachmentEditing.lineBreaks(inserting: inserted, at: range, in: nsString(text), isLiteral: literal)
+}
+
+@Test func lineBreakGoesBetweenTypingAndAToken() {
+    let text = "abc\n" + tokenA + "\ndef"
+    let atEnd = breaks("x", in: text, at: caret(4 + size))
+    #expect(atEnd.before, "typing at the end of the token line goes below it")
+    #expect(!atEnd.after)
+    let atStart = breaks("x", in: text, at: caret(4))
+    #expect(!atStart.before)
+    #expect(atStart.after, "typing at its start goes above it")
+}
+
+@Test func lineBreakIsNeededAtTheEdgesOfTheFirstAndTheLastLine() {
+    let first = tokenA + "\nabc"
+    #expect(breaks("x", in: first, at: caret(0)) == (false, true))
+    #expect(breaks("x", in: first, at: caret(size)) == (true, false))
+    let last = "abc\n" + tokenA
+    #expect(breaks("x", in: last, at: caret(4)) == (false, true))
+    #expect(breaks("x", in: last, at: caret(4 + size)) == (true, false), "the end of the note")
+    #expect(breaks("x", in: tokenA, at: caret(0)) == (false, true), "a note of one token")
+    #expect(breaks("x", in: tokenA, at: caret(size)) == (true, false))
+}
+
+@Test func typingAwayFromATokenNeedsNoLineBreak() {
+    let text = "abc\n" + tokenA + "\ndef"
+    for location in [0, 1, 3, 4 + size + 1, 4 + size + 2, text.utf16.count] {
+        let result = breaks("x", in: text, at: caret(location))
+        #expect(result == (false, false), "at \(location)")
+    }
+    #expect(breaks("x", in: "", at: caret(0)) == (false, false), "an empty note")
+}
+
+@Test func aLineThatHoldsMoreThanTheTokenIsTextAndNeedsNoLineBreak() {
+    for text in [tokenA + "x", "x" + tokenA, "see " + tokenA + " now"] {
+        for location in 0...text.utf16.count {
+            #expect(breaks("y", in: text, at: caret(location)) == (false, false), "\(text) at \(location)")
+        }
+    }
+}
+
+@Test func lineBreakFirstNeedsNoMore() {
+    let text = "abc\n" + tokenA + "\ndef"
+    #expect(breaks("\nx", in: text, at: caret(4 + size)) == (false, false), "it starts with a line break already")
+    #expect(breaks("\r\nx", in: text, at: caret(4 + size)) == (false, false))
+    #expect(breaks("\rx", in: text, at: caret(4 + size)) == (false, false))
+    #expect(breaks("x\n", in: text, at: caret(4)) == (false, false), "it ends with one")
+    #expect(breaks("x\r\n", in: text, at: caret(4)) == (false, false))
+    #expect(breaks("\n", in: text, at: caret(4 + size)) == (false, false), "Return at the end of the token line")
+    #expect(breaks("\n", in: text, at: caret(4)) == (false, false), "Return at its start")
+    #expect(breaks("\nx\n", in: text, at: caret(4)) == (false, false))
+    // Only the end that has a line break is saved the work.
+    #expect(breaks("x\n", in: text, at: caret(4 + size)) == (true, false))
+    #expect(breaks("\nx", in: text, at: caret(4)) == (false, true))
+}
+
+@Test func insertedTokenMidLineGetsBoth() {
+    let text = "abcdef"
+    #expect(breaks(tokenB, in: text, at: caret(3)) == (true, true))
+    #expect(breaks(tokenB, in: text, at: caret(0)) == (false, true), "at the start of a line with text after it")
+    #expect(breaks(tokenB, in: text, at: caret(6)) == (true, false), "at the end of a line with text before it")
+    #expect(breaks(tokenB, in: "", at: caret(0)) == (false, false), "an empty note")
+    #expect(breaks(tokenB, in: "abc\ndef", at: caret(4)) == (false, true))
+    #expect(breaks(tokenB, in: "abc\ndef", at: caret(3)) == (true, false))
+    #expect(breaks(tokenB, in: "abc\n\ndef", at: caret(4)) == (false, false), "on an empty line")
+}
+
+@Test func aTokenAtAnEdgeOfTheInsertedTextGetsTheBreakOnThatSideOnly() {
+    let text = "abcdef"
+    #expect(breaks(tokenB + "\nmore", in: text, at: caret(3)) == (true, false), "the token is its first line")
+    #expect(breaks("more\n" + tokenB, in: text, at: caret(3)) == (false, true), "the token is its last line")
+    #expect(breaks("a\n" + tokenB + "\nb", in: text, at: caret(3)) == (false, false), "the token is whole already")
+    #expect(breaks(tokenB + "\r\n" + tokenA, in: text, at: caret(3)) == (true, true), "a token at each end")
+    #expect(breaks("see " + tokenB, in: text, at: caret(3)) == (false, false), "a line that holds more is text")
+}
+
+@Test func theInsertedTextAndTheTextAroundItAreBothTokens() {
+    let text = tokenA + "\n" + tokenB
+    // Replacing the line break between two tokens with text puts them on the lines they were on.
+    let between = NSRange(location: size, length: 1)
+    #expect(breaks("x", in: text, at: between) == (true, true))
+    #expect(breaks("x", in: text, at: caret(size)) == (true, false))
+    #expect(breaks("x", in: text, at: caret(size + 1)) == (false, true))
+}
+
+@Test func literalNeedsNone() {
+    let text = "```\n" + tokenA + "\n```"
+    let end = 4 + size
+    #expect(breaks("x", in: text, at: caret(end), literal: { _ in true }) == (false, false))
+    #expect(breaks("x", in: text, at: caret(4), literal: { _ in true }) == (false, false))
+    #expect(breaks(tokenB, in: "abcdef", at: caret(3), literal: { _ in true }) == (false, false))
+    // The same text with the block taken for plain text breaks the line.
+    #expect(breaks("x", in: text, at: caret(end), literal: { _ in false }) == (true, false))
+    // A position outside the block that the predicate names is not literal.
+    #expect(breaks("x", in: text, at: caret(end), literal: { $0 < 4 }) == (true, false))
+}
+
+@Test func selectionReplacingAWholeTokenNeedsNone() {
+    let text = "abc\n" + tokenA + "\ndef"
+    let token = NSRange(location: 4, length: size)
+    #expect(breaks("x", in: text, at: token) == (false, false))
+    #expect(breaks(tokenB, in: text, at: token) == (false, false), "another token takes the line")
+    #expect(breaks("x", in: text, at: NSRange(location: 4, length: size + 1)) == (false, false), "and its line break")
+    #expect(breaks("x", in: tokenA, at: NSRange(location: 0, length: size)) == (false, false), "the only line")
+}
+
+@Test func selectionThatEatsTheLineBreakAfterATokenNeedsABreak() {
+    let text = "abc\n" + tokenA + "\ndef"
+    // The selection runs from the end of the token line over its line break: what is typed would join "def" to it.
+    #expect(breaks("x", in: text, at: NSRange(location: 4 + size, length: 1)) == (true, false))
+    // And one that ends at the start of the token line, from the middle of the line above.
+    #expect(breaks("x", in: text, at: NSRange(location: 2, length: 2)) == (false, true))
+}
+
+@Test func nothingInsertedNeedsNoLineBreak() {
+    let text = "abc\n" + tokenA + "\ndef"
+    #expect(breaks("", in: text, at: caret(4 + size)) == (false, false))
+    #expect(breaks("", in: text, at: NSRange(location: 4 + size, length: 1)) == (false, false))
+}
+
+@Test func anInvalidRangeNeedsNoLineBreak() {
+    let text = "abc\n" + tokenA
+    #expect(breaks("x", in: text, at: NSRange(location: NSNotFound, length: 0)) == (false, false))
+    #expect(breaks("x", in: text, at: NSRange(location: 4, length: 1000)) == (false, false))
+    #expect(breaks("x", in: text, at: NSRange(location: 1000, length: 0)) == (false, false))
+}
+
+@Test func lineBreaksAreFoundForEveryKindOfLineBreakInTheNote() {
+    let crlf = "abc\r\n" + tokenA + "\r\ndef"
+    #expect(breaks("x", in: crlf, at: caret(5 + size)) == (true, false))
+    #expect(breaks("x", in: crlf, at: caret(5)) == (false, true))
+    let cr = "abc\r" + tokenA + "\rdef"
+    #expect(breaks("x", in: cr, at: caret(4 + size)) == (true, false))
+    #expect(breaks("x", in: cr, at: caret(4)) == (false, true))
+}
+
+@Test func lookingForLineBreaksDoesNotReadAllOfAHugeInsertion() {
+    // A paste of 5 million characters with no line break, and one with a line break at each end: only the ends are read.
+    let hugeLine = String(repeating: "a", count: 5_000_000)
+    let hugeLines = String(repeating: "abcdefghij\n", count: 500_000)
+    let text = "abc\n" + tokenA + "\ndef"
+    let start = Date()
+    #expect(breaks(hugeLine, in: text, at: caret(4 + size)) == (true, false))
+    #expect(breaks(hugeLine, in: text, at: caret(4)) == (false, true))
+    #expect(breaks(hugeLines, in: text, at: caret(4 + size)) == (true, false))
+    #expect(breaks(hugeLines, in: text, at: caret(0)) == (false, false))
+    #expect(breaks(hugeLine + "\n" + tokenB, in: "abcdef", at: caret(3)) == (false, true))
+    #expect(Date().timeIntervalSince(start) < 1)
+}
+
+// MARK: The edit that has the breaks
+
+private func textInsertion(
+    _ inserted: String, into text: String, over selection: NSRange
+) -> TextEdit {
+    let found = breaks(inserted, in: text, at: selection)
+    return AttachmentEditing.textInsertion(of: inserted, breaks: found, over: selection, in: nsString(text))
+}
+
+@Test func typedTextAtTheEndOfATokenLineGoesBelowIt() {
+    let text = "abc\n" + tokenA + "\ndef"
+    let edit = textInsertion("x", into: text, over: caret(4 + size))
+    #expect(apply(edit, to: text) == "abc\n" + tokenA + "\nx\ndef")
+    #expect(edit.selection == caret(4 + size + 2), "the caret is after the text")
+}
+
+@Test func typedTextAtTheStartOfATokenLineGoesAboveIt() {
+    let text = "abc\n" + tokenA + "\ndef"
+    let edit = textInsertion("x", into: text, over: caret(4))
+    #expect(apply(edit, to: text) == "abc\nx\n" + tokenA + "\ndef")
+    #expect(edit.selection == caret(5), "the caret stays in front of the line break that was put in")
+}
+
+@Test func textThatNeedsNoBreakIsInsertedAsItIs() {
+    let text = "abc def"
+    let edit = textInsertion("XYZ", into: text, over: NSRange(location: 4, length: 3))
+    #expect(edit.range == NSRange(location: 4, length: 3))
+    #expect(edit.replacement == "XYZ")
+    #expect(edit.selection == caret(7))
+}
+
+@Test func aTokenInsertedMidLineIsALineOfItsOwn() {
+    let text = "abcdef"
+    let edit = textInsertion(tokenB, into: text, over: caret(3))
+    #expect(apply(edit, to: text) == "abc\n" + tokenB + "\ndef")
+    #expect(edit.selection == caret(4 + size + 1), "the caret is at the start of the line after the token")
+}
+
+@Test func aTokenInsertedAtTheEndOfTheNoteGetsALineBreakAfterItAndAnEmptyNoteToo() {
+    let text = "abc"
+    let edit = textInsertion(tokenB, into: text, over: caret(3))
+    #expect(apply(edit, to: text) == "abc\n" + tokenB + "\n")
+    #expect(edit.selection == caret(4 + size + 1))
+    let empty = textInsertion(tokenB, into: "", over: caret(0))
+    #expect(apply(empty, to: "") == tokenB + "\n")
+    #expect(empty.selection == caret(size + 1))
+}
+
+@Test func aTokenInsertedAtALineStartBeforeALineBreakUsesTheBreakThatIsThere() {
+    let text = "abc\n\ndef"
+    let edit = textInsertion(tokenB, into: text, over: caret(4))
+    #expect(apply(edit, to: text) == "abc\n" + tokenB + "\ndef", "the empty line becomes the token's line")
+    #expect(edit.selection == caret(4 + size + 1), "on the line after the token")
+}
+
+@Test func textThatHoldsATokenInTheMiddleIsInsertedAsItIs() {
+    let text = "abcdef"
+    let inserted = "one\n" + tokenB + "\ntwo"
+    let edit = textInsertion(inserted, into: text, over: caret(3))
+    #expect(apply(edit, to: text) == "abc" + inserted + "def")
+    #expect(edit.selection == caret(3 + inserted.utf16.count))
+}
+
+@Test func aSelectionIsReplacedBySomethingThatKeepsTheTokensWhole() {
+    let text = "abc def ghi"
+    let inserted = "x\n" + tokenB
+    let edit = textInsertion(inserted, into: text, over: NSRange(location: 4, length: 3))
+    #expect(apply(edit, to: text) == "abc x\n" + tokenB + "\n ghi")
+    #expect(AttachmentToken.ids(in: apply(edit, to: text)) == [idB])
+}
+
+@Test func theBreaksOfAnEditFollowTheNotesOwnLineBreaks() {
+    let text = "abc\r\n" + tokenA + "\r\ndef"
+    let edit = textInsertion(tokenB, into: text, over: caret(5 + size))
+    // The line break that is put in is a line feed, like the one an attachment's insertion puts in.
+    #expect(apply(edit, to: text) == "abc\r\n" + tokenA + "\n" + tokenB + "\r\ndef")
+    #expect(AttachmentToken.ids(in: apply(edit, to: text)) == [idA, idB])
+    #expect(edit.selection == caret(5 + size + 1 + size + 2), "after the line break that was there")
+}

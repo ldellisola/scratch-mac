@@ -254,6 +254,181 @@ final class AttachmentEditingTests: XCTestCase {
         XCTAssertEqual(view.selectedRange(), caret(5))
     }
 
+    // MARK: Typing next to a token (plan 6 task 6)
+    //
+    // docs/features/attachments.md ("Typing and pasting next to a token"): no token line ever shares its line with other
+    // characters. At an edge of a token line what is typed goes on a line of its own (the rule is
+    // `AttachmentEditing.lineBreaks`), as two edits: the line break, then the text.
+
+    private let noReplacement = NSRange(location: NSNotFound, length: 0)
+
+    /// Review Focus 2: a character typed at the end of a token line goes below it, and the token is still a token.
+    func testTypingAtTheEndOfATokenLineGoesBelowIt() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 4 + size)
+        defer { host.cleanUp() }
+        let view = host.textView
+
+        view.insertText("x", replacementRange: noReplacement)
+
+        XCTAssertEqual(host.text, "abc\n\(token)\nx\ndef")
+        XCTAssertEqual(host.tokenIDs, [id], "the token is still a line of its own")
+        XCTAssertEqual(view.selectedRange(), caret(4 + size + 2), "the caret is after the x")
+
+        view.insertText("y", replacementRange: noReplacement)
+        XCTAssertEqual(host.text, "abc\n\(token)\nxy\ndef", "the next character goes on the line that the first made")
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// The token that ends the note: the break goes in before the text, and there is none after it.
+    func testTypingAtTheEndOfANoteThatEndsInATokenGoesBelowIt() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)", caret: 4 + size)
+        defer { host.cleanUp() }
+
+        host.textView.insertText("x", replacementRange: noReplacement)
+
+        XCTAssertEqual(host.text, "abc\n\(token)\nx")
+        XCTAssertEqual(host.tokenIDs, [id])
+        XCTAssertEqual(host.textView.selectedRange(), caret(4 + size + 2))
+    }
+
+    /// Review Focus 2: a character typed at the start of a token line goes above it, and the caret stays in front of the
+    /// line break that was put in, after the text.
+    func testTypingAtTheStartOfATokenLineGoesAboveIt() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 4)
+        defer { host.cleanUp() }
+        let view = host.textView
+
+        view.insertText("x", replacementRange: noReplacement)
+
+        XCTAssertEqual(host.text, "abc\nx\n\(token)\ndef")
+        XCTAssertEqual(host.tokenIDs, [id])
+        XCTAssertEqual(view.selectedRange(), caret(5), "the caret is after the x and in front of the line break")
+
+        view.insertText("y", replacementRange: noReplacement)
+        XCTAssertEqual(host.text, "abc\nxy\n\(token)\ndef")
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// A note that starts with a token: typing in front of it goes above it.
+    func testTypingAtTheStartOfANoteThatStartsWithATokenGoesAboveIt() throws {
+        let host = try AttachmentTestHost(text: "\(token)\nabc", caret: 0)
+        defer { host.cleanUp() }
+
+        host.textView.insertText("x", replacementRange: noReplacement)
+
+        XCTAssertEqual(host.text, "x\n\(token)\nabc")
+        XCTAssertEqual(host.tokenIDs, [id])
+        XCTAssertEqual(host.textView.selectedRange(), caret(1))
+    }
+
+    /// Review Focus 2: composing next to a token. The first step of the input method puts the composed text on a line of
+    /// its own, and the steps after it and the text that is entered at the end change only that line.
+    func testComposingAtATokenEdgeKeepsTheToken() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 4 + size)
+        defer { host.cleanUp() }
+        let view = host.textView
+        host.window.makeFirstResponder(view)
+        defer { view.unmarkText() }
+
+        view.setMarkedText("n", selectedRange: NSRange(location: 1, length: 0), replacementRange: noReplacement)
+        XCTAssertEqual(host.text, "abc\n\(token)\nn\ndef", "the composed text is on a line of its own")
+        XCTAssertTrue(view.hasMarkedText())
+        XCTAssertEqual(host.tokenIDs, [id])
+
+        view.setMarkedText("ni", selectedRange: NSRange(location: 2, length: 0), replacementRange: noReplacement)
+        XCTAssertEqual(host.text, "abc\n\(token)\nni\ndef", "the next step is not put on another line")
+
+        view.insertText("\u{4F60}", replacementRange: noReplacement)
+        XCTAssertFalse(view.hasMarkedText())
+        XCTAssertEqual(host.text, "abc\n\(token)\n\u{4F60}\ndef")
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// The same at the start of the token line: the composed text goes above it.
+    func testComposingAtTheStartOfATokenLineKeepsTheToken() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 4)
+        defer { host.cleanUp() }
+        let view = host.textView
+        host.window.makeFirstResponder(view)
+        defer { view.unmarkText() }
+
+        view.setMarkedText("n", selectedRange: NSRange(location: 1, length: 0), replacementRange: noReplacement)
+        XCTAssertEqual(host.text, "abc\nn\n\(token)\ndef")
+        view.setMarkedText("ni", selectedRange: NSRange(location: 2, length: 0), replacementRange: noReplacement)
+        view.insertText("\u{4F60}", replacementRange: noReplacement)
+
+        XCTAssertEqual(host.text, "abc\n\u{4F60}\n\(token)\ndef")
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// Return and Tab at an edge of a token line: Return makes the one line break it always makes, and Tab goes below the
+    /// token like any character.
+    func testReturnAndTabAtATokenEdge() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 4 + size)
+        defer { host.cleanUp() }
+        let view = host.textView
+
+        view.insertNewline(nil)
+        XCTAssertEqual(host.text, "abc\n\(token)\n\ndef", "one new line, not two")
+        XCTAssertEqual(host.tokenIDs, [id])
+
+        view.setSelectedRange(caret(4 + size))
+        view.insertTab(nil)
+        XCTAssertEqual(host.text, "abc\n\(token)\n\t\n\ndef", "the tab is on the line below the token")
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// A selection that starts at the end of the token line and runs over its line break: what is typed over it must not
+    /// join the line below to the token.
+    func testTypingOverTheLineBreakBelowATokenKeepsTheToken() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 0)
+        defer { host.cleanUp() }
+        let view = host.textView
+        view.setSelectedRange(NSRange(location: 4 + size, length: 2))
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 4 + size, length: 2), "a place the editor allows")
+
+        view.insertText("x", replacementRange: noReplacement)
+
+        XCTAssertEqual(host.text, "abc\n\(token)\nxef")
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// Anywhere else typing is the text view's own: no line break is put in.
+    func testTypingAwayFromATokenIsUnchanged() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 3)
+        defer { host.cleanUp() }
+        let view = host.textView
+
+        view.insertText("x", replacementRange: noReplacement)
+        XCTAssertEqual(host.text, "abcx\n\(token)\ndef", "the end of the line above the token")
+        view.setSelectedRange(caret(4 + size + 2))  // the token has moved one character on
+        view.insertText("y", replacementRange: noReplacement)
+        XCTAssertEqual(host.text, "abcx\n\(token)\nydef", "the start of the line below it")
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// A token in a code block is text, and a character typed at its end goes on its line, as it always did.
+    func testTypingAtTheEndOfATokenInACodeBlockIsPlain() throws {
+        let text = "```\n\(token)\n```"
+        let host = try AttachmentTestHost(text: text, caret: 4 + size)
+        defer { host.cleanUp() }
+
+        host.textView.insertText("x", replacementRange: noReplacement)
+
+        XCTAssertEqual(host.text, "```\n\(token)x\n```")
+    }
+
+    /// A note that cannot be edited takes nothing, and a line break is not put in either.
+    func testReadOnlyNoteTakesNoTypingNextToAToken() throws {
+        let text = "abc\n\(token)\ndef"
+        let host = try AttachmentTestHost(text: text, caret: 4 + size, isReadOnly: true)
+        defer { host.cleanUp() }
+
+        host.textView.insertText("x", replacementRange: noReplacement)
+
+        XCTAssertEqual(host.text, text)
+    }
+
     // MARK: Format commands
 
     /// ⇧⌘L over a note that holds an attachment, as Select All makes it: the lines of text become a checklist and the token
