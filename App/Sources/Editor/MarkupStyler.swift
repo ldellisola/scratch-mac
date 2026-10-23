@@ -445,9 +445,17 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     /// paragraph has been styled. Only text that `setMarkedText` is putting in is composed: the edit of typing, a paste or
     /// an input method's final `insertText` is never given an underline here, so a link's underline that typed text took
     /// from the text before it is the styler's to settle. Empty when nothing is being composed.
+    // DIAGNOSTIC (temporary)
+    static var diagnosticLog: [String] = []
+
     private func composedAttributes(
         in range: NSRange, storage: NSTextStorage
     ) -> [(range: NSRange, attributes: [NSAttributedString.Key: Any])] {
+        Self.diagnosticLog.append(
+            "composedAttributes range=\(NSStringFromRange(range)) setting=\(textView?.isSettingMarkedText ?? false) "
+                + "hasMarked=\(textView?.hasMarkedText() ?? false) markedRange=\(NSStringFromRange(textView?.markedRange() ?? NSRange(location: NSNotFound, length: 0))) "
+                + "text=\(storage.string.debugDescription) attrs=\(range.length > 0 && NSMaxRange(range) <= storage.length ? String(describing: storage.attributes(at: range.location, effectiveRange: nil).keys.map(\.rawValue).sorted()) : "-")"
+        )
         guard let textView, textView.isSettingMarkedText, range.length > 0, NSMaxRange(range) <= storage.length else {
             return []
         }

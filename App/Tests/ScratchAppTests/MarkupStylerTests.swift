@@ -144,6 +144,72 @@ final class MarkupStylerTests: XCTestCase {
         XCTAssertNil(underline(at: 9, in: host), "the text after it is not underlined")
     }
 
+    /// DIAGNOSTIC (temporary): what AppKit does with an input method's attributed string. Always fails, to print.
+    func testDiagnosticMarkedTextAttributes() {
+        var report: [String] = []
+        func describe(_ attributes: [NSAttributedString.Key: Any]) -> String {
+            attributes.keys.map(\.rawValue).sorted().map { name in
+                let value = attributes[NSAttributedString.Key(name)]
+                if let font = value as? NSFont { return "\(name)=\(font.fontName) \(font.pointSize)" }
+                return "\(name)=\(String(String(describing: value ?? "nil").prefix(30)))"
+            }.joined(separator: ", ")
+        }
+        func dump(
+            _ label: String, _ storage: NSTextStorage, _ layout: NSLayoutManager?, _ view: NSTextView,
+            _ r: ClosedRange<Int>
+        ) {
+            report.append(
+                "\(label): marked=\(NSStringFromRange(view.markedRange())) text=\(storage.string.debugDescription)")
+            for index in r where index < storage.length {
+                let attributes = storage.attributes(at: index, effectiveRange: nil)
+                let temporary = layout?.temporaryAttributes(atCharacterIndex: index, effectiveRange: nil) ?? [:]
+                report.append("  [\(index)] storage {\(describe(attributes))} temp {\(describe(temporary))}")
+            }
+        }
+        // A: a bare TextKit 1 view, no styler.
+        let storage = NSTextStorage(
+            string: "a **bold** b", attributes: [.font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)])
+        let layout = NSLayoutManager()
+        storage.addLayoutManager(layout)
+        let container = NSTextContainer(size: NSSize(width: 400, height: 100_000))
+        layout.addTextContainer(container)
+        let view = NSTextView(frame: NSRect(x: 0, y: 0, width: 400, height: 200), textContainer: container)
+        let markedAttributes: [NSAttributedString.Key: Any]? = view.markedTextAttributes
+        report.append("markedTextAttributes=\(describe(markedAttributes ?? [:]))")
+        report.append("validAttributesForMarkedText=\(view.validAttributesForMarkedText().map(\.rawValue))")
+        view.setSelectedRange(NSRange(location: 6, length: 0))
+        view.setMarkedText(
+            composed("ni"), selectedRange: NSRange(location: 2, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+        dump("A1 bare, attributed", storage, layout, view, 4...9)
+        view.setMarkedText(
+            "nih", selectedRange: NSRange(location: 3, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+        dump("A2 bare, plain string", storage, layout, view, 4...10)
+        view.unmarkText()
+
+        // B: the editor, with its styler.
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("a **bold** b", caret: 6, in: host)
+        let textView = host.editor.textView
+        host.window.makeFirstResponder(textView)
+        MarkupStyler.diagnosticLog = []
+        textView.setMarkedText(
+            composed("ni"), selectedRange: NSRange(location: 2, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+        dump("B1 editor, attributed", textView.textStorage!, textView.layoutManager, textView, 3...9)
+        report.append(contentsOf: MarkupStyler.diagnosticLog.map { "  styler: " + $0 })
+        MarkupStyler.diagnosticLog = []
+        textView.setMarkedText(
+            "nih", selectedRange: NSRange(location: 3, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+        dump("B2 editor, plain string", textView.textStorage!, textView.layoutManager, textView, 3...10)
+        report.append(contentsOf: MarkupStyler.diagnosticLog.map { "  styler: " + $0 })
+        textView.unmarkText()
+        XCTFail("DIAGNOSTIC\n" + report.joined(separator: "\n"))
+    }
+
     func testTextThatIsNotComposedHasNoUnderlineFromTheStyler() {
         let host = makeHostedEditor()
         defer { withExtendedLifetime(host.window) {} }
