@@ -80,7 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editor.attachmentCatalog = attachmentCatalog
         let sidebar = SidebarViewController()
         let tabStrip = TabStripViewController()
-        let editorArea = EditorAreaViewController(tabStrip: tabStrip, editor: editor)
+        let editorArea = EditorAreaViewController(editor: editor)
         let content = MainSplitViewController(
             sidebar: sidebar, editorArea: editorArea, remembersLayout: !environment.options.isIsolated)
         let windowController = MainWindowController(environment: environment, content: content)
@@ -91,12 +91,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let coordinator = SessionCoordinator(
             storage: environment.storage, editor: editor, sidebar: sidebar, tabStrip: tabStrip)
         self.coordinator = coordinator
-        let toolbarController = ToolbarController()
+        let toolbarController = ToolbarController(tabStrip: tabStrip)
         toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
         toolbarController.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
         toolbarController.onAttach = { [weak editor] in editor?.attachFiles() }
         self.toolbarController = toolbarController
         windowController.window?.toolbar = toolbarController.makeToolbar()
+        // The strip in the toolbar is as wide as the room that is left before the buttons (plan 6 task 7).
+        content.onContentLayout = { [weak toolbarController] leading, width, isSidebarShown in
+            toolbarController?.updateTabStripWidth(
+                contentLeading: leading, windowWidth: width, isSidebarShown: isSidebarShown)
+        }
 
         // File > New Note, New Tab and Close Tab, and Window > Show Next and Previous Tab and Select Tab (spec §6.3).
         commands.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }

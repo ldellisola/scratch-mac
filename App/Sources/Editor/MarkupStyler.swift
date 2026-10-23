@@ -340,7 +340,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         var changed: NSRange?
         for change in changes {
             storage.addAttributes(appearance.markerAttributes(change.role), range: change.line)
-            let style = change.role == .revealed ? MarkupAppearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
+            let style = change.role == .revealed ? appearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
             storage.addAttribute(.paragraphStyle, value: style, range: change.paragraph)
             changed = Self.union(changed, change.paragraph)
         }
@@ -536,8 +536,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
                 storage.setAttributes(appearance.base, range: NSRange(location: cursor, length: run.location - cursor))
             }
             for key in [
-                NSAttributedString.Key.scratchMarker, .scratchLink, .underlineStyle, .strikethroughStyle,
-                .backgroundColor,
+                NSAttributedString.Key.scratchMarker, .scratchLink, .scratchInlineCode, .underlineStyle,
+                .strikethroughStyle, .backgroundColor,
             ] {
                 storage.removeAttribute(key, range: run)
             }
@@ -774,9 +774,10 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     /// the first line of a block with a label the one that keeps the line clear of the label (`firstCodeLineStyle`).
     @discardableResult
     private func styleCodeBody(
-        _ range: NSRange, style: NSParagraphStyle = MarkupAppearance.codeBodyStyle, in storage: NSTextStorage
+        _ range: NSRange, style: NSParagraphStyle? = nil, in storage: NSTextStorage
     ) -> Bool {
         guard range.length > 0 else { return false }
+        let style = style ?? appearance.codeBodyStyle
         let current = storage.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle
         let mark = storage.attribute(.scratchCodeBlock, at: range.location, effectiveRange: nil) as? CodeBlockMark
         if current == style, mark == CodeBlockMark.body { return false }
@@ -888,7 +889,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         let content = NSRange(location: paragraph.location, length: contentLength)
         let isShown = touchesSelection(content)
         let role: MarkerRole = isShown ? .revealed : .fence
-        let style = isShown ? MarkupAppearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
+        let style = isShown ? appearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
         let mark = part == .opening ? openingMark(info: info, at: paragraph, in: storage) : CodeBlockMark.closing
         if currentRole(at: paragraph.location, in: storage) == role,
             storage.attribute(.paragraphStyle, at: paragraph.location, effectiveRange: nil) as? NSParagraphStyle

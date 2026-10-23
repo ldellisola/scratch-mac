@@ -21,7 +21,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
   (`idle_cpu_pct`), with `perf/tolerances.json` and report-only metrics (docs/decisions/0009). Task 3 is done: a launch reads
   the body of the active note only, and the colours of a pasted block are asked for before the block exists. Task 4 is done:
   a sidebar row and a tab show a line without its markers (`PlainLine`), and schema version 4 works the titles and previews
-  of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). Task 6 is done: what is typed,
+  of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). Task 7 is done: the tab strip is a
+  toolbar item in the toolbar row, lines have air between them, inline code is a pill, code blocks have a border, and an open
+  box is grey ([`docs/features/tabs.md`](docs/features/tabs.md), [`docs/features/formatting.md`](docs/features/formatting.md)).
+  Task 6 is done: what is typed,
   composed or pasted next to a token goes on a line of its own, a copy or a drag of a selection that holds a token also
   writes the note's text on a private type that a paste or a drop into Scratch reads first, and a copied image is written
   with its data when Scratch quits ([`docs/features/attachments.md`](docs/features/attachments.md)). The plan before it,
@@ -164,17 +167,19 @@ App/Sources/                      AppKit shell (default actor isolation MainActo
                                   sequence: storage, session, window, menu bar), AppEnvironment (parses the launch
                                   arguments, opens storage; isolates a hosted test run)
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
-                                  sidebar item + editor area item), EditorAreaViewController (the tab strip above the
-                                  editor), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
+                                  sidebar item + editor area item; `onContentLayout` tells the toolbar how much room the
+                                  tab strip has), EditorAreaViewController (the editor, from the top of the window), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
                                   menu), AppCommands (the target of the app's own menu items: About Scratch, the tabs,
                                   pinning, attaching a file, searching, the font size and Help > Launch Times…), AboutCredits (the About
                                   panel's credits: the licences in `Acknowledgements.rtf`, in `labelColor`; `credits(in:)`,
-                                  `panelOptions(in:)`), ToolbarController (sidebar button,
-                                  paperclip, pin button, new note button), TitlebarPocket (hides
+                                  `panelOptions(in:)`), ToolbarController (sidebar button, the tab strip as an item of its
+                                  own, pin button, paperclip, new note button; `updateTabStripWidth`), TitlebarPocket (hides
                                   the line macOS 26 draws under the toolbar, section 7), LaunchTimesPanel (the alert of
                                   Help > Launch Times…: the report in a selectable text view, with Copy and OK)
-App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
-                                  `TabStripLayout`, `TabStripContentView`, `TabItemView`; `shownItems`, which the tests read)
+App/Sources/Tabs/                 TabStripViewController (the glass tab strip, the view of a toolbar item: `TabStripItem`,
+                                  `TabStripView`, `TabStripLayout` (the widths of the tabs, and the room the toolbar leaves:
+                                  `maximumWidth(windowWidth:leading:)`), `TabStripContentView`, `TabItemView`; `maximumWidth`,
+                                  `shownItems`, which the tests read)
 App/Sources/Sidebar/              SidebarViewController (the search field and the note list in the glass sidebar: an
                                   NSTableView with group headers; a click or Return opens a note, `onOpen`; `onSearch`,
                                   `onTogglePin`, `onDelete`, `onRestore`, `onDeletePermanently` and
@@ -203,9 +208,11 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   are rendered by MarkupStyler (the text storage's delegate: styles paragraphs from the
                                   core's parser, hides and reveals markers, styles a shown note in chunks),
                                   MarkupLayoutManager (null glyphs for hidden markers and fence lines, draws bullets and
-                                  checkboxes, the tinted code blocks and their labels), MarkupAppearance (fonts, colours
-                                  and paragraph styles per font size, the block styles), MarkupAttributes (the
-                                  `scratchMarker`, `scratchLink` and `scratchCodeBlock` attributes, `MarkerRole`,
+                                  checkboxes, the pill behind inline code, the tinted, bordered code blocks and their labels),
+                                  MarkupAppearance (fonts, colours and paragraph styles per font size, with the spacing after
+                                  every line: `lineSpacing(forFontSize:)`, `baseStyle`; the block styles), MarkupAttributes (the
+                                  `scratchMarker`, `scratchLink`, `scratchInlineCode` and `scratchCodeBlock` attributes,
+                                  `InlineCodeMetrics`, `MarkerRole`,
                                   `CodeBlockMark`, `CodeBlockMetrics`, `CodeBlockColors`, `MarkupColors`), ParagraphBatch
                                   (whole paragraphs read in one call), CodeBlockStyler (colours the code of the fenced
                                   blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
@@ -264,7 +271,7 @@ App/Sources/Support/              LaunchClock (the process start and the boot ti
                                   the attachments of the note (id, `copied` and `fileExists`) and the newest 20 records of
                                   the launch log (`launchTimes`) from, in isolated launches only)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
-                                  inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
+                                  inline code, `CodeBorder` of a code block's hairline and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
                                   light and a dark variant), Acknowledgements.rtf (the licences of tree-sitter and of every
                                   grammar, generated by `scripts/make-acknowledgements.py`: never edit it by hand)
@@ -780,10 +787,10 @@ new kind of release file, with no change to the app, ships.
   caret still stops at each hidden character.
 - **A text view needs `NSScrollView.contentInsets` in mind.** The window uses `fullSizeContentView`, so the toolbar
   overlaps the top of the window, and the top of a note is at `y = -contentInsets.top`, not 0
-  (`EditorViewController.show`). The tab strip is constrained to the safe area of `EditorAreaViewController`'s view and
-  the editor starts below the strip, so the editor's own safe area has no toolbar in it: its title field sits 10 pt
-  below the editor's top, the scroll view starts below the title field, and its inset is 0. The code does not rely on
-  that: every scroll position goes through `contentInsets.top`.
+  (`EditorViewController.show`). The tab strip is in the toolbar (plan 6 task 7) and the editor fills
+  `EditorAreaViewController`'s view from its very top, so the toolbar is in the editor's own safe area: its title field sits
+  10 pt below the safe area, which is the toolbar's bottom, the scroll view starts below the title field, and its inset is 0.
+  The code does not rely on that: every scroll position goes through `contentInsets.top`.
 - **AppKit scrolls a text view to its selection whenever its frame changes, and that hid the top inset.** The text
   starts `NoteTextView.verticalInset` (12 pt) below the top of the view. `-[NSTextView setFrameSize:]` calls
   `-scrollRectToVisible:` for the selection (in the CI stack it came from `NSScrollerImpPair`'s new recommended scroller
@@ -839,7 +846,8 @@ new kind of release file, with no change to the app, ships.
   `NSWindow.titlebarSeparatorStyle = .none` were each tried on CI and left the line on the same pixels. There is no
   public API for the pocket, so `TitlebarPocket` hides it by class name after each layout of `MainSplitViewController`,
   and `TitlebarPocketTests` fail when it is visible or can no longer be found. When a screenshot shows a hard line at
-  y = 51 below the toolbar, look there first.
+  y = 51 below the toolbar, look there first. The tab strip moved into the toolbar (plan 6 task 7) and the editor starts at
+  the toolbar's bottom: the pocket is the same one.
 - **There is no storyboard, so there is no menu bar until `MainMenu.install` runs.** ⌘Q, ⌘C, ⌘V and ⌘Z only work
   because that menu exists. A new shortcut needs a menu item.
 - **The coordinator must outlive the autosaver's timers.** `Autosaver` does not keep itself alive: a dirty autosaver
@@ -939,16 +947,33 @@ new kind of release file, with no change to the app, ships.
   highlight without opening anything, so the highlight and the open note can differ until the coordinator renders the
   list again (`SidebarTableView` turns Return into `onReturn`). ⌘-click on the highlighted row deselects it, which
   `open(_:inNewTab:)` undoes by rendering the sidebar even when it has nothing to show.
-- **The tab strip is an `NSGlassEffectView` that Auto Layout does not size, with a frame-based content view.**
-  `TabStripView` (the strip's own view) gets its width from the tabs as its intrinsic content size, with a compression
-  resistance (40) below the fitting size priority (50), and `EditorAreaViewController` caps it with a required
-  `trailing <=` constraint. The glass is a subview with a fixed frame that `TabStripView` keeps equal to its bounds
-  (`syncGlassFrame`), no constraints and no autoresizing mask. The glass hosts its content in a SwiftUI hosting view
-  (`_NSCoreHostingView`) pinned to it, with an intrinsic width of 10 pt that it hugs at priority 250: tied to the strip
-  by constraints or by an autoresizing mask, the glass passed that on and the strip came out 10 pt wide on CI, a sliver
-  that a click on the second tab missed (`TabStripViewControllerTests` measure the strip, and print the constraints
-  when they fail). A width constraint on the strip, at any priority above 50, would make the split view item's minimum
-  width grow with the number of tabs. Do not use `NSStackView` with required widths in the strip for the same reason.
+- **The tab strip is the view of a toolbar item, and its width is made to fit.** `ToolbarController` makes the item for
+  `AccessibilityID.tabStrip` (`makeTabStripItem`: the strip's view, `isBordered = false`, `hidesSharedBackground = true`, so
+  that the toolbar draws no second capsule round the strip's own glass, and `visibilityPriority = .high`). The toolbar's
+  items are `[.toggleSidebar, .sidebarTrackingSeparator, strip, .flexibleSpace, pin, paperclip, .space, new note]` (the
+  `.space` ends the glass group of the first two, so there are two capsules), and the three buttons are `.user`: **a toolbar
+  that is short of room moves items into its overflow menu**, so the strip is never left to be as wide as its tabs want. Its
+  required width constraint is `TabStripView.width` = `min(preferredWidth, maximumWidth)` (at least
+  `TabStripLayout.minimumStripWidth`, 96), a required height of 34, and `translatesAutoresizingMaskIntoConstraints = false`,
+  which is how a toolbar sizes a view. `maximumWidth` is the window's width less where the strip starts less
+  `TabStripLayout.trailingReserve` (176 pt for the buttons: the two capsules, the space and the margin are about 140 pt),
+  worked out from `MainSplitViewController.onContentLayout` (after every layout: where the editor area starts, the window's
+  width, whether the sidebar is shown) in `ToolbarController.updateTabStripWidth`: the strip starts 16 pt into the editor area
+  while the sidebar is shown and 150 pt from the window's edge (the traffic lights and the sidebar button) while it is hidden.
+  They are estimates on the safe side: measuring the strip's real position would be stale until the toolbar laid out again.
+  `TabStripViewControllerTests` (`testToolbarItemOrder`, `testTabStripIsAToolbarItem`, `testTheWindowsToolbarHoldsTheStrip`,
+  the width tests) and `TabsUITests.testTwelveTabsKeepTheToolbarButtons` hold it. Do not give the strip a width
+  that the tabs decide alone, and do not put the buttons' priority below the strip's. `ToolbarController` holds the item (the
+  toolbar may ask for it more than once, and a view has one superview) and the strip's controller.
+- **The tab strip's glass is an `NSGlassEffectView` that Auto Layout does not size, with a frame-based content view.**
+  `TabStripView` (the strip's own view) is sized by its two constraints (above). The glass is a subview with a fixed frame
+  that `TabStripView` keeps equal to its bounds (`syncGlassFrame`), no constraints and no autoresizing mask. The glass hosts
+  its content in a SwiftUI hosting view (`_NSCoreHostingView`) pinned to it, with an intrinsic width of 10 pt that it hugs
+  at priority 250: tied to the strip by constraints or by an autoresizing mask, the glass passed that on and the strip came
+  out 10 pt wide on CI (when the width was a compression resistance), a sliver that a click on the second tab missed
+  (`TabStripViewControllerTests` measure the strip, and print the constraints when they fail). Do not use `NSStackView` with
+  required widths in the strip. The strip and the tabs answer `mouseDownCanMoveWindow` with false: the toolbar is the window's
+  titlebar, and a click on a view that does not say so can start a drag of the window.
 - **A tab is one accessibility element and its close button is not inside it.** `TabItemView` is a button
   (`tab.item`) with a label, a title and a selected state, and the close button (`tab.close`) is a sibling placed over
   its right end, so UI tests read `UITestSupport.tabs(in:)` and `activeTabTitle(in:)` and click a tab at its centre.
@@ -1145,16 +1170,35 @@ new kind of release file, with no change to the app, ships.
 - **The Format menu is not auto-enabled** (`menu.autoenablesItems = false`, `MainMenu.formatMenu`): AppKit would ask the
   first responder, and the way `NSTextView` validates an action it does not know is not documented. A Format item has
   no target, so the first responder gets it, and a command that cannot work beeps (`NSSound.beep()`).
-- **The box is an SF Symbol drawn over the transparent `[?]`.** `MarkupLayoutManager.drawCheckbox` draws `square` or
-  `checkmark.square.fill` with a palette configuration of `controlAccentColor`, centred in the glyph rectangle of the
-  marker and 85% of the line height, on every draw (the colour and appearance of the moment). `testCheckboxSymbolIsDrawn`
-  renders the view with `cacheDisplay` and counts the pixels that are not the background.
+- **The box is an SF Symbol drawn over the transparent `[?]`.** `MarkupLayoutManager.drawCheckbox` draws `square` in
+  `secondaryLabelColor` (resolved in the appearance that is being drawn) or `checkmark.square.fill` (a white tick on the
+  accent colour), centred horizontally on the glyph rectangle of the marker and vertically on the middle of the font's line
+  from the baseline, at 85% of the font's line height (`checkboxPointSize(for:)`: `defaultLineHeight(for:)`, **not** the
+  fragment's height, which has the line spacing in it), on every draw (the colour and appearance of the moment).
+  `testCheckboxSymbolIsDrawn` renders the view with `cacheDisplay` and counts the pixels that are not the background, and
+  `testOpenBoxIsGrey` and `testCheckboxSizeIgnoresSpacing` read them.
+- **Every line has `round(0.3 x font size)` points after it, as `NSParagraphStyle.lineSpacing`, and so every paragraph style
+  carries it** (plan 6 task 7). `NoteTextView.noteAttributes` (the typing attributes and `MarkupAppearance.base`) has
+  `baseStyle`, `indentStyle(characters:)` has it, and so do `codeBodyStyle` and the first line of a block
+  (`firstCodeLineStyle(labelReserve:fontSize:)`), which are now `MarkupAppearance` instance values because they depend on the
+  font size. A plain paragraph used to have no `.paragraphStyle` at all: a test that asks for "none" asks for a style with
+  zero indents. The spacing is in the line fragments' heights, so a test of a line's height says `16 + 4`, and a drawing
+  that wants the font's line (the box, the pill) works from the baseline and the font, never from the fragment. A fence line
+  (6 pt, no spacing) and an attachment line (the height of its picture, no spacing) keep their heights, and the last code
+  line has 4 pt of spacing inside the tint above the closing fence's 6.
+- **Inline code is a pill that the layout manager draws, with no `.backgroundColor`.** The characters between the backticks
+  carry `scratchInlineCode` (`MarkupAppearance.inlineCodeAttributes`, removed by the same resets as the other span
+  attributes); `MarkupLayoutManager.drawInlineCode`, in `drawBackground` before the superclass (the selection is over it),
+  fills a rounded rectangle (`InlineCodeMetrics`: radius 4, 2 pt of horizontal padding) per line fragment of each run, from
+  the font's ascent to its descent plus 1 pt each way from the baseline. It reaches 2 pt over the neighbouring characters,
+  which the hidden backticks do not stop. The `.backgroundColor` key stays in `MarkupStyler.stylerOwnedKeys` because composed
+  text may carry one.
 - **A fenced block is drawn from attributes, and its fence lines are null glyphs.** `MarkupStyler` gives the characters of a
   fence line (not its line break) the role `fence`, which `MarkupLayoutManager` turns into null glyphs (all but the first,
   see below), and the paragraph
   `MarkupAppearance.codeFenceStyle` (minimum and maximum line height 6 pt), so the line is padding. While the caret or
   selection touches it (`touchesSelection`, the ends included) the role is `revealed` and the paragraph has
-  `codeBodyStyle`, like the lines of code (10 pt head and tail indent). Every paragraph of a block carries a
+  `appearance.codeBodyStyle`, like the lines of code (10 pt head and tail indent). Every paragraph of a block carries a
   `CodeBlockMark` (`.scratchCodeBlock`: opening, body or closing); only the opening fence line's holds the language and
   the label, so a keystroke in a line of code never has to know it, and a detected label stays while a new result is on its
   way (`openingMark`). `MarkupLayoutManager.drawBackground` fills the tint per line fragment from what is laid out (never

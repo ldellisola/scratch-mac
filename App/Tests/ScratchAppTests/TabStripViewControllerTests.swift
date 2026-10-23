@@ -246,7 +246,8 @@ final class TabStripViewControllerTests: XCTestCase {
     /// pin and the paperclip, a space and the "new note" button (the two glass groups of the toolbar).
     func testToolbarItemOrder() {
         let controller = ToolbarController(tabStrip: TabStripViewController())
-        let toolbar = controller.makeToolbar()
+        // Not `makeToolbar()`: toolbars with one identifier share their configuration, and the window has the real one.
+        let toolbar = NSToolbar(identifier: NSToolbar.Identifier("TabStripViewControllerTests"))
 
         XCTAssertEqual(
             controller.toolbarDefaultItemIdentifiers(toolbar).map(\.rawValue),
@@ -264,7 +265,8 @@ final class TabStripViewControllerTests: XCTestCase {
     func testTabStripIsAToolbarItem() throws {
         let strip = TabStripViewController()
         let controller = ToolbarController(tabStrip: strip)
-        let toolbar = controller.makeToolbar()
+        // Not `makeToolbar()`: toolbars with one identifier share their configuration, and the window has the real one.
+        let toolbar = NSToolbar(identifier: NSToolbar.Identifier("TabStripViewControllerTests"))
 
         let item = try XCTUnwrap(
             controller.toolbar(

@@ -8,7 +8,8 @@ behaviour, marker rules) and §6.5 (copy-out keeps the markers), guarding the an
 Status: released in 0.3.0 (plan 3): styling, checkboxes, ⇧⌘L, the keyboard (Return, Tab, ⇧Tab and ⌘B) and ⌘-click on
 links. From 0.4.0 (plan 4, task 1) bold needs word boundaries: [ADR 0006](../decisions/0006-bold-word-boundaries.md).
 From 1.0.0 (plan 6, task 5): ⌘B on a caret and on several lines, ⇧⌘U (Mark as Checked), a double-click on a box ticks it
-once, and the styler keeps what marks composed (IME) text when the edit carries it.
+once, and the styler keeps what marks composed (IME) text when the edit carries it. From 1.0.0 (plan 6, task 7): lines have
+air between them, inline code is a pill and an open box is grey (mockup B, "Behaviour: the look" below).
 
 ## Behaviour: what renders
 
@@ -19,9 +20,9 @@ that then renders like typed text.
 | Marker | Syntax | What the owner sees |
 |---|---|---|
 | Bullet | spaces, then `- ` (two spaces per level) | the `-` is transparent and a `•` in the accent colour is drawn over it. Wrapped lines hang under the text of the item. |
-| Checkbox | spaces, then `[ ] `, `[x] ` or `[X] ` (`- [ ] ` is a bullet) | the `[?]` is transparent and a box is drawn over it: the symbol `square`, or `checkmark.square.fill` when ticked, in the accent colour. The text of a ticked item is struck through and dimmed (`secondaryLabelColor`). |
+| Checkbox | spaces, then `[ ] `, `[x] ` or `[X] ` (`- [ ] ` is a bullet) | the `[?]` is transparent and a box is drawn over it: the symbol `square` in `secondaryLabelColor` (a grey), or `checkmark.square.fill`, a white tick on a square filled with the accent colour, when ticked. The text of a ticked item is struck through and dimmed (`secondaryLabelColor`). |
 | Bold | `**text**` on one line, no spaces at its edges, at word boundaries (below) | the text between the stars in the bold weight of the note font |
-| Inline code | `` `text` `` on one line | the text in the colour `CodeText` on the tint `CodeBackground` (the asset catalog, light and dark) |
+| Inline code | `` `text` `` on one line | the text in the colour `CodeText` on a pill in `CodeBackground` (the asset catalog, light and dark): a rounded rectangle, 4 pt radius, 2 pt wider than the text on each side |
 | Link | `http://` or `https://` and then non-space characters | `linkColor`, underlined. Trailing `.,;:!?'"` and an unmatched `)` are not part of it. |
 
 - **Inside a fenced block** (a pair of lines that start with three backticks) and **inside inline code**, every
@@ -79,6 +80,25 @@ that then renders like typed text.
   to what a click on a box does (the accessibility pass of plan 6 asks that every mouse action has a menu item).
 - The commands that change the text (these, and ⌘B below) are in the **Format** menu, after Edit. Its items go to
   whoever has the keyboard: only the editor answers them.
+
+## Behaviour: the look
+
+Mockup B's look, from 1.0.0 (plan 6, task 7). None of it changes a character.
+
+- **Lines have air between them.** Every line has `round(0.3 x font size)` points after it: 4 pt at 13 pt, 3 at 9, 10 at 32.
+  It is `NSParagraphStyle.lineSpacing`, which TextKit includes in the line fragments' heights, so the next line starts
+  one line height and the spacing further down, also after the last line of a paragraph. A plain line, a list line and a
+  line of code have it (`MarkupAppearance.lineSpacing(forFontSize:)`, in the base style of every paragraph, in the hanging
+  indent of a list line and in the styles of the lines of code); so does what is typed next. A fence line stays at 6 pt
+  and an attachment line as high as its picture: neither has any spacing. A change of the font size changes it too.
+- **Inline code is a pill.** The characters between the backticks carry `scratchInlineCode` and no `.backgroundColor`;
+  `MarkupLayoutManager.drawInlineCode` fills a rounded rectangle (`CodeBackground`, radius 4) behind each line of them. It
+  reaches 2 pt left and right of the text, so it lies 2 pt over the space next to the code (the backticks have no width),
+  and runs from the font's ascent less 1 pt to its descent plus 1 pt, measured from the baseline: not from the line
+  fragment, which has the spacing in it. It is drawn before the selection, which is over it.
+- **A box is 85% of the font's line height**, not of the line fragment's (which has the spacing in it), centred on the
+  middle of the font's line (from the baseline). An open box is grey, so that a ticked one, the only thing in the accent
+  colour besides the bullets, reads as done.
 
 ## Behaviour: Return, Tab, ⇧Tab and ⌘B
 
@@ -187,9 +207,9 @@ text like any other, so that placing the caret in a link never opens a browser.
 - `App/Sources/Editor/MarkupStyler.swift`: the text storage's delegate. Styles paragraphs, reveals and hides markers when
   the selection changes (`selectionDidChange`, called by `EditorViewController`), styles a shown note
   (`noteDidLoad(visibleRange:)`), answers `isInCodeBlock`, `checkboxMarker(at:)` and `link(at:)`.
-- `MarkupLayoutManager.swift`: null glyphs for `hidden` markers, the bullets and the boxes. `MarkupAppearance.swift`: the fonts,
-  colours and paragraph styles. `MarkupAttributes.swift`: the `scratchMarker` and `scratchLink` attributes, `MarkerRole`
-  and `MarkupColors`. `ParagraphBatch.swift`: whole paragraphs read in one call.
+- `MarkupLayoutManager.swift`: null glyphs for `hidden` markers, the bullets, the boxes and the pill behind inline code.
+  `MarkupAppearance.swift`: the fonts, colours and paragraph styles (and the spacing after a line). `MarkupAttributes.swift`:
+  the `scratchMarker`, `scratchLink` and `scratchInlineCode` attributes, `MarkerRole`, `InlineCodeMetrics` and `MarkupColors`. `ParagraphBatch.swift`: whole paragraphs read in one call.
 - `NoteTextView`: `mouseDown` (a click on a box, a ⌘-click on a link), `checkboxMarker(atViewPoint:)`,
   `toggleCheckbox(atViewPoint:)`, `toggleChecklist(_:)` (⇧⌘L) and `apply(_:)`, which makes the core's `TextEdit` one undo
   step; `insertNewline(_:)`, `insertTab(_:)` and `insertBacktab(_:)` (Return, Tab, ⇧Tab, through `listEdit`, which asks
@@ -215,6 +235,9 @@ text like any other, so that placing the caret in a link never opens a browser.
 | Typing the closing `**` makes the run, and the markers hide when the caret leaves | `testTypingClosesBoldRun` |
 | The font size changes bold runs too | `testFontSizeChangeKeepsBold` |
 | Inline code has the asset colours, and the colours are the specified ones | `testInlineCodeColours`, `testTheCodeColoursComeFromTheAssets` |
+| Every line has `round(0.3 x size)` points after it (plain, list and code lines, not a fence or an attachment line), and the next line is that much further down | `MarkupStylerTests.testLinesHaveSpacing`, `testLinesAreFurtherApart` |
+| Inline code is a pill: the attribute and no background, a tint 1 pt beyond the text and none 5 pt beyond | `MarkupStylerTests.testInlineCodeIsAPill` |
+| An open box is grey, and its size is not made from the line fragment | `CheckboxTests.testOpenBoxIsGrey`, `testCheckboxSizeIgnoresSpacing` |
 | A link is coloured and underlined and keeps its URL | `testLinkIsColouredAndUnderlined` |
 | A ⌘-click on a link opens its URL (without the period after it), the link under the click, at its edges, on a wrapped line and in a read-only note, and places no caret | `LinkTests.testCommandClickOpensLink`, `testCommandClickOpensALinkAfterHiddenMarkers`, `testCommandClickOpensTheLinkUnderTheClick`, `testCommandClickOnTheEdgesOfALinkOpensIt`, `testCommandClickOnTheWrappedPartOfALinkOpensIt`, `testCommandClickOpensLinkInAReadOnlyNote` |
 | A plain click, or a click with ⇧ or ⌥, opens nothing; nor does a ⌘-click off a link, in inline code or in a fenced block | `testPlainClickDoesNotOpen`, `testClickWithOtherModifiersDoesNotOpen`, `testCommandClickOutsideLinkDoesNothing`, `testLinkInsideInlineCodeIsNotOpened`, `testLinkInsideAFencedBlockIsNotOpened` |

@@ -14,6 +14,11 @@ extension NSAttributedString.Key {
     /// click that places the caret never opens a browser (spec §6.4).
     nonisolated static let scratchLink = NSAttributedString.Key("io.github.ldellisola.Scratch.link")
 
+    /// Marks the characters of inline code: `true` on the characters between the backticks. `MarkupLayoutManager` draws the
+    /// pill behind them (`CodeBlockColors.background`, `InlineCodeMetrics`), so the tint is not an attribute of the text
+    /// that AppKit would draw as a square of the glyphs' own size. Only `MarkupStyler` sets it.
+    nonisolated static let scratchInlineCode = NSAttributedString.Key("io.github.ldellisola.Scratch.inlineCode")
+
     /// What a paragraph of a fenced code block is: a `CodeBlockMark`, on the whole paragraph (its line break included),
     /// for the lines of the block and for both of its fence lines. `MarkupLayoutManager` reads it to draw the tinted
     /// block behind the lines and the language label at its top right, and `CodeBlockStyler.language(ofBlockAt:)` reads
@@ -112,7 +117,9 @@ nonisolated enum CodeBlockMetrics {
     /// The height of a hidden fence line: the padding at the top and the bottom of the block.
     static let fenceHeight: CGFloat = 6
     /// The radius of the block's corners.
-    static let cornerRadius: CGFloat = 6
+    static let cornerRadius: CGFloat = 8
+    /// The width of the hairline round the block, drawn inside its edge in `CodeBlockColors.border`.
+    static let borderWidth: CGFloat = 1
     /// How much smaller than the note font the label is.
     static let labelSizeReduction: CGFloat = 2
     /// The space between the top of the block and the top of the label.
@@ -151,8 +158,26 @@ nonisolated enum CodeBlockColors {
         NSColor(named: "CodeBackground") ?? NSColor.labelColor.withAlphaComponent(0.06)
     }
 
+    /// The hairline round a block: the `CodeBorder` asset, black at 8% in light mode and white at 12% in dark mode, and more
+    /// with Increase Contrast (35% and 45%).
+    static var border: NSColor {
+        NSColor(named: "CodeBorder") ?? NSColor.labelColor.withAlphaComponent(0.08)
+    }
+
     /// The colour of the language label.
     static var label: NSColor { NSColor.secondaryLabelColor }
+}
+
+/// The pill behind inline code (plan 6 task 7): drawn by `MarkupLayoutManager` in `CodeBlockColors.background`, from the
+/// characters that carry `NSAttributedString.Key.scratchInlineCode`.
+nonisolated enum InlineCodeMetrics {
+    /// The radius of the pill's corners.
+    static let cornerRadius: CGFloat = 4
+    /// How far the pill reaches left and right of the code. The hidden backticks have no width, so the pill can lie 2 pt over
+    /// the space next to the code, which is what mockup B has.
+    static let horizontalPadding: CGFloat = 2
+    /// How far it reaches above the font's ascent and below its descent.
+    static let verticalPadding: CGFloat = 1
 }
 
 /// The value of `NSAttributedString.Key.scratchAttachment`: what an attachment line is drawn as, and how big. Immutable.

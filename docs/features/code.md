@@ -17,11 +17,17 @@ changed in the note's text: the characters, copy, search and storage stay as the
 attribute or a drawing (`MarkupStyler`, `CodeBlockStyler`, `MarkupLayoutManager`). A fence that has no partner is not a
 block (docs/features/formatting.md).
 
-- **The tint.** A rounded block (6 pt radius) in the `CodeBackground` colour, black at 6% in light mode and white at 10%
-  in dark mode, as wide as the text (the width of the editor less its margins). It is drawn from the opening fence line
-  to the closing one, behind the lines.
+- **The tint.** A rounded block (8 pt radius from 1.0.0, 6 pt before) in the `CodeBackground` colour, black at 6% in light
+  mode and white at 10% in dark mode, as wide as the text (the width of the editor less its margins). It is drawn from the
+  opening fence line to the closing one, behind the lines.
+- **The border.** A hairline of 1 pt inside the edge of the tint (plan 6 task 7, mockup B), in the `CodeBorder` colour: black
+  at 8% in light mode, white at 12% in dark mode, 35% and 45% with Increase Contrast. It is stroked on the shape of the tint,
+  which is cut off where the block goes on, so a part of a block that is drawn alone (a redraw of some of its lines) has no
+  line across it. `CodeBlockStylerTests.testCodeBlockHasABorder`.
 - **The lines.** Each line of the block is 10 pt in from both sides of the tint (head and tail indent), in the note font,
-  and nothing in it is formatting (no bullet, bold or link).
+  and nothing in it is formatting (no bullet, bold or link). Each has the spacing that every line has after it (4 pt at
+  13 pt, formatting.md "Behaviour: the look"), inside the tint, so the last line has 4 pt more below it than the first has
+  above it, besides the 6 pt of each fence line.
 - **The fence lines are padding.** Each is a line of exactly 6 pt with nothing drawn on it, so the top and the bottom of a
   block have a little space and no text. While the caret or the selection touches a fence line (its two ends included, so the
   caret just below the opening fence or just above the closing one does not) the line is shown in full, in

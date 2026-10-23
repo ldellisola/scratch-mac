@@ -1,7 +1,8 @@
 import AppKit
 
-/// The window's toolbar: the sidebar button over the sidebar and, over the editor, the paperclip, the pin button and the
-/// "new note" button at the right (spec §6.1, §6.4). The system draws every toolbar item on Liquid Glass (spec §8.1).
+/// The window's toolbar (spec §6.1, §6.3, §6.4, mockup B): the sidebar button over the sidebar and, over the editor, the
+/// tab strip at the left and the buttons at the right in two glass groups, the pin and the paperclip and then "new note".
+/// The system draws every plain toolbar item on Liquid Glass (spec §8.1), and the tab strip is a capsule of its own.
 ///
 /// The toolbar keeps its delegate weakly, so whoever creates this controller must keep it alive for as long as the
 /// window lives (`AppDelegate` does).
@@ -15,15 +16,30 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
     /// Called when the user presses the paperclip, which asks for files to attach to the note (spec §6.4).
     var onAttach: (() -> Void)?
 
+    private static let tabStripItem = NSToolbarItem.Identifier(AccessibilityID.tabStrip)
     private static let newNoteItem = NSToolbarItem.Identifier(AccessibilityID.newNoteButton)
     private static let pinItem = NSToolbarItem.Identifier(AccessibilityID.pinButton)
     private static let attachItem = NSToolbarItem.Identifier(AccessibilityID.attachButton)
 
-    /// The items from left to right. The tracking separator makes the items after it line up with the editor, and the
-    /// flexible space pushes the paperclip, the pin and the "new note" buttons to the right edge.
-    private static let itemIdentifiers: [NSToolbarItem.Identifier] = [
-        .toggleSidebar, .sidebarTrackingSeparator, .flexibleSpace, attachItem, pinItem, newNoteItem,
+    /// The items from left to right. The tracking separator makes the items after it line up with the editor, the strip
+    /// follows it, and the flexible space pushes the buttons to the right edge. The fixed space between the paperclip and the
+    /// "new note" button ends the glass group of the first two, so that they are two capsules and not one (mockup B).
+    static let defaultItemIdentifiers: [NSToolbarItem.Identifier] = [
+        .toggleSidebar, .sidebarTrackingSeparator, tabStripItem, .flexibleSpace, pinItem, attachItem, .space,
+        newNoteItem,
     ]
+
+    /// The strip that is the view of the tab strip's item. The toolbar holds the item, and the item holds the view, but
+    /// the view's controller is held here.
+    private let tabStrip: TabStripViewController
+    /// The tab strip's item, once the toolbar has asked for it: the toolbar can ask more than once, and a view has one
+    /// superview, so there is one item.
+    private var tabStripToolbarItem: NSToolbarItem?
+
+    init(tabStrip: TabStripViewController) {
+        self.tabStrip = tabStrip
+        super.init()
+    }
 
     /// The paperclip, once the toolbar has asked for it, and whether it works: it does not for a note in Recently Deleted.
     private var attachButton: NSToolbarItem?
@@ -46,15 +62,15 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
     // MARK: NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        Self.itemIdentifiers
+        Self.defaultItemIdentifiers
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        Self.itemIdentifiers
+        Self.defaultItemIdentifiers
     }
 
-    /// Only the paperclip, pin and "new note" items are made here. AppKit makes the standard ones (sidebar button,
-    /// separator, space).
+    /// Only the tab strip, paperclip, pin and "new note" items are made here. AppKit makes the standard ones (sidebar
+    /// button, separators, spaces).
     ///
     /// They are plain items with an image, not custom views, so that the system draws them on a Liquid Glass capsule
     /// like every other toolbar item: a custom `NSButton` view got no capsule, bordered item or not (screenshots, plan
@@ -64,6 +80,7 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
         _ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
+        if itemIdentifier == Self.tabStripItem { return makeTabStripItem(forPalette: !flag) }
         if itemIdentifier == Self.pinItem { return makePinItem() }
         if itemIdentifier == Self.attachItem { return makeAttachItem() }
         guard itemIdentifier == Self.newNoteItem else { return nil }
@@ -75,9 +92,39 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
         item.paletteLabel = description
         item.toolTip = description
         item.isBordered = true
+        // The buttons are never moved into the overflow menu: the strip is made to fit before they would be.
+        item.visibilityPriority = .user
         item.target = self
         item.action = #selector(newNote(_:))
         return item
+    }
+
+    // MARK: The tab strip
+
+    /// The tab strip's item: the strip is its view, with no border and no glass from the toolbar, because the strip is a
+    /// capsule of its own (a second one round it would be glass on glass). It is the item that is kept when the toolbar is
+    /// short of room, and it is never wider than the room that is left before the buttons (`updateTabStripWidth`).
+    private func makeTabStripItem(forPalette: Bool) -> NSToolbarItem {
+        if let tabStripToolbarItem, !forPalette { return tabStripToolbarItem }
+        let item = NSToolbarItem(itemIdentifier: Self.tabStripItem)
+        // A view has one superview: the item that is only for a palette has none (there is no customization, so none is made).
+        if !forPalette { item.view = tabStrip.view }
+        item.label = "Tabs"
+        item.paletteLabel = "Tabs"
+        item.isBordered = false
+        item.hidesSharedBackground = true
+        item.visibilityPriority = .high
+        if !forPalette { tabStripToolbarItem = item }
+        return item
+    }
+
+    /// Tells the strip how much room the toolbar leaves it. `contentLeading` is where the editor area starts, in the window's
+    /// coordinates, `windowWidth` is the width of the window's content, and `isSidebarShown` says whether the sidebar is.
+    /// The strip starts after the tracking separator, a little inside the editor area, and with the sidebar hidden after the
+    /// traffic lights and the sidebar button; the buttons take `TabStripLayout.trailingReserve` at the right.
+    func updateTabStripWidth(contentLeading: CGFloat, windowWidth: CGFloat, isSidebarShown: Bool) {
+        let leading = isSidebarShown ? contentLeading + TabStripLayout.leadingMargin : TabStripLayout.collapsedLeading
+        tabStrip.maximumWidth = TabStripLayout.maximumWidth(windowWidth: windowWidth, leading: leading)
     }
 
     @objc private func newNote(_ sender: Any?) {
@@ -100,6 +147,7 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
         item.paletteLabel = description
         item.toolTip = description
         item.isBordered = true
+        item.visibilityPriority = .user
         item.target = self
         item.action = #selector(attach(_:))
         // `setAttachEnabled` decides, and AppKit must not undo it by validating the item itself.
@@ -127,6 +175,7 @@ final class ToolbarController: NSObject, NSToolbarDelegate {
     private func makePinItem() -> NSToolbarItem {
         let item = NSToolbarItem(itemIdentifier: Self.pinItem)
         item.isBordered = true
+        item.visibilityPriority = .user
         item.target = self
         item.action = #selector(togglePin(_:))
         // The state is set by `setPinned`, and AppKit must not undo it by validating the item itself.

@@ -40,6 +40,8 @@ enum AccessibilityID {
     static let tabItem = "tab.item"
     /// The close button inside a tab.
     static let tabClose = "tab.close"
+    /// The tab strip in the toolbar (plan 6 task 7): its toolbar item's identifier and the identifier of its view.
+    static let tabStrip = "tab.strip"
     /// The "+" button at the end of the tab strip, which opens a new empty note in a new tab.
     static let tabNew = "tab.new"
     /// The text view of the Launch Times alert (Help > Launch Times…, plan 6 task 1). Its value is the launch log's report.

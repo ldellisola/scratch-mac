@@ -53,9 +53,13 @@ final class NoteTextView: NSTextView {
     /// configured. Everything that loads or sizes the text goes through it (`load(_:)`, `applyFontSize(_:)`).
     var styler: MarkupStyler!
 
-    /// How every character of a note looks at `size` points: the note font in the standard text colour.
+    /// How every character of a note looks at `size` points: the note font in the standard text colour, in a paragraph with
+    /// the space after each line that every line has (`MarkupAppearance.lineSpacing(forFontSize:)`, plan 6 task 7).
     static func noteAttributes(size: Double) -> [NSAttributedString.Key: Any] {
-        [.font: noteFont(size: size), .foregroundColor: NSColor.textColor]
+        [
+            .font: noteFont(size: size), .foregroundColor: NSColor.textColor,
+            .paragraphStyle: MarkupAppearance.baseStyle(fontSize: size),
+        ]
     }
 
     /// Plain text is the only thing that leaves the editor, so nothing from the note's font or colours reaches Slack,
