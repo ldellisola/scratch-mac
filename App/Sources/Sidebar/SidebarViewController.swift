@@ -233,14 +233,6 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         isHeader(row) ? Self.groupRowHeight : Self.noteRowHeight
     }
 
-    /// Gives the row view of a note its label for VoiceOver (`NoteRowCellView.accessibilityLabel(for:now:)`): the row reads as one
-    /// element, "<title>, <time>, <preview>", and its texts stay its children. A row view is reused for any row, so every row
-    /// sets its label, and a header has none.
-    func tableView(_ tableView: NSTableView, didAdd rowView: NSTableRowView, forRow row: Int) {
-        rowView.setAccessibilityLabel(
-            noteSummary(atRow: row).map { NoteRowCellView.accessibilityLabel(for: $0, now: shownNow) })
-    }
-
     /// A header is not a note: it cannot be highlighted, and the arrow keys step over it.
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
         !isHeader(row)

@@ -155,13 +155,13 @@ nonisolated enum CodeBlockColors {
     /// The tint behind the lines of a block: the `CodeBackground` asset, black at 6% in light mode and white at 10% in
     /// dark mode, as behind inline code.
     static var background: NSColor {
-        NSColor(named: "CodeBackground") ?? NSColor.labelColor.withAlphaComponent(0.06)
+        CatalogColour.named("CodeBackground", fallback: NSColor.labelColor.withAlphaComponent(0.06))
     }
 
     /// The hairline round a block: the `CodeBorder` asset, black at 8% in light mode and white at 12% in dark mode, and more
     /// with Increase Contrast (35% and 45%).
     static var border: NSColor {
-        NSColor(named: "CodeBorder") ?? NSColor.labelColor.withAlphaComponent(0.08)
+        CatalogColour.named("CodeBorder", fallback: NSColor.labelColor.withAlphaComponent(0.08))
     }
 
     /// The colour of the language label.
@@ -239,8 +239,9 @@ nonisolated final class AttachmentMark: NSObject, @unchecked Sendable {
 /// The colours of inline code, from the asset catalog (`CodeText` and `CodeBackground`, each with a light and a dark
 /// variant), so that they follow the appearance of the window.
 enum MarkupColors {
-    private static let text = NSColor(named: "CodeText") ?? NSColor.systemRed
-    private static let background = NSColor(named: "CodeBackground") ?? NSColor.labelColor.withAlphaComponent(0.06)
+    private static let text = CatalogColour.named("CodeText", fallback: NSColor.systemRed)
+    private static let background = CatalogColour.named(
+        "CodeBackground", fallback: NSColor.labelColor.withAlphaComponent(0.06))
 
     /// The colour of the text of inline code: `#C41A16` in light mode and `#FC6A5D` in dark mode.
     static var codeText: NSColor { text }

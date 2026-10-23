@@ -83,7 +83,7 @@ final class CodeBlockStyler {
         self.queue = queue
         var table: [HighlightKind: NSColor] = [:]
         for kind in HighlightKind.allCases {
-            table[kind] = NSColor(named: NSColor.Name(Self.assetName(of: kind))) ?? NSColor.textColor
+            table[kind] = CatalogColour.named(Self.assetName(of: kind), fallback: NSColor.textColor)
         }
         colors = table
     }

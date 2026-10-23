@@ -62,10 +62,11 @@ final class NoteRowCellView: NSTableCellView {
         pinView.imageScaling = .scaleProportionallyDown
         // The group header already says "Pinned", and the title's value is only the title.
         pinView.setAccessibilityElement(false)
-        // The row reads as one element: its title, its time and its preview are the label of its row view
-        // (`accessibilityLabel(for:now:)`, set by `SidebarViewController`), and the three texts stay its children with
-        // identifiers of their own, which the UI tests read. Nothing here makes the cell an element or names its children:
-        // doing both hid the texts from the UI tests (CI of plan 6 task 8).
+        // The cell is an accessibility element already (an AXCell of the table's row), and reads as one: its title, its time and
+        // its preview are its label (`accessibilityLabel(for:now:)`, set by `configure`), and the three texts stay its children
+        // with identifiers of their own, which the UI tests read. Nothing here names the children: returning them from
+        // `accessibilityChildren()` hid them from the UI tests (CI of plan 6 task 8, whose hierarchy dump shows Table, TableRow,
+        // Cell and the texts).
 
         for subview in [pinView, titleField, timeField, previewField] {
             subview.translatesAutoresizingMaskIntoConstraints = false
@@ -123,6 +124,8 @@ final class NoteRowCellView: NSTableCellView {
         pinView.isHidden = !isPinned
         pinWidth.constant = isPinned ? Self.pinSize : 0
         titleLeading.constant = isPinned ? 4 : 0
+
+        setAccessibilityLabel(Self.accessibilityLabel(for: summary, now: now))
     }
 
     /// The edit time that a row shows: the time of day for today and yesterday, otherwise the date (`NoteTimeLabel`).
@@ -132,7 +135,7 @@ final class NoteRowCellView: NSTableCellView {
 
     /// What VoiceOver reads for the row of `summary` (plan 6 task 8): "<title>, <time>, <preview>", with ", pinned" after it
     /// for a pinned note and no preview when there is none. The title is "Untitled" for a note with no text, as the row shows
-    /// it. It is the label of the table's row view, which is one element with the three texts as its children.
+    /// it. It is the label of the cell, which is one element with the three texts as its children.
     static func accessibilityLabel(for summary: NoteSummary, now: Date) -> String {
         let isPinned = summary.pinnedAt != nil && summary.deletedAt == nil
         return accessibilityLabel(

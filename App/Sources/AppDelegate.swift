@@ -69,7 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         LaunchTimer.mark("storage")
 
         if let appearance = environment.options.appearance {
-            NSApp.appearance = NSAppearance(named: appearance.nsAppearanceName)
+            appearance.force(on: NSApp)
         }
 
         let editor = EditorViewController()

@@ -7,7 +7,7 @@ import XCTest
 /// Hosted in the app. Covers docs/features/accessibility.md ("The window") and docs/features/sidebar.md: what VoiceOver reads
 /// for a sidebar row ("<title>, <time>, <preview>", with ", pinned"), that the header of Recently Deleted is a button with a
 /// count and a state and that a press on it, or on a row, does what a click does (spec §6.2, plan 6 task 8). The row's label
-/// is set on its row view by `SidebarViewController`, which the UI tests read from outside (`AccessibilityUITests`).
+/// is the cell's, which the UI tests read from outside (`AccessibilityUITests`).
 @MainActor
 final class SidebarRowViewsTests: XCTestCase {
     private func summary(

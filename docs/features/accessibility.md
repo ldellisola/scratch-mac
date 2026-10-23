@@ -46,10 +46,9 @@ a nested item. Inside a fenced block nothing is a marker: a line `- not a bullet
 
 ### The window
 
-- **A sidebar row is one element.** The table's row view for a note has the label "<title>, <time>, <preview>" and, for a
-  pinned note, ", pinned": "Groceries, Oct 18, milk, eggs, coffee beans" (`NoteRowCellView.accessibilityLabel(for:now:)`, set
-  by `SidebarViewController.tableView(_:didAdd:forRow:)`). A note with no text reads "Untitled", and a note with no preview
-  has two parts. The row's three texts are still its children, each with its identifier (`sidebar.row.title`, `.time`,
+- **A sidebar row is one element.** The row's cell has the label "<title>, <time>, <preview>" and, for a pinned note,
+  ", pinned": "Groceries, Oct 18, milk, eggs, coffee beans" (`NoteRowCellView.accessibilityLabel(for:now:)`, set in
+  `configure`). A note with no text reads "Untitled", and a note with no preview has two parts. The row's three texts are still its children, each with its identifier (`sidebar.row.title`, `.time`,
   `.preview`), which the UI tests read. The pin is not an element. A press from VoiceOver opens the note, as a click and
   Return do (the arrow keys only move the highlight): the cell has the press, `onPress`.
 - **The header of Recently Deleted is a button.** Its title is a button for VoiceOver with the label "Recently Deleted, 2
@@ -101,12 +100,17 @@ because how a text view validates an action it does not know is not documented.
 ## Increase Contrast
 
 Every colour of the asset catalog has a high contrast variant, light and dark (`"appearances": [{"appearance": "contrast",
-"value": "high"}]`, and with `luminosity: dark` for the dark one). AppKit picks it when the effective appearance is one of
-the high contrast ones ("NSAppearanceNameAccessibilityHighContrastAqua" and "…DarkAqua", `NSAppearance.Name.highContrastAqua`
-and `highContrastDarkAqua` in the app), which is when Increase Contrast is on in System Settings. Nothing in the code asks
-for the setting. The SDK's own constants `NSAppearance.Name.accessibilityHighContrastAqua` and `…DarkAqua` are not these:
-their raw values are "NSAppearanceNameAccessibilityAqua" and "…DarkAqua", and `NSAppearance(named:)` resolves them to
-plain Aqua and Dark Aqua, so a colour asset never answers with its high contrast variant to them.
+"value": "high"}]`, and with `luminosity: dark` for the dark one). AppKit picks it by itself when Increase Contrast is on in
+System Settings: the app asks `NSColor(named:)` and nothing else (`CatalogColour.named(_:fallback:)`).
+
+An app cannot ask for it, and that is why a launch has its own way to show the variants. The appearances that stand for
+Increase Contrast cannot be made: `NSAppearance(named:)` answers nil for "NSAppearanceNameAccessibilityHighContrastAqua", and
+the SDK's constants `NSAppearance.Name.accessibilityHighContrastAqua` and `…DarkAqua` are plain Aqua and Dark Aqua when they
+are made (their raw values are "NSAppearanceNameAccessibilityAqua" and "…DarkAqua"). So `NSColor(named:)` never answers with
+its high contrast variant in a test or under a forced appearance. `-ScratchAppearance light-contrast` and `dark-contrast`
+force light and dark, and `CatalogColour.isHighContrastForced`, which makes `CatalogColour.named` answer with the colours of
+`CatalogColour.highContrast`: a table that a test holds to the catalog's `Contents.json`, colour for colour. The same flag
+(and the system setting) puts an outline on the raised tab.
 
 - **The code colours** (`CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`, `CodeFunction`,
   `CodeAttribute`, `CodePreprocessor`, and `CodeText` of inline code) are darker in light mode and lighter in dark mode, so
@@ -120,9 +124,10 @@ plain Aqua and Dark Aqua, so a colour asset never answers with its high contrast
 - **Reduce Transparency** is the system's. Only system materials are translucent in the app (the sidebar, the toolbar's
   buttons and the tab strip are Liquid Glass), and they follow the setting by themselves. There is no code for it and no test.
 
-`-ScratchAppearance` takes `light-contrast` and `dark-contrast` besides `light` and `dark` (`AppearanceOverride`, forced as
-`NSApp.appearance` through `nsAppearanceName`), so that a screenshot shows the variants without the setting being changed
-on the machine: `typical-contrast-light` and `code-contrast-dark` (docs/images are not made of them).
+`-ScratchAppearance` takes `light-contrast` and `dark-contrast` besides `light` and `dark` (`AppearanceOverride`,
+`force(on:)`), so that a screenshot shows the variants without the setting being changed on the machine, and the system's own
+chrome (the glass of the toolbar and the sidebar) is the usual one: `typical-contrast-light` and `code-contrast-dark`
+(docs/images are not made of them).
 
 ## Where it lives
 
@@ -131,13 +136,13 @@ on the machine: `typical-contrast-light` and `code-contrast-dark` (docs/images a
   `codeBlock(atViewPoint:)`.
 - `App/Sources/Editor/EditorContextMenu.swift`: the context menu's items.
 - `App/Sources/Sidebar/SidebarRowViews.swift`: the row's label (`accessibilityLabel(for:now:)`), its press, and the header's
-  button (`HeaderTitleField`). `SidebarViewController.swift`: the label on the row view (`didAdd`), the header's own cell
-  kind and the presses.
+  button (`HeaderTitleField`). `SidebarViewController.swift`: the header's own cell kind and the presses.
 - `App/Sources/Tabs/TabStripViewController.swift`: the close buttons' labels and the high contrast outline of the raised tab.
 - `App/Sources/Window/KeyViewLoop.swift`: the order of Tab. `App/Sources/Support/DebugStateElement.swift`: `firstResponder`
   (`editor`, `title`, `search`, `sidebar` or `other`), for the tests.
-- `App/Resources/Assets.xcassets/*.colorset`: the colours and their variants.
-  `App/Sources/Support/AppearanceOverride+AppKit.swift` and ScratchCore's `AppearanceOverride`: the two launch appearances.
+- `App/Resources/Assets.xcassets/*.colorset`: the colours and their variants. `App/Sources/Support/CatalogColour.swift`: the
+  catalog's colours as the code asks for them, and the forced high contrast table.
+  `App/Sources/Support/AppearanceOverride+AppKit.swift` and ScratchCore's `AppearanceOverride`: the launch appearances.
 
 ## Tests
 
@@ -149,8 +154,10 @@ on the machine: `typical-contrast-light` and `code-contrast-dark` (docs/images a
 - `ContextMenuTests` (hosted): the box (open and ticked, and the caret staying), a link (choosing it opens its URL), an
   attachment (choosing it opens the stored file), a code block (the submenu's items, choosing Python renames the fence), a
   note that cannot be edited, and the menu of a right click with the items first.
-- `AppearanceTests` (hosted): every colour of the catalog resolves differently under the high contrast appearances, the
-  text colours' contrast ratios, the border and the tint being stronger, and the launch appearances.
+- `AppearanceTests` (hosted): the catalog's `Contents.json` files give every colour a high contrast variant that differs from
+  the usual one, the text colours' contrast ratios on the background and the tint, the border and the tint being stronger,
+  the forced table being the catalog's high contrast colour for colour, forced colours resolving by appearance and the
+  catalog being asked as before without a forced launch, and the launch appearances.
 - `AccessibilityUITests`: the toolbar's labels, the editor, the title and the search field, a sidebar row read as one
   element and still holding its texts, the Recently Deleted header as a button, the close button's label, and Tab from the
   search field through the note list and the title to the editor (`debug.state`'s `firstResponder`).

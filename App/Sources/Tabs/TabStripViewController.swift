@@ -443,10 +443,7 @@ final class TabItemView: NSView {
         layer.shadowOffset = CGSize(width: 0, height: -1)
         // With Increase Contrast the raised tab also has an outline: the white pill and a shadow of 12% do not set it apart
         // from the glass enough for everyone (plan 6 task 8).
-        let isHighContrast =
-            effectiveAppearance.bestMatch(from: [.highContrastAqua, .highContrastDarkAqua, .aqua, .darkAqua])
-            .map { $0 == .highContrastAqua || $0 == .highContrastDarkAqua } ?? false
-        layer.borderWidth = isActive && isHighContrast ? 1 : 0
+        layer.borderWidth = isActive && CatalogColour.isIncreaseContrastOn ? 1 : 0
         layer.borderColor = NSColor.labelColor.withAlphaComponent(0.55).cgColor
     }
 

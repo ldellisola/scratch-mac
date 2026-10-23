@@ -190,7 +190,7 @@ App/Sources/Sidebar/              SidebarViewController (the search field and th
                                   NSTableView with group headers; a click or Return opens a note, `onOpen`; `onSearch`,
                                   `onTogglePin`, `onDelete`, `onRestore`, `onDeletePermanently` and
                                   `onToggleRecentlyDeleted`, `keyViews`), SidebarRowViews (`NoteRowCellView`: the label
-                                  `<title>, <time>, <preview>` that the row view gets, `GroupRowCellView`, `HeaderTitleField`: the
+                                  `<title>, <time>, <preview>` that the cell gets, `GroupRowCellView`, `HeaderTitleField`: the
                                   title of the Recently Deleted header is a button),
                                   SidebarTableView (Return, ⌘⌫, the click on the Recently Deleted header, the row's
                                   context menu)
@@ -286,8 +286,11 @@ App/Sources/Support/              LaunchClock (the process start and the boot ti
                                   the attachments of the note (id, `copied` and `fileExists`) and the newest 20 records of
                                   the launch log (`launchTimes`) and which part of the window has the keyboard
                                   (`firstResponder`: `editor`, `title`, `search`, `sidebar` or `other`) from, in isolated
-                                  launches only), AppearanceOverride+AppKit (`nsAppearanceName`: the appearance that
-                                  `-ScratchAppearance` forces, with the two accessibility ones for Increase Contrast)
+                                  launches only), CatalogColour (the colours of the asset catalog as the code asks for
+                                  them: `named(_:fallback:)`, and with `isHighContrastForced` the high contrast table that a
+                                  test holds to the catalog; `isIncreaseContrastOn`), AppearanceOverride+AppKit
+                                  (`nsAppearanceName`, `force(on:)`: the appearance that `-ScratchAppearance` forces, and for
+                                  `light-contrast` and `dark-contrast` the high contrast colours too)
 App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
                                   inline code, `CodeBorder` of a code block's hairline and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
@@ -324,7 +327,7 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   and Copy, SpokenTextTests: what VoiceOver reads for markers, tokens and blocks, and that the
                                   value is the stored text, ContextMenuTests: the context menu's items and what they do,
                                   AppearanceTests: every colour has a high contrast variant that reads, and the contrast
-                                  launch appearances, SidebarRowViewsTests: a row's label, the Recently Deleted button and
+                                  forced contrast colours and the launch appearances, SidebarRowViewsTests: a row's label, the Recently Deleted button and
                                   the presses)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
@@ -477,7 +480,7 @@ always pass `-ScratchDataDir`, so they never touch real data.
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
 | `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code`, `attachments` | delete the database and the `attachments` folder in the data directory and seed that fixture |
-| `-ScratchAppearance <light\|dark\|light-contrast\|dark-contrast>` | `light`, `dark`, `light-contrast` or `dark-contrast` | force the appearance; the contrast ones are the high contrast appearances (`NSAppearance.Name.highContrastAqua` and `highContrastDarkAqua`: section 7), so the high contrast variants of the colours show (screenshots) |
+| `-ScratchAppearance <light\|dark\|light-contrast\|dark-contrast>` | `light`, `dark`, `light-contrast` or `dark-contrast` | force the appearance; the contrast ones are light and dark with the high contrast variants of the colours forced (`CatalogColour.isHighContrastForced`: section 7), for the screenshots |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
 | `-ScratchIdleMonitor <path>` | any path | 3.5 s after launch measure the app's CPU time and run loop wake-ups for 5 s of idle, and write them, as JSON, to `<path>` (performance tests) |
 
@@ -1497,13 +1500,15 @@ new kind of release file, with no change to the app, ships.
   when the range holds its first character. A new kind of marker or of drawn line needs its words there and a case in
   `SpokenTextTests`. Nothing could be tried with VoiceOver itself (CI has no screen reader): the tests call the text
   view's methods, and `accessibilityAttributedString(for:)` is AppKit's own for a range with nothing to replace.
-- **Do not make a table cell an accessibility element, or name its children: the UI tests lose its texts.** The first
-  version of plan 6 task 8 called `setAccessibilityElement(true)` on `NoteRowCellView` and `GroupRowCellView`, gave the
-  cell a label and returned its text fields from `accessibilityChildren()`, and every UI test that reads the sidebar then
-  found no rows (CI: `the sidebar rows: []`). The row reads as one element through the **row view**:
-  `SidebarViewController.tableView(_:didAdd:forRow:)` sets its label (`NoteRowCellView.accessibilityLabel(for:now:)`, and
-  nil for a header: row views are reused), and the cell's texts stay its children with their identifiers. The Recently
-  Deleted header is a button by its **title** (`HeaderTitleField`: role button, label, expanded, a hint and a press), which
+- **Do not name a table cell's children: the UI tests lose its texts.** The first version of plan 6 task 8 returned the
+  text fields of `NoteRowCellView` and `GroupRowCellView` from `accessibilityChildren()` (and called
+  `setAccessibilityElement(true)`, which the cell is already: an AXCell between the table's row and its texts), and every UI
+  test that reads the sidebar then found no rows (CI: `the sidebar rows: []`). The hierarchy that XCTest sees is Table,
+  TableRow, Cell and the StaticTexts (`UITestSupport.hierarchy(of:)` prints it, and the accessibility UI tests put it in
+  their failure messages). A label on the **row view** (`tableView(_:didAdd:forRow:)`) never showed up in it, so the row reads
+  as one element through its **cell's label** (`NoteRowCellView.accessibilityLabel(for:now:)`, set in `configure`), and the
+  texts stay its children with their identifiers. The Recently Deleted
+  header is a button by its **title** (`HeaderTitleField`: role button, label, expanded, a hint and a press), which
   is why `UITestSupport.recentlyDeletedHeader` looks for the identifier in any element and not in static texts, and the
   header is a cell kind of its own (`recentlyDeletedCellIdentifier`): a title that was a button and is reused for "Today"
   would still be one. A press from VoiceOver opens a note (`NoteRowCellView.onPress`) and toggles Recently Deleted.
@@ -1520,16 +1525,19 @@ new kind of release file, with no change to the app, ships.
   next tab, so the loop is walked from the search field (⌥⌘F) to the title and no further by keys alone. A test reads
   `debug.state`'s `firstResponder`, which looks at the identifiers of the responder, of a field editor's delegate and of the
   views above them.
-- **Increase Contrast is a set of colour variants, and nothing in the code asks for the setting.** Every colour set of
-  `Assets.xcassets` has four entries: light, dark, and the same two with `"appearances": [{"appearance": "contrast",
-  "value": "high"}]` (the dark one with `luminosity: dark` as well). AppKit takes the high contrast one when the effective
-  appearance is "NSAppearanceNameAccessibilityHighContrastAqua" or "…DarkAqua" (`NSAppearance.Name.highContrastAqua` and
-  `highContrastDarkAqua`, which this app defines: **the SDK's `.accessibilityHighContrastAqua` is not that name**, its raw
-  value is "NSAppearanceNameAccessibilityAqua" and `NSAppearance(named:)` turns it into plain Aqua, which CI showed), which
-  Increase Contrast and `-ScratchAppearance
-  light-contrast` / `dark-contrast` both produce. A new colour set needs the four entries, and `AppearanceTests` fails
-  without them (it reads the catalog's folder from the source tree and asks each colour under both pairs of appearances). The
-  text colours' high contrast variants read at 7:1 on the editor's background and the tint in light mode, and at 7:1 and 5:1
-  in dark mode, which the same test measures: a hue moved along its lightness, never replaced. A colour that is made in code
-  (`TabItemView.updateLayer` picks its pill, shadow and outline) reads `effectiveAppearance.bestMatch` for the accessibility
-  names. Reduce Transparency needs nothing: only system materials are translucent.
+- **Increase Contrast is a set of colour variants that AppKit picks, and a test or a screenshot cannot ask for them.** Every
+  colour set of `Assets.xcassets` has four entries: light, dark, and the same two with `"appearances": [{"appearance":
+  "contrast", "value": "high"}]` (the dark one with `luminosity: dark` as well), and the code asks `NSColor(named:)` through
+  `CatalogColour.named(_:fallback:)` and nothing else. **No appearance stands for Increase Contrast in code**: on CI
+  `NSAppearance(named:)` answered nil for "NSAppearanceNameAccessibilityHighContrastAqua" and made plain Aqua of the SDK's
+  `.accessibilityHighContrastAqua` (its raw value is "NSAppearanceNameAccessibilityAqua"), so `NSColor(named:)` never gave a
+  high contrast variant under `performAsCurrentDrawingAppearance` or `NSApp.appearance`. `-ScratchAppearance light-contrast`
+  and `dark-contrast` therefore force light or dark and set `CatalogColour.isHighContrastForced` (before any colour is made,
+  at the top of `AppDelegate.launch`), which has `CatalogColour.named` answer from its own table, `highContrast`, instead.
+  A new colour set needs the four entries and an entry in the table, and `AppearanceTests` fails without either: it reads
+  the catalog's `Contents.json` files from the source tree (each colour has all four entries, the high contrast ones differ from
+  the usual ones, the table is the catalog's colour for colour, the text colours read at 7:1 on the background and the tint in
+  light mode and at 7:1 and 5:1 in dark mode, the tint and the border are stronger). The variants are the usual hues moved
+  along their lightness, never replaced. A colour that the code makes itself (the raised tab's outline) asks
+  `CatalogColour.isIncreaseContrastOn` (the system setting, or a forced launch). Reduce Transparency needs nothing: only
+  system materials are translucent.
