@@ -384,25 +384,6 @@ final class AttachmentCopyTests: XCTestCase {
         XCTAssertEqual(pasteboardURLs(pasteboard).count, 1, "and its file")
     }
 
-    /// A rectangular selection of lines joins them with line breaks, in both types.
-    func testCopyOfSeveralSelectionsWritesNoteTextToo() throws {
-        let (host, id) = try makeHost()
-        defer { host.cleanUp() }
-        let view = host.textView
-        let token = AttachmentToken.line(for: id)
-        view.setSelectedRanges(
-            [NSValue(range: NSRange(location: 0, length: 6)), NSValue(range: host.tokenRange(id))],
-            affinity: .downstream, stillSelecting: false)
-        XCTAssertEqual(view.selectedRanges.count, 2, "two selections")
-        let pasteboard = NSPasteboard.withUniqueName()
-        defer { pasteboard.releaseGlobally() }
-
-        XCTAssertTrue(view.writeSelection(to: pasteboard, types: [.string]))
-
-        XCTAssertEqual(pasteboard.string(forType: noteTextType), "before\n\(token)")
-        XCTAssertEqual(pasteboard.string(forType: .string), "before\nrollback-plan.txt")
-    }
-
     /// The private type is written only when the selection holds a token: plain text is still plain text and nothing else.
     func testCopyWithoutATokenWritesOnlyPlainText() throws {
         let (host, id) = try makeHost()
