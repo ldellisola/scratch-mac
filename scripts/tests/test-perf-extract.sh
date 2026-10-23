@@ -174,8 +174,25 @@ value_is "scroll_frame_max_ms is the longest CPU time there" "$TMP/out/results.j
 
 echo "== the launch overhead, the phases and idle (ADR 0009)"
 value_is "launch_reference_ms is the median of the reference app's launches" "$TMP/out/results.json" launch_reference_ms 120.000
-# overhead_is_launch_minus_reference: 250 - 120.
-value_is "overhead_is_launch_minus_reference" "$TMP/out/results.json" launch_overhead_ms 130.000
+# overhead_is_launch_minus_reference: 250 - 120 is what Scratch costs above the reference app on this runner...
+value_is "overhead_is_launch_minus_reference: the difference of the two medians" "$TMP/out/results.json" launch_difference_ms 130.000
+# ...and launch_overhead_ms is that at the speed of a runner on which the reference launches in 200 ms: 130 x 200 / 120.
+value_is "launch_overhead_ms is the difference at the nominal runner's speed" "$TMP/out/results.json" launch_overhead_ms 216.667
+# A runner twice as slow makes both launches twice as long: the difference doubles and the overhead does not.
+python3 - "$TMP/metrics.json" "$TMP/metrics-slow.json" <<'PY'
+import json, sys
+tests = json.load(open(sys.argv[1]))
+for test in tests:
+    if "LaunchPerfTests" in test["testIdentifier"]:
+        for metric in test["testRuns"][0]["metrics"]:
+            metric["measurements"] = [value * 2 for value in metric["measurements"]]
+json.dump(tests, open(sys.argv[2], "w"))
+PY
+expect_exit "a run on a slower runner is extracted" 0 \
+    python3 "$SCRIPT" "$TMP/none.xcresult" "$TMP/out-slow/results.json" --metrics-json "$TMP/metrics-slow.json" \
+    --attachments-dir "$TMP/attachments"
+value_is "a runner twice as slow doubles the difference" "$TMP/out-slow/results.json" launch_difference_ms 260.000
+value_is "and leaves launch_overhead_ms where it was" "$TMP/out-slow/results.json" launch_overhead_ms 216.667
 # phases_are_medians: of three records, the one in the middle, per phase.
 value_is "phases_are_medians: main" "$TMP/out/results.json" launch_phase_main_ms 50.000
 value_is "phases_are_medians: storage" "$TMP/out/results.json" launch_phase_storage_ms 75.000
@@ -216,6 +233,7 @@ expect_exit "a run without the reference launch is a warning, not an error" 0 \
     --attachments-dir "$TMP/attachments"
 value_is "launch_reference_ms is left out" "$TMP/out6/results.json" launch_reference_ms absent
 value_is "so is the overhead, which needs it" "$TMP/out6/results.json" launch_overhead_ms absent
+value_is "and the difference" "$TMP/out6/results.json" launch_difference_ms absent
 value_is "launch_ms is still there" "$TMP/out6/results.json" launch_ms 250.000
 output_has "the warning names the reference metric" "launch_reference_ms"
 rm "$TMP/attachments/C3.txt" "$TMP/attachments/D4.txt"

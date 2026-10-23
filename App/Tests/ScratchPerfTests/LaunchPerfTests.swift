@@ -6,15 +6,15 @@ import XCTest
 ///
 /// CI's Macs cannot say whether Scratch meets that: a launch takes 600 ms there whatever the app is, and varies by a factor
 /// of two between runs (docs/decisions/0003, 0009). So `launch_ms` is reported and never fails, and the number that gates
-/// is `launch_overhead_ms`, `launch_ms` minus `launch_reference_ms`: the same measurement of `LaunchReference.app`, an
-/// empty AppKit app that the same job builds (`testReferenceLaunch`). `testLaunch` also attaches the phases of the launches
-/// that Scratch wrote in its own launch log (`launch_phases`), to see where the time goes.
+/// is `launch_overhead_ms`: what `launch_ms` is above `launch_reference_ms`, the same measurement of `LaunchReference.app`,
+/// an empty AppKit app that the same job builds (`testReferenceLaunch`), scaled to a nominal runner by perf-extract.py.
+/// `testLaunch` also attaches the phases of the launches that Scratch wrote in its own launch log (`launch_phases`), to see
+/// where the time goes.
 @MainActor
 final class LaunchPerfTests: XCTestCase {
-    /// The launches each of the two tests measures. Ten gave a median that moved by 60 ms or so from run to run (the launches
-    /// of one run differ by a factor of two on CI's Macs, and `launch_overhead_ms` is the difference of two such medians:
-    /// 181, 224, 264 and 337 ms in four runs of one app, docs/decisions/0009), and a launch costs a second, so the tests take
-    /// more of them.
+    /// The launches each of the two tests measures. Ten gave medians that moved by 60 ms or so from run to run (the launches
+    /// of one run differ by a factor of two on CI's Macs, and `launch_overhead_ms` is worked out from two such medians:
+    /// docs/decisions/0009), and a launch costs a second, so the tests take more of them.
     static let measuredLaunches = 30
 
     func testLaunch() throws {

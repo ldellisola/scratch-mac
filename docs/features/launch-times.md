@@ -71,8 +71,8 @@ Other launches, median of the last 1: 118 ms (budget 200 ms). First after start-
 ## In CI
 
 The absolute launch is not a CI gate: the runner's own speed is most of it (decision record 0009). `LaunchPerfTests` measures
-the launch of `LaunchReference.app`, an empty AppKit app, next to Scratch's, and the gate is the difference
-(`launch_overhead_ms`: budget 150 ms, tolerance 60). After its measurement `testLaunch` launches Scratch once more, reads the
+the launch of `LaunchReference.app`, an empty AppKit app, next to Scratch's, and the gate is the difference between
+the two, at the speed of a nominal runner (`launch_overhead_ms`: budget 150 ms, tolerance 60). After its measurement `testLaunch` launches Scratch once more, reads the
 launch log's newest records from `debug.state` (`launchTimes`) and attaches them as `launch_phases`, and `perf-extract.py`
 reports the median of each phase (`launch_phase_<name>_ms`) in `perf/report.md`: they say where a slow launch spent its time
 and never fail.

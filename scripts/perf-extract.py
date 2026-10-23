@@ -20,8 +20,15 @@ Two sources, both read from <xcresult> with `xcrun xcresulttool`:
   A value is the median of that test's measurements, in milliseconds. The median, because
   a run on a shared virtual Mac now and then has one iteration that takes ten times as long (an outlier of 228 ms
   among keystrokes of 3 ms moved the mean by 6 ms), and a metric that such an iteration moves cannot be compared
-  with a baseline. launch_overhead_ms is launch_ms minus launch_reference_ms, Scratch's own launch work, when both
-  were measured (docs/decisions/0009).
+  with a baseline.
+- Two numbers are worked out from the two launches, when both were measured (docs/decisions/0009, decision 2).
+  launch_difference_ms is launch_ms minus launch_reference_ms: what Scratch's launch costs above an empty app's, on this
+  runner today. It is for a person, because it grows and shrinks with the runner (181 to 432 ms in six runs of one app,
+  about 41% of launch_ms in five of them). launch_overhead_ms is that difference at the speed of a nominal runner, the
+  one on which the reference app launches in REFERENCE_NOMINAL_MS: launch_difference_ms x REFERENCE_NOMINAL_MS /
+  launch_reference_ms, which is (launch_ms / launch_reference_ms - 1) x REFERENCE_NOMINAL_MS. The reference app is the
+  yardstick of the runner's speed, so a slow runner does not make Scratch's own work look longer, and it is the
+  launch metric that gates.
 - `export attachments`: three tests attach a JSON report under a name.
   - EditorPerfTests/testScrollHugeNote attaches the app's FrameMonitor report as `scroll_frame_ms` (XCTest has no
     metric for the main thread's work per frame). scroll_frame_ms is its
@@ -85,6 +92,11 @@ PHASES_ATTACHMENT = "launch_phases"
 # The phases of a launch, in the order they happen (LaunchTimer.phases). A phase that is not in the list follows them.
 PHASE_ORDER = ["main", "storage", "restore", "window", "firstFrame"]
 OVERHEAD_KEY = "launch_overhead_ms"
+DIFFERENCE_KEY = "launch_difference_ms"
+# The launch of the reference app, in milliseconds, on the runner that launch_overhead_ms is stated for (ADR 0009). Any
+# number scales the metric and nothing else: this one puts what Scratch costs on CI's runners (about 1.7 times the
+# reference's launch) near the budget of 150 ms, and the hard limit of 300 ms at 2.5 times, which no run has come near.
+REFERENCE_NOMINAL_MS = 200.0
 
 TO_MILLISECONDS = {
     "s": 1000.0, "sec": 1000.0, "secs": 1000.0, "second": 1000.0, "seconds": 1000.0,
@@ -287,8 +299,10 @@ def main() -> int:
             raise SourceError(f"the metrics are not JSON: {error}") from error
 
         results = extract_xctest_metrics(metrics_json)
-        if "launch_ms" in results and "launch_reference_ms" in results:
-            results[OVERHEAD_KEY] = results["launch_ms"] - results["launch_reference_ms"]
+        if results.get("launch_ms") is not None and results.get("launch_reference_ms", 0) > 0:
+            difference = results["launch_ms"] - results["launch_reference_ms"]
+            results[DIFFERENCE_KEY] = difference
+            results[OVERHEAD_KEY] = difference * REFERENCE_NOMINAL_MS / results["launch_reference_ms"]
         else:
             print(
                 f"perf-extract.py: warning: no measurement for {OVERHEAD_KEY} "
@@ -332,7 +346,7 @@ def main() -> int:
         print("perf-extract.py: no performance numbers found in the result bundle", file=sys.stderr)
         return 1
     keys = [
-        "launch_ms", "launch_reference_ms", OVERHEAD_KEY,
+        "launch_ms", "launch_reference_ms", DIFFERENCE_KEY, OVERHEAD_KEY,
         *(key for key in XCTEST_METRICS if key not in ("launch_ms", "launch_reference_ms")),
         *SCROLL_FIELDS, *IDLE_FIELDS, *phases,
     ]  # fmt: skip

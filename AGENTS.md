@@ -438,9 +438,12 @@ docs/decisions/0001, 0003 and 0009. What to know when one fails or changes:
 
 - **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 30 launches (`LaunchPerfTests.measuredLaunches`),
   reported and never failing (INFO). `launch_reference_ms`: the same of `LaunchReference.app`, an empty AppKit app that the same job builds
-  (`LaunchPerfTests.testReferenceLaunch`), also INFO. `launch_overhead_ms`: `launch_ms` minus `launch_reference_ms`, which is
+  (`LaunchPerfTests.testReferenceLaunch`), also INFO. `launch_difference_ms`: `launch_ms` minus `launch_reference_ms` (INFO),
+  what Scratch costs above an empty app on this runner today. `launch_overhead_ms`: that difference at the speed of a
+  nominal runner, `launch_difference_ms` x 200 / `launch_reference_ms` (`REFERENCE_NOMINAL_MS` in `perf-extract.py`), which is
   Scratch's own launch work and the launch metric that gates: budget 150, tolerance 60, so it fails above 1.2 x baseline +
-  60 or above 300 (docs/decisions/0009). `launch_phase_<name>_ms` (INFO): the median of each phase of the launch log
+  60 or above 300 (docs/decisions/0009, decision 2: the difference alone grows with the runner, 181 to 432 ms in six runs of
+  one app, and the ratio of the two launches does not). `launch_phase_<name>_ms` (INFO): the median of each phase of the launch log
   (`main`, `storage`, `restore`, `window`, `firstFrame`) over the launches `testLaunch` made, from the attachment
   `launch_phases`. `idle_cpu_pct` and `idle_wakeups`: the app's CPU time over 5 s of idle (the typical fixture, the window
   open, the caret blinking) as a percentage of one core, and the wake-ups of the main run loop in them
@@ -465,11 +468,12 @@ docs/decisions/0001, 0003 and 0009. What to know when one fails or changes:
   app is measured by the same job on the same runner, so the runner's speed is in both numbers. A failure that no change
   explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline, and push a new commit for
   another runner.
-- **`launch_overhead_ms` is noisy, and it fails above 300 ms.** The two medians are measured one after the other and the
-  launches of one run differ by a factor of two, so the difference moved between 181 and 337 ms in five runs of one app
-  (docs/decisions/0009, "Measured numbers"). While the app's own overhead is near 250 ms, a `FAIL` of that row (the notes say
-  "over 2x the budget") with no change to what a launch does is the runner's: push a new commit. Do not touch the budget, the
-  tolerance or the baseline for it. A real regression shows in the phases (`launch_phase_<name>_ms`) of every run, and stays.
+- **`launch_overhead_ms` is a ratio in disguise, and the reference launch is part of its noise.** It is
+  (`launch_ms` / `launch_reference_ms` - 1) x 200, so it moves with the ratio of the two medians, which was 1.65 to 1.73 in
+  five of six runs and 2.11 in the sixth (docs/decisions/0009, "Measured numbers"). A `FAIL` of that row (the notes say "over
+  2x the budget", a ratio of 2.5) with no change to what a launch does means one of the two tests ran in a slow stretch of the
+  runner and the other did not: push a new commit. Do not touch the budget, the tolerance, the nominal speed or the baseline
+  for it. A real regression shows in the phases (`launch_phase_<name>_ms`) and in `launch_difference_ms` of every run.
 - **A signpost interval ends when the run loop is idle** (`RunLoopIdle`, `Signposts.beginEditorInterval`), not when the
   code returns, so that TextKit's lazy layout and drawing count. A new interval for the tests belongs there too.
 - **`XCTApplicationLaunchMetric(waitUntilResponsive: true)` reports one launch of ten, or none,** on macos-26. Use the
