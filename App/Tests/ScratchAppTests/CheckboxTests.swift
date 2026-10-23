@@ -62,7 +62,7 @@ final class CheckboxTests: XCTestCase {
     /// Sends a left mouse click at the centre of the glyphs of `marker` to the text view, when that is a click on a box.
     /// Anything else would end in `super.mouseDown`, which does not return without a mouse up.
     private func clickBox(
-        at marker: NSRange, in host: Host, file: StaticString = #filePath, line: UInt = #line
+        at marker: NSRange, clickCount: Int = 1, in host: Host, file: StaticString = #filePath, line: UInt = #line
     ) {
         let textView = host.editor.textView
         XCTAssertGreaterThan(textView.frame.width, 100, "the editor is laid out", file: file, line: line)
@@ -77,7 +77,7 @@ final class CheckboxTests: XCTestCase {
             let event = NSEvent.mouseEvent(
                 with: .leftMouseDown, location: textView.convert(point, to: nil), modifierFlags: [],
                 timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: host.window.windowNumber, context: nil,
-                eventNumber: 1, clickCount: 1, pressure: 1)
+                eventNumber: 1, clickCount: clickCount, pressure: 1)
         else {
             XCTFail("no mouse event", file: file, line: line)
             return
@@ -106,6 +106,45 @@ final class CheckboxTests: XCTestCase {
         XCTAssertEqual(host.editor.currentText, "[ ] a", "a second click unticks it")
         XCTAssertEqual(host.editor.textView.selectedRange(), NSRange(location: 5, length: 0))
         XCTAssertEqual(role(at: 0, in: host), "checkboxOpen")
+    }
+
+    /// Plan 6 task 5: the second click of a double-click is part of the first one's gesture. Before, it unticked the box
+    /// again (two clicks, no change) or ended in AppKit's selection of a word.
+    func testDoubleClickOnABoxTicksItOnce() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let undo = UndoManager()
+        show("[ ] a", caret: 5, undoManager: undo, in: host)
+        let box = NSRange(location: 0, length: 3)
+
+        clickBox(at: box, clickCount: 1, in: host)
+        XCTAssertEqual(host.editor.currentText, "[x] a", "the first click ticks it")
+
+        clickBox(at: box, clickCount: 2, in: host)
+        XCTAssertEqual(host.editor.currentText, "[x] a", "the second click is taken and does nothing")
+        XCTAssertEqual(
+            host.editor.textView.selectedRange(), NSRange(location: 5, length: 0), "it selects no word either")
+
+        clickBox(at: box, clickCount: 3, in: host)
+        XCTAssertEqual(host.editor.currentText, "[x] a", "nor does a third click of the series")
+
+        undo.undo()
+        XCTAssertEqual(host.editor.currentText, "[ ] a", "the double-click was one undo step")
+        XCTAssertFalse(undo.canUndo)
+    }
+
+    func testASingleClickAfterADoubleClickTicksAgain() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("[ ] a", caret: 5, in: host)
+        let box = NSRange(location: 0, length: 3)
+
+        clickBox(at: box, clickCount: 1, in: host)
+        clickBox(at: box, clickCount: 2, in: host)
+        // A later click starts a new series: its count is 1 again.
+        clickBox(at: box, clickCount: 1, in: host)
+
+        XCTAssertEqual(host.editor.currentText, "[ ] a")
     }
 
     func testClickingATickedUppercaseBoxUnticksIt() {
@@ -296,6 +335,96 @@ final class CheckboxTests: XCTestCase {
         XCTAssertEqual(host.editor.currentText, "[ ] a\n```\nb\n```\nc", "a line next to the block is fine")
     }
 
+    // MARK: ⇧⌘U (Mark as Checked)
+
+    func testMarkAsCheckedTicksTheSelectedLines() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let undo = UndoManager()
+        show("[ ] one\n[x] two\nplain\n[ ] three", undoManager: undo, in: host)
+        host.editor.textView.setSelectedRange(NSRange(location: 0, length: 27))
+
+        host.editor.textView.toggleCheckmarks(nil)
+
+        XCTAssertEqual(host.editor.currentText, "[x] one\n[x] two\nplain\n[x] three")
+        XCTAssertEqual(role(at: 0, in: host), "checkboxChecked", "the box is restyled as ticked")
+        XCTAssertEqual(host.editor.textView.selectedRange(), NSRange(location: 0, length: 27), "the selection stays")
+        XCTAssertTrue(undo.canUndo)
+
+        undo.undo()
+
+        XCTAssertEqual(host.editor.currentText, "[ ] one\n[x] two\nplain\n[ ] three", "one undo takes all back")
+        XCTAssertFalse(undo.canUndo, "the command was one undo step")
+    }
+
+    func testMarkAsCheckedUntickWhenEveryBoxIsTicked() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("[x] one\n[X] two", in: host)
+        host.editor.textView.setSelectedRange(NSRange(location: 0, length: 15))
+
+        host.editor.textView.toggleCheckmarks(nil)
+
+        XCTAssertEqual(host.editor.currentText, "[ ] one\n[ ] two")
+        XCTAssertEqual(role(at: 0, in: host), "checkboxOpen")
+    }
+
+    func testMarkAsCheckedUsesTheCaretsLine() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("[ ] a\n[ ] b", caret: 9, in: host)
+
+        host.editor.textView.toggleCheckmarks(nil)
+
+        XCTAssertEqual(host.editor.currentText, "[ ] a\n[x] b")
+        XCTAssertEqual(host.editor.textView.selectedRange(), NSRange(location: 9, length: 0))
+    }
+
+    func testMarkAsCheckedBeepsInCodeBlock() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let text = "[ ] a\n```\n[ ] b\n```\n[ ] c"
+        let undo = UndoManager()
+        show(text, caret: 11, undoManager: undo, in: host)
+
+        host.editor.textView.toggleCheckmarks(nil)
+        XCTAssertEqual(host.editor.currentText, text, "the caret is in the block")
+
+        host.editor.textView.setSelectedRange(NSRange(location: 0, length: (text as NSString).length))
+        host.editor.textView.toggleCheckmarks(nil)
+        XCTAssertEqual(host.editor.currentText, text, "a selection that holds the block")
+        XCTAssertFalse(undo.canUndo)
+
+        host.editor.textView.setSelectedRange(NSRange(location: 1, length: 0))
+        host.editor.textView.toggleCheckmarks(nil)
+        XCTAssertEqual(host.editor.currentText, "[x] a\n```\n[ ] b\n```\n[ ] c", "a line next to the block is fine")
+    }
+
+    func testMarkAsCheckedWithoutACheckboxDoesNothing() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let undo = UndoManager()
+        show("- a\nplain", undoManager: undo, in: host)
+        host.editor.textView.setSelectedRange(NSRange(location: 0, length: 9))
+
+        host.editor.textView.toggleCheckmarks(nil)
+
+        XCTAssertEqual(host.editor.currentText, "- a\nplain", "no checklist line: the key beeps")
+        XCTAssertFalse(undo.canUndo)
+    }
+
+    func testMarkAsCheckedInAReadOnlyNoteDoesNothing() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let undo = UndoManager()
+        show("[ ] a", readOnly: true, undoManager: undo, in: host)
+
+        host.editor.textView.toggleCheckmarks(nil)
+
+        XCTAssertEqual(host.editor.currentText, "[ ] a")
+        XCTAssertFalse(undo.canUndo)
+    }
+
     func testToggleChecklistInAReadOnlyNoteDoesNothing() {
         let host = makeHostedEditor()
         defer { withExtendedLifetime(host.window) {} }
@@ -346,7 +475,125 @@ final class CheckboxTests: XCTestCase {
         XCTAssertGreaterThan(ticked, open, "a ticked box is filled, an open one is an outline")
     }
 
+    /// The colours of the pixels of the box over `marker` that are ink: not the colour of the background around it.
+    private func inkColours(over marker: NSRange, in host: Host) -> [NSColor] {
+        let textView = host.editor.textView
+        let rect = viewRect(ofCharacters: marker, in: host).integral
+        guard rect.width > 0, rect.height > 0, let rep = textView.bitmapImageRepForCachingDisplay(in: rect) else {
+            return []
+        }
+        textView.cacheDisplay(in: rect, to: rep)
+        guard let background = rep.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB) else { return [] }
+        var ink: [NSColor] = []
+        for y in 0..<rep.pixelsHigh {
+            for x in 0..<rep.pixelsWide {
+                guard let color = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                let distance =
+                    abs(color.redComponent - background.redComponent)
+                    + abs(color.greenComponent - background.greenComponent)
+                    + abs(color.blueComponent - background.blueComponent)
+                if distance > 0.15 { ink.append(color) }
+            }
+        }
+        return ink
+    }
+
+    /// An open box is drawn in `secondaryLabelColor`, a grey (plan 6 task 7, mockup B), and a ticked one stays filled with the
+    /// accent colour: the ink of the open box has no hue.
+    func testOpenBoxIsGrey() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("[ ] a\n[x] b", caret: 11, in: host)
+
+        let open = inkColours(over: NSRange(location: 0, length: 3), in: host)
+
+        XCTAssertGreaterThan(open.count, 10, "the open box is drawn")
+        for color in open {
+            let spread =
+                max(color.redComponent, color.greenComponent, color.blueComponent)
+                - min(color.redComponent, color.greenComponent, color.blueComponent)
+            XCTAssertLessThan(spread, 0.06, "r, g and b of \(color) are about the same")
+        }
+    }
+
+    /// The symbol is 85% of the font's line height. The line fragment's height includes the spacing after the line (plan 6
+    /// task 7), so a symbol made from it would grow with the spacing: the box of a line with no spacing and of one with the
+    /// 4 pt is as high.
+    func testCheckboxSizeIgnoresSpacing() throws {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("[ ] a\n[x] b", caret: 11, in: host)
+        let textView = host.editor.textView
+        let layoutManager = try XCTUnwrap(textView.layoutManager as? MarkupLayoutManager)
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: 11))
+        let font = NoteTextView.noteFont
+        let lineHeight = layoutManager.defaultLineHeight(for: font)
+        let fragment = layoutManager.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+
+        XCTAssertEqual(fragment.height, lineHeight + 4, accuracy: 1, "the fragment includes the spacing")
+        XCTAssertEqual(layoutManager.checkboxPointSize(for: font), 0.85 * lineHeight, accuracy: 0.01)
+
+        /// The height of the ink in the fragment of the first line, over the box.
+        func inkHeight() -> CGFloat {
+            let glyphs = layoutManager.glyphRange(
+                forCharacterRange: NSRange(location: 0, length: 3), actualCharacterRange: nil)
+            let container = textView.textContainer!
+            let box = layoutManager.boundingRect(forGlyphRange: glyphs, in: container)
+            let line = layoutManager.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+            let rect = NSRect(
+                x: textView.textContainerOrigin.x + box.minX - 2, y: textView.textContainerOrigin.y + line.minY,
+                width: box.width + 4, height: line.height
+            ).integral
+            guard let rep = textView.bitmapImageRepForCachingDisplay(in: rect) else { return -1 }
+            textView.cacheDisplay(in: rect, to: rep)
+            guard let background = rep.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB) else { return -1 }
+            var first: Int?
+            var last = 0
+            for y in 0..<rep.pixelsHigh {
+                for x in 0..<rep.pixelsWide {
+                    guard let color = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                    let distance =
+                        abs(color.redComponent - background.redComponent)
+                        + abs(color.greenComponent - background.greenComponent)
+                        + abs(color.blueComponent - background.blueComponent)
+                    if distance > 0.15 {
+                        first = first ?? y
+                        last = y
+                    }
+                }
+            }
+            guard let first else { return -1 }
+            return CGFloat(last - first + 1) * rect.height / CGFloat(rep.pixelsHigh)
+        }
+
+        let spaced = inkHeight()
+        XCTAssertGreaterThan(spaced, 8, "the box is drawn")
+        XCTAssertLessThanOrEqual(spaced, 0.85 * lineHeight * 1.2, "and is not made from the fragment's height")
+
+        // The same line with no spacing: the box is as high.
+        let plain = NSMutableParagraphStyle()
+        plain.lineSpacing = 0
+        textView.textStorage?.addAttribute(.paragraphStyle, value: plain, range: NSRange(location: 0, length: 6))
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: 11))
+        let flat = layoutManager.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+        XCTAssertEqual(flat.height, lineHeight, accuracy: 1, "the line has no spacing now")
+        let unspaced = inkHeight()
+        XCTAssertEqual(unspaced, spaced, accuracy: 1.5, "the box does not depend on the spacing")
+    }
+
     // MARK: The menu
+
+    func testMarkAsCheckedMenuItem() {
+        let menu = NSApp.mainMenu?.items.first { $0.submenu?.title == "Format" }?.submenu
+        let item = menu?.items.first { $0.action == #selector(NoteTextView.toggleCheckmarks(_:)) }
+        XCTAssertEqual(item?.title, "Mark as Checked")
+        XCTAssertEqual(item?.keyEquivalent, "u")
+        XCTAssertEqual(item?.keyEquivalentModifierMask, NSEvent.ModifierFlags([.command, .shift]))
+        XCTAssertNil(item?.target, "the first responder gets it: the editor, when it has the keyboard")
+        XCTAssertEqual(item?.isEnabled, true)
+        let titles = menu?.items.map(\.title)
+        XCTAssertEqual(titles, ["Bold", "Checklist", "Mark as Checked"], "it follows Checklist")
+    }
 
     func testFormatMenuHasTheChecklistShortcut() {
         let menu = NSApp.mainMenu?.items.first { $0.submenu?.title == "Format" }?.submenu

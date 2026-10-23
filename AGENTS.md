@@ -12,8 +12,35 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
-- Latest plan: [`docs/superpowers/plans/2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md),
-  done and released as 0.5.0 (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
+- Latest plan: [`docs/superpowers/plans/2026-10-22-plan-6-polish.md`](docs/superpowers/plans/2026-10-22-plan-6-polish.md),
+  done, and released as 1.0.0 (`VERSION` says so): launch speed and a launch log, the CI
+  performance check, the look of mockup B, accessibility, an icon, and the 0.5.0 follow-ups. Task 1 is done: the app writes
+  down each launch (`launch-times.json`, `LaunchLog`, `LaunchTimer`) and Help > Launch Times… shows and copies the record
+  ([`docs/features/launch-times.md`](docs/features/launch-times.md)). Task 2 is done: CI gates the launch on Scratch's own
+  work (`launch_overhead_ms`: `launch_ms` minus the launch of an empty AppKit app, `LaunchReference`) and measures idle CPU
+  (`idle_cpu_pct`), with `perf/tolerances.json` and report-only metrics (docs/decisions/0009). Task 3 is done: a launch reads
+  the body of the active note only, and the colours of a pasted block are asked for before the block exists. Task 4 is done:
+  a sidebar row and a tab show a line without its markers (`PlainLine`), and schema version 4 works the titles and previews
+  of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). Task 5 is done: ⌘B bolds the word
+  under a caret and wraps each selected line, ⇧⌘U (Format > Mark as Checked) ticks a checklist, a double-click on a box ticks
+  it once, composed text keeps what marks it, and a note's title keeps undo steps of its own
+  ([`docs/features/formatting.md`](docs/features/formatting.md), [`docs/features/title-and-font-size.md`](docs/features/title-and-font-size.md)). Task 7 is done: the tab strip is a
+  toolbar item in the toolbar row, lines have air between them, inline code is a pill, code blocks have a border, and an open
+  box is grey ([`docs/features/tabs.md`](docs/features/tabs.md), [`docs/features/formatting.md`](docs/features/formatting.md)).
+  Task 8 is done: VoiceOver hears the rendered note (`SpokenText`: "unchecked", "image, dashboard.png", "code block, Swift"),
+  a sidebar row is one element, a tab's close button names its tab, Tab walks the search field, the note list, the title and
+  the editor (`KeyViewLoop`), the editor's context menu has what a click does (`EditorContextMenu`), and every colour has an
+  Increase Contrast variant ([`docs/features/accessibility.md`](docs/features/accessibility.md)).
+  Task 6 is done: what is typed,
+  composed or pasted next to a token goes on a line of its own, a copy or a drag of a selection that holds a token also
+  writes the note's text on a private type that a paste or a drop into Scratch reads first, and a copied image is written
+  with its data when Scratch quits ([`docs/features/attachments.md`](docs/features/attachments.md)). Task 9 is done: the app
+  has an icon, a yellow notepad with a ticked checkbox that `scripts/make-app-icon.py` draws with Pillow into
+  `AppIcon.appiconset` (docs/decisions/0010), and the release zip check fails an app without `AppIcon.icns`. Task 10 is done: the CI baseline is measured again
+  (the slowest of three runs of the final app, docs/decisions/0009), the README, its seven screenshots and the decision records
+  0009 and 0010 are final, and the app's 1.0.0 is what a merge of `plan-6-polish` publishes. The plan before it,
+  [`2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md), is done and released as 0.5.0
+  (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
   and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
   and `AttachmentToken` exist, the schema is version 3, `AttachmentStore` keeps the files and removes them only when no
   note names them, the 0.4.0 follow-ups in ScratchCode are in, a token line is drawn as a preview or a chip, files and
@@ -34,12 +61,17 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 Packages/ScratchCore/             Foundation-only Swift package. Builds and tests on Linux and macOS.
   Sources/CSQLite/                module map for the system SQLite library (no pkgConfig, on purpose)
   Sources/ScratchCore/Notes/      Note and NoteID: the note model, derived title and preview (a title and a preview skip
-                                  blank lines, fence lines and attachment lines). NoteSummary: a sidebar
+                                  blank lines, fence lines, attachment lines and lines of markers alone, and show a line
+                                  as the editor does outside a fenced block: PlainLine takes out a list line's marker,
+                                  the `**` of bold and the backticks of inline code, and what is inside a block stays as
+                                  typed). NoteSummary: a sidebar
                                   row (`deletedAt` is set for Recently Deleted rows). NoteStore: reads and writes the
                                   notes table (pinned first, newest edit first), searches it (`search`), and pins,
                                   deletes, restores and purges notes (`setPinned`, `delete`, `restore`,
-                                  `deletePermanently`, `deletedSummaries`, `purge`), and says which attachments the
-                                  stored bodies name (`referencedAttachmentIDs`). SearchQuery: typed text to an
+                                  `deletePermanently`, `deletedSummaries`, `purge`), says which attachments the
+                                  stored bodies name (`referencedAttachmentIDs`), and says what a tab needs of its note
+                                  without reading the body (`tabInfo(_:)`, one query over the derived columns, a
+                                  `TabNoteInfo`: title, deleted, never used). SearchQuery: typed text to an
                                   FTS5 MATCH expression
   Sources/ScratchCore/Attachments/ AttachmentID (a lowercase UUID, like NoteID) and AttachmentToken: the line
                                   `[[attachment:<id>]]` that stands for an attachment in a note (`line(for:)`,
@@ -53,11 +85,15 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   `sweep`) and AttachmentEditing (what the keys and the pasteboard do around a token line,
                                   as `TextEdit`s and `KeyAction`s: `snappedSelection` keeps the caret and a selection from
                                   ending inside a token, `deletion` is Backspace and Delete next to one, `removal`,
-                                  `insertion`: the token lines of a paste, each on a line of its own; `token(touching:)`
-                                  reads at most 51 units each way of a position) and AttachmentCopying (what Copy puts on
-                                  the pasteboard: `text(of:in:name:ignoring:)` is the text with the file's name in place of
-                                  each token, `soleAttachment(in:of:ignoring:)` says that a selection is exactly one token,
-                                  which is the one that also copies the file)
+                                  `insertion`: the token lines of a paste, each on a line of its own; `lineBreaks(inserting:
+                                  at:in:isLiteral:)`: whether typed, composed or pasted text needs a line break before and
+                                  after it so that no token line shares its line, and `textInsertion(of:breaks:over:in:)`,
+                                  the edit that has them; `token(touching:)` reads at most 51 units each way of a position)
+                                  and AttachmentCopying (what Copy puts on the pasteboard: `text(of:in:name:ignoring:)` is
+                                  the text with the file's name in place of each token, `soleAttachment(in:of:ignoring:)`
+                                  says that a selection is exactly one token, which is the one that also copies the file,
+                                  and `holdsAttachment(in:of:ignoring:)` that a selection holds a token, which is the one
+                                  that also writes the note's text)
   Sources/ScratchCore/Session/    SessionState and TabState (what a relaunch restores: the tabs, the active one, the
                                   font size, and each tab's cursor and `scrollAnchor`), SessionStore (JSON under key
                                   "state"), TabList (the tab rules: open, close, select, with TabOpening and
@@ -71,23 +107,30 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   UnsavedNotes (the notes whose write failed, kept with the owner's text until a write
                                   succeeds: thread-safe, the newest copy of a note wins)
   Sources/ScratchCore/Storage/    Database (thread-safe SQLite wrapper with transactions), Connection (the C API calls),
-                                  SQLValue and Row, Schema (version 3, with the FTS5 index `notes_fts`, the
+                                  SQLValue and Row, Schema (version 4, with the FTS5 index `notes_fts`, the
                                   `attachments` table, the migration rule, and SchemaError for a database from a newer
                                   Scratch), ScratchStorage (opens
                                   the data directory and its stores, `notes`, `session` and `attachments`; refuses a
                                   fixture on the real directory; `deletePermanently` and `purge`, which remove a note
                                   and then the files nothing names any more; its
                                   `database` is public so that tests can make writes fail, see section 7)
-  Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride
+  Sources/ScratchCore/Launch/     LaunchOptions: the -Scratch* launch arguments (section 3), AppearanceOverride (light, dark,
+                                  and `light-contrast` and `dark-contrast`: Increase Contrast on).
+                                  LaunchRecord (one launch: the date, the version, the boot time, the milliseconds from the
+                                  process start to each of the phases `main`, `storage`, `restore`, `window` and `firstFrame`,
+                                  and `isFirstAfterStartUp`) and LaunchLog (`<data dir>/launch-times.json`: the newest 50
+                                  records, `load` never throws, `append` decides what is the first after start-up, `save` is
+                                  atomic, `report` is the text of Help > Launch Times…)
   Sources/ScratchCore/Markup/     MarkupParser (a line, or a whole note, to `MarkupSpan`s: bullets, checkboxes, bold at
                                   word boundaries (docs/decisions/0006), inline code and links, as UTF-16 `NSRange`s),
                                   MarkupSpan and MarkupKind, LinkScanner
                                   (the `http(s)://` URLs of a line), FenceScanner (the fenced code blocks, inside which
                                   nothing is formatting), TextLines (internal: line splitting and white space over UTF-16
                                   units). The editing rules answer an action with a `TextEdit` (a range, its
-                                  replacement and the selection afterwards): ListEditing (Return, Tab, ⇧Tab, ⇧⌘L and a
-                                  click on a checkbox) and InlineEditing (⌘B, and `touchesAttachment`: whether the
-                                  selection touches a token line, which ⌘B must not wrap). They read only the paragraphs
+                                  replacement and the selection afterwards): ListEditing (Return, Tab, ⇧Tab, ⇧⌘L, ⇧⌘U
+                                  `toggleCheckmarks` and a click on a checkbox) and InlineEditing (⌘B: `toggleBold` on a
+                                  selection, on a caret in a word and on several lines, nil when the key beeps, and
+                                  `touchesAttachment`: whether the selection touches a token line, which ⌘B must not wrap). They read only the paragraphs
                                   that cover the selection (`ParagraphLines`, internal: those lines with document offsets,
                                   and how a selection moves when they change; `isAttachmentLine`, which ⇧⌘L
                                   skips). The editor's styling reads CodeBlockIndex (the fenced blocks of a note, carried
@@ -124,30 +167,42 @@ Packages/ScratchCode/             Swift package, no AppKit, builds and tests on 
                                   of ordinary code for each of the 17 languages (a test resource), and `Corpus/`: the
                                   samples the detector is tuned against, in `<fence name>/` (code), `unknown/` (code of
                                   a language Scratch lacks) and `prose/` (text that must stay plain)
-App/project.yml                   XcodeGen spec: targets Scratch (app), ScratchAppTests (hosted unit tests),
-                                  ScratchUITests, ScratchPerfTests; schemes Scratch and ScratchPerf. The generated
-                                  App/Scratch.xcodeproj is never committed.
+App/project.yml                   XcodeGen spec: targets Scratch (app), LaunchReference (the reference app of the launch
+                                  measurement), ScratchAppTests (hosted unit tests), ScratchUITests, ScratchPerfTests;
+                                  schemes Scratch and ScratchPerf. ScratchPerfTests depends on LaunchReference (built
+                                  with it, not linked), and the Scratch scheme does not know it: LaunchReference is never
+                                  in the app or a release. The generated App/Scratch.xcodeproj is never committed.
+App/LaunchReference/              main.swift: an AppKit app that shows one 1100 x 700 window with a TextKit 1 text view and
+                                  does nothing else, bundle id `io.github.ldellisola.Scratch.LaunchReference`. The floor of
+                                  the launch measurement (docs/decisions/0009)
 App/Sources/                      AppKit shell (default actor isolation MainActor). main.swift and AppDelegate (launch
                                   sequence: storage, session, window, menu bar), AppEnvironment (parses the launch
                                   arguments, opens storage; isolates a hosted test run)
 App/Sources/Window/               MainWindowController (one window, closing it quits), MainSplitViewController (glass
-                                  sidebar item + editor area item), EditorAreaViewController (the tab strip above the
-                                  editor), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
+                                  sidebar item + editor area item; `onContentLayout` tells the toolbar how much room the
+                                  tab strip has), EditorAreaViewController (the editor, from the top of the window), MainMenu (menu bar, built in code: there is no storyboard; it has the Format
                                   menu), AppCommands (the target of the app's own menu items: About Scratch, the tabs,
-                                  pinning, attaching a file, searching and the font size), AboutCredits (the About
+                                  pinning, attaching a file, searching, the font size and Help > Launch Times…), AboutCredits (the About
                                   panel's credits: the licences in `Acknowledgements.rtf`, in `labelColor`; `credits(in:)`,
-                                  `panelOptions(in:)`), ToolbarController (sidebar button,
-                                  paperclip, pin button, new note button), TitlebarPocket (hides
-                                  the line macOS 26 draws under the toolbar, section 7)
-App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
-                                  `TabStripLayout`, `TabStripContentView`, `TabItemView`)
+                                  `panelOptions(in:)`), ToolbarController (sidebar button, the tab strip as an item of its
+                                  own, pin button, paperclip, new note button; `updateTabStripWidth`), KeyViewLoop (the order
+                                  of Tab: search field, note list, title, editor), TitlebarPocket (hides
+                                  the line macOS 26 draws under the toolbar, section 7), LaunchTimesPanel (the alert of
+                                  Help > Launch Times…: the report in a selectable text view, with Copy and OK)
+App/Sources/Tabs/                 TabStripViewController (the glass tab strip, the view of a toolbar item: `TabStripItem`,
+                                  `TabStripView`, `TabStripLayout` (the widths of the tabs, and the room the toolbar leaves:
+                                  `maximumWidth(windowWidth:leading:)`), `TabStripContentView`, `TabItemView`; `maximumWidth`,
+                                  `shownItems`, which the tests read)
 App/Sources/Sidebar/              SidebarViewController (the search field and the note list in the glass sidebar: an
                                   NSTableView with group headers; a click or Return opens a note, `onOpen`; `onSearch`,
                                   `onTogglePin`, `onDelete`, `onRestore`, `onDeletePermanently` and
-                                  `onToggleRecentlyDeleted`), SidebarRowViews (`NoteRowCellView`, `GroupRowCellView`),
+                                  `onToggleRecentlyDeleted`, `keyViews`), SidebarRowViews (`NoteRowCellView`: the label
+                                  `<title>, <time>, <preview>` that the cell gets, `GroupRowCellView`, `HeaderTitleField`: the
+                                  title of the Recently Deleted header is a button),
                                   SidebarTableView (Return, ⌘⌫, the click on the Recently Deleted header, the row's
                                   context menu)
-App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore, new note, close,
+App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore (the body of the active
+                                  note only: `notesReadAtRestore`), new note, close,
                                   pinning, delete, restore and purge, the tab titles, the launch sweep of the attachments
                                   that no note names; the one place that writes to storage; it is the editor's
                                   `AttachmentImporting`), NoteListModel (the sidebar's data: reads the note list, the
@@ -156,25 +211,34 @@ App/Sources/Session/              SessionCoordinator (the tabs and which is acti
                                   at once on the main thread, the copy on the storage queue, `pendingCopies`)
 App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain paste and copy, the font size, the note's
                                   undo manager), TextViewFactory (builds the TextKit 1 stack, docs/decisions/0001),
-                                  TitleField (the optional title above the text), EditorViewController (the title field
-                                  and the editor: shows a note, reports edits, cursor and scroll anchor). NoteTextView
+                                  TitleField (the optional title above the text, with the undo manager that the field
+                                  editor gets from it), EditorViewController (the title field
+                                  and the editor: shows a note, reports edits, cursor and scroll anchor, and ends the
+                                  title's editing when it leaves a note). NoteTextView
                                   also applies the editing rules' `TextEdit`s (`apply`, one undo step), ticks a checkbox
-                                  on a click (`mouseDown`), answers ⇧⌘L (`toggleChecklist`) and ⌘B (`toggleBoldMarkers`),
+                                  on a click (`mouseDown`), answers ⇧⌘L (`toggleChecklist`), ⇧⌘U (`toggleCheckmarks`) and
+                                  ⌘B (`toggleBoldMarkers`), tells the styler that an edit is composed text
+                                  (`setMarkedText`, `isSettingMarkedText`),
                                   and handles Return, Tab and ⇧Tab on list lines (`insertNewline` and the like). The markers
                                   are rendered by MarkupStyler (the text storage's delegate: styles paragraphs from the
                                   core's parser, hides and reveals markers, styles a shown note in chunks),
                                   MarkupLayoutManager (null glyphs for hidden markers and fence lines, draws bullets and
-                                  checkboxes, the tinted code blocks and their labels), MarkupAppearance (fonts, colours
-                                  and paragraph styles per font size, the block styles), MarkupAttributes (the
-                                  `scratchMarker`, `scratchLink` and `scratchCodeBlock` attributes, `MarkerRole`,
+                                  checkboxes, the pill behind inline code, the tinted, bordered code blocks and their labels),
+                                  MarkupAppearance (fonts, colours and paragraph styles per font size, with the spacing after
+                                  every line: `lineSpacing(forFontSize:)`, `baseStyle`; the block styles), MarkupAttributes (the
+                                  `scratchMarker`, `scratchLink`, `scratchInlineCode` and `scratchCodeBlock` attributes,
+                                  `InlineCodeMetrics`, `MarkerRole`,
                                   `CodeBlockMark`, `CodeBlockMetrics`, `CodeBlockColors`, `MarkupColors`), ParagraphBatch
                                   (whole paragraphs read in one call), CodeBlockStyler (colours the code of the fenced
                                   blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
                                   language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`,
-                                  `whenHighlighted`; the query warm-up: `warmUp(languagesNamedIn:using:)`,
-                                  `languages(namedIn:)`, `pendingWarmUps`, `warmedLanguages`), CodeBlockParts (a block's name, code and fence lines from its range)
+                                  `whenHighlighted`, `prefetch(block:)`: the colours of a block that a paste is going to
+                                  make, asked for before it exists, `submittedRequests`; the query warm-up:
+                                  `warmUp(languagesNamedIn:using:)`, `warmUp(languagesInTextsFrom:on:using:)`: the texts
+                                  read on the storage queue, `languages(namedIn:)`, `pendingWarmUps`, `warmedLanguages`), CodeBlockParts (a block's name, code and fence lines from its range)
                                   PasteClassifier (whether a paste is code, and the edit that wraps it in a fence:
-                                  `wrap`; NoteTextView asks it after every paste, `readSelection(from:)`) and
+                                  `wrap`; NoteTextView asks it when it has read a paste of up to `earlyWrapLimit` units,
+                                  `readSelection(from:)`, and the turn after for a bigger one) and
                                   CodeBlockMenu (the menu of a block's language label, with `CodeBlockAction` and
                                   `CodeBlockChoice`, and the edits its items make: `menu`, `edit`; NoteTextView opens it
                                   from a click on a label, `labelHit`, `showCodeBlockMenu`, and applies a choice,
@@ -193,39 +257,66 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   AttachmentImporting (`AttachmentSource`: a file or the bytes of an image, and the
                                   `AttachmentImporting` protocol that NoteTextView asks to make attachments, `noteID`).
                                   NoteTextView reads a paste or a drop in the order of spec §6.5 (`readSelection(from:)`,
-                                  `paste`, `attachmentSources(from:)`, `insertAttachments`, `acceptsDrop`, `performDrop`),
-                                  opens the paperclip's panel (`attachFiles`, `presentOpenPanel`), keeps a token whole
+                                  `readSelection(from:type:)`, `paste`, `insertNoteText`: the note's own text of a copy,
+                                  `insertTextWithTokenBreaks`, `attachmentSources(from:)`, `insertAttachments`,
+                                  `acceptsDrop`, `performDrop`), puts text typed or composed next to a token on a line of
+                                  its own (`makeRoomAtTokenEdge`), opens the paperclip's panel (`attachFiles`, `presentOpenPanel`), keeps a token whole
                                   (`snappedSelection`, which the editor's selection delegate asks, and `deleteBackward` and
                                   `deleteForward`), takes a click on a preview or a chip (`attachmentHit`: the drawn rect,
                                   `pressAttachment`: a click selects, a double-click opens through `openURL`, `mouseDragged`
                                   past 3 pt drags the file out, `attachmentDragPresenter`) and writes an attachment copy
-                                  (`writeSelection`). AttachmentDrag (`pasteboardWriter(for:)`, the stored file's NSURL, the
+                                  (`writeSelection`). Accessibility (plan 6 task 8): SpokenText (`spoken(_:range:)`: what
+                                  VoiceOver reads for a range of the styled note, from the marker roles, code block marks and
+                                  attachment marks; NoteTextView's `accessibilityString(for:)` and
+                                  `accessibilityAttributedString(for:)` ask it; the accessibility value stays the stored text) and
+                                  EditorContextMenu (`items(for:atViewPoint:)`: Mark as Checked, Open Link, Open Attachment and
+                                  the Code Block Language submenu, which `NoteTextView.menu(for:)` puts before AppKit's items;
+                                  `toggleCheckbox(at:)`, `attachmentMark(atViewPoint:)`, `codeBlock(atViewPoint:)`,
+                                  `validateMenuItem`). AttachmentDrag (`pasteboardWriter(for:)`, the stored file's NSURL, the
                                   drag item and its picture, `AttachmentDragSource`: copy only) and AttachmentPasteboard
                                   (the one item of a copy of one attachment: its name, its file's URL, and for an image
-                                  its PNG and TIFF, which `AttachmentImageProvider` makes when an application asks)
-App/Sources/Support/              AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
+                                  its PNG and TIFF, which `AttachmentImageProvider` makes when an application asks;
+                                  `noteTextType`, the private type of the note's own text; `write`, which remembers the
+                                  last copy of an image, and `materialize`, which writes it again with its data at quit:
+                                  `AppDelegate.applicationWillTerminate`)
+App/Sources/Support/              LaunchClock (the process start and the boot time, from `sysctl`), LaunchTimer (the launch's
+                                  phase marks, and after the first frame the log's record: `mark`, `finish`, `current`, `log`),
+                                  AccessibilityID (also compiled into the UI test targets), Signposts (the `keystroke`,
                                   `switch-note` and `paste-code` intervals the performance tests read), RunLoopIdle
                                   (runs work when the main run loop is next about to wait: after the frame is drawn, and
                                   with `order: afterMeasurementsOrder` after the signposts end), FrameMonitor
-                                  (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames),
+                                  (`-ScratchFrameMonitor`: scrolls the note itself and measures the frames), IdleMonitor
+                                  (`-ScratchIdleMonitor`: 3.5 s after launch counts the app's CPU time and the main run loop's
+                                  wake-ups for 5 s and writes `cpu_ms`, `wall_ms`, `cpu_pct` and `wakeups`),
                                   DebugStateElement (the invisible `debug.state` element that UI tests read the font
-                                  size, scroll anchor, scroll offset, pending paste work, the previews still to decode and
-                                  the attachments of the note (id, `copied` and `fileExists`) from, in isolated launches
-                                  only)
-App/Resources/                    Assets.xcassets (placeholder app icon, the colours `CodeText` and `CodeBackground` of
-                                  inline code and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
+                                  size, scroll anchor, scroll offset, pending paste work, the previews still to decode,
+                                  the attachments of the note (id, `copied` and `fileExists`) and the newest 20 records of
+                                  the launch log (`launchTimes`) and which part of the window has the keyboard
+                                  (`firstResponder`: `editor`, `title`, `search`, `sidebar` or `other`) from, in isolated
+                                  launches only), CatalogColour (the colours of the asset catalog as the code asks for
+                                  them: `named(_:fallback:)`, and with `isHighContrastForced` the high contrast table that a
+                                  test holds to the catalog; `isIncreaseContrastOn`), AppearanceOverride+AppKit
+                                  (`nsAppearanceName`, `force(on:)`: the appearance that `-ScratchAppearance` forces, and for
+                                  `light-contrast` and `dark-contrast` the high contrast colours too)
+App/Resources/                    Assets.xcassets (`AppIcon.appiconset`, the app icon: ten PNGs that `scripts/make-app-icon.py`
+                                  writes, never edit them by hand, section 3, and the colours `CodeText` and `CodeBackground` of
+                                  inline code, `CodeBorder` of a code block's hairline and `CodeKeyword`, `CodeString`, `CodeComment`, `CodeNumber`, `CodeType`,
                                   `CodeFunction`, `CodeAttribute` and `CodePreprocessor` of highlighted code, each with a
-                                  light and a dark variant), Acknowledgements.rtf (the licences of tree-sitter and of every
+                                  light and a dark variant and a high contrast one of each: Increase Contrast, section 7),
+                                  Acknowledgements.rtf (the licences of tree-sitter and of every
                                   grammar, generated by `scripts/make-acknowledgements.py`: never edit it by hand)
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, and a 50,000-line JSON paste and its wrap do too,
                                   AboutCreditsTests: the About credits list tree-sitter and every grammar,
-                                  SessionWarmUpTests: the open tabs' languages are warmed up, FrameMonitorTests, EditorViewControllerTests:
-                                  the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
+                                  SessionWarmUpTests: the open tabs' languages are warmed up, SessionRestoreTests: a launch
+                                  reads the active note only and keeps every rule of the restore, FrameMonitorTests, IdleMonitorTests, EditorViewControllerTests:
+                                  the title, font size, per-note undo, the title's undo steps, read-only and scroll anchor,
+                                  TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
-                                  reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
-                                  click ticks a box, ⇧⌘L, the drawn symbol, the Format menu, ListKeyTests: Return, Tab,
-                                  ⇧Tab and ⌘B, LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
+                                  reveal, fenced blocks are literal, a long note is styled in chunks, composed text keeps
+                                  what marks it (the storage edited directly, see section 7), CheckboxTests: a
+                                  click ticks a box, a double-click ticks it once, ⇧⌘L, ⇧⌘U, the drawn symbol, the Format
+                                  menu, ListKeyTests: Return, Tab, ⇧Tab and ⌘B (on a word, on lines), LinkTests: ⌘-click opens a link, the pointing hand, SaveFailureTests: a
                                   coordinator on a failing disk keeps and retries the notes it could not write, and
                                   the emptied-note rules, CodeBlockStylerTests: a fenced block is tinted with hidden
                                   fences, indented lines, colours and a label, CodeBlockPartsTests, CodePasteTests: a
@@ -238,22 +329,35 @@ App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (
                                   pasted in the order of spec §6.5, one undo step, a 50 MB file, drops,
                                   AttachmentEditingTests: the caret and a selection around a token, Backspace and Delete,
                                   ⇧⌘L and ⌘B around a token, the paperclip, AttachmentCopyTests: Copy's text and files, a click, a double-click and a
-                                  drag on an attachment, pasting what was copied; AttachmentTestHost is what they share)
+                                  drag on an attachment, pasting what was copied; AttachmentTestHost is what they share,
+                                  LaunchTimerTests: the five phases in order, `finish` writes after the queue and never fails
+                                  on a log that is corrupt or unwritable, LaunchClockTests, LaunchTimesPanelTests: the alert
+                                  and Copy, SpokenTextTests: what VoiceOver reads for markers, tokens and blocks, and that the
+                                  value is the stored text, ContextMenuTests: the context menu's items and what they do,
+                                  AppearanceTests: every colour has a high contrast variant that reads, and the contrast
+                                  forced contrast colours and the launch appearances, SidebarRowViewsTests: a row's label, the Recently Deleted button and
+                                  the presses)
 App/Tests/ScratchUITests/         XCUITest: UITestSupport launches the app on an isolated data directory (and relaunches
                                   it on the same one); LaunchUITests, PersistenceUITests (force-kill, quit, cursor),
-                                  SidebarUITests, TitleUITests (title, font size, scroll position), TabsUITests (the
+                                  SidebarUITests, TitleUITests (title, title undo, font size, scroll position), TabsUITests (the
                                   tab strip, opening, closing and switching tabs), DeleteUITests (delete, Recently
                                   Deleted, restore, the purge), ChecklistUITests (⇧⌘L from the keyboard and its undo),
-                                  FormattingUITests (a list, a checklist and bold typed with real keys, and copy),
+                                  FormattingUITests (a list, a checklist, ⇧⌘U and bold on a word typed with real keys, and copy),
                                   CodePasteUITests (⌘V of code is fenced, ⌘Z and ⌘Z again, an email stays plain),
                                   AttachmentUITests (⌘V of an image survives a relaunch, Backspace twice and ⌘Z bring it
-                                  back), ScreenshotTests (one test per screenshot, section 3)
-App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests,
+                                  back), LaunchUITests (a launch is in the launch log, Help > Launch Times… and its Copy),
+                                  AccessibilityUITests (labels, a sidebar row as one element, the Recently Deleted button, the
+                                  close button's label, Tab through the window),
+                                  ScreenshotTests (one test per screenshot, section 3)
+App/Tests/ScratchPerfTests/       the performance tests (UI tests in the Release build, ScratchPerf scheme): LaunchPerfTests
+                                  (`testLaunch`, which also attaches the launch log's phases as `launch_phases`, and
+                                  `testReferenceLaunch`: LaunchReference.app, launched by its URL in the products folder),
                                   EditorPerfTests (keystroke, scrolling, switching notes), CodePastePerfTests (a paste of
-                                  500 lines of code until its colours are on screen), PerfSupport. They share
-                                  UITestSupport and AccessibilityID with the UI tests
-perf/                             budgets.json (the budgets CI enforces, in milliseconds) and baseline.json (CI's own
-                                  numbers, the slowest of many runs: docs/decisions/0003)
+                                  500 lines of code until its colours are on screen), IdlePerfTests (`idle_cpu`), PerfSupport
+                                  (where the reference app is). They share UITestSupport and AccessibilityID with the UI tests
+perf/                             budgets.json (the budgets CI enforces: milliseconds, and `idle_cpu_pct` in percent),
+                                  tolerances.json (what a metric may exceed 1.2 x its baseline by) and baseline.json (CI's
+                                  own numbers, the slowest of many runs: docs/decisions/0003, 0009)
 VERSION                           the app's version, MAJOR.MINOR.PATCH on one line. It names the release and feeds the
                                   app's marketing and build versions (`make project`). Bump it with every change to
                                   App/ or Packages/ (section 6, Releases)
@@ -261,18 +365,22 @@ scripts/                          install-swift-linux.sh (toolchain), session-se
                                   ci-summary.py, publish-ci-results.sh, ci-wait.sh, ci-fetch.sh (the ci-results loop,
                                   section 4), lib-ci-results.sh (shared by those), name-screenshots.py (names the
                                   exported screenshots), perf-extract.py (a ScratchPerf result bundle to numbers),
-                                  perf-check.py (numbers against baseline and budgets), check-version-bump.sh (a change
+                                  perf-check.py (numbers against baseline, budgets and tolerances), check-version-bump.sh (a change
                                   to App/ or Packages/ needs a VERSION greater than main's), release-notes.sh (the
                                   release notes footer with the version filled in), check-release-zip.sh (unpacks a
-                                  release zip, checks the app in it, Acknowledgements.rtf too, and prints its sizes),
+                                  release zip, checks the app in it, Acknowledgements.rtf, AppIcon.icns and CFBundleIconName
+                                  too, and prints its sizes),
                                   check-release-dmg.sh (attaches a release DMG
                                   read-only and checks the window and the app in it), make-acknowledgements.py (writes
                                   App/Resources/Acknowledgements.rtf from Package.resolved, the LICENSE files and the vendored
-                                  grammars; `--check` says whether the file is current), tests/ (their tests, the
-                                  zip and DMG checks' against stubs of ditto, hdiutil, codesign and lipo)
+                                  grammars; `--check` says whether the file is current), make-app-icon.py (draws the app
+                                  icon's PNGs with Pillow, a development tool: docs/decisions/0010), tests/ (their tests, the
+                                  zip and DMG checks' against stubs of ditto, hdiutil, codesign and lipo, and
+                                  `test_make_app_icon.py`, Python's unittest)
 .github/workflows/ci.yml          CI. Job `linux`: lint, core tests, script tests, version bump check. Job `macos`:
                                   XcodeGen, core tests on macOS, app build and app tests, screenshots, performance tests
                                   and their check, the release zip and the release DMG. Both publish to `ci-results`.
+                                  The `linux` job installs `python3-pil` (Pillow) for the icon's test.
 .github/workflows/release.yml     the release: a merge to main that changes App/, Packages/ or VERSION builds
                                   `make release-zip release-dmg` and publishes a GitHub Release `v<VERSION>` with the
                                   zip and the DMG (section 6, Releases)
@@ -284,7 +392,7 @@ docs/release-notes-footer.md      the install and update steps (the DMG first, t
                                   placeholders)
 docs/features/                    one short behaviour spec per feature: paste-and-copy.md, autosave-and-restore.md,
                                   title-and-font-size.md, tabs.md, sidebar.md, recently-deleted.md, formatting.md, code.md,
-                                  attachments.md (more as features land)
+                                  attachments.md, launch-times.md (more as features land)
 docs/images/                      the README's screenshots (window-light, window-dark, formatting, code, attachments,
                                   search, recently-deleted): copies of the `screenshots/` that CI published for a release
                                   commit (`scripts/ci-fetch.sh`, section 4: typical-light, typical-dark, formatting-light,
@@ -297,7 +405,10 @@ docs/decisions/                   numbered decision records: 0001 (the editor us
                                   a note the owner empties is kept), 0005 (every release carries a DMG next to the zip),
                                   0006 (bold needs word boundaries), 0007 (tree-sitter: the packages, their versions and
                                   licences, and how to add a language), 0008 (attachments: the token line, the files kept
-                                  by reference, the own-line layout and the copy rules)
+                                  by reference, the own-line layout and the copy rules), 0009 (performance at 1.0: the launch
+                                  gates on the overhead above an empty app, idle CPU, the tolerances), 0010 (the 1.0 calls:
+                                  the look of mockup B, accessibility, the editing and attachment follow-ups, and the app
+                                  icon with Pillow as a development tool)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -316,14 +427,20 @@ macOS and runs on GitHub's Macs.
 - `make lint` `[linux]`: `swift format lint --strict` over `Packages` and `App`. Must exit 0.
 - `make format` `[linux]`: rewrite files to the house format (`.swift-format`).
 - `make script-test` `[linux]`: test the scripts in `scripts/` (the ci-results loop, `perf-check.py`,
-  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh`, `check-release-dmg.sh`, `check-release-zip.sh` and
-  `make-acknowledgements.py`, whose test also holds the checked-in `Acknowledgements.rtf` to `Package.resolved`). Each test
+  `perf-extract.py`, `check-version-bump.sh`, `release-notes.sh`, `check-release-dmg.sh`, `check-release-zip.sh`,
+  `make-acknowledgements.py`, whose test also holds the checked-in `Acknowledgements.rtf` to `Package.resolved`, and
+  `make-app-icon.py`, whose test needs Pillow: `apt-get install python3-pil` or `pip install pillow`). Each test
   file ends with an `all ... passed` line.
 - `python3 scripts/make-acknowledgements.py [--check]` `[linux]`: write `App/Resources/Acknowledgements.rtf`, the licences of
   tree-sitter and every grammar (from `Packages/ScratchCode/Package.resolved`, SwiftPM's checkouts in
   `Packages/ScratchCode/.build/checkouts`, which `make core-test` fetches, and the vendored `Sources/Grammar*/LICENSE`), or with
   `--check` say whether the checked-in file is current. Run it whenever a grammar is added or a version changes
   (docs/decisions/0007, "Adding a language"), and check the file in.
+- `python3 scripts/make-app-icon.py [<appiconset>]` `[linux]`: draw the app icon (needs Pillow) and write the ten PNGs of
+  `App/Resources/Assets.xcassets/AppIcon.appiconset` (or of another set's `Contents.json`: its sizes and file names). The
+  PNGs are checked in, so run it whenever the design in the script changes, look at `icon_512x512@2x.png` and
+  `icon_16x16@2x.png` (32 px) with the Read tool, and check the files in: `test_make_app_icon.py` fails when they are not
+  what the script makes (docs/decisions/0010).
 - `scripts/check-version-bump.sh <base-ref>` `[linux]`: exit 1 when the branch changed App/ or Packages/ since
   `<base-ref>` without a `VERSION` that is greater than `<base-ref>`'s (compared number by number: 0.10.0 is greater than
   0.9.0), or when `VERSION` is not MAJOR.MINOR.PATCH. CI runs it with `origin/main`.
@@ -344,14 +461,17 @@ macOS and runs on GitHub's Macs.
   `recently-deleted-light` (the `recently-deleted` fixture, the section expanded), `formatting-light` and
   `formatting-dark` (the `formatting` fixture: every marker once, the caret at the top of the note), and `code-light` and
   `code-dark` (the `code` fixture: a block each for five languages and one with no fence name, coloured), and
-  `attachments-light` and `attachments-dark` (the `attachments` fixture: an image and a file chip). These are the
+  `attachments-light` and `attachments-dark` (the `attachments` fixture: an image and a file chip), and
+  `typical-contrast-light` and `code-contrast-dark` (Increase Contrast on: `-ScratchAppearance light-contrast` and
+  `dark-contrast`), and `about-light` (the About panel: a picture of that window, with the app icon). These are the
   names in the Makefile's `SCREENSHOT_NAMES`, and each is one test in `ScreenshotTests`. The result
   bundle is `build/results/screenshots.xcresult`, and the files as exported are in `build/screenshots/raw`. `make
   app-test` skips these tests.
 - `make perf` `[macOS]`: run the performance tests (the `ScratchPerf` scheme, Release build) into
   `build/results/perf.xcresult`. Turn that into numbers with `python3 scripts/perf-extract.py
   build/results/perf.xcresult <out.json>`, and compare them with `python3 scripts/perf-check.py --results <out.json>
-  --baseline perf/baseline.json --budgets perf/budgets.json` (CI does both, section 4).
+  --baseline perf/baseline.json --budgets perf/budgets.json` (CI does both, section 4; `--tolerances` defaults to
+  `perf/tolerances.json`).
 - `make perf-baseline` `[macOS]`: run `make perf` and write its numbers to `perf/baseline.json`. Do not use it to
   update the baseline CI compares with: that is the slowest of at least three CI runs (docs/decisions/0003).
 - `make run FIXTURE=<name>` `[macOS]`: build the app and open it on a fixture in a throwaway data directory.
@@ -380,8 +500,9 @@ always pass `-ScratchDataDir`, so they never touch real data.
 |---|---|---|
 | `-ScratchDataDir <path>` | any path | use `<path>` instead of `~/Library/Application Support/Scratch` |
 | `-ScratchFixture <name>` | `empty`, `typical`, `huge-note`, `many-notes`, `recently-deleted`, `formatting`, `code`, `attachments` | delete the database and the `attachments` folder in the data directory and seed that fixture |
-| `-ScratchAppearance <light\|dark>` | `light` or `dark` | force the appearance |
+| `-ScratchAppearance <light\|dark\|light-contrast\|dark-contrast>` | `light`, `dark`, `light-contrast` or `dark-contrast` | force the appearance; the contrast ones are light and dark with the high contrast variants of the colours forced (`CatalogColour.isHighContrastForced`: section 7), for the screenshots |
 | `-ScratchFrameMonitor <path>` | any path | 3.5 s after launch scroll the note by itself for 5 s, and write the frame times, as JSON, to `<path>` (performance tests) |
+| `-ScratchIdleMonitor <path>` | any path | 3.5 s after launch measure the app's CPU time and run loop wake-ups for 5 s of idle, and write them, as JSON, to `<path>` (performance tests) |
 
 A fixture without `-ScratchDataDir` runs in a new `Scratch-<uuid>` directory under the temporary directory. A fixture
 is refused on the real data directory (`StorageError.fixtureRequiresIsolatedDirectory`), also when
@@ -397,13 +518,26 @@ is refused on the real data directory (`StorageError.fixtureRequiresIsolatedDire
 
 `make perf` runs `App/Tests/ScratchPerfTests` (UI tests on the Release build, the `ScratchPerf` scheme). CI runs it after
 the screenshots, extracts the numbers (`scripts/perf-extract.py`) and compares them (`scripts/perf-check.py`) with
-`perf/baseline.json` and `perf/budgets.json`. Every metric prints `OK`, `WARN` or `FAIL`, and a `FAIL` fails the job.
-The `macos` job's folder in `ci-results` has `perf/report.md` (the table), `perf/results.json` (the numbers),
+`perf/baseline.json`, `perf/budgets.json` and `perf/tolerances.json`. Every budgeted metric prints `OK`, `WARN` or
+`FAIL`, and a `FAIL` fails the job (a regression is a result above 1.2 x its baseline plus its tolerance, or above 2 x its
+budget); everything else that was measured prints `INFO` and never fails. The `macos` job's folder in `ci-results` has `perf/report.md` (the table), `perf/results.json` (the numbers),
 `perf/metrics.json` (everything `xcresulttool` knew), `perf/test-summary.json` and `perf/attachments/` (screenshots of
 the keystroke test before and after, and the frame report). The measurements, and why each is what it is, are in
-docs/decisions/0001 and 0003. What to know when one fails or changes:
+docs/decisions/0001, 0003 and 0009. What to know when one fails or changes:
 
-- **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 10 launches. `keystroke_ms`: the
+- **The metrics.** `launch_ms`: `XCTApplicationLaunchMetric()`, the median of 30 launches (`LaunchPerfTests.measuredLaunches`),
+  reported and never failing (INFO). `launch_reference_ms`: the same of `LaunchReference.app`, an empty AppKit app that the same job builds
+  (`LaunchPerfTests.testReferenceLaunch`), also INFO. `launch_difference_ms`: `launch_ms` minus `launch_reference_ms` (INFO),
+  what Scratch costs above an empty app on this runner today. `launch_overhead_ms`: that difference at the speed of a
+  nominal runner, `launch_difference_ms` x 200 / `launch_reference_ms` (`REFERENCE_NOMINAL_MS` in `perf-extract.py`), which is
+  Scratch's own launch work and the launch metric that gates: budget 150, tolerance 60, so it fails above 1.2 x baseline +
+  60 or above 300 (docs/decisions/0009, decision 2: the difference alone grows with the runner, 181 to 432 ms in six runs of
+  one app, and the ratio of the two launches does not). `launch_phase_<name>_ms` (INFO): the median of each phase of the launch log
+  (`main`, `storage`, `restore`, `window`, `firstFrame`) over the launches `testLaunch` made, from the attachment
+  `launch_phases`. `idle_cpu_pct` and `idle_wakeups`: the app's CPU time over 5 s of idle (the typical fixture, the window
+  open, the caret blinking) as a percentage of one core, and the wake-ups of the main run loop in them
+  (`IdleMonitor`, `IdlePerfTests`, the attachment `idle_cpu`). Budget 1.0, tolerance 0.5; a percentage, because the
+  caret's blink is a timer that the app does not own. `keystroke_ms`: the
   `keystroke` signpost, `NoteTextView.keyDown` until the main run loop is idle, one character per iteration typed about
   a third into the huge note. `switch_small_ms` and `switch_huge_ms`: the `switch-note` signpost, from
   `SessionCoordinator.open` until the note is on screen. `scroll_frame_ms`: the median CPU time of the main thread per
@@ -411,24 +545,43 @@ docs/decisions/0001 and 0003. What to know when one fails or changes:
   with this in-app monitor, not with XCTest's scroll metrics. `paste_code_ms`: the `paste-code` signpost, from
   `NoteTextView.paste` until the colours of the block that the paste made are on screen (`CodeBlockStyler.whenHighlighted`),
   one paste of 500 lines of Swift into an empty note per iteration, each with names that the app has not coloured before.
-  Budget 50 (spec §7), baseline 85.3: it is a WARN on CI (55 to 85 ms, depending on the runner: the ADR 0003 addendum),
-  and a FAIL above 100 (2 x the budget), which a slow runner can reach with no change to the paste: run the job again.
-  All in milliseconds and all medians.
+  Budget 50 (spec §7), baseline 94.8: it is a WARN on CI (50 to 95 ms, depending on the runner: the ADR 0003 addendum),
+  and a FAIL above 100 (2 x the budget, which is under 1.2 x the baseline, so it decides), which a slow runner can reach
+  with no change to the paste (3 of 26 runs of plan 6 did): run the job again.
+  All in milliseconds, except the idle ones, and all medians.
+- **The baseline is the slowest of three runs of the final 1.0.0 app** (`perf/baseline.json`, written in plan 6 task 10: the
+  three runs, the limits that follow and what they leave open are in docs/decisions/0009, "Task 10: the baseline").
+  `launch_overhead_ms` is 287.3 there (one of the three ran on a slow runner), which puts its regression limit (405) over the
+  hard limit, so it fails above 300 and no sooner. `scroll_frame_ms` is 6.54, the slow of its two modes. A baseline changes only
+  for a change that is meant, from at least three runs of the macOS job (docs/decisions/0003, "How to change them").
 - **The CI runner is slow and noisy.** Runs of the same build differ by up to a factor of two (the first run of a job is
-  the slowest), and a launch takes about 400 ms there (Calculator takes 1 s). The baseline is therefore the slowest of
-  many runs, and `launch_ms` and `switch_small_ms` are budgeted at 400 and 12 instead of the spec's 200 and 8
-  (docs/decisions/0003). A failure that no
-  change explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline. `launch_ms` is
-  the usual one: it fails above 800 ms (2 x its budget), and a slow runner gets there with no change to the app. The
-  commits `a698055` and `4faafbe` changed only docs and measured 800 and 1,027 ms, with all ten launches slow in
-  `perf/metrics.json`, where the same app took 677 ms on another runner (`f72e30f`). Push a new commit for another
-  runner.
+  the slowest), and a launch takes 600 ms and more there (Calculator takes 1 s). The baseline is therefore the slowest of
+  many runs, and `switch_small_ms` is budgeted at 12 instead of the spec's 8 (docs/decisions/0003). `launch_ms` does not
+  gate for that reason: the commits `a698055` and `4faafbe` changed only docs and measured 800 and 1,027 ms, with all ten
+  launches slow in `perf/metrics.json`, where the same app took 677 ms on another runner (`f72e30f`), and main's own run of
+  0.5.0 measured 0.60 to 1.14 s across its ten launches. The launch is gated on `launch_overhead_ms` instead: the reference
+  app is measured by the same job on the same runner, so the runner's speed is in both numbers. A failure that no change
+  explains: look at `perf/report.md`, then at `perf/metrics.json`, before touching the baseline, and push a new commit for
+  another runner.
+- **`launch_overhead_ms` is a ratio in disguise, and the reference launch is part of its noise.** It is
+  (`launch_ms` / `launch_reference_ms` - 1) x 200, so it moves with the ratio of the two medians, which was 1.65 to 1.73 in
+  five of six runs and 2.11 in the sixth (docs/decisions/0009, "Measured numbers"). A `FAIL` of that row (the notes say "over
+  2x the budget", a ratio of 2.5) with no change to what a launch does means one of the two tests ran in a slow stretch of the
+  runner and the other did not: push a new commit. Do not touch the budget, the tolerance, the nominal speed or the baseline
+  for it. A real regression shows in the phases (`launch_phase_<name>_ms`) and in `launch_difference_ms` of every run.
 - **A signpost interval ends when the run loop is idle** (`RunLoopIdle`, `Signposts.beginEditorInterval`), not when the
   code returns, so that TextKit's lazy layout and drawing count. A new interval for the tests belongs there too.
 - **`XCTApplicationLaunchMetric(waitUntilResponsive: true)` reports one launch of ten, or none,** on macos-26. Use the
   plain one.
 - **XCTest cannot report a custom number.** `scroll_frame_ms` reaches the result bundle as an attachment named
-  `scroll_frame_ms` (JSON), which `perf-extract.py` reads with `xcresulttool export attachments`.
+  `scroll_frame_ms` (JSON), which `perf-extract.py` reads with `xcresulttool export attachments`. So do `idle_cpu` (the
+  idle monitor's report) and `launch_phases` (a list of launch records). A new custom metric is an attachment of a perf
+  test plus a reader in `perf-extract.py`, and a budget in `perf/budgets.json` if it is to gate.
+- **`LaunchReference.app` is found next to the test runner.** `PerfSupport.referenceApplicationURL()` looks above
+  the test bundle (`<products>/ScratchPerfTests-Runner.app/Contents/PlugIns/ScratchPerfTests.xctest`), where the build puts
+  every product of the ScratchPerf scheme, and `XCUIApplication(url:)` launches it. `testReferenceLaunch` attaches
+  `reference-app-location` with the path it used and the ones it searched, so a failure to launch says where it looked.
+  Keep LaunchReference out of the `Scratch` scheme and out of the app's dependencies: the release is built from that scheme.
 - **Perf tests type and scroll through a 10,000-line note, so `make perf` takes about 5 minutes** and its tests have wide
   time limits (`make perf`). The keystroke test attaches `keystroke-before` and `keystroke-after`: look at them when
   its number changes, to see that the characters landed in the middle of the note.
@@ -442,9 +595,11 @@ screenshots. The branch keeps the newest 30 shas.
 
 The `macos` job adds to its folder: `perf/` (see Performance above), `test-summary.json` (from `xcresulttool`: passed and failed counts, and each
 failure's test name and message in `testFailures`), `app-test-diagnostics.txt` (every compiler warning and error of the
-whole build log, which the 300-line tail would cut), `failure-attachments/` (screenshots that failed UI tests
+whole build log, which the 300-line tail would cut), `crash-reports/` (the macOS crash reports of Scratch from the last two
+hours: a UI test says only "Application … is not running" when the app crashed), `failure-attachments/` (screenshots that failed UI tests
 attached) and `screenshots/<name>.png` (the key screens, `make screenshots`). A hosted test's failure message is also
-in `app-test.log`: search it for `error:`. To look at a screen, fetch the commit's results and open the PNG with the
+in `app-test.log`: search it for `error:`. `screenshots.log` keeps its last 3,000 lines (the other logs 300), which is every
+step of every screenshot test. To look at a screen, fetch the commit's results and open the PNG with the
 Read tool: `scripts/ci-fetch.sh <sha> build/ci-fetch/<sha>`, then `build/ci-fetch/<sha>/macos/screenshots/typical-light.png`.
 
 1. Commit and `git push -u origin <branch>`. CI runs on every push except to `ci-results`.
@@ -545,10 +700,23 @@ new kind of release file, with no change to the app, ships.
   (`SchemaError.newerThanSupported`, whose message is the "cannot start" alert) and changes nothing in it.
 - **A change to how a note's title or preview is derived needs a migration step that works them out again.** The sidebar
   columns `display_title`, `has_title` and `preview` are written on every save and never recomputed, so the rows of notes
-  nobody edits keep the old rule. Schema v3 does it for the rule "skip fence and attachment lines": it builds a `Note` from
-  each row's title and body (the same code `NoteStore.save` runs), and writes only those three columns, and only when they
-  differ, so `modified_at`, the list order and the search index stay as they were. A note that holds only fences and
-  attachments has an empty `display_title` and is still not `isEmpty`: a note with an attachment is never an unused note.
+  nobody edits keep the old rule. Schema v3 did it for the rule "skip fence and attachment lines" and v4 does it for "show
+  the text without its markers": each builds a `Note` from each row's title and body (the same code `NoteStore.save` runs,
+  `Schema.recomputeDerivedNoteColumns`, which v4 shares with v3 and which therefore always applies the rule as it is now),
+  and writes only those three columns, and only when they differ, so `modified_at`, the list order and the search index
+  stay as they were. A note that holds only fences, attachments and markers has an empty `display_title` and is still not
+  `isEmpty`: a note with an attachment is never an unused note.
+- **A title is the line as the editor shows it, and the scan that finds it follows `FenceScanner`.** `Note`'s lazy line scan
+  (`forEachTextLine`) takes the markers out of every line outside a fenced block (`PlainLine.text(of:)`, which reads
+  `MarkupParser.parseLine` and removes a list line's indent and marker, the `**` of a bold run and the backticks of inline
+  code, and leaves a link and a glob as typed) and keeps a line inside a block as typed. The blocks are the ones
+  `FenceScanner` finds, which pair fences from the top, so a fence with no partner after it is no block: at an opening fence
+  the scan looks ahead for the next fence line (`hasFenceLine`, `memchr` over the bytes). A note that starts with a fence
+  and never closes it costs one pass over its bytes, 1.5 ms for `displayTitle` and `preview` together on 5 MB, where a
+  line-by-line look took 27 ms in Release and 319 ms in Debug. `PlainLine` judges the line as typed, before it is trimmed
+  (a tab is not an indent), and a line of markers alone (`- `, `[ ] `, the `****` that ⌘B makes) has no words. The typed
+  title is never changed. `NoteTests.randomNotesAreScannedAsTheFencesPair` holds the scan to a plain `FenceScanner` oracle
+  over random bodies. An attachment line is still skipped inside a block.
 - **An attachment line is judged as typed, a fence line too.** `Note` looks at a line before it trims it, as the styler will:
   `AttachmentToken.id(inLine:)` accepts exactly `[[attachment:<lowercase UUID>]]` and nothing else on the line, so
   `" [[attachment:…]]"` is text and a title. `AttachmentToken.ids(in:)` counts a token inside a fenced block too, because
@@ -597,8 +765,9 @@ new kind of release file, with no change to the app, ships.
   `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries
   it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 to
   270 ms for Swift, Release, on Linux), and `Highlighter` is thread-safe. `SessionCoordinator.warmUpHighlighting()` (after
-  the first frame, from `AppDelegate`) has `CodeBlockStyler.warmUp(languagesNamedIn:)` compile the queries of the languages
-  that the notes in the open tabs name, through `Highlighter.prepare(_:)`: one language at a time, each a block of its own on
+  the first frame, from `AppDelegate`) reads the texts of the notes in the open tabs on the storage queue (the launch reads the
+  active note only) and has `CodeBlockStyler.warmUp(languagesInTextsFrom:on:)` compile the queries of the languages
+  that they name, through `Highlighter.prepare(_:)`: one language at a time, each a block of its own on
   the highlight queue, so a block that is shown meanwhile waits for one compile at most. It prepares `Highlighter.shared`, the
   cache that every request reads; a test passes a `Highlighter()` of its own, because the shared one may be warm already.
 - **`Acknowledgements.rtf` is generated, and the About panel and the release depend on it.** `scripts/make-acknowledgements.py`
@@ -608,6 +777,16 @@ new kind of release file, with no change to the app, ships.
   and its tag or commit, which the script reads. `scripts/check-release-zip.sh` fails a zip without the file in
   `Contents/Resources`, and `AboutCredits` gives the text `labelColor`, because the file has no colour of its own and black
   RTF text is unreadable in a dark panel. swift-tree-sitter is BSD 3-Clause, the rest are MIT.
+- **The app icon is generated, and the release depends on it.** The ten PNGs of `AppIcon.appiconset` are the output of
+  `scripts/make-app-icon.py` (Pillow, drawn at 4 times each size and scaled down with LANCZOS: the design is its constants,
+  docs/decisions/0010), so a change to the icon is a change to the script and a run of it, with the PNGs checked in.
+  `make script-test` holds the PNGs to the script (`test_make_app_icon.py`: the sizes `Contents.json` lists, a transparent
+  corner, the pixels at the design's points at 32, 128 and 1024 px, and a mean difference under one level of 255 from the
+  script's own output) and needs Pillow, which the `linux` job gets as `python3-pil`. Xcode makes `AppIcon.icns` and
+  `Assets.car` from the set (`ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon`), `scripts/check-release-zip.sh` fails an app
+  without a non-empty `Contents/Resources/AppIcon.icns` and `CFBundleIconName` = `AppIcon`, and `about-light` is the picture
+  to look at (XCTest reports the About panel as a Dialog of the app, not as a window, with no title and an identifier of
+  AppKit's own: `ScreenshotTests.aboutPanel(in:)` is `app.dialogs.firstMatch`, and its picture is of that element).
 - **The first line of code of a block with a label is further in from the right than the others.** The label is drawn at the
   top right and reaches into that line, so its paragraph style has a tail indent of `inset + label width + 12 pt`
   (`MarkupAppearance.firstCodeLineStyle`, `CodeBlockMetrics.labelReserve`, at most 240 pt, none without a label); every other
@@ -644,6 +823,17 @@ new kind of release file, with no change to the app, ships.
   of `CodeDetectorTests` run in Debug, where the macOS runner took 107 ms for a bound of 100 and 498 ms for 400, so
   `bound(_:)` allows 4 times the figure a test names on macOS and the figure itself on Linux. The Release budget is held
   by `paste_code_ms`, not by them.
+- **The launch log runs after the first frame, on its own queue, and nothing in it may fail a launch.** `LaunchTimer.mark`
+  is a clock read and a dictionary write: that is all the main thread does before the first frame, besides registering the
+  run loop observer (`RunLoopIdle.onNext` in `AppDelegate.launch`) that marks `firstFrame` and calls `finish`. `finish` reads
+  `sysctl` (the process start and the boot time), loads `launch-times.json`, appends and saves on `LaunchTimer.queue` and
+  hands the log back to the main thread, so a new step that reads or writes the log must go there too. `LaunchLog.load`
+  never throws and `save` errors are dropped, so a corrupt file, a directory in its place or a data directory that cannot be
+  written costs the launch nothing (`LaunchTimerTests`). The timer's state is one static value, so a hosted test that calls
+  `finish` runs inside `LaunchTimer.withIsolatedState` after the app's own record has arrived (`current`), with the queue
+  drained before the body returns. A record's dates are whole milliseconds, because a `Date` made by `Date()` does not
+  survive the file's seconds-since-1970 round trip exactly, and `LaunchLog` calls two boot times within 30 s one boot (the
+  kernel moves `kern.boottime` when the clock is set).
 - **Do not link Homebrew's SQLite.** `CSQLite` deliberately has no `pkgConfig`, so macOS links the system library.
 - **Never commit `App/Scratch.xcodeproj`.** It is generated from `App/project.yml`.
 - **App tests run inside the app.** `ScratchAppTests` are hosted: Xcode starts the real app, then loads the tests into
@@ -665,10 +855,10 @@ new kind of release file, with no change to the app, ships.
   caret still stops at each hidden character.
 - **A text view needs `NSScrollView.contentInsets` in mind.** The window uses `fullSizeContentView`, so the toolbar
   overlaps the top of the window, and the top of a note is at `y = -contentInsets.top`, not 0
-  (`EditorViewController.show`). The tab strip is constrained to the safe area of `EditorAreaViewController`'s view and
-  the editor starts below the strip, so the editor's own safe area has no toolbar in it: its title field sits 10 pt
-  below the editor's top, the scroll view starts below the title field, and its inset is 0. The code does not rely on
-  that: every scroll position goes through `contentInsets.top`.
+  (`EditorViewController.show`). The tab strip is in the toolbar (plan 6 task 7) and the editor fills
+  `EditorAreaViewController`'s view from its very top, so the toolbar is in the editor's own safe area: its title field sits
+  10 pt below the safe area, which is the toolbar's bottom, the scroll view starts below the title field, and its inset is 0.
+  The code does not rely on that: every scroll position goes through `contentInsets.top`.
 - **AppKit scrolls a text view to its selection whenever its frame changes, and that hid the top inset.** The text
   starts `NoteTextView.verticalInset` (12 pt) below the top of the view. `-[NSTextView setFrameSize:]` calls
   `-scrollRectToVisible:` for the selection (in the CI stack it came from `NSScrollerImpPair`'s new recommended scroller
@@ -702,12 +892,18 @@ new kind of release file, with no change to the app, ships.
   return, so they cannot disagree. Loading a note's text runs between `disableUndoRegistration()` and
   `enableUndoRegistration()` of its manager and is not an undo step, and `breakUndoCoalescing()` ends the typing run of
   the note being left. Show a note with the text it had when it was left: an undo step holds ranges of that text.
+  **The title's steps are not the note's.** `TitleField.undoManager` is `titleUndoManager`, which the title's field editor
+  asks (a responder asks the next one), so typing in the title never registers in a note's manager, where a step would
+  have the window's shared field editor as its target and change whatever title that editor shows by the time it is
+  undone. `EditorViewController.show` starts with `endTitleEditing`: it moves the keyboard to the text when the title is
+  being edited, empties `titleUndoManager` and removes from the leaving note's manager every action whose target is the
+  field editor. `TitleUITests.testTitleUndoStaysWithItsNote` is the test that would crash or change a title.
 - **UI tests read the font size, the scroll anchor and the scroll offset from `debug.state`.** `DebugStateElement` is a
   1 x 1 point view in the editor's container, only in an isolated launch (`AppDelegate`), with a JSON string for its
   accessibility value that it computes when asked (`fontSize`, `scrollAnchor`, `readOnly`, `scrollY`, `topInset`, and
   `pendingHighlights` and `pendingPastes`, which are zero when a paste is done, `pendingPreviews`, which is zero when
-  every image is decoded, and `attachments`): `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no
-  clicks, so it is not in a screenshot.
+  every image is decoded, `attachments`, and `firstResponder`: `editor`, `title`, `search`, `sidebar` or `other`):
+  `UITestSupport.debugState(in:)` reads it. It draws nothing and takes no clicks, so it is not in a screenshot.
 - **⌘= is a hidden second "Bigger" item.** The View menu lists ⌘+, and the item for ⌘= is hidden with
   `allowsKeyEquivalentWhenHidden` set by name (`MainMenu.allowKeyEquivalentWhenHidden`). A shortcut that needs two key
   equivalents needs two items.
@@ -718,7 +914,8 @@ new kind of release file, with no change to the app, ships.
   `NSWindow.titlebarSeparatorStyle = .none` were each tried on CI and left the line on the same pixels. There is no
   public API for the pocket, so `TitlebarPocket` hides it by class name after each layout of `MainSplitViewController`,
   and `TitlebarPocketTests` fail when it is visible or can no longer be found. When a screenshot shows a hard line at
-  y = 51 below the toolbar, look there first.
+  y = 51 below the toolbar, look there first. The tab strip moved into the toolbar (plan 6 task 7) and the editor starts at
+  the toolbar's bottom: the pocket is the same one.
 - **There is no storyboard, so there is no menu bar until `MainMenu.install` runs.** ⌘Q, ⌘C, ⌘V and ⌘Z only work
   because that menu exists. A new shortcut needs a menu item.
 - **The coordinator must outlive the autosaver's timers.** `Autosaver` does not keep itself alive: a dirty autosaver
@@ -729,6 +926,17 @@ new kind of release file, with no change to the app, ships.
   `newNoteInNewTab`, closing the active tab, closing the only tab (when its note has been used), `deleteNote` and
   `deleteNotePermanently`. Closing a tab that is not active does not (`closeOtherTab`). Call all of them and `flush()`
   on the main thread only, and never from a block that runs on the storage queue.
+- **A launch reads one body, and a tab's title comes from the derived columns** (plan 6 task 3, spec §7).
+  `SessionCoordinator.restoredTabs` asks `NoteStore.tabInfo(_:)` for every saved tab (one query, in chunks of 500 ids, that
+  names no `body`: `TabNoteInfo` has the title, `hasTitle`, `deletedAt` and `isNeverUsed`), drops the tabs it does not return or
+  returns deleted and the second tab for one note (the rules it had), and reads only the active note in full
+  (`notesReadAtRestore` is the test seam: 1, or 0 when it starts a new note). `isNeverUsed` there is "no title, no line with
+  words, `modified_at == created_at`" from the columns, which differs from `Note.isEmpty && modifiedAt == createdAt` only for a
+  body of fence and attachment lines alone with equal dates, which nothing but a fixture writes; the active note's own
+  `isNeverUsed(note)` replaces its answer, and `discardIfUnused` and `isUntouched` still ask `Note.isEmpty` before anything
+  is discarded. A new read of a body at launch (a count, a preview, a search) must go to the storage queue after the first
+  frame, as `warmUpHighlighting()` does. `TabNoteInfo` follows the derived columns, so a change to how they are worked out
+  (Task 4 of plan 6) reaches it through the migration that works the columns out again.
 - **A new note that nobody has used is not in the sidebar** and is discarded when its tab closes or another note
   replaces it in the tab, while it is still empty. It is "untouched" while it was created in this session (or restored
   empty) and has no text. Test changes that look at the sidebar must type first. Switching to another tab keeps an
@@ -807,16 +1015,33 @@ new kind of release file, with no change to the app, ships.
   highlight without opening anything, so the highlight and the open note can differ until the coordinator renders the
   list again (`SidebarTableView` turns Return into `onReturn`). ⌘-click on the highlighted row deselects it, which
   `open(_:inNewTab:)` undoes by rendering the sidebar even when it has nothing to show.
-- **The tab strip is an `NSGlassEffectView` that Auto Layout does not size, with a frame-based content view.**
-  `TabStripView` (the strip's own view) gets its width from the tabs as its intrinsic content size, with a compression
-  resistance (40) below the fitting size priority (50), and `EditorAreaViewController` caps it with a required
-  `trailing <=` constraint. The glass is a subview with a fixed frame that `TabStripView` keeps equal to its bounds
-  (`syncGlassFrame`), no constraints and no autoresizing mask. The glass hosts its content in a SwiftUI hosting view
-  (`_NSCoreHostingView`) pinned to it, with an intrinsic width of 10 pt that it hugs at priority 250: tied to the strip
-  by constraints or by an autoresizing mask, the glass passed that on and the strip came out 10 pt wide on CI, a sliver
-  that a click on the second tab missed (`TabStripViewControllerTests` measure the strip, and print the constraints
-  when they fail). A width constraint on the strip, at any priority above 50, would make the split view item's minimum
-  width grow with the number of tabs. Do not use `NSStackView` with required widths in the strip for the same reason.
+- **The tab strip is the view of a toolbar item, and its width is made to fit.** `ToolbarController` makes the item for
+  `AccessibilityID.tabStrip` (`makeTabStripItem`: the strip's view, `isBordered = false`, so that the
+  toolbar draws no second capsule round the strip's own glass (`NSToolbarItem` has no `hidesSharedBackground` on the macOS 26.5 SDK: it did not compile), and `visibilityPriority = .high`). The toolbar's
+  items are `[.toggleSidebar, .sidebarTrackingSeparator, strip, .flexibleSpace, pin, paperclip, .space, new note]` (the
+  `.space` ends the glass group of the first two, so there are two capsules), and the three buttons are `.user`: **a toolbar
+  that is short of room moves items into its overflow menu**, so the strip is never left to be as wide as its tabs want. Its
+  required width constraint is `TabStripView.width` = `min(preferredWidth, maximumWidth)` (at least
+  `TabStripLayout.minimumStripWidth`, 96), a required height of 34, and `translatesAutoresizingMaskIntoConstraints = false`,
+  which is how a toolbar sizes a view. `maximumWidth` is the window's width less where the strip starts less
+  `TabStripLayout.trailingReserve` (176 pt for the buttons: the two capsules, the space and the margin are about 140 pt),
+  worked out from `MainSplitViewController.onContentLayout` (after every layout: where the editor area starts, the window's
+  width, whether the sidebar is shown) in `ToolbarController.updateTabStripWidth`: the strip starts 16 pt into the editor area
+  while the sidebar is shown and 150 pt from the window's edge (the traffic lights and the sidebar button) while it is hidden.
+  They are estimates on the safe side: measuring the strip's real position would be stale until the toolbar laid out again.
+  `TabStripViewControllerTests` (`testToolbarItemOrder`, `testTabStripIsAToolbarItem`, `testTheWindowsToolbarHoldsTheStrip`,
+  the width tests) and `TabsUITests.testTwelveTabsKeepTheToolbarButtons` hold it. Do not give the strip a width
+  that the tabs decide alone, and do not put the buttons' priority below the strip's. `ToolbarController` holds the item (the
+  toolbar may ask for it more than once, and a view has one superview) and the strip's controller.
+- **The tab strip's glass is an `NSGlassEffectView` that Auto Layout does not size, with a frame-based content view.**
+  `TabStripView` (the strip's own view) is sized by its two constraints (above). The glass is a subview with a fixed frame
+  that `TabStripView` keeps equal to its bounds (`syncGlassFrame`), no constraints and no autoresizing mask. The glass hosts
+  its content in a SwiftUI hosting view (`_NSCoreHostingView`) pinned to it, with an intrinsic width of 10 pt that it hugs
+  at priority 250: tied to the strip by constraints or by an autoresizing mask, the glass passed that on and the strip came
+  out 10 pt wide on CI (when the width was a compression resistance), a sliver that a click on the second tab missed
+  (`TabStripViewControllerTests` measure the strip, and print the constraints when they fail). Do not use `NSStackView` with
+  required widths in the strip. The strip and the tabs answer `mouseDownCanMoveWindow` with false: the toolbar is the window's
+  titlebar, and a click on a view that does not say so can start a drag of the window.
 - **A tab is one accessibility element and its close button is not inside it.** `TabItemView` is a button
   (`tab.item`) with a label, a title and a selected state, and the close button (`tab.close`) is a sibling placed over
   its right end, so UI tests read `UITestSupport.tabs(in:)` and `activeTabTitle(in:)` and click a tab at its centre.
@@ -836,8 +1061,9 @@ new kind of release file, with no change to the app, ships.
 - **A screenshot of code waits for its colours.** They are written from the highlight queue after the window is up, so
   `ScreenshotTests.testCodeLight` and `testCodeDark` wait for `debug.state`'s `pendingHighlights` to be zero before the
   picture (the request is made in `show`, before the window is visible, so zero means done). The `code` fixture's note is
-  44 lines and fits the 1024 x 674 window whole: a line added to it can push the last block, the one with no fence name
-  and the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
+  36 lines and fits the 1024 x 674 window whole (it was 39 until plan 6 task 7, when the 4 pt after every line pushed the
+  last block below the edge): a line added to it, or to the spacing, can push the last block, the one with no fence name and
+  the italic `JavaScript` label, below the edge, so look at `code-light.png` after any change to the fixture.
 - **A screenshot of attachments waits for its files and its previews.** `ScreenshotTests.testAttachmentsLight` and
   `testAttachmentsDark` wait until `debug.state` reports both attachments of the `attachments` fixture in place
   (`attachments`: `copied` and `fileExists`) and `pendingPreviews` at zero (an image is decoded on its own queue), then
@@ -920,7 +1146,10 @@ new kind of release file, with no change to the app, ships.
 - **A click on a checkbox is handled in `NoteTextView.mouseDown` and never reaches `super.mouseDown`.** A plain click
   whose point is inside the rectangle of the three `[?]` glyphs (`checkboxMarker(atViewPoint:)`, which asks the layout
   manager for the character under the point, not the nearest insertion point) ticks or unticks the item through
-  `apply(_:)` and leaves the caret where it was; the view takes the keyboard. Any other click, one with ⇧, ⌘, ⌥ or ⌃
+  `apply(_:)` and leaves the caret where it was; the view takes the keyboard. The second click of a double-click on a box
+  (`clickCount > 1`, in an editable note) is taken too and does nothing: it would untick the box again or select a word,
+  so a hosted test sends clicks with `clickCount` 1, 2 and 3 to the view's `mouseDown`, which is safe because none
+  reaches `super`. Any other click, one with ⇧, ⌘, ⌥ or ⌃
   held (except a ⌘-click on a link, below), and every click in a read-only note is AppKit's. **A hosted test must not send a click that ends in
   `super.mouseDown`:** it runs a tracking loop until the mouse button is released, and the test hangs for its two
   minutes. `CheckboxTests.clickBox` checks that the point is on a box first, and the cases that are not a toggle call
@@ -976,22 +1205,69 @@ new kind of release file, with no change to the app, ships.
   does not reach AppKit's `insertBacktab:`; ⇧Tab on any other line does.
 - **⌘B is `toggleBoldMarkers(_:)`, not `toggleBold(_:)`.** `toggleBold:` is AppKit's font-panel action, which a
   plain-text view must not answer. The Format > Bold item has no target, like Checklist, so the first responder gets it.
+  `InlineEditing.toggleBold` answers nil for what the key cannot do (a selection of white space only) and the view beeps.
+  A caret is the word under it (`word(around:)`: letters and digits of any script and an apostrophe between two of them,
+  so the stars always make a run: its edges are never next to a letter or a digit), several lines are a run each, and
+  the stars never go into a list marker. ⇧⌘U is `toggleCheckmarks(_:)` on the same terms (Format > Mark as Checked,
+  no target), and `ListEditing.toggleCheckmarks` is nil when no line is a checkbox.
   The hosted `ListKeyTests` call `insertNewline(nil)`, `insertTab(nil)`, `insertBacktab(nil)` and `toggleBoldMarkers(nil)`
   directly, with one editor and one `UndoManager` for each edit that is undone (see the undo pitfall above), and
   `FormattingUITests` presses the keys, so that the menu bar and the responder chain are in the path.
+- **Composed (IME) text is an edit at every key, and the styler resets the paragraph of every edit.** `setMarkedText`
+  replaces the marked text at every step, so `storageDidEdit`'s `setAttributes(appearance.base, …)` would take off whatever
+  the edit had put on the composed characters. **Measured on CI (macOS 26.6.2, plan 6 task 5): AppKit puts none of the input
+  method's attributes in the storage.** A bare TextKit 1 view and the editor both end `setMarkedText` with the typing attributes
+  (font and colour) and nothing else on the composed characters (no underline, no clause segment, no `markedTextAttributes`:
+  those are a background and a foreground colour by default), and no temporary attribute either, and at the styler's
+  `didProcessEditing` the composed characters carry the font and colour of the text next to them. AppKit draws the marked text
+  by other means, and writes the typing font onto it after the edit, so a composed character in a bold run is regular until it
+  is entered. So the styler's rule is defensive, for a version that does hand the storage the attributes in the edit itself:
+  `NoteTextView.setMarkedText` sets `isSettingMarkedText` around `super`, and the styler reads the underline, the underline
+  colour, the clause segment and the keys of `markedTextAttributes` from the characters that edit put in
+  (`composedAttributes`) before the reset, and puts them back after the styling (`restoreComposedAttributes`). **Colours and
+  fonts are kept only when they are the `markedTextAttributes` values** (plan 6 Global Constraints, "Composed text"): a key
+  that the styler sets on every paragraph itself (`stylerOwnedKeys`: font, foreground and background colour, paragraph style)
+  is kept when its value `isEqual` to the one under the same key in `markedTextAttributes` (the marked-text highlight: by
+  default a background and a foreground colour), and dropped otherwise, because a colour or a font that differs from
+  `markedTextAttributes` is the neighbour's in that edit, and keeping it would paint composed text next to inline code or a link
+  as that (`keptComposedAttributes`). Typing, a paste and the final
+  `insertText` of an input method are not composed, and keep nothing. A hosted test cannot get such an edit out of AppKit, so
+  `MarkupStylerTests` set `isSettingMarkedText` themselves (it is not `private(set)` for that reason) and edit the storage
+  with an attributed string like an input method's; `testSetMarkedTextRestylesTheLineAndEndsTheComposing` is the real
+  `setMarkedText` and holds to what AppKit does do. A temporary diagnostic must never log `storage.string` per edit: it made the
+  keystroke 22.6 ms on the huge note.
 - **The Format menu is not auto-enabled** (`menu.autoenablesItems = false`, `MainMenu.formatMenu`): AppKit would ask the
   first responder, and the way `NSTextView` validates an action it does not know is not documented. A Format item has
   no target, so the first responder gets it, and a command that cannot work beeps (`NSSound.beep()`).
-- **The box is an SF Symbol drawn over the transparent `[?]`.** `MarkupLayoutManager.drawCheckbox` draws `square` or
-  `checkmark.square.fill` with a palette configuration of `controlAccentColor`, centred in the glyph rectangle of the
-  marker and 85% of the line height, on every draw (the colour and appearance of the moment). `testCheckboxSymbolIsDrawn`
-  renders the view with `cacheDisplay` and counts the pixels that are not the background.
+- **The box is an SF Symbol drawn over the transparent `[?]`.** `MarkupLayoutManager.drawCheckbox` draws `square` in
+  `secondaryLabelColor` (resolved in the appearance that is being drawn) or `checkmark.square.fill` (a white tick on the
+  accent colour), centred horizontally on the glyph rectangle of the marker and vertically on the middle of the font's line
+  from the baseline, at 85% of the font's line height (`checkboxPointSize(for:)`: `defaultLineHeight(for:)`, **not** the
+  fragment's height, which has the line spacing in it), on every draw (the colour and appearance of the moment).
+  `testCheckboxSymbolIsDrawn` renders the view with `cacheDisplay` and counts the pixels that are not the background, and
+  `testOpenBoxIsGrey` and `testCheckboxSizeIgnoresSpacing` read them.
+- **Every line has `round(0.3 x font size)` points after it, as `NSParagraphStyle.lineSpacing`, and so every paragraph style
+  carries it** (plan 6 task 7). `NoteTextView.noteAttributes` (the typing attributes and `MarkupAppearance.base`) has
+  `baseStyle`, `indentStyle(characters:)` has it, and so do `codeBodyStyle` and the first line of a block
+  (`firstCodeLineStyle(labelReserve:fontSize:)`), which are now `MarkupAppearance` instance values because they depend on the
+  font size. A plain paragraph used to have no `.paragraphStyle` at all: a test that asks for "none" asks for a style with
+  zero indents. The spacing is in the line fragments' heights, so a test of a line's height says `16 + 4`, and a drawing
+  that wants the font's line (the box, the pill) works from the baseline and the font, never from the fragment. A fence line
+  (6 pt, no spacing) and an attachment line (the height of its picture, no spacing) keep their heights, and the last code
+  line has 4 pt of spacing inside the tint above the closing fence's 6.
+- **Inline code is a pill that the layout manager draws, with no `.backgroundColor`.** The characters between the backticks
+  carry `scratchInlineCode` (`MarkupAppearance.inlineCodeAttributes`, removed by the same resets as the other span
+  attributes); `MarkupLayoutManager.drawInlineCode`, in `drawBackground` before the superclass (the selection is over it),
+  fills a rounded rectangle (`InlineCodeMetrics`: radius 4, 2 pt of horizontal padding) per line fragment of each run, from
+  the font's ascent to its descent plus 1 pt each way from the baseline. It reaches 2 pt over the neighbouring characters,
+  which the hidden backticks do not stop. The `.backgroundColor` key stays in `MarkupStyler.stylerOwnedKeys` because composed
+  text may carry one.
 - **A fenced block is drawn from attributes, and its fence lines are null glyphs.** `MarkupStyler` gives the characters of a
   fence line (not its line break) the role `fence`, which `MarkupLayoutManager` turns into null glyphs (all but the first,
   see below), and the paragraph
   `MarkupAppearance.codeFenceStyle` (minimum and maximum line height 6 pt), so the line is padding. While the caret or
   selection touches it (`touchesSelection`, the ends included) the role is `revealed` and the paragraph has
-  `codeBodyStyle`, like the lines of code (10 pt head and tail indent). Every paragraph of a block carries a
+  `appearance.codeBodyStyle`, like the lines of code (10 pt head and tail indent). Every paragraph of a block carries a
   `CodeBlockMark` (`.scratchCodeBlock`: opening, body or closing); only the opening fence line's holds the language and
   the label, so a keystroke in a line of code never has to know it, and a detected label stays while a new result is on its
   way (`openingMark`). `MarkupLayoutManager.drawBackground` fills the tint per line fragment from what is laid out (never
@@ -1094,12 +1370,21 @@ new kind of release file, with no change to the app, ships.
   so `Tests/ScratchCoreTests/AttachmentTestSupport.swift` declares `typealias Attachment = ScratchCore.Attachment` for the
   test module, which wins over both.
 - **A paste is the plain paste, and its wrap is a second edit on a later turn** (`NoteTextView.beginPaste`, `endPaste`,
-  `classifyPaste`). `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` (which the hosted tests call, and which
+  `classifyNextPaste`). `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` (which the hosted tests call, and which
   Paste runs, a call inside another is the same paste) start and end the paste. Before it, the view works out whether the paste
   goes into code (`isPastingIntoCode`: a fenced block, or between the backticks of inline code, which a multi-line paste would
   split and which cannot be told afterwards). After it, the range that came in is queued with `editCount`, which every
-  `didChangeText` and `load` raises, and `DispatchQueue.main.async` asks `PasteClassifier.wrap`; typing in between drops the
-  paste. **The wrap waits until the paste's undo group has closed** (`undoManager.groupingLevel == 0`, retried at the run loop's
+  `didChangeText` and `load` raises, and `DispatchQueue.main.async` applies the wrap; typing in between drops the
+  paste. **The wrap is decided when the paste is read, and applied on the later turn** (plan 6 task 3): `endPaste` asks
+  `PasteClassifier.wrap` at once (it reads only the text: `PendingPaste.Wrap.decided`) and, for a wrap, has the highlighter
+  start the colours of the block to come (`CodeBlockStyler.prefetch(block: edit.replacement)`), so the highlighting runs on
+  its queue while the main thread waits for the turn, and the block finds its colours in the cache or in the request that is
+  running. The turn applies the same edit, without detecting again, when `editCount` has not moved. A paste of more than
+  `PasteClassifier.earlyWrapLimit` (300,000 units, the highlighter's cap) is not looked at in the paste's own turn
+  (`.later`): such a block is never coloured, and the 50,000-line JSON paste of `LargeInsertTests` is held to 500 ms for the
+  paste and for the wrap separately, which a detection of 760 KB inside the paste would eat into. A prefetched result that comes
+  before its block is only cached (`HighlightRequest.isPrefetch`: not a dropped result, and `pump` keeps such a request though
+  no block holds its code yet). **The wrap waits until the paste's undo group has closed** (`undoManager.groupingLevel == 0`, retried at the run loop's
   idle moments, at most 8 times: a hosted test never ends its turn and goes ahead after that), because a `DispatchQueue.main`
   block can run in the same loop iteration as the event, and then ⌘Z would undo the paste and the wrap together
   (`CodePasteUITests.testUndoAfterCodePasteRestoresPlainText`). Hosted tests wait for `pendingPasteClassifications == 0`, not
@@ -1127,12 +1412,14 @@ new kind of release file, with no change to the app, ships.
   is an edit of nothing, which `apply` does not register as an undo step. The menu items have `NoteTextView` as their target and
   the menu has `autoenablesItems = false`, as the Format menu does.
 - **A paste or a drop is read in the order of the spec, by the code and not by AppKit** (`NoteTextView.readSelection(from:)`,
-  `paste(_:)`, `pasteAsPlainText(_:)`, `performDragOperation(_:)`): file URLs first (`attachmentSources(from:)`,
+  `paste(_:)`, `pasteAsPlainText(_:)`, `performDragOperation(_:)`): the note's own text of a copy first (below, "The note's
+  text is on the pasteboard too"), then file URLs (`attachmentSources(from:)`,
   `readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])`, files that exist), then any text, then
   an image with no text. `readablePasteboardTypes` lists `.fileURL`, `.png` and `.tiff` only because AppKit offers Paste
   and a drop, and validates the Paste menu item, only for a pasteboard that has a type of the list. It does not choose:
   `paste(_:)` and `pasteAsPlainText(_:)` make the attachments before they call `super`, the text path reads `.string`
-  explicitly (`super.readSelection(from:type:)`), and `preferredPasteboardType(from:restrictedToTypesFrom:)` answers
+  explicitly (`readSelection(from:type:)`, which the view overrides and which ends in `super`), and
+  `preferredPasteboardType(from:restrictedToTypesFrom:)` answers
   `.string` whenever there is text, so that an image next to the text (Excel, Word, browsers) can never be what AppKit reads
   (Review Focus 3). A paste that made attachments sets `attachmentPasteWasInserted`, and `endPaste` then skips the code
   classification: its text is token lines. Nothing of a picture is decoded or encoded on the main thread: `imageSource(on:)`
@@ -1153,8 +1440,22 @@ new kind of release file, with no change to the app, ships.
   line break before the first token unless the paste starts a line, and one after the last token unless one follows already
   (so a token at the end of the note is followed by a line break, which deviates from the plan's literal rule: the caret
   would otherwise be at the end of the token's line, where typing breaks the token). The caret ends at the start of the
-  line after the last token, which is where the Backspace rule selects the token. Typing at an end of a token line still
-  breaks the token (it is text then, and ⌘Z takes it back); nothing guards that.
+  line after the last token, which is where the Backspace rule selects the token. The caret can still be at an end of a
+  token line (a click beside a chip, ←, Backspace), and typing there is guarded now: see the next pitfall.
+- **Text typed, composed or pasted next to a token goes on a line of its own, as two edits** (plan 6 task 6).
+  `NoteTextView.makeRoomAtTokenEdge(for:replacementRange:)` runs in `insertText(_:replacementRange:)`, in the first
+  `setMarkedText` of a composition and in the fallback of `insertTab` (so Return, which only inserts a line break, and a
+  step of a composition that already has marked text need none). It asks `AttachmentEditing.lineBreaks(inserting:at:in:
+  isLiteral:)` (the end of a token line before the text, the start of one after it, a token line at an edge of the inserted
+  text that something shares its line with, never in a fenced block, never when the inserted text has a line break at that
+  end already, and nothing for a selection that replaces a whole token line), applies the break with `apply(_:)` and lets
+  `super` insert: for a break before, the caret follows it, for one after, it stays in front of it, so the text lands on the
+  new line. The break is its own edit, so ⌘Z takes the text back first (when the two fall in one run loop turn, which a
+  key press is, one ⌘Z may take both: neither leaves half a token). It reads a token's length each way, because it runs on
+  every key, and is skipped inside a paste (`pasteDepth`), which puts its breaks in its own edit: `insertTextWithTokenBreaks`
+  (plain text: only when `lineBreaks` says so, else AppKit's own paste) and `insertNoteText` (below) build one `TextEdit`
+  with `AttachmentEditing.textInsertion`, whose caret is after the text, or below it when the text ends in a token line. A
+  paste that added breaks sets `pasteBreaks`, which `endPaste` takes out of the range that it classifies as code.
 - **A token is kept whole by the selection delegate and two key overrides, and the rules are in Core.**
   `EditorViewController.textView(_:willChangeSelectionFromCharacterRange:toCharacterRange:)` is asked for every change of
   the selection, by a key, the mouse or code, and answers `AttachmentEditing.snappedSelection` (through
@@ -1198,10 +1499,83 @@ new kind of release file, with no change to the app, ships.
   (`AttachmentImageProvider`, a data provider that reads the stored file and runs ImageIO when an application asks, a PNG
   file as its own bytes) because decoding and encoding a full-size picture must never make Copy wait; the view keeps the
   provider of the last copy alive (`attachmentImageProvider`), since the pasteboard may ask after Copy has returned.
-  Pasting what was copied finds the file URL first (spec §6.5 order) and makes a new attachment with its own copy.
+  `AttachmentPasteboard.write` remembers the last copy of an image (the pasteboard's name and change count, the name, the
+  file's URL and the note's text), and `materialize(on:)`, which `AppDelegate.applicationWillTerminate` calls for the
+  general pasteboard, writes that item again with the PNG and the TIFF in place of the promise when nothing has written
+  to the pasteboard since: the promise goes when the app does. A test replaces `makeImageProvider` to see that the data
+  was not made by the promise.
+- **The note's text is on the pasteboard too, and a paste or a drop into Scratch reads it first** (plan 6 task 6). A
+  selection that holds a token (`AttachmentCopying.holdsAttachment`: a token outside a fenced block) also writes the
+  selection exactly as stored, token lines and all (ranges of a rectangular selection joined by line breaks), on
+  `AttachmentPasteboard.noteTextType` (`io.github.ldellisola.Scratch.note-text`), and on no selection without a token:
+  `writablePasteboardTypes` stays `[.string]`, and the extra types are written by `writeSelection(to:types:)`, as the file
+  URL is. Other applications see the same text, file and image as before. `readablePasteboardTypes` and
+  `acceptableDragTypes` list it. `NoteTextView.insertNoteText(from:)` is the one reader: `readAttachments(from:)` (Paste,
+  before the file URL that a copy of one attachment holds too), `readSelection(from:type:)` (an override: a read of `.string` or of the
+  private type, which is what AppKit calls for a text drop that it handles itself, so a drag within a note keeps its
+  tokens and AppKit still moves or copies as it always did) and `performDrop(of:atViewPoint:)`. It inserts the same ids, so
+  two notes (or one) may name one file, and it declines, so that the plain paste order goes on, in code (`isPastingIntoCode`:
+  a block is literal and the names go in), when text is being composed, for several selections, with no catalog, and when
+  an id has no row in this store (a copy from another Scratch: its file URL makes a new attachment, as before). A paste of
+  it is never classified as code. A drag of text with a token is judged by its types like any other drag: it is the text
+  view's own (`wouldMakeAttachments` is false) unless it also holds a file (one attachment, selected whole), and the
+  drop is `performDrop`'s.
 - **A copy runs on the storage queue, so `persistNow()` waits for it.** `AttachmentImporter` registers the row on the main
   thread, calls `AttachmentCatalog.markCopying`, and queues `copyIn` or `writeIn` on the coordinator's storage queue, then
   `markCopied` on the main queue. A copy that is under way when the app quits or the tab changes is waited for, which is
   the point: the file is there after a relaunch. A very large copy therefore delays a tab switch (`persistNow()`); the
   alternative is a queue of its own, which would not be waited for. The launch sweep (`sweepUnreferencedAttachments`) is
   queued after the purge in the same main-queue turn, and removes only attachments created more than 24 hours ago.
+- **What VoiceOver reads is `SpokenText`, made from the styler's attributes, and `accessibilityValue()` is the stored text**
+  (plan 6 task 8). `NoteTextView.accessibilityString(for:)` replaces the characters of a marker with its words ("bullet",
+  "unchecked", "checked"; a token: "image, <name>", "file, <name>", "missing attachment"; an opening fence "code block,
+  <label>", a closing one "end of code block") and says nothing for hidden and revealed markers, so a spoken range is not as
+  long as the range it was asked for, and only the value, which is AppKit's own answer (the stored text: `NoteTextView`
+  does not override `accessibilityValue()`, which `NSTextView` does not let a subclass override in Swift, and
+  `SpokenTextTests.testAccessibilityValueIsTheStoredText` holds it to the text), fixes the offsets that VoiceOver and the
+  caret use. `spoken(_:range:)` goes paragraph by paragraph, reads the mark on the paragraph's
+  first character (`scratchAttachment`, `scratchCodeBlock`) and the `scratchMarker` runs inside it, and says a marker's words
+  when the range holds its first character. A new kind of marker or of drawn line needs its words there and a case in
+  `SpokenTextTests`. Nothing could be tried with VoiceOver itself (CI has no screen reader): the tests call the text
+  view's methods, and `accessibilityAttributedString(for:)` is AppKit's own for a range with nothing to replace.
+- **Do not name a table cell's children: the UI tests lose its texts.** The first version of plan 6 task 8 returned the
+  text fields of `NoteRowCellView` and `GroupRowCellView` from `accessibilityChildren()` (and called
+  `setAccessibilityElement(true)`, which the cell is already: an AXCell between the table's row and its texts), and every UI
+  test that reads the sidebar then found no rows (CI: `the sidebar rows: []`). The hierarchy that XCTest sees is Table,
+  TableRow, Cell and the StaticTexts (`UITestSupport.hierarchy(of:)` prints it, and the accessibility UI tests put it in
+  their failure messages). A label on the **row view** (`tableView(_:didAdd:forRow:)`) never showed up in it, so the row reads
+  as one element through its **cell's label** (`NoteRowCellView.accessibilityLabel(for:now:)`, set in `configure`), and the
+  texts stay its children with their identifiers. The Recently Deleted
+  header is a button by its **title** (`HeaderTitleField`: role button, label, expanded, a hint and a press), which
+  is why `UITestSupport.recentlyDeletedHeader` looks for the identifier in any element and not in static texts, and the
+  header is a cell kind of its own (`recentlyDeletedCellIdentifier`): a title that was a button and is reused for "Today"
+  would still be one. A press from VoiceOver opens a note (`NoteRowCellView.onPress`) and toggles Recently Deleted.
+- **The context menu's items are validated by the text view, not by AppKit's guess.** `NoteTextView.menu(for:)` puts
+  `EditorContextMenu.items(for:atViewPoint:)` before the standard items of an auto-enabling menu, so
+  `validateMenuItem(_:)` answers `item.isEnabled` for the three actions of its own (`toggleCheckboxFromMenu`,
+  `openLinkFromMenu`, `openAttachmentFromMenu`): how `NSTextView` validates an action it does not know is not documented.
+  The Code Block Language submenu is `CodeBlockMenu.menu`, whose items are enabled by hand. The items change a note only when
+  it can be edited; a hosted test chooses an item by sending its action (`NSApp.sendAction`) and never pops the menu up
+  (the tracking loop of `NSMenu.popUp` waits for a mouse, as in the label's menu).
+- **The key view loop is explicit.** `KeyViewLoop.connect(sidebar.keyViews + [titleField, textView])` in `AppDelegate.launch`
+  sets every `nextKeyView`, because AppKit's own order follows the position of the views and not how the window is read.
+  Tab in the title is the editor's `insertTab` handler (go to the text), Tab in the text is a tab character, and ⌃Tab is the
+  next tab, so the loop is walked from the search field (⌥⌘F) to the title and no further by keys alone. A test reads
+  `debug.state`'s `firstResponder`, which looks at the identifiers of the responder, of a field editor's delegate and of the
+  views above them.
+- **Increase Contrast is a set of colour variants that AppKit picks, and a test or a screenshot cannot ask for them.** Every
+  colour set of `Assets.xcassets` has four entries: light, dark, and the same two with `"appearances": [{"appearance":
+  "contrast", "value": "high"}]` (the dark one with `luminosity: dark` as well), and the code asks `NSColor(named:)` through
+  `CatalogColour.named(_:fallback:)` and nothing else. **No appearance stands for Increase Contrast in code**: on CI
+  `NSAppearance(named:)` answered nil for "NSAppearanceNameAccessibilityHighContrastAqua" and made plain Aqua of the SDK's
+  `.accessibilityHighContrastAqua` (its raw value is "NSAppearanceNameAccessibilityAqua"), so `NSColor(named:)` never gave a
+  high contrast variant under `performAsCurrentDrawingAppearance` or `NSApp.appearance`. `-ScratchAppearance light-contrast`
+  and `dark-contrast` therefore force light or dark and set `CatalogColour.isHighContrastForced` (before any colour is made,
+  at the top of `AppDelegate.launch`), which has `CatalogColour.named` answer from its own table, `highContrast`, instead.
+  A new colour set needs the four entries and an entry in the table, and `AppearanceTests` fails without either: it reads
+  the catalog's `Contents.json` files from the source tree (each colour has all four entries, the high contrast ones differ from
+  the usual ones, the table is the catalog's colour for colour, the text colours read at 7:1 on the background and the tint in
+  light mode and at 7:1 and 5:1 in dark mode, the tint and the border are stronger). The variants are the usual hues moved
+  along their lightness, never replaced. A colour that the code makes itself (the raised tab's outline) asks
+  `CatalogColour.isIncreaseContrastOn` (the system setting, or a forced launch). Reduce Transparency needs nothing: only
+  system materials are translucent.

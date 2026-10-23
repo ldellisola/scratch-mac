@@ -18,8 +18,10 @@ import ScratchCore
 ///   of its code block (plan 4, task 5). The first character of the line keeps its glyph, which is clear: null glyphs
 ///   take no line fragment of their own, they sit at the end of the line above (see `shouldGenerateGlyphs`).
 /// - **Code blocks are drawn behind their lines.** The lines of a fenced block carry a `CodeBlockMark`. `drawBackground`
-///   fills the rounded, tinted rectangle that they make together, and the label with the block's language at its top
-///   right, without changing anything in the text.
+///   fills the rounded, tinted rectangle that they make together, with a hairline border inside its edge (plan 6 task 7),
+///   and the label with the block's language at its top right, without changing anything in the text.
+/// - **Inline code is a pill.** The characters of inline code carry `scratchInlineCode` and no background colour:
+///   `drawBackground` fills a rounded rectangle behind each line of them, 2 pt wider than the text on each side (plan 6 task 7).
 ///
 /// - **Attachments are drawn over their token lines.** The characters of a token line `[[attachment:<id>]]` but the first
 ///   are null glyphs, like a fence line's, and its paragraph is as high as what is drawn on it. `drawBackground` draws the
@@ -100,6 +102,7 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
     /// thread, for the glyphs of the area it redraws.
     override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
         drawCodeBlocks(forGlyphRange: glyphsToShow, at: origin)
+        drawInlineCode(forGlyphRange: glyphsToShow, at: origin)
         super.drawBackground(forGlyphRange: glyphsToShow, at: origin)
         // After the superclass, which draws the selection: what the selection highlights of a token line (its first
         // character, 8 pt wide) is under the preview.
@@ -152,13 +155,20 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         bullet.draw(at: point, withAttributes: attributes)
     }
 
-    /// The share of the line's height that the symbol of a box is as high as.
+    /// The share of the font's line height that the symbol of a box is as high as.
     private static let checkboxScale: CGFloat = 0.85
 
-    /// Draws the box of a checklist item in the place of its `[?]` at `characterRange`: the symbol is centred in the
-    /// rectangle of the three characters and is `checkboxScale` of the line's height, in the accent colour. The symbol
-    /// is made for each draw, so it has the accent colour and the appearance of the moment. `origin` is where the text
-    /// container's origin is in the text view's coordinates.
+    /// The point size of the symbol of a box for text in `font`: `checkboxScale` of the font's own line height. Not of the
+    /// line fragment's height, which includes the spacing after the line (plan 6 task 7): the box would grow with it.
+    func checkboxPointSize(for font: NSFont) -> CGFloat {
+        defaultLineHeight(for: font) * Self.checkboxScale
+    }
+
+    /// Draws the box of a checklist item in the place of its `[?]` at `characterRange`: the symbol is centred on the three
+    /// characters, in the middle of the font's line, and is `checkboxScale` of the font's line height. An open box is
+    /// `secondaryLabelColor`, a grey, and a ticked one is the accent colour with a white tick (mockup B). The symbol is made
+    /// for each draw, so it has the colours and the appearance of the moment. `origin` is where the text container's origin
+    /// is in the text view's coordinates.
     private func drawCheckbox(
         isChecked: Bool, over characterRange: NSRange, in storage: NSTextStorage, at origin: NSPoint
     ) {
@@ -173,12 +183,21 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         else { return }
         let rect = boundingRect(forGlyphRange: glyphRange, in: container)
         guard rect.width > 0, rect.height > 0 else { return }
+        let font =
+            storage.attribute(.font, at: marker.location, effectiveRange: nil) as? NSFont
+            ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        // The middle of the font's line, from the baseline: the fragment is as high as the line and the spacing after it.
+        let fragment = lineFragmentRect(forGlyphAt: glyphRange.location, effectiveRange: nil)
+        let baseline = fragment.minY + location(forGlyphAt: glyphRange.location).y
+        let centerY = baseline - (font.ascender + font.descender) / 2
 
         // The open box is one layer. The ticked one has two: the checkmark (first palette colour) on the filled square
-        // (second), so that the tick shows against the fill and not as one more patch of the accent colour.
-        let colors = isChecked ? [NSColor.white, NSColor.controlAccentColor] : [NSColor.controlAccentColor]
+        // (second), so that the tick shows against the fill and not as one more patch of the accent colour. The grey is
+        // resolved here, in the appearance that is being drawn.
+        let grey = NSColor(cgColor: NSColor.secondaryLabelColor.cgColor) ?? NSColor.secondaryLabelColor
+        let colors = isChecked ? [NSColor.white, NSColor.controlAccentColor] : [grey]
         let configuration = NSImage.SymbolConfiguration(
-            pointSize: rect.height * Self.checkboxScale, weight: .medium, scale: .medium
+            pointSize: checkboxPointSize(for: font), weight: .medium, scale: .medium
         ).applying(NSImage.SymbolConfiguration(paletteColors: colors))
         let name = isChecked ? "checkmark.square.fill" : "square"
         guard
@@ -187,9 +206,58 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         else { return }
         let size = symbol.size
         let target = NSRect(
-            x: origin.x + rect.midX - size.width / 2, y: origin.y + rect.midY - size.height / 2, width: size.width,
+            x: origin.x + rect.midX - size.width / 2, y: origin.y + centerY - size.height / 2, width: size.width,
             height: size.height)
         symbol.draw(in: target, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+    }
+
+    // MARK: Inline code
+
+    /// Fills a pill behind each line of each run of inline code that has a glyph in `glyphsToShow`: a rounded rectangle
+    /// `InlineCodeMetrics.horizontalPadding` wider than the characters on each side, as high as the font's line (its ascent
+    /// and descent, and `InlineCodeMetrics.verticalPadding` more), from the baseline and not from the line fragment, which has
+    /// the spacing after the line in it. Drawn before the selection, which is over it. `origin` is where the text container's
+    /// origin is in the text view's coordinates.
+    private func drawInlineCode(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
+        guard let storage = textStorage, storage.length > 0, glyphsToShow.length > 0 else { return }
+        let characters = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
+        var runs: [NSRange] = []
+        storage.enumerateAttribute(.scratchInlineCode, in: characters, options: []) { value, range, _ in
+            guard value != nil else { return }
+            // The whole run, also when only a part of it is in the range that is drawn: the pill is one shape.
+            var whole = range
+            _ = storage.attribute(
+                .scratchInlineCode, at: range.location, longestEffectiveRange: &whole,
+                in: NSRange(location: 0, length: storage.length))
+            if runs.last != whole { runs.append(whole) }
+        }
+        guard !runs.isEmpty else { return }
+        CodeBlockColors.background.setFill()
+        for run in runs {
+            let glyphs = glyphRange(forCharacterRange: run, actualCharacterRange: nil)
+            guard glyphs.length > 0, let container = textContainer(forGlyphAt: glyphs.location, effectiveRange: nil)
+            else { continue }
+            enumerateLineFragments(forGlyphRange: glyphs) { fragment, _, _, lineGlyphs, _ in
+                let part = NSIntersectionRange(glyphs, lineGlyphs)
+                guard part.length > 0 else { return }
+                let box = self.boundingRect(forGlyphRange: part, in: container)
+                guard box.width > 0 else { return }
+                let character = self.characterIndexForGlyph(at: part.location)
+                let font =
+                    storage.attribute(.font, at: character, effectiveRange: nil) as? NSFont
+                    ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+                let baseline = fragment.minY + self.location(forGlyphAt: part.location).y
+                // Not above the line fragment: a redraw of the line above would not redraw what reaches into it.
+                let top = max(baseline - font.ascender - InlineCodeMetrics.verticalPadding, fragment.minY)
+                let bottom = baseline - font.descender + InlineCodeMetrics.verticalPadding
+                let pill = NSRect(
+                    x: origin.x + box.minX - InlineCodeMetrics.horizontalPadding, y: origin.y + top,
+                    width: box.width + 2 * InlineCodeMetrics.horizontalPadding, height: bottom - top)
+                NSBezierPath(
+                    roundedRect: pill, xRadius: InlineCodeMetrics.cornerRadius, yRadius: InlineCodeMetrics.cornerRadius
+                ).fill()
+            }
+        }
     }
 
     // MARK: Attachments drawing
@@ -347,8 +415,8 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         return (mark, openingStart, lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil))
     }
 
-    /// Fills `rect` with the block tint, with the top corners rounded when `roundsTop` and the bottom ones when
-    /// `roundsBottom`. A corner that is not rounded is cut off by a clip: the rounded rectangle is made taller than `rect`
+    /// Fills `rect` with the block tint and a hairline border, with the top corners rounded when `roundsTop` and the
+    /// bottom ones when `roundsBottom`. A corner that is not rounded is cut off by a clip: the rounded rectangle is made taller than `rect`
     /// on that side, so that its corner lies outside it.
     private func fillBlock(_ rect: NSRect, roundsTop: Bool, roundsBottom: Bool) {
         guard rect.width > 0, rect.height > 0 else { return }
@@ -363,6 +431,14 @@ nonisolated final class MarkupLayoutManager: NSLayoutManager, NSLayoutManagerDel
         NSBezierPath(rect: rect).addClip()
         CodeBlockColors.background.setFill()
         NSBezierPath(roundedRect: shape, xRadius: radius, yRadius: radius).fill()
+        // The hairline is inside the edge of the tint, and drawn on the same shape: the edges that are cut off by the clip
+        // (the top of a block that goes on above, the bottom of one that goes on below) leave no line across the block.
+        let inset = CodeBlockMetrics.borderWidth / 2
+        let outline = NSBezierPath(
+            roundedRect: shape.insetBy(dx: inset, dy: inset), xRadius: radius - inset, yRadius: radius - inset)
+        outline.lineWidth = CodeBlockMetrics.borderWidth
+        CodeBlockColors.border.setStroke()
+        outline.stroke()
         NSGraphicsContext.restoreGraphicsState()
     }
 

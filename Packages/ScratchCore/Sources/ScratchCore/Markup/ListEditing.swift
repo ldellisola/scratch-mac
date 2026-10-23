@@ -135,6 +135,38 @@ public enum ListEditing {
         return text.edit(applying: changes, selection: selection)
     }
 
+    // MARK: ⇧⌘U
+
+    /// ⇧⌘U (Format > Mark as Checked) on the checklist lines under the selection (the caret's line when there is no
+    /// selection). When any of them is open, every open one is ticked (`[ ]` to `[x]`, the ticked ones stay as they are,
+    /// `[X]` too). When all are ticked, they are all unticked. Lines that are not checkboxes (a bullet, a plain line, a token
+    /// line, and `- [ ] a`, which is a bullet) have no say and are left alone. The edit is one character for each box, and the
+    /// selection stays where it was.
+    ///
+    /// Nil when none of the lines is a checkbox, so a caller beeps. A caller checks that the selection is not in a fenced
+    /// code block first.
+    public static func toggleCheckmarks(paragraphs: String, start: Int, selection: NSRange) -> TextEdit? {
+        let text = ParagraphLines(paragraphs, start: start)
+        guard let touched = text.touchedLines(by: selection) else { return nil }
+        var boxes: [(marker: NSRange, isChecked: Bool)] = []
+        for index in touched {
+            guard let item = text.listItem(at: index), case .checkbox(let isChecked, _) = item.span.kind else {
+                continue
+            }
+            boxes.append((item.marker, isChecked))
+        }
+        guard !boxes.isEmpty else { return nil }
+
+        let ticking = boxes.contains { !$0.isChecked }
+        let mark = Array((ticking ? "x" : " ").utf16)
+        let changes = boxes.compactMap { box -> ParagraphLines.Change? in
+            // Only the boxes that change: with some open, the ticked ones stay as typed (`[X]` too).
+            guard box.isChecked != ticking else { return nil }
+            return ParagraphLines.Change(location: box.marker.location + 1, removed: 1, inserted: mark)
+        }
+        return text.edit(applying: changes, selection: selection)
+    }
+
     // MARK: A click on the box
 
     /// A click on a checkbox: flips the `[ ]` or `[x]` at the start of `line` (one line, without its line break, whose

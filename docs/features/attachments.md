@@ -10,6 +10,11 @@ tokens whole when they are selected or deleted, opening, dragging out and copyin
 (the token, files kept by reference, a line of its own, what Copy writes) are in
 [docs/decisions/0008-attachments.md](../decisions/0008-attachments.md).
 
+Plan 6 (1.0.0) closes three limits of 0.5.0: text typed, composed or pasted at an edge of a token line goes on a line of its
+own, a copy or a drag of a selection that holds a token keeps the attachment when it is pasted or dropped into Scratch, and
+a copied image can still be pasted after Scratch has quit. They are the sections "Typing and pasting next to a token", "The
+note's text on the pasteboard" and "A copied image outlives Scratch" below.
+
 ## The token
 
 An attachment is one line of the note's plain text, `[[attachment:<lowercase UUID>]]`, with nothing else on the line
@@ -58,7 +63,8 @@ style with the same minimum and maximum line height.
 ## Pasting and dropping
 
 A paste or a drop is read in the order of spec §6.5 (`NoteTextView.readSelection(from:)`, which Paste, Paste and Match
-Style and a drop all end in; `attachmentSources(from:)` decides):
+Style and a drop all end in; `attachmentSources(from:)` decides). Before the order of the spec comes **the note's own text**
+of a copy that held a token ("The note's text on the pasteboard", below): it is what was selected, so it is what is pasted.
 
 1. **File references become attachments**, one for each file, in the order they are on the pasteboard. A file that is not
    there any more is left out. A file the Finder copied has its name on the pasteboard as text too: the file wins.
@@ -84,10 +90,32 @@ What goes into the note, and how:
 - **Inside code a block is literal.** A paste or drop of files into a fenced block or into inline code inserts the file names
   as text, one on each line, and an image, which has no name, goes in nowhere. No attachment is made.
 - **A drop** puts the attachments where it landed (`performDrop(of:atViewPoint:)`): the caret goes to the drop point first.
-  The drag is accepted when it holds files, or an image and no text, and the note can be edited. Any other drop is the text
-  view's own. A drag is judged by the types on its pasteboard (`wouldMakeAttachments(from:)`), never by its data, because it
+  The drag is accepted when it holds files, or an image and no text, or the note's own text of a copy that held a token, and
+  the note can be edited. Any other drop is the text view's own. A drag is judged by the types on its pasteboard (`wouldMakeAttachments(from:)`), never by its data, because it
   is asked on every move of the mouse; the data is read once, when the drop happens.
 - **A paste is never classified as code when it made attachments**: its text is token lines.
+
+## Typing and pasting next to a token
+
+No token line ever shares its line with other characters, because a line that holds anything more than the token is text and
+the picture is gone. The caret can be at either end of a token line (a click beside a chip puts it at the end, ← from the line
+below and Backspace do too), and what is put there goes on a line of its own (`AttachmentEditing.lineBreaks(inserting:at:in:
+isLiteral:)` says where a break must go, `textInsertion(of:breaks:over:in:)` builds the edit):
+
+- **Typing, composing and Tab at the end of a token line** put a line break before the text: the text is on the line below
+  the token, and the caret is after it. **At the start of a token line** a line break goes after the text: the text is above
+  the token, and the caret stays in front of the line break (after the text). The break is an edit of its own that comes
+  before the text (`NoteTextView.makeRoomAtTokenEdge`, called from `insertText`, from the first step of a composition and from
+  Tab), so ⌘Z takes the text back first and the break next, or both at once when they fall in the same turn of the run loop
+  (a key press does): it never leaves half a token. The steps of a composition after the first and the text that is entered
+  at its end are on the line that the first step made. Return, which only makes a line break, needs no other.
+- **A paste of text** puts the breaks into its one edit (`insertTextWithTokenBreaks`): the caret is after the pasted text,
+  and the paste is classified as code (code.md) on the next turn as any other, without the breaks. A paste of text that is
+  itself a token line, in the middle of a line, gets a line break before it and after it, and so does a token line at either
+  end of a longer text. A token line inside the text, on lines of its own, is left as it is.
+- **A selection that replaces a whole token line** needs no break, because the token goes, and one that starts at the end of
+  a token line and runs over its line break gets one, or what is typed would join the line below to the token.
+- **Inside a fenced block** a token is text, and nothing is put in. A note that cannot be edited takes nothing.
 
 ## The paperclip
 
@@ -134,7 +162,8 @@ gone and the raw token shows. (⌘Z brings it back, and the file is kept: a stor
   `NoteTextView.toggleBoldMarkers`): an attachment that a click selected, a selection that holds one or part of one, or a
   caret at either end of the token line (where a click beside a chip puts it, and where Backspace next to a token leaves
   it). A caret on the line below a token (where a paste leaves it) and a selection that only ends where a token starts are
-  not on it, and ⌘B works there as it always did.
+  not on it, and ⌘B works there as on any other line (plan 6 task 5: a caret in a word bolds the word, and on an empty line
+  the pairs of stars go in).
 - **A line that holds more than the token is text** (a space before it, any character after it), judged as typed
   (`AttachmentToken.id(inLine:)`): the commands treat it as any text.
 - **Return, Tab and ⇧Tab need nothing of this**: they act on bullet and checkbox lines only, and a token line is neither.
@@ -159,6 +188,10 @@ here changes the note.
   (without the outline). It is a copy and only a copy: a drop in Finder, Mail or Slack gets the file, and Scratch's own
   copy is never moved out of its storage. A drop on a note of Scratch makes another attachment, with a copy of its own. A
   missing or copying attachment cannot be dragged.
+- **The context menu opens it too.** A right click on the preview or the chip offers Open Attachment, which opens the stored
+  file as a double-click does, also in a note that cannot be edited. The item is disabled when there is no file to open (a
+  missing attachment, one still being copied). VoiceOver reads a token as "image, dashboard.png", "file, rollback-plan.txt"
+  or "missing attachment" (accessibility.md).
 - **Any other click is the text view's own**: one beside a chip or in the padding of a preview puts the caret at the end of
   the token line (a click never stops inside a token), and so does a click with ⇧, ⌘, ⌥ or ⌃ held (⇧ extends the selection
   over the token whole).
@@ -183,13 +216,43 @@ Linux).
   them. A PNG file is its own PNG, byte for byte.
 - **Cut** is Copy and then the deletion of the selection, as for text: the pasteboard is the same, and the file stays in
   Scratch's storage (nothing removes a file when a token leaves the text).
-- **Pasting what was copied makes a new attachment.** The file URL comes first in the paste order (§6.5), so the paste makes
-  an attachment of the stored file: a new id, a copy of its own, the same bytes. Text that holds names is pasted as those
-  names.
+- **Pasting what was copied inside Scratch keeps the attachment** (next section). Pasting it where Scratch does not know the
+  attachment (another Scratch's storage) makes a new attachment of the file on the pasteboard, with a copy of its own and the
+  same bytes, and text that holds names is pasted as those names.
 
-Known limit: typing a character at either end of a token line puts it on the token's own line, which then holds more than
-the token and is text again (⌘Z takes it back). A paste leaves the caret on the line after the token, so pasting and then
-typing is not affected.
+### The note's text on the pasteboard
+
+A selection that holds a token (a token outside a fenced block) also writes the selection exactly as stored, token lines and
+all, on a private type, `io.github.ldellisola.Scratch.note-text` (`AttachmentPasteboard.noteTextType`). The ranges of a
+rectangular selection are joined by line breaks, as the text is. It is written by Copy, Cut and a drag of the selection, in
+the same item as the file when the selection is exactly one attachment, and by no selection without a token. Other
+applications see the plain text, the file and the image they saw before: nothing else of the note's reaches them.
+
+Paste and a drop into Scratch read it first, before the file URL that a copy of one attachment holds too
+(`NoteTextView.insertNoteText`):
+
+- The selection goes in as it was stored, with the line breaks that keep every token whole (previous section), as one edit.
+  The attachments are the ones that were copied: **the same ids**, so a drag that moves text within a note, or a copy into
+  another note, keeps its attachments, and both notes name the same file (the file goes only when no stored note names it,
+  so deleting one note leaves the file for the other). A copy of one attachment pasted into the same note is a second token
+  of the same attachment, and the note's two lines draw the same picture. The caret goes below a token that ends the
+  pasted text, as it does for a pasted attachment.
+- **Into code** (a fenced block, or inline code) a block is literal: the plain text, with the names, goes in, as before.
+- **Where the store has no row for a token** of the text (a copy that came from another Scratch, whose ids this one does not
+  know), the private type is not used: the rest of the pasteboard is, in the order of §6.5, so the file URL makes a new
+  attachment of the file, and the plain text is the last resort.
+- **A drag**: a text drag that AppKit handles itself ends in `readSelection(from:type:)`, which reads the private type
+  whenever it is asked for `.string` or for it, so the drop keeps the tokens and AppKit still moves or copies as it always
+  did; a drag that also holds a file (one attachment, selected whole) is `performDrop(of:atViewPoint:)`'s, a copy.
+
+### A copied image outlives Scratch
+
+The PNG and the TIFF of a copied image are promised (above), and the promise goes when Scratch quits: an image that was
+copied last and not yet pasted would be lost. When Scratch quits while the general pasteboard still holds its copy of one
+image (`AttachmentPasteboard.write` remembers the pasteboard's name and change count, so a pasteboard that something else wrote
+to since is left alone), `AppDelegate.applicationWillTerminate` writes the item again with the PNG and the TIFF in place of
+the promise (`AttachmentPasteboard.materialize(on:)`, after the notes are saved). The image takes its time at quit and not at
+Copy. The copy of a file or of text has no promise: a file's URL is good as long as the stored file is.
 
 ## Screenshots
 
@@ -212,7 +275,8 @@ attachments in place (`attachments`: each one `copied`, its file on disk) and no
 zero) before the picture is taken, and they assert the sidebar's title and preview. They were looked at on CI for the
 release: the preview, the chip and the sidebar are as above in light and dark. The README's `attachments.png` is
 `attachments-light`, and its window pictures (`window-light`, `window-dark`, `formatting`, `code`, `search`,
-`recently-deleted`) are copies of the other screenshots of the same run, taken again for the paperclip in the toolbar.
+`recently-deleted`) are copies of the other screenshots of the same run, taken again for 1.0.0 (plan 6 task 10: the tabs in the
+toolbar, the air between lines, the code pills and the borders of the blocks).
 
 ## Tests
 
@@ -236,13 +300,20 @@ release: the preview, the chip and the sidebar are as above in light and dark. T
 | Typing over a selected token replaces it whole | `testTypingOverSelectedTokenReplacesWholeToken` |
 | The paperclip inserts the chosen files, and nothing when cancelled or read-only | `testPaperclipInsertsChosenFiles`, `testPaperclipCancelledOrReadOnlyInsertsNothing` |
 | ⇧⌘L leaves a token line alone: boxes on the text lines of Select All and no box in front of the token; nothing to change on an attachment | `AttachmentEditingTests.testChecklistCommandLeavesTheTokenAlone`, `testChecklistCommandOnAnAttachmentChangesNothing` |
-| ⌘B on an attachment, a selection that holds one or a caret at the end of its line changes nothing; below a token it still works; in a block nothing | `testBoldCommandLeavesAnAttachmentAlone`, `testBoldCommandBelowAnAttachmentStillWorks`, `testFormatCommandsInATokenInACodeBlockDoNothing` |
+| ⌘B on an attachment, a selection that holds one or a caret at the end of its line changes nothing; below a token it still works; in a block nothing | `testBoldCommandLeavesAnAttachmentAlone`, `testBoldCommandBelowAnAttachmentStillWorks`, `testBoldCommandOnTheEmptyLineBelowAnAttachmentPutsThePairsIn`, `testFormatCommandsInATokenInACodeBlockDoNothing` |
 | The rules (Linux): the checklist skips token lines and the blank lines around them, judges a line as typed, and the list keys never touch one; ⌘B's test of the selection | ScratchCore `ListEditingTests.toggleChecklistSkipsTokenLines`, `toggleChecklistOnlyOnATokenChangesNothing`, `toggleChecklistLeavesTheBlankLinesAroundATokenEmpty`, `toggleChecklistDoesNotCountATokenLineAsText`, `toggleChecklistJudgesATokenLineAsTyped`, `theOtherListRulesLeaveTokenLinesAlone`; `InlineEditingTests.aSelectedAttachmentIsTouched`, `aSelectionThatHoldsATokenLineIsTouched`, `aCaretAtEitherEndOfATokenLineTouchesIt`, `aCaretOrSelectionNextToATokenLineButNotOnItIsNotTouched`, `boldTreatsALineThatHoldsMoreThanTheTokenAsText` |
 | The rules themselves (Linux) | `AttachmentEditingTests.swift` in ScratchCoreTests |
 | The text of a copy has names for tokens, a token in a block as typed, one token alone is an attachment (Linux) | `AttachmentCopyingTests.swift` in ScratchCoreTests |
 | Copy names the file in place of the token, and no more than text | `AttachmentCopyTests.testCopyOfTextAndAttachmentNamesTheFile`, `testUnknownTokenAndTokenInCodeBlockAreCopiedAsTheyAre` |
 | One attachment also writes its file URL, and an image its PNG and TIFF; a file writes no image | `testCopyOfOneAttachmentWritesFileURLAndImage`, `testCopyOfOneFileWritesFileURLOnly`, `testCopyOfAnAttachmentThatIsStillBeingCopiedWritesTheNameOnly` |
-| Pasting what was copied makes a new attachment | `testPastingCopiedAttachmentMakesANewOne`, `testPastingACopiedImageMakesANewImageAttachment` |
+| Pasting what was copied where the store does not know the attachment makes a new one (and the same note keeps the id) | `testPastingCopiedAttachmentMakesANewOne`, `testPastingACopiedImageMakesANewImageAttachment` |
+| Typing, composing, Tab and Return at the edges of a token line (Review Focus 2) | `AttachmentEditingTests.testTypingAtTheEndOfATokenLineGoesBelowIt`, `testTypingAtTheEndOfANoteThatEndsInATokenGoesBelowIt`, `testTypingAtTheStartOfATokenLineGoesAboveIt`, `testTypingAtTheStartOfANoteThatStartsWithATokenGoesAboveIt`, `testComposingAtATokenEdgeKeepsTheToken`, `testComposingAtTheStartOfATokenLineKeepsTheToken`, `testReturnAndTabAtATokenEdge`, `testTypingOverTheLineBreakBelowATokenKeepsTheToken`, `testTypingAwayFromATokenIsUnchanged`, `testTypingAtTheEndOfATokenInACodeBlockIsPlain`, `testReadOnlyNoteTakesNoTypingNextToAToken`; `AttachmentUITests.testTypingNextToAnImageKeepsIt` (real keys) |
+| A paste of text at an edge of a token line, of a token line mid-line, into code, and of code next to a token | `AttachmentPasteTests.testPastingTextAtATokenEdgeKeepsTheToken`, `testPastingATokenLineMidLineGetsLinesOfItsOwn`, `testPastingTextAtATokenEdgeInACodeBlockIsPlain`, `testCodePastedAtATokenEdgeIsStillWrapped` |
+| Where a line break goes next to a token, and the edit that has it (Linux) | `AttachmentEditingTests.swift` in ScratchCoreTests: `lineBreakGoesBetweenTypingAndAToken`, `lineBreakFirstNeedsNoMore`, `insertedTokenMidLineGetsBoth`, `literalNeedsNone`, `selectionReplacingAWholeTokenNeedsNone` and the `textInsertion` tests |
+| Whether a selection holds a token (Linux) | `AttachmentCopyingTests.swift` in ScratchCoreTests: `aSelectionThatHoldsATokenLineHoldsAnAttachment` and the tests after it |
+| Copy writes the note's text only for a selection that holds a token, and nothing else of the note's | `AttachmentCopyTests.testCopyWithATokenWritesNoteText`, `testCopyWithoutATokenWritesOnlyPlainText`, `testCopyOfATokenInACodeBlockWritesOnlyPlainText` |
+| Paste and drop keep the attachment: the same id, drawn, no new copy; into code the names; an unknown id, a note that cannot be edited | `testPastingCopiedTextWithATokenKeepsTheAttachment`, `testReadingPlainTextOfAPasteboardThatHasNoteTextReadsNoteText`, `testDroppingDraggedTextWithATokenKeepsTheToken`, `testDropOfOneSelectedAttachmentKeepsItsId`, `testNoteTextIntoCodeInsertsNames`, `testNoteTextOfAnUnknownAttachmentPastesThePlainText`, `testReadOnlyNoteTakesNoNoteText` |
+| A copied image is written with its data at quit, once, and only while nothing else was written | `testMaterializeWritesTheImageData`, `testMaterializeLeavesAPasteboardThatChangedAlone`, `testMaterializeHasNothingToDoForAFileOrText` |
 | A click hits the drawn rectangle and nothing else | `testAttachmentHitIsTheDrawnRectangle`, `testAttachmentHitOfAnImageIsItsPreview`, `testAttachmentHitInANoteWithoutAttachments` |
 | A click selects; a double-click opens the stored file; a missing one opens nothing | `testSingleClickSelectsTheToken`, `testDoubleClickOpensStoredFile`, `testTripleClickDoesNotOpenTwice`, `testDoubleClickOnAnImageOpensItsStoredFile`, `testDoubleClickOnAMissingAttachmentOpensNothing`, `testDoubleClickWhenTheFileIsGoneOpensNothing`, `testReadOnlyNoteStillOpensItsAttachments` |
 | A drag past 3 points takes the stored file out | `testDragWriterIsTheStoredFile`, `testDragStartsPastThreePoints`, `testNothingIsDraggedOutOfAMissingAttachment` |

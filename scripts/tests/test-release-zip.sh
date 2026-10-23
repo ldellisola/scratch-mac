@@ -3,7 +3,8 @@
 # needs macOS (ditto, codesign, lipo), so these tests run it against stubs of those tools, which stand in for the Mac: they
 # prove the script's decisions (what it checks and what it reports), not what ditto does. The real tools run in CI, in
 # `make release-zip`. Plan 5 task 7 added the check of Contents/Resources/Acknowledgements.rtf, which the About panel shows.
-# Run with `make script-test`.
+# Plan 6 task 9 added the check of the app icon: Contents/Resources/AppIcon.icns and CFBundleIconName. Run with
+# `make script-test`.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -100,12 +101,17 @@ case $2 in
     "Print :CFBundleShortVersionString") echo "${STUB_SHORT_VERSION:-0.5.0}" ;;
     "Print :CFBundleVersion") echo "${STUB_BUILD_VERSION:-0.5.0}" ;;
     "Print :CFBundleIdentifier") echo "${STUB_BUNDLE_ID:-io.github.ldellisola.Scratch}" ;;
+    "Print :CFBundleIconName")
+        # STUB_ICON_NAME unset: AppIcon. Set to the empty string: the key is missing, as PlistBuddy reports it.
+        [[ -n ${STUB_ICON_NAME-AppIcon} ]] || exit 1
+        echo "${STUB_ICON_NAME-AppIcon}"
+        ;;
     *) exit 1 ;;
 esac
 EOF
 chmod +x "$TMP/bin/"*
 
-# An unpacked release zip: the app with its executable, ScratchCode's queries and the acknowledgements.
+# An unpacked release zip: the app with its executable, ScratchCode's queries, the acknowledgements and the icon.
 good_tree() {
     local dir=$1
     rm -rf "$dir"
@@ -114,6 +120,7 @@ good_tree() {
     : >"$dir/Scratch.app/Contents/Info.plist"
     : >"$dir/Scratch.app/Contents/MacOS/Scratch"
     : >"$dir/Scratch.app/Contents/Resources/ScratchCode_ScratchCode.bundle/Queries/swift/highlights.scm"
+    printf 'icns' >"$dir/Scratch.app/Contents/Resources/AppIcon.icns"
     cat >"$dir/Scratch.app/Contents/Resources/Acknowledgements.rtf" <<'EOF'
 {\rtf1\ansi
 {\b tree-sitter 0.25.10}\par
@@ -171,6 +178,30 @@ mv "$TMP/misplaced-rtf/Scratch.app/Contents/Resources/Acknowledgements.rtf" \
     "$TMP/misplaced-rtf/Scratch.app/Contents/Other/Acknowledgements.rtf"
 check_exit "an Acknowledgements.rtf outside Contents/Resources fails" 1 STUB_TREE="$TMP/misplaced-rtf"
 err_has "and names where it must be" "Contents/Resources/Acknowledgements.rtf"
+
+echo "== the app icon (plan 6 task 9)"
+good_tree "$TMP/no-icns"
+rm "$TMP/no-icns/Scratch.app/Contents/Resources/AppIcon.icns"
+check_exit "a zip with no AppIcon.icns fails" 1 STUB_TREE="$TMP/no-icns"
+err_has "and names the file" "Contents/Resources/AppIcon.icns"
+err_lacks "and it is the only problem" "2 check(s) failed"
+
+good_tree "$TMP/empty-icns"
+: >"$TMP/empty-icns/Scratch.app/Contents/Resources/AppIcon.icns"
+check_exit "an empty AppIcon.icns fails" 1 STUB_TREE="$TMP/empty-icns"
+err_has "and says it is empty" "AppIcon.icns is empty"
+
+good_tree "$TMP/misplaced-icns"
+mkdir -p "$TMP/misplaced-icns/Scratch.app/Contents/Other"
+mv "$TMP/misplaced-icns/Scratch.app/Contents/Resources/AppIcon.icns" \
+    "$TMP/misplaced-icns/Scratch.app/Contents/Other/AppIcon.icns"
+check_exit "an AppIcon.icns outside Contents/Resources fails" 1 STUB_TREE="$TMP/misplaced-icns"
+err_has "and names where it must be" "Contents/Resources/AppIcon.icns"
+
+check_exit "a CFBundleIconName that is not AppIcon fails" 1 STUB_ICON_NAME=Placeholder
+err_has "and names it" "CFBundleIconName is Placeholder"
+check_exit "an Info.plist with no CFBundleIconName fails" 1 STUB_ICON_NAME=
+err_has "and says it is missing" "CFBundleIconName is (missing)"
 
 echo "== the other checks still stand"
 good_tree "$TMP/no-queries"

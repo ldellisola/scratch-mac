@@ -1,6 +1,6 @@
 # Tabs
 
-The tab strip above the editor, and the rules for opening, closing and switching tabs. Spec:
+The tab strip in the toolbar, and the rules for opening, closing and switching tabs. Spec:
 [§6.3 Tabs](../superpowers/specs/2026-10-19-scratchpad-design.md) (tabs are views onto notes), §6.2 (clicking a note in
 the sidebar, ⌘-click) and §6.6 (a relaunch restores the tabs), guarding the anti-goals "Lost text" and "Fake glass"
 (§4). Where a new tab opens, and which empty notes are discarded, are settled by
@@ -29,7 +29,8 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
   session, and a note that is empty when the session is restored counts as untouched only when its edit time is still
   its creation time, so a note that was emptied and still open in a tab at quit is kept too (docs/decisions/0004,
   closed in 0.3.0).
-- **Close.** ⌘W (File > Close Tab) closes the active tab, and the close button inside a tab closes that tab. When the
+- **Close.** ⌘W (File > Close Tab) closes the active tab, and the close button inside a tab closes that tab. VoiceOver reads
+  that button as "Close <the tab's title>" (accessibility.md); the raised tab has a 1 pt outline with Increase Contrast. When the
   active tab closes, the tab that takes its place is shown (the one on its right, or else the new last tab). Closing the
   only tab leaves one tab with a new empty note, which is not listed. Closing the tab of a note that is still an empty,
   unused note leaves things as they are.
@@ -51,11 +52,27 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
 - **The session is written at once after every open, close or switch**, and not with the next autosave, so a crash right
   after changing the tabs keeps them. The text of the active note still goes out with the autosave, and with every
   switch.
-- **The tab strip.** A Liquid Glass bar (`NSGlassEffectView`, corner radius 14, 32 pt tall) below the toolbar, 12 pt from
-  the left. It is as wide as its tabs, and no wider than the editor area less 12 pt on each side.
+- **The tab strip.** A Liquid Glass capsule (`NSGlassEffectView`, corner radius 17, 34 pt tall, the height of the toolbar's own
+  capsules) in the **toolbar row**, the view of a toolbar item after the sidebar's tracking separator (plan 6 task 7,
+  mockup B). The toolbar's items are, from the left: the sidebar button, the tracking separator, the strip, a flexible space,
+  the pin and the paperclip (one glass group), a space and the new note button (another). It is as wide as its tabs, and no
+  wider than the room the toolbar leaves before its buttons (below).
+  - The item has no border and no shared background (`isBordered = false`), so the toolbar
+    puts no second capsule round the strip's own, and visibility priority `high`; the three buttons have `user`, so none of
+    them goes into the overflow menu.
+  - **Its width is made to fit, never left to the toolbar:** a toolbar that is short of room moves items into its overflow
+    menu, so the strip's required width constraint is `min(its tabs' width, the room)`, at least 96 pt. The room is the window's
+    width less where the strip starts (the editor area's left edge and 16 pt with the sidebar shown, 150 pt from the window's
+    edge with it hidden) less 176 pt for the buttons (two capsules, the space between and the margin are about 140 pt).
+    `MainSplitViewController.onContentLayout` reports the three numbers after every layout, and
+    `ToolbarController.updateTabStripWidth` hands the answer (`TabStripLayout.maximumWidth(windowWidth:leading:)`) to the
+    strip (`maximumWidth`). So a window made narrower, and the sidebar hidden or shown, change the strip, and twelve tabs share
+    it down to 48 pt each.
   - A tab is 120 to 200 pt wide, and shares the strip when they do not all fit. Its title is the note's title, or else
-    the first line of the note that is not a fence line or an attachment line, or else "Untitled". A titled tab is
-    bold, an untitled one is in the note font.
+    the first line of the note that is not a fence line or an attachment line, or else "Untitled". That line is shown as
+    the editor shows it, without its list marker, its `**` or its backticks, and as typed inside a fenced block (from
+    1.0.0: [sidebar.md](sidebar.md), "A row shows a line as the editor shows it"). A titled tab is bold, an untitled one
+    is in the note font.
   - The active tab is raised: a white pill (a lighter one in dark mode) with a soft shadow. The other tabs have no
     background.
   - A tab's title follows the note's about as fast as the sidebar row does: after the autosave.
@@ -65,7 +82,10 @@ note, which closes its tab, and a deleted note that is shown read-only in a tab 
 
 - `App/Sources/Tabs/TabStripViewController.swift`: the strip (`TabStripViewController`, and `TabStripView` with its
   glass), the layout of the tabs (`TabStripLayout`, `TabStripContentView`) and one tab (`TabItemView`).
-- `App/Sources/Window/EditorAreaViewController.swift`: the strip above the editor, below the toolbar.
+- `App/Sources/Window/ToolbarController.swift`: the toolbar's items, among them the strip's (`makeTabStripItem`) and the
+  width it is given (`updateTabStripWidth`). `App/Sources/Window/EditorAreaViewController.swift` is the editor alone: it
+  starts at the top of the window, with the toolbar in its safe area, and its title field sits 10 pt below that.
+  `MainSplitViewController.onContentLayout` is what tells the toolbar about the room.
 - `App/Sources/Session/SessionCoordinator.swift`: the tab list (`TabList`), `newNoteInNewTab`, `open(_:inNewTab:)`,
   `selectTab`, `closeTab`, the restore, and the session write after each change.
 - `App/Sources/Sidebar/SidebarViewController.swift`: `onOpen(id, inNewTab)`, from the table's click action and Return.
@@ -96,7 +116,13 @@ it is selected when it is the active tab.
 | An untouched new tab is discarded when it closes, also from the database | `TabsUITests.testUntypedNewTabIsDiscardedOnClose`, `SaveFailureTests.testUntouchedNewNoteIsStillDiscardedWhenItsTabCloses` |
 | A note typed in and then emptied is kept when its tab closes, and listed as "Untitled" | `TabsUITests.testTypedThenEmptiedNoteIsKeptWhenItsTabCloses`, `SaveFailureTests.testTypedThenEmptiedNoteIsKeptWhenItsTabCloses` |
 | A note emptied and open at quit is kept after the relaunch, and when its tab closes | `TabsUITests.testEmptiedNoteSurvivesRelaunch`, `SaveFailureTests.testRestoredEmptiedNoteIsKeptAndRestoredUntouchedNoteIsDiscarded` |
+| A tab's title has no list marker, bold stars or code backticks outside a fenced block, whichever tab is active | `SessionRestoreTests.testTabsShowTheirTitlesWithoutMarkers`, `NoteTests.checkboxTitleHasNoMarker` |
 | The sidebar's new note button opens a tab, and a replaced untouched note is discarded | `SidebarUITests.testNewNoteButtonCreatesListedNote`, `testUntouchedNewNoteIsDiscarded` |
+| The strip is a toolbar item (no border, no shared glass, the buttons never in the overflow), in the order of the plan, and the real window's toolbar has it, outside the editor area | `TabStripViewControllerTests.testToolbarItemOrder`, `testTabStripIsAToolbarItem`, `testTheWindowsToolbarHoldsTheStrip`, `testEditorAreaIsTheEditorAlone` |
+| The strip is as wide as its tabs, never wider than its maximum, never below its floor, and the maximum leaves room for the buttons | `TabStripViewControllerTests.testStripIsAsWideAsItsTabs`, `testStripIsNeverWiderThanItsMaximum`, `testStripKeepsAFloorOfWidth`, `testMaximumWidthLeavesRoomForTheButtons` |
+| The active tab is in the row of the toolbar's buttons, left of them, with no band under the toolbar (plan 6 Review Focus 4) | `TabsUITests.testTabStripIsInTheToolbarRow` |
+| Twelve tabs keep the pin, the paperclip and the new note button in reach, with the sidebar shown, hidden and shown again | `TabsUITests.testTwelveTabsKeepTheToolbarButtons` |
+| The close button names its tab ("Close Deploy checklist"), and the toolbar's buttons have labels | `AccessibilityUITests.testCloseButtonNamesItsTab`, `testToolbarButtonsHaveLabels` |
 
 The rules under these (where a tab opens, which tab is active after a close, wrapping, ⌘9) have unit tests in
 ScratchCore: `TabListTests`.

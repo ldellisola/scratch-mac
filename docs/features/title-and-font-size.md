@@ -26,15 +26,22 @@ Status: plan 2, task 6. Sessions, scroll and the rest of the persistence are in
 - **Undo history is per note and lasts for the session.** Typing in note A, switching to note B and coming back leaves
   A's typing undoable with ⌘Z, and B's history is not mixed into it. Loading a note is never an undo step. Quitting
   ends the history (spec §6.6).
+- **Title undo stays with its note.** What is typed in the title is undone with ⌘Z while the title has the keyboard, and
+  only there: the steps are the title's own (`TitleField.titleUndoManager`, which the field editor asks), not the note's.
+  Leaving a note (a tab, a note from the sidebar, a new note) ends the editing of its title, moves the keyboard to the
+  text, and drops the title's undo steps. So ⌘Z in a note never changes another note's title, or crashes with a range of
+  a title that is not there, and the steps that the text system registered in the note's manager with the shared field
+  editor as their target are dropped too (plan 6 task 5).
 - **A read-only note** (a note in Recently Deleted, [recently-deleted.md](recently-deleted.md)) takes no typing in the
   text or in the title, and offers no undo: its history, if it has one, comes back when the note is restored
   (`setReadOnly(false)`, which makes the note that is shown editable in place).
 
 ## Where it lives
 
-- `App/Sources/Editor/TitleField.swift`: the field, its font and its placeholder.
+- `App/Sources/Editor/TitleField.swift`: the field, its font and its placeholder, and `titleUndoManager`, the undo manager
+  that the field editor gets from the field.
 - `App/Sources/Editor/EditorViewController.swift`: the container of the title field and the scroll view, `show(_:tab:
-  undoManager:isReadOnly:)`, `setFontSize(_:)`, `focusTitle()` and `focusBody()`, and the reports `onTitleChange` and
+  undoManager:isReadOnly:)` (which first ends the title's editing and drops its undo steps, `endTitleEditing`), `setFontSize(_:)`, `focusTitle()` and `focusBody()`, and the reports `onTitleChange` and
   `onTextChange`. It is the text view's delegate (`undoManager(for:)`) and the title field's (Return and Tab).
 - `App/Sources/Editor/NoteTextView.swift`: `noteFont(size:)`, `applyFontSize(_:)` (font, colour and typing attributes
   in one place) and `noteUndoManager`.
@@ -59,6 +66,8 @@ Status: plan 2, task 6. Sessions, scroll and the rest of the persistence are in
 | Showing a note does not clear its history | `EditorViewControllerTests.testShowDoesNotClearUndo` |
 | A read-only note takes no typing, and the next editable note does | `EditorViewControllerTests.testReadOnlyRejectsTyping` |
 | A read-only note offers no undo, and restoring it gives the history back and makes it editable | `EditorViewControllerTests.testReadOnlyNoteOffersNoUndo`, `testSetReadOnlyFalseMakesTheShownNoteEditable` |
+| The title keeps its own undo manager, leaving a note drops the title's steps (its own and the field editor's in the note's manager) and ends its editing | `EditorViewControllerTests.testTheTitleKeepsItsOwnUndoManager`, `testShowDropsTheUndoStepsOfTheTitle`, `testShowEndsTheEditingOfTheTitle` |
+| Undoing after a switch of notes changes no title and the app keeps running | `TitleUITests.testTitleUndoStaysWithItsNote` |
 | A typed title becomes the sidebar title, and the text is not part of it | `TitleUITests.testTitleBecomesSidebarTitle` |
 | The title survives a relaunch | `TitleUITests.testTitleSurvivesRelaunch` |
 | ⌘= twice gives 15 pt, which survives a relaunch | `TitleUITests.testFontSizeIsRemembered` |

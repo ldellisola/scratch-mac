@@ -17,11 +17,17 @@ changed in the note's text: the characters, copy, search and storage stay as the
 attribute or a drawing (`MarkupStyler`, `CodeBlockStyler`, `MarkupLayoutManager`). A fence that has no partner is not a
 block (docs/features/formatting.md).
 
-- **The tint.** A rounded block (6 pt radius) in the `CodeBackground` colour, black at 6% in light mode and white at 10%
-  in dark mode, as wide as the text (the width of the editor less its margins). It is drawn from the opening fence line
-  to the closing one, behind the lines.
+- **The tint.** A rounded block (8 pt radius from 1.0.0, 6 pt before) in the `CodeBackground` colour, black at 6% in light
+  mode and white at 10% in dark mode, as wide as the text (the width of the editor less its margins). It is drawn from the
+  opening fence line to the closing one, behind the lines.
+- **The border.** A hairline of 1 pt inside the edge of the tint (plan 6 task 7, mockup B), in the `CodeBorder` colour: black
+  at 8% in light mode, white at 12% in dark mode, 35% and 45% with Increase Contrast. It is stroked on the shape of the tint,
+  which is cut off where the block goes on, so a part of a block that is drawn alone (a redraw of some of its lines) has no
+  line across it. `CodeBlockStylerTests.testCodeBlockHasABorder`.
 - **The lines.** Each line of the block is 10 pt in from both sides of the tint (head and tail indent), in the note font,
-  and nothing in it is formatting (no bullet, bold or link).
+  and nothing in it is formatting (no bullet, bold or link). Each has the spacing that every line has after it (4 pt at
+  13 pt, formatting.md "Behaviour: the look"), inside the tint, so the last line has 4 pt more below it than the first has
+  above it, besides the 6 pt of each fence line.
 - **The fence lines are padding.** Each is a line of exactly 6 pt with nothing drawn on it, so the top and the bottom of a
   block have a little space and no text. While the caret or the selection touches a fence line (its two ends included, so the
   caret just below the opening fence or just above the closing one does not) the line is shown in full, in
@@ -107,8 +113,9 @@ nothing at all for a block with no label.
 Plan 5, task 7 (a 0.4.0 follow-up). The first text in a language compiles that language's query, which takes 240 to 270 ms for
 Swift (docs/decisions/0007-tree-sitter.md), so the first colours in a launch came that much late. After the first frame
 (`RunLoopIdle`, after the signpost intervals of the frame) `AppDelegate` calls `SessionCoordinator.warmUpHighlighting()`, which
-hands the texts of the notes that were open in tabs at the launch (read by `restoredTabs` already) to
-`CodeBlockStyler.warmUp(languagesNamedIn:)`.
+reads the texts of the notes that were open in tabs at the launch on the storage queue (the launch itself reads the active
+note's body only, plan 6 task 3: docs/features/autosave-and-restore.md) and hands them to
+`CodeBlockStyler.warmUp(languagesInTextsFrom:on:)`.
 
 - On the highlight queue, the fences of those texts are read (`CodeBlockStyler.languages(namedIn:)`: the blocks, by fence name
   or alias, each language once; a name that is not a language, a fence with no name and a fence with no partner give nothing),
@@ -148,7 +155,8 @@ kind of runner: a run over 6.96 ms on a slow runner is a rerun before it is a re
   `testTypingInTheFirstLineKeepsItsReserve`, `testReserveFollowsTheFontSize`, and the warm-up:
   `testFenceNamesGiveTheLanguagesToWarmUp`, `testWarmUpCompilesOpenLanguages`, `testWarmUpOfALanguageThatIsReadyDoesNothingTwice`,
   `testWarmUpNeverBlocksTheNoteThatIsShown`.
-- `SessionWarmUpTests` (hosted): the coordinator hands the notes of the open tabs, and only those, to the warm-up, once.
+- `SessionWarmUpTests` (hosted): the coordinator reads the notes of the open tabs, and only those, after the first frame
+  and hands them to the warm-up, once; the launch itself has read one note.
 - `AboutCreditsTests` (hosted): `testAboutCreditsListTreeSitter` and that every component of the build is credited.
 - ScratchCode's `HighlighterTests`: `Highlighter.prepare(_:)` and `isPrepared(_:)`.
 - `scripts/tests/test-acknowledgements.sh` and `scripts/tests/test-release-zip.sh` (`make script-test`).
@@ -181,6 +189,9 @@ back into plain text (`CodeBlockMenu`, `NoteTextView`).
 - **The caret stays where it was in the text.** A caret in the code stays in the same place of the code, one in the
   opening fence goes to the end of the new name (or to the start of the code, for "Not Code"), and one in the closing
   fence to the end of the code that is left. The view takes the keyboard, as a click in it does.
+- **The context menu has it too.** A right click on any line of a block, a fence line too, offers a Code Block Language
+  submenu with these same items (`EditorContextMenu`), which do what they do here. A note that cannot be edited has none.
+  VoiceOver reads the block as "code block, Swift", its code and "end of code block" (accessibility.md).
 - **No label, no menu.** A fence with no name whose code is not code, or is a language Scratch does not know, shows no
   label (see "The label" above), so it has nothing to click. Typing a name on its fence gives it one.
 
@@ -225,6 +236,14 @@ it always did (docs/features/paste-and-copy.md). When it turns out to be code, i
     the one before the fence, so the block has no blank line that was not pasted;
   - **every pasted character is inside the fences as it came**: no re-indenting, no trimming, no change of line breaks.
   The caret ends up where it was, after everything that was pasted.
+- **The colours are asked for first.** `NoteTextView` asks `PasteClassifier.wrap` as soon as it has read the paste (it reads
+  only the text), and for a wrap the highlighter starts on the colours of the block to come
+  (`CodeBlockStyler.prefetch(block:)`: the same request that the block will make, queued on the highlight queue at once, for a
+  block with a language and at most `Highlighter.maximumLength` units of code). The wrap on the next turn applies that same
+  edit, without detecting again, and the block finds its colours in the cache or in the request that is running, so the
+  highlighting overlaps the turn that makes the block (plan 6 task 3). A result that comes before its block is kept in the
+  cache and is not counted as dropped. A paste of more than 300,000 units (`PasteClassifier.earlyWrapLimit`) is looked at on
+  the next turn as before: it is never coloured, and the paste's own turn stays short.
 - **Two undo steps.** The wrap is applied on the next turn of the main run loop, once the undo group of the paste has
   closed, so ⌘Z once leaves exactly the pasted text, and ⌘Z again takes it away. The wrap is one `apply(_:)`.
 - **When the text changes first, nothing is wrapped.** A key typed, or a note loaded, between the paste and the wrap
@@ -252,6 +271,9 @@ runs, with the fastest and the slowest of the ten pastes of each.
   `testPasteWithFencesStaysAsIs`, `testProseSampleStaysPlain`, `testUnknownLanguageGetsUnnamedFence`, and the cases above:
   a paste ending with a line break, into inline code, below an unmatched fence, edited before the wrap, in a read-only note,
   and `PasteClassifier.wrap` itself.
+- `CodePasteTests.testPastedCodeIsPrefetched` (plan 6 task 3): after a 40-line Swift paste one highlight is on its queue before
+  the wrap, the wrapped block is coloured without a request of its own and no result is dropped; `testPlainPasteIsNotPrefetched`,
+  `testTypingBeforeTheWrapDropsAPrefetchedPaste`.
 - `CodePasteUITests` (real keys and the real pasteboard): `testUndoAfterCodePasteRestoresPlainText` (Review Focus 2),
   `testPastingAnEmailStaysPlain` (Review Focus 1) and a paste in the middle of a line.
 - `CodePastePerfTests.testPasteFiveHundredLinesOfCode`: `paste_code_ms`.

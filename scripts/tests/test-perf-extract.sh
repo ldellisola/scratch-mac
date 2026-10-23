@@ -72,6 +72,13 @@ cat >"$TMP/metrics.json" <<'JSON'
       "unitOfMeasurement": "s", "measurements": [0.2, 0.25, 0.3]}]}]
   },
   {
+    "testIdentifier": "LaunchPerfTests/testReferenceLaunch()",
+    "testRuns": [{"metrics": [{
+      "displayName": "Duration (ApplicationLaunch)",
+      "identifier": "com.apple.dt.XCTMetric_ApplicationLaunch-ApplicationLaunch.duration",
+      "unitOfMeasurement": "s", "measurements": [0.1, 0.14, 0.12]}]}]
+  },
+  {
     "testIdentifier": "EditorPerfTests/testKeystroke()",
     "testRuns": [{"metrics": [
       {"displayName": "Duration", "identifier": "com.apple.dt.XCTMetric_Clock.time.monotonic",
@@ -109,6 +116,19 @@ JSON
 mkdir -p "$TMP/attachments"
 printf '{"max_frame_ms": 12.5, "p95_frame_ms": 7.5, "median_frame_ms": 1.75, "max_cpu_ms": 6.5, "p95_cpu_ms": 2.5, "median_cpu_ms": 0.75, "frames": 300}\n' >"$TMP/attachments/A1.txt"
 printf 'not a number\n' >"$TMP/attachments/B2.txt"
+# The idle monitor's report (IdleMonitor) and the launch records that testLaunch reads from debug.state (newest first, as
+# LaunchTimer.debugRecords writes them). The phases are milliseconds from the start of the process.
+printf '{"cpu_ms": 60.5, "cpu_pct": 1.21, "wakeups": 153}\n' >"$TMP/attachments/C3.txt"
+cat >"$TMP/attachments/D4.txt" <<'JSON'
+[
+  {"date": 1000.3, "version": "1.0.0", "bootTime": 10.0, "isFirstAfterStartUp": false, "total": 340.0,
+   "phases": {"main": 60.0, "storage": 80.0, "restore": 100.0, "window": 200.0, "firstFrame": 340.0}},
+  {"date": 1000.2, "version": "1.0.0", "bootTime": 10.0, "isFirstAfterStartUp": false, "total": 300.0,
+   "phases": {"main": 40.0, "storage": 70.0, "restore": 90.0, "window": 180.0, "firstFrame": 300.0}},
+  {"date": 1000.1, "version": "1.0.0", "bootTime": 10.0, "isFirstAfterStartUp": true, "total": 900.0,
+   "phases": {"main": 50.0, "storage": 75.0, "restore": 95.0, "window": 190.0, "firstFrame": 900.0}}
+]
+JSON
 cat >"$TMP/attachments/manifest.json" <<'JSON'
 [
   {
@@ -116,6 +136,18 @@ cat >"$TMP/attachments/manifest.json" <<'JSON'
     "attachments": [
       {"exportedFileName": "B2.txt", "suggestedHumanReadableName": "notes_0_2B8F3A6E-0000-4000-8000-000000000001.txt"},
       {"exportedFileName": "A1.txt", "suggestedHumanReadableName": "scroll_frame_ms_0_2B8F3A6E-0000-4000-8000-000000000002.txt"}
+    ]
+  },
+  {
+    "testIdentifier": "IdlePerfTests/testIdle()",
+    "attachments": [
+      {"exportedFileName": "C3.txt", "suggestedHumanReadableName": "idle_cpu_0_2B8F3A6E-0000-4000-8000-000000000003.txt"}
+    ]
+  },
+  {
+    "testIdentifier": "LaunchPerfTests/testLaunch()",
+    "attachments": [
+      {"exportedFileName": "D4.txt", "suggestedHumanReadableName": "launch_phases_0_2B8F3A6E-0000-4000-8000-000000000004.txt"}
     ]
   }
 ]
@@ -140,11 +172,45 @@ value_is "scroll_frame_wall_ms is the median frame by the clock" "$TMP/out/resul
 value_is "scroll_frame_p95_ms is the 95th percentile of the CPU time" "$TMP/out/results.json" scroll_frame_p95_ms 2.500
 value_is "scroll_frame_max_ms is the longest CPU time there" "$TMP/out/results.json" scroll_frame_max_ms 6.500
 
+echo "== the launch overhead, the phases and idle (ADR 0009)"
+value_is "launch_reference_ms is the median of the reference app's launches" "$TMP/out/results.json" launch_reference_ms 120.000
+# overhead_is_launch_minus_reference: 250 - 120 is what Scratch costs above the reference app on this runner...
+value_is "overhead_is_launch_minus_reference: the difference of the two medians" "$TMP/out/results.json" launch_difference_ms 130.000
+# ...and launch_overhead_ms is that at the speed of a runner on which the reference launches in 200 ms: 130 x 200 / 120.
+value_is "launch_overhead_ms is the difference at the nominal runner's speed" "$TMP/out/results.json" launch_overhead_ms 216.667
+# A runner twice as slow makes both launches twice as long: the difference doubles and the overhead does not.
+python3 - "$TMP/metrics.json" "$TMP/metrics-slow.json" <<'PY'
+import json, sys
+tests = json.load(open(sys.argv[1]))
+for test in tests:
+    if "LaunchPerfTests" in test["testIdentifier"]:
+        for metric in test["testRuns"][0]["metrics"]:
+            metric["measurements"] = [value * 2 for value in metric["measurements"]]
+json.dump(tests, open(sys.argv[2], "w"))
+PY
+expect_exit "a run on a slower runner is extracted" 0 \
+    python3 "$SCRIPT" "$TMP/none.xcresult" "$TMP/out-slow/results.json" --metrics-json "$TMP/metrics-slow.json" \
+    --attachments-dir "$TMP/attachments"
+value_is "a runner twice as slow doubles the difference" "$TMP/out-slow/results.json" launch_difference_ms 260.000
+value_is "and leaves launch_overhead_ms where it was" "$TMP/out-slow/results.json" launch_overhead_ms 216.667
+# phases_are_medians: of three records, the one in the middle, per phase.
+value_is "phases_are_medians: main" "$TMP/out/results.json" launch_phase_main_ms 50.000
+value_is "phases_are_medians: storage" "$TMP/out/results.json" launch_phase_storage_ms 75.000
+value_is "phases_are_medians: restore" "$TMP/out/results.json" launch_phase_restore_ms 95.000
+value_is "phases_are_medians: window" "$TMP/out/results.json" launch_phase_window_ms 190.000
+value_is "phases_are_medians: firstFrame ignores the slow first launch after start-up" "$TMP/out/results.json" launch_phase_firstFrame_ms 340.000
+# idle_from_attachment
+value_is "idle_from_attachment: idle_cpu_pct" "$TMP/out/results.json" idle_cpu_pct 1.210
+value_is "idle_from_attachment: idle_wakeups" "$TMP/out/results.json" idle_wakeups 153.000
+
 echo "== raw copies"
 expect_exit "--raw-dir keeps what was read" 0 extract "$TMP/out2/results.json" --raw-dir "$TMP/raw"
 if [[ -f $TMP/raw/metrics.json && -f $TMP/raw/scroll_frame_ms.json ]]; then
     pass "the raw metrics and the scroll attachment are copied"
 else fail "the raw metrics and the scroll attachment are copied"; fi
+if [[ -f $TMP/raw/idle_cpu.json && -f $TMP/raw/launch_phases.json ]]; then
+    pass "the idle and launch phase attachments are copied"
+else fail "the idle and launch phase attachments are copied"; fi
 
 echo "== something missing"
 rm "$TMP/attachments/A1.txt"
@@ -153,6 +219,28 @@ value_is "the scroll metric is left out" "$TMP/out3/results.json" scroll_frame_m
 value_is "so is the longest frame" "$TMP/out3/results.json" scroll_frame_max_ms absent
 value_is "the others are still there" "$TMP/out3/results.json" launch_ms 250.000
 output_has "the warning names the metric" "scroll_frame_ms"
+
+value_is "the idle numbers are still there" "$TMP/out3/results.json" idle_cpu_pct 1.210
+
+echo "== a run without the reference launch or the attachments"
+python3 - "$TMP/metrics.json" "$TMP/metrics-no-reference.json" <<'PY'
+import json, sys
+tests = [t for t in json.load(open(sys.argv[1])) if "testReferenceLaunch" not in t["testIdentifier"]]
+json.dump(tests, open(sys.argv[2], "w"))
+PY
+expect_exit "a run without the reference launch is a warning, not an error" 0 \
+    python3 "$SCRIPT" "$TMP/none.xcresult" "$TMP/out6/results.json" --metrics-json "$TMP/metrics-no-reference.json" \
+    --attachments-dir "$TMP/attachments"
+value_is "launch_reference_ms is left out" "$TMP/out6/results.json" launch_reference_ms absent
+value_is "so is the overhead, which needs it" "$TMP/out6/results.json" launch_overhead_ms absent
+value_is "and the difference" "$TMP/out6/results.json" launch_difference_ms absent
+value_is "launch_ms is still there" "$TMP/out6/results.json" launch_ms 250.000
+output_has "the warning names the reference metric" "launch_reference_ms"
+rm "$TMP/attachments/C3.txt" "$TMP/attachments/D4.txt"
+expect_exit "a run without the idle and phase attachments is a warning, not an error" 0 extract "$TMP/out7/results.json"
+value_is "idle_cpu_pct is left out" "$TMP/out7/results.json" idle_cpu_pct absent
+value_is "so is a phase" "$TMP/out7/results.json" launch_phase_main_ms absent
+output_has "the warning names the idle metric" "idle_cpu_pct"
 
 printf '[]\n' >"$TMP/empty-metrics.json"
 rm "$TMP/attachments/manifest.json"

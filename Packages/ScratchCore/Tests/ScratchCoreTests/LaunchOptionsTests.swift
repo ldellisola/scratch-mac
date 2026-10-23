@@ -21,6 +21,7 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(options.fixture == nil)
     #expect(options.appearance == nil)
     #expect(options.frameMonitorFile == nil)
+    #expect(options.idleMonitorFile == nil)
 }
 
 @Test func dataDirFlagOverridesAndIsolates() throws {
@@ -73,6 +74,16 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(try parse(["-ScratchAppearance", "light"]).appearance == .light)
 }
 
+// Plan 6 task 8: `light-contrast` and `dark-contrast` are the two appearances with Increase Contrast on, for the screenshots
+// that show the high contrast variants of the colours (docs/features/accessibility.md, "Increase Contrast").
+@Test func parsesContrastAppearances() throws {
+    #expect(try parse(["-ScratchAppearance", "light-contrast"]).appearance == .lightContrast)
+    #expect(try parse(["-ScratchAppearance", "dark-contrast"]).appearance == .darkContrast)
+    #expect(AppearanceOverride.allCases.map(\.rawValue) == ["light", "dark", "light-contrast", "dark-contrast"])
+    #expect(AppearanceOverride.allCases.filter(\.isDark) == [.dark, .darkContrast])
+    #expect(AppearanceOverride.allCases.filter(\.isHighContrast) == [.lightContrast, .darkContrast])
+}
+
 // ADR 0001 chose TextKit 1 and removed the switch: the flag is an unrelated argument now, even with a value that was
 // invalid, and it does not hide a flag that follows it.
 @Test func theRemovedTextKitFlagIsIgnored() throws {
@@ -84,6 +95,19 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     let options = try parse(["-ScratchFrameMonitor", "/tmp/scratch-frames.json", "-ScratchFixture", "huge-note"])
     #expect(options.frameMonitorFile == URL(fileURLWithPath: "/tmp/scratch-frames.json"))
     #expect(options.fixture == .hugeNote)
+}
+
+// Plan 6 task 2: `-ScratchIdleMonitor <path>` has the app measure its CPU over 5 seconds of idle and write the report to
+// the file (the performance tests, ADR 0009). It is a flag of its own and does not switch the frame monitor on.
+@Test func parsesIdleMonitor() throws {
+    let options = try parse(["-ScratchIdleMonitor", "/tmp/scratch-idle.json", "-ScratchFixture", "typical"])
+    #expect(options.idleMonitorFile == URL(fileURLWithPath: "/tmp/scratch-idle.json"))
+    #expect(options.frameMonitorFile == nil)
+    #expect(options.fixture == .typical)
+    let both = try parse(["-ScratchFrameMonitor", "/tmp/frames.json", "-ScratchIdleMonitor", "/tmp/idle.json"])
+    #expect(both.frameMonitorFile == URL(fileURLWithPath: "/tmp/frames.json"))
+    #expect(both.idleMonitorFile == URL(fileURLWithPath: "/tmp/idle.json"))
+    #expect(throws: LaunchOptionsError.missingValue("-ScratchIdleMonitor")) { try parse(["-ScratchIdleMonitor"]) }
 }
 
 @Test func lastOccurrenceOfAFlagWins() throws {

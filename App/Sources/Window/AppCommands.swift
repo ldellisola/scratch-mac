@@ -2,7 +2,7 @@ import AppKit
 
 /// The target of the menu items that belong to the app and not to a view: the font size (⌘+ and ⌘= Bigger, ⌘− Smaller,
 /// ⌘0 Actual Size), the tabs (⌘N and ⌘T new note, ⌘W Close Tab, ⌃Tab and ⌃⇧Tab, ⌘1 to ⌘9), pinning (⇧⌘P), attaching a
-/// file (⇧⌘A) and the sidebar's search (⌥⌘F). Each item sends its action here, and `AppDelegate` sets the closures that carry it out.
+/// file (⇧⌘A), the sidebar's search (⌥⌘F) and Help > Launch Times…. Each item sends its action here, and `AppDelegate` sets the closures that carry it out.
 ///
 /// A menu item holds its target weakly, so whoever creates this object must keep it for as long as the menu lives
 /// (`AppDelegate` does).
@@ -16,6 +16,8 @@ final class AppCommands: NSObject, NSMenuItemValidation {
 
     /// Called by Scratch > About Scratch, which shows the About panel with the licences of tree-sitter as its credits.
     var onShowAbout: (() -> Void)?
+    /// Called by Help > Launch Times…, which shows how long Scratch's launches on this Mac took.
+    var onShowLaunchTimes: (() -> Void)?
 
     /// Called by File > New Note (⌘N) and File > New Tab (⌘T): both open a new empty note in a new tab.
     var onNewNote: (() -> Void)?
@@ -57,6 +59,10 @@ final class AppCommands: NSObject, NSMenuItemValidation {
 
     @objc func showAbout(_ sender: Any?) {
         onShowAbout?()
+    }
+
+    @objc func showLaunchTimes(_ sender: Any?) {
+        onShowLaunchTimes?()
     }
 
     @objc func bigger(_ sender: Any?) {

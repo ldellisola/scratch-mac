@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var attachmentCatalog: AttachmentCatalog?
     /// Only with `-ScratchFrameMonitor` (the performance tests).
     private var frameMonitor: FrameMonitor?
+    /// Only with `-ScratchIdleMonitor` (the performance tests).
+    private var idleMonitor: IdleMonitor?
 
     // MARK: Launch
 
@@ -40,9 +42,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         true
     }
 
-    /// Quitting writes everything that is unsaved before the process ends (spec §6.6).
+    /// Quitting writes everything that is unsaved before the process ends (spec §6.6). It also keeps the image that the
+    /// owner copied last, if it is still on the pasteboard: its PNG and TIFF are promised, the promise is Scratch's, and it goes
+    /// with the app, so the data is written now (plan 6 task 6, `AttachmentPasteboard.materialize`). After the notes, which
+    /// matter more if the system is in a hurry.
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.persistNow()
+        _ = AttachmentPasteboard.materialize(on: .general)
     }
 
     /// So does switching to another app: whatever happens to Scratch next, the notes are on disk.
@@ -60,9 +66,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func launch() throws {
         let environment = try AppEnvironment.bootstrap(arguments: CommandLine.arguments)
         self.environment = environment
+        LaunchTimer.mark("storage")
 
         if let appearance = environment.options.appearance {
-            NSApp.appearance = NSAppearance(named: appearance == .dark ? .darkAqua : .aqua)
+            appearance.force(on: NSApp)
         }
 
         let editor = EditorViewController()
@@ -73,23 +80,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editor.attachmentCatalog = attachmentCatalog
         let sidebar = SidebarViewController()
         let tabStrip = TabStripViewController()
-        let editorArea = EditorAreaViewController(tabStrip: tabStrip, editor: editor)
+        let editorArea = EditorAreaViewController(editor: editor)
         let content = MainSplitViewController(
             sidebar: sidebar, editorArea: editorArea, remembersLayout: !environment.options.isIsolated)
         let windowController = MainWindowController(environment: environment, content: content)
         self.windowController = windowController
         // The Edit menu's Undo asks the window for its undo manager, and the window asks this delegate.
         windowController.window?.delegate = self
+        // Tab goes from the search field to the note list, the title and the editor (plan 6 task 8).
+        KeyViewLoop.connect(sidebar.keyViews + [editor.titleField, editor.textView])
 
         let coordinator = SessionCoordinator(
             storage: environment.storage, editor: editor, sidebar: sidebar, tabStrip: tabStrip)
         self.coordinator = coordinator
-        let toolbarController = ToolbarController()
+        let toolbarController = ToolbarController(tabStrip: tabStrip)
         toolbarController.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
         toolbarController.onTogglePin = { [weak coordinator] in coordinator?.togglePinOfActiveNote() }
         toolbarController.onAttach = { [weak editor] in editor?.attachFiles() }
         self.toolbarController = toolbarController
         windowController.window?.toolbar = toolbarController.makeToolbar()
+        // The strip in the toolbar is as wide as the room that is left before the buttons (plan 6 task 7).
+        content.onContentLayout = { [weak toolbarController] leading, width, isSidebarShown in
+            toolbarController?.updateTabStripWidth(
+                contentLeading: leading, windowWidth: width, isSidebarShown: isSidebarShown)
+        }
 
         // File > New Note, New Tab and Close Tab, and Window > Show Next and Previous Tab and Select Tab (spec §6.3).
         commands.onNewNote = { [weak coordinator] in coordinator?.newNoteInNewTab() }
@@ -110,6 +124,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             toolbarController?.setAttachEnabled(enabled)
             appCommands?.setActiveNotePin(pinned: pinned, enabled: enabled)
         }
+        // Help > Launch Times… shows how long the launches of this Mac took (plan 6 task 1).
+        commands.onShowLaunchTimes = { [weak self] in self?.showLaunchTimes() }
         // Scratch > About Scratch shows the licences of tree-sitter and its grammars as its credits (plan 5 task 7).
         commands.onShowAbout = { NSApp.orderFrontStandardAboutPanel(options: AboutCredits.panelOptions()) }
         // View > Bigger, Smaller and Actual Size (spec §6.4).
@@ -120,8 +136,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if environment.options.isIsolated { editor.installDebugStateElement() }
 
         coordinator.restore()
+        LaunchTimer.mark("restore")
         windowController.showWindow(nil)
         editor.focus()
+        LaunchTimer.mark("window")
+        // The launch log: when the main run loop is next idle the window is on screen and takes keystrokes, which is where the
+        // launch ends (spec §7). Everything the log does comes after that mark, on its own queue (`LaunchTimer.finish`).
+        let dataDirectory = environment.storage.directory
+        RunLoopIdle.onNext {
+            LaunchTimer.mark("firstFrame")
+            LaunchTimer.finish(dataDirectory: dataDirectory, version: LaunchTimesPanel.appVersion)
+        }
         // Notes that were deleted more than 30 days ago are removed once the window is up (spec §6.2): one turn of the
         // main queue after the restore, so that it is not part of what the first frame waits for.
         // The sweep of the attachments that no note names comes after the purge, on the same queue, because the purge may
@@ -145,6 +170,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             monitor.start()
             frameMonitor = monitor
         }
+        // Idle CPU: 3.5 s after the launch the app counts its own CPU time for 5 s and writes it down (ADR 0009).
+        if let file = environment.options.idleMonitorFile {
+            let monitor = IdleMonitor(file: file)
+            monitor.start()
+            idleMonitor = monitor
+        }
+    }
+
+    /// Help > Launch Times…: the launch log in an alert, with Copy. The log is the one the launch loaded and appended to, or,
+    /// in the moments before the queue has delivered it, the file's.
+    private func showLaunchTimes() {
+        guard let environment else { return }
+        let log = LaunchTimer.log ?? LaunchLog.load(from: environment.storage.directory)
+        LaunchTimesPanel.present(
+            report: LaunchTimesPanel.report(of: log), over: windowController?.window)
     }
 
     // MARK: NSWindowDelegate

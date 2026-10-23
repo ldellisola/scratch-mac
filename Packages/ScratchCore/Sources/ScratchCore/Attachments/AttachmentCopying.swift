@@ -38,6 +38,31 @@ public enum AttachmentCopying {
         return result
     }
 
+    /// Whether `range` of `text` holds a token line that is an attachment: the range has at least one character of it, and
+    /// `isLiteral` does not say it is text (a token in a fenced block). Copy and Cut also write the selection exactly as it is
+    /// stored, on a private type, when this is true, so that a paste or a drop into Scratch keeps the attachment, and
+    /// write nothing more when it is not (docs/features/attachments.md, "Copying"). An empty range, one that starts outside
+    /// the text and a text with no `[[attachment:` in or next to the range hold none. A range that reaches past the end of
+    /// `text` is cut to it.
+    public static func holdsAttachment(
+        in range: NSRange, of text: NSString, ignoring isLiteral: (NSRange) -> Bool = { _ in false }
+    ) -> Bool {
+        guard range.location != NSNotFound, range.location >= 0, range.length > 0, range.location < text.length else {
+            return false
+        }
+        // Most notes have no token: say so with one search, which may start in the middle of a token that the range cuts.
+        let reach = AttachmentToken.lineLength - 1
+        let searchStart = max(range.location - reach, 0)
+        let searchEnd = min(range.location + min(range.length, text.length - range.location) + reach, text.length)
+        guard
+            text.range(
+                of: "[[attachment:", options: .literal,
+                range: NSRange(location: searchStart, length: searchEnd - searchStart)
+            ).location != NSNotFound
+        else { return false }
+        return AttachmentToken.lineRanges(in: text, within: range).contains { !isLiteral($0.0) }
+    }
+
     /// The attachment that `selection` is exactly: one token line, its line break excluded, and nothing more or less. That
     /// selection is what clicking a picture or a chip makes, and what Backspace makes next to one. Nil for any other
     /// selection, an empty one included, and for a token that `isLiteral` says is text.

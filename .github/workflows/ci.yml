@@ -25,11 +25,13 @@ jobs:
       run:
         shell: bash
     steps:
+      # python3-pil is Pillow, which scripts/tests/test_make_app_icon.py needs to draw the app icon (plan 6 task 9,
+      # docs/decisions/0010-one-point-oh-calls.md). A development tool only: the app and its builds never use it.
       - id: deps
         name: Install tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git make python3 libsqlite3-dev
+          apt-get install -y --no-install-recommends git make python3 python3-pil libsqlite3-dev
 
       # fetch-depth 0: the publish step fetches and pushes ci-results from this checkout.
       - id: checkout
@@ -230,9 +232,17 @@ jobs:
               | grep -v -e appintentsmetadataprocessor -e linkd.autoShortcut | sort -u | head -n 200 \
               > build/ci/macos/app-test-diagnostics.txt || true
           fi
+          # A crash of the app under test shows in a UI test only as "is not running". The newest crash reports of Scratch
+          # (best effort, each cut to 300 KB) say where it was.
+          mkdir -p build/ci/macos/crash-reports
+          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name 'Scratch*' -mmin -120 2> /dev/null | head -n 5 \
+            | while read -r report; do head -c 300000 "$report" > "build/ci/macos/crash-reports/$(basename "$report")"; done || true
           for log in build/ci/macos/*.log; do
             [ -e "$log" ] || continue
-            tail -n 300 "$log" > "$log.tail" && mv "$log.tail" "$log"
+            lines=300
+            # The screenshots log keeps the steps of every test, so that what a failing one did can be read.
+            case "$log" in */screenshots.log) lines=3000 ;; esac
+            tail -n "$lines" "$log" > "$log.tail" && mv "$log.tail" "$log"
           done
           python3 scripts/ci-summary.py --job macos --sha "${{ github.sha }}" --run-url "$RUN_URL" --out build/ci/macos \
             --step "checkout=${{ steps.checkout.outcome }}" \

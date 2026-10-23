@@ -1,28 +1,17 @@
 import AppKit
 
-/// The window's content area, right of the sidebar: the glass tab strip on top and the editor below it (spec §6.1,
-/// mockup B). It only arranges the two. The strip and the editor know nothing of each other: the session coordinator
-/// tells the strip which tabs there are and the editor which note to show.
+/// The window's content area, right of the sidebar: the editor and nothing else (spec §6.1, mockup B). The tab strip is in
+/// the toolbar now (`ToolbarController`, plan 6 task 7), so this only holds the editor, which fills it.
 ///
-/// The window has a full-size content view, so the toolbar floats over the top of this view. The strip starts below
-/// it, at the top of the safe area, and the editor starts below the strip, so the editor's own safe area has no
-/// toolbar in it any more (the title field sits a fixed distance below the editor's top).
+/// The window has a full-size content view, so the toolbar floats over the top of this view and the editor starts at its very
+/// top. The toolbar is in the editor's safe area, and the editor's title field sits a fixed distance below that
+/// (`EditorViewController.loadView`), with no band between the toolbar and the title.
 final class EditorAreaViewController: NSViewController {
-    /// The space between the toolbar and the strip, and between the strip and the editor, in points.
-    private static let stripTopMargin: CGFloat = 8
-    private static let stripBottomMargin: CGFloat = 4
-    /// The space left and right of the strip. The strip is as wide as its tabs and at most as wide as the area less
-    /// these margins.
-    private static let stripSideMargin: CGFloat = 12
-
-    private let tabStrip: TabStripViewController
     private let editor: EditorViewController
 
-    init(tabStrip: TabStripViewController, editor: EditorViewController) {
-        self.tabStrip = tabStrip
+    init(editor: EditorViewController) {
         self.editor = editor
         super.init(nibName: nil, bundle: nil)
-        addChild(tabStrip)
         addChild(editor)
     }
 
@@ -33,21 +22,12 @@ final class EditorAreaViewController: NSViewController {
 
     override func loadView() {
         let container = NSView()
-        let stripView = tabStrip.view
         let editorView = editor.view
-        stripView.translatesAutoresizingMaskIntoConstraints = false
         editorView.translatesAutoresizingMaskIntoConstraints = false
-        // The editor first, so that the strip's glass and shadow are drawn over it.
         container.addSubview(editorView)
-        container.addSubview(stripView)
 
         NSLayoutConstraint.activate([
-            stripView.topAnchor.constraint(
-                equalTo: container.safeAreaLayoutGuide.topAnchor, constant: Self.stripTopMargin),
-            stripView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: Self.stripSideMargin),
-            stripView.trailingAnchor.constraint(
-                lessThanOrEqualTo: container.trailingAnchor, constant: -Self.stripSideMargin),
-            editorView.topAnchor.constraint(equalTo: stripView.bottomAnchor, constant: Self.stripBottomMargin),
+            editorView.topAnchor.constraint(equalTo: container.topAnchor),
             editorView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             editorView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             editorView.bottomAnchor.constraint(equalTo: container.bottomAnchor),

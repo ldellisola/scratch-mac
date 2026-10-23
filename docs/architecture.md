@@ -12,11 +12,12 @@ App (AppKit shell)  ──depends on──▶  ScratchCore (Foundation + CSQLite
 ```
 
 - **`Packages/ScratchCore`** is a Swift package with no AppKit or SwiftUI imports. It holds everything rule-based:
-  the note model, storage and full-text search (`NoteStore`, `SearchQuery`, the FTS5 index), the tab rules (`TabList`),
-  the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures, and the marker
+  the note model (its title and preview as the editor shows a line: `PlainLine`), storage and full-text search (`NoteStore`,
+  `SearchQuery`, the FTS5 index), the tab rules (`TabList`), the sidebar's groups and time labels, session state, autosave
+  policy, launch options, the launch log (`LaunchLog`) and fixtures, and the marker
   parser (`Markup/`: the spans of a line and the fenced code blocks of a note, as UTF-16 ranges the editor applies
-  directly) and the rules for the keys that edit it (`ListEditing`, `InlineEditing`: what Return, Tab, ⇧Tab, ⇧⌘L, ⌘B
-  and a click on a checkbox change, as a `TextEdit`) and the attachments (`Attachments/`: the token line
+  directly) and the rules for the keys that edit it (`ListEditing`, `InlineEditing`: what Return, Tab, ⇧Tab, ⇧⌘L, ⇧⌘U,
+  ⌘B and a click on a checkbox change, as a `TextEdit`) and the attachments (`Attachments/`: the token line
   `[[attachment:<id>]]`, the `attachments` table and the copied files under `<data directory>/attachments/<id>/`, the rules
   of the keys and the paste around a token, and the text that a copy writes). It builds and tests with plain
   `swift test` on macOS and on Linux.
@@ -86,16 +87,17 @@ key press
   keystroke in a block keeps the colours of its line until the new result replaces them. A result is for a text, not a
   place, so a result for text that was edited since is dropped and never lands on newer text.
 - **The queries are warmed up after the first frame, and the label has its room.** `AppDelegate` asks
-  `SessionCoordinator.warmUpHighlighting()` once the frame is out, which hands the notes that were open in tabs to
-  `CodeBlockStyler.warmUp`: on the same highlight queue, one language at a time, `Highlighter.prepare` compiles the query of
+  `SessionCoordinator.warmUpHighlighting()` once the frame is out, which reads the notes that were open in tabs on the
+  storage queue (the launch itself reads the active note only) and hands them to `CodeBlockStyler.warmUp`: on the highlight queue, one language at a time, `Highlighter.prepare` compiles the query of
   each language that their fences name, so the first block in it is not coloured 240 to 270 ms late. The first line of code of
   a block with a label has a tail indent for the label (`MarkupAppearance.firstCodeLineStyle`), which `MarkupStyler` keeps
   current (`CodeBlockStyler` tells it when a label is written), so the label never covers code.
 - **A paste is a plain paste first, and a second edit wraps code in a fence.** `NoteTextView.paste` inserts the
-  pasteboard's text as always. On a later turn of the main run loop, once the undo group of the paste has closed,
-  `PasteClassifier.wrap` asks `CodeDetector` about it (never for one line, a paste into code, or one with a fence line in
-  it) and answers a `TextEdit` that puts the pasted text between two fences, applied with `apply`: the paste and the wrap
-  are two undo steps. The label menu (`CodeBlockMenu`) is the same kind of edit on the fence lines, one undo step each.
+  pasteboard's text as always. When it has read the paste, `PasteClassifier.wrap` asks `CodeDetector` about it (never for
+  one line, a paste into code, or one with a fence line in it) and answers a `TextEdit` that puts the pasted text between
+  two fences, and the highlighter starts on the colours of that block at once (`CodeBlockStyler.prefetch`, on its queue).
+  On a later turn of the main run loop, once the undo group of the paste has closed, the same edit is applied with
+  `apply`: the paste and the wrap are two undo steps, and the block finds its colours when it appears. The label menu (`CodeBlockMenu`) is the same kind of edit on the fence lines, one undo step each.
   The `paste-code` signpost runs from the paste until the colours are on screen.
 - **An attachment is a token line that is drawn over, and its file is kept by reference**
   (`docs/features/attachments.md`, `docs/decisions/0008-attachments.md`). The note's text holds the line
@@ -118,7 +120,26 @@ key press
   the notes and then ask `AttachmentStore.removeUnreferenced` about the ids that were in them, and the launch sweep
   (`SessionCoordinator.sweepUnreferencedAttachments`) removes unreferenced attachments older than 24 hours. Both read every
   stored body (`NoteStore.referencedAttachmentIDs`) in the same transaction as the removal, so deleting a token and pressing
-  ⌘Z always brings the file back.
+  ⌘Z always brings the file back. **Text that is typed, composed or pasted next to a token goes on a line of its own**
+  (`AttachmentEditing.lineBreaks` decides, `NoteTextView.makeRoomAtTokenEdge` applies the break as its own edit), and a Copy,
+  Cut or drag of a selection that holds a token also writes the note's text exactly as stored on a private pasteboard type
+  that Paste and a drop into Scratch read first, so the attachments travel inside Scratch with their ids while other
+  applications see plain text. A copied image's promised PNG and TIFF are written out in full when Scratch quits
+  (`AttachmentPasteboard.materialize`, from `applicationWillTerminate`).
+- **What VoiceOver reads is made from the same attributes as what is drawn, and the value stays the stored text**
+  (`docs/features/accessibility.md`). `NoteTextView.accessibilityString(for:)` asks `SpokenText.spoken(_:range:)`, which reads
+  the storage's marker roles, code block marks and attachment marks and says "unchecked", "image, dashboard.png" or "code
+  block, Swift" where the note has them, and nothing for a hidden marker. `accessibilityValue` is AppKit's own answer, the
+  stored text, so the ranges and the caret that assistive technology reports are offsets into the characters. The editor's
+  context menu (`EditorContextMenu`, from `NoteTextView.menu(for:)`) and Format > Mark as Checked give every mouse-only
+  action a menu item, and `KeyViewLoop` fixes the order of Tab through the window. Colours come from the asset catalog
+  (`CatalogColour.named`), each with a high contrast variant that AppKit picks for Increase Contrast.
+- **The tab strip is a toolbar item.** `ToolbarController` makes an `NSToolbarItem` whose view is the strip's own glass
+  (`TabStripView`) and puts it after the sidebar's tracking separator, in the row of the pin, paperclip and new note buttons,
+  so the editor area is the editor alone, from the top of the window with the toolbar in its safe area. The strip's width is
+  made to fit (`min(its tabs, the room)`, from `MainSplitViewController.onContentLayout` through
+  `ToolbarController.updateTabStripWidth`), because a toolbar that is short of room moves items into its overflow menu
+  (`docs/features/tabs.md`, `docs/decisions/0010-one-point-oh-calls.md`).
 - A write that fails never costs text: `UnsavedNotes` (ScratchCore) keeps the note with the owner's text until a write of
   it succeeds, `persistNow()` and every save write those notes again, and `SessionCoordinator.loadNote` shows a note
   from there when it is opened again (`docs/features/autosave-and-restore.md`, "Write errors are not silent").
@@ -126,9 +147,15 @@ key press
   session (the open note's id, selection and scroll position), and does not re-read the note list.
 - Quitting and deactivating skip the timer: `AppDelegate` calls `SessionCoordinator.persistNow()`, which runs the same
   save at once and waits until the storage queue is empty. Opening another note does the same for the note it leaves.
-- Launching reads the session, then the note of every saved tab (`SessionCoordinator.restoredTabs`: a few small reads
-  on the main thread, a tab whose note is gone or deleted is dropped), before the window shows. The note list is read
-  on the storage queue after that (`SessionCoordinator.restore()`).
+- Launching reads the session, then what every saved tab needs of its note without the body (`NoteStore.tabInfo`: one
+  query; a tab whose note is gone or deleted is dropped) and the active note in full (`SessionCoordinator.restoredTabs`),
+  before the window shows: one body is read, whatever the other tabs hold (spec §7). The note list is read on the storage
+  queue after that (`SessionCoordinator.restore()`), and so are the other tabs' bodies, for the query warm-up, once the
+  first frame is out.
+- A launch measures itself: `LaunchTimer.mark` records the phases `main`, `storage`, `restore` and `window` as the launch
+  goes (a clock read each), the main run loop's first idle moment after the window is shown marks `firstFrame`, and only
+  then `LaunchTimer.finish` hands the marks to its own utility queue, which appends the record to `launch-times.json`
+  (`LaunchLog`) and writes it. Help > Launch Times… shows that log (`docs/features/launch-times.md`).
 - A click on a sidebar row goes `SidebarViewController.onOpen` (the table's click action) ->
   `SessionCoordinator.open(_:inNewTab:)`. A click on a tab goes `TabStripViewController.onSelect` ->
   `SessionCoordinator.selectTab(at:)`. The toolbar's new note button, ⌘N and ⌘T go `ToolbarController.onNewNote` or
@@ -206,4 +233,11 @@ key press
   of the block that the paste made are on screen, because they are written in later turns on purpose.
 - **`FrameMonitor`**, started only by `-ScratchFrameMonitor <path>`, scrolls the note by itself and records the main
   thread's work per frame. It observes the main run loop and the editor's clip view and does not touch the data flow.
-- The performance tests, their metrics and the CI check: AGENTS.md ("Performance") and `docs/decisions/0003-ci-performance-checks.md`.
+- **`IdleMonitor`**, started only by `-ScratchIdleMonitor <path>`, reads the process's CPU time (`getrusage`) 3.5 seconds
+  after launch and again 5 seconds later, counts the passes of the main run loop in between, and writes the percentage of
+  one core and the wake-ups. Like `FrameMonitor` it observes and does not touch the data flow.
+- **`LaunchReference`** is an application target of its own (`App/LaunchReference`, an empty window with a TextKit 1 text
+  view) that the performance tests launch to learn what a launch costs on the CI runner whatever the app does. Nothing but
+  `ScratchPerfTests` depends on it, and it is not in the `Scratch` scheme, so it is never in the app or in a release.
+- The performance tests, their metrics and the CI check: AGENTS.md ("Performance"),
+  `docs/decisions/0003-ci-performance-checks.md` and `docs/decisions/0009-performance-at-1-0.md`.

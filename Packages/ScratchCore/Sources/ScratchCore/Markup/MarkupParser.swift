@@ -36,7 +36,8 @@ public enum MarkupParser {
 
     // MARK: One line
 
-    private static func parseLine(units: [UInt16], at lineStart: Int) -> [MarkupSpan] {
+    /// ``parseLine(_:at:)`` for a line that is UTF-16 units already, so that a caller that has them needs no `String`.
+    static func parseLine(units: [UInt16], at lineStart: Int) -> [MarkupSpan] {
         var spans: [MarkupSpan] = []
         var inlineStart = 0
         if let list = listSpan(in: units, at: lineStart) {

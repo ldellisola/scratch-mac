@@ -46,6 +46,25 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_NSPrincipalClass: NSApplication
 
+  # The floor of the launch measurement (plan 6, task 2, docs/decisions/0009): an empty AppKit app with a window and a
+  # TextKit 1 text view in it. `LaunchPerfTests.testReferenceLaunch` launches it like it launches Scratch, in the same
+  # job on the same runner, and `launch_overhead_ms` is the difference. It is never part of the Scratch app or of a release:
+  # nothing depends on it but the performance tests (ScratchPerfTests, whose build dependencies the ScratchPerf scheme
+  # builds), and the Scratch scheme, which makes the release, does not know it.
+  LaunchReference:
+    type: application
+    platform: macOS
+    sources:
+      - path: LaunchReference
+    settings:
+      base:
+        PRODUCT_NAME: LaunchReference
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ldellisola.Scratch.LaunchReference
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: LaunchReference
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+
   # Unit tests hosted in the app: they run inside the Scratch process, so they can use its AppKit classes.
   ScratchAppTests:
     type: bundle.unit-test
@@ -90,6 +109,10 @@ targets:
       - path: Tests/ScratchUITests/UITestSupport.swift
     dependencies:
       - target: Scratch
+      # Built with the tests, into the same products folder (`LaunchPerfTests.testReferenceLaunch` launches it from there).
+      # An application is not linked into a test bundle.
+      - target: LaunchReference
+        link: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.ldellisola.Scratch.PerfTests

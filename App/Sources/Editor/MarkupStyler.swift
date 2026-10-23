@@ -340,7 +340,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         var changed: NSRange?
         for change in changes {
             storage.addAttributes(appearance.markerAttributes(change.role), range: change.line)
-            let style = change.role == .revealed ? MarkupAppearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
+            let style = change.role == .revealed ? appearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
             storage.addAttribute(.paragraphStyle, value: style, range: change.paragraph)
             changed = Self.union(changed, change.paragraph)
         }
@@ -409,11 +409,13 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         let batch = ParagraphBatch(
             in: text, from: paragraphs.location, upTo: NSMaxRange(paragraphs), maxParagraphs: .max)
         let moved = touchesFence || batch.containsFenceLine() ? rescanCodeBlocks(in: storage) : []
+        let composed = composedAttributes(in: editedRange, storage: storage)
 
         isApplying = true
         storage.beginEditing()
         resetAttributes(of: paragraphs, batch: batch, keepingCodeOf: blocksBeforeRescan, in: storage)
         _ = styleBatch(batch, in: storage)
+        restoreComposedAttributes(composed, in: storage)
         // The paragraphs that moved into or out of a block, other than the ones just styled.
         let movedChanged = restyle(moved.filter { !Self.contains(paragraphs, $0) }, text: text, storage: storage)
         refreshFirstCodeLines(near: paragraphs, in: storage)
@@ -423,6 +425,74 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         coloursToClearAfterEdit.append(contentsOf: moved)
         // The blocks that the edit is in, or that it changed, are coloured again for the text they have now.
         requestBlocks(intersecting: [paragraphs] + moved, in: storage)
+    }
+
+    // MARK: Composed text
+
+    /// The attributes that mean "this text is being composed" (plan 6 task 5): the underline and the clause segment that
+    /// an input method hands over with its text, and the keys of the view's `markedTextAttributes`. Resetting a
+    /// paragraph's attributes would take them off text that is still being composed, and the owner would no longer see
+    /// which part of it is not entered yet. The keys that the styler sets on every paragraph itself (the font, the
+    /// colours, the paragraph style: `stylerOwnedKeys`) are kept only at the value that `markedTextAttributes` gives
+    /// them, which is the marked-text highlight (by default, macOS 26.6, a background and a foreground colour). The edit
+    /// that puts composed text in also gives it the attributes of the text next to it, so a colour or a font that
+    /// differs from `markedTextAttributes` is the neighbour's and not the input method's, and keeping it would paint
+    /// composed text next to inline code or a link as that.
+    private func keptComposedAttributes(
+        _ attributes: [NSAttributedString.Key: Any], marked: [NSAttributedString.Key: Any]
+    ) -> [NSAttributedString.Key: Any] {
+        attributes.filter { entry in
+            if Self.stylerOwnedKeys.contains(entry.key) {
+                guard let expected = marked[entry.key] as? NSObject, let actual = entry.value as? NSObject else {
+                    return false
+                }
+                return expected.isEqual(actual)
+            }
+            return Self.composedKeys.contains(entry.key) || marked[entry.key] != nil
+        }
+    }
+
+    /// What marks composed text whatever the view's `markedTextAttributes` say.
+    private static let composedKeys: Set<NSAttributedString.Key> = [
+        .underlineStyle, .underlineColor, .markedClauseSegment,
+    ]
+
+    /// What the styler sets on every paragraph itself, so that an edit's inherited value is only worth keeping when it
+    /// is the value of `markedTextAttributes`.
+    private static let stylerOwnedKeys: Set<NSAttributedString.Key> = [
+        .font, .foregroundColor, .backgroundColor, .paragraphStyle,
+    ]
+
+    /// The attributes of composed text in `range`, which holds what an edit has just put in, to put back after the
+    /// paragraph has been styled. Only text that `setMarkedText` is putting in is composed (`isSettingMarkedText`): the
+    /// edit of typing, a paste or an input method's final `insertText` keeps none of it, so a link's underline that
+    /// typed text took from the text before it is the styler's to settle. Empty when nothing is being composed, and when
+    /// the edit carries none of the attributes, which is what AppKit hands the text storage on macOS 26.6: the composed
+    /// characters have the typing attributes only at the end of the edit (measured on CI, plan 6 task 5), so this
+    /// holds for a version that gives them the input method's attributes in the edit itself.
+    private func composedAttributes(
+        in range: NSRange, storage: NSTextStorage
+    ) -> [(range: NSRange, attributes: [NSAttributedString.Key: Any])] {
+        guard let textView, textView.isSettingMarkedText, range.length > 0, NSMaxRange(range) <= storage.length else {
+            return []
+        }
+        // Typed as an optional, whichever way the SDK declares the property.
+        let markedAttributes: [NSAttributedString.Key: Any]? = textView.markedTextAttributes
+        let marked = markedAttributes ?? [:]
+        var runs: [(range: NSRange, attributes: [NSAttributedString.Key: Any])] = []
+        storage.enumerateAttributes(in: range, options: []) { attributes, run, _ in
+            let kept = keptComposedAttributes(attributes, marked: marked)
+            if !kept.isEmpty { runs.append((run, kept)) }
+        }
+        return runs
+    }
+
+    private func restoreComposedAttributes(
+        _ runs: [(range: NSRange, attributes: [NSAttributedString.Key: Any])], in storage: NSTextStorage
+    ) {
+        for run in runs where NSMaxRange(run.range) <= storage.length {
+            storage.addAttributes(run.attributes, range: run.range)
+        }
     }
 
     /// Called when the edit that `storageDidEdit` styled is over (`NoteTextView.didChangeText`), which is when the layout
@@ -466,8 +536,8 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
                 storage.setAttributes(appearance.base, range: NSRange(location: cursor, length: run.location - cursor))
             }
             for key in [
-                NSAttributedString.Key.scratchMarker, .scratchLink, .underlineStyle, .strikethroughStyle,
-                .backgroundColor,
+                NSAttributedString.Key.scratchMarker, .scratchLink, .scratchInlineCode, .underlineStyle,
+                .strikethroughStyle, .backgroundColor,
             ] {
                 storage.removeAttribute(key, range: run)
             }
@@ -704,9 +774,10 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
     /// the first line of a block with a label the one that keeps the line clear of the label (`firstCodeLineStyle`).
     @discardableResult
     private func styleCodeBody(
-        _ range: NSRange, style: NSParagraphStyle = MarkupAppearance.codeBodyStyle, in storage: NSTextStorage
+        _ range: NSRange, style: NSParagraphStyle? = nil, in storage: NSTextStorage
     ) -> Bool {
         guard range.length > 0 else { return false }
+        let style = style ?? appearance.codeBodyStyle
         let current = storage.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle
         let mark = storage.attribute(.scratchCodeBlock, at: range.location, effectiveRange: nil) as? CodeBlockMark
         if current == style, mark == CodeBlockMark.body { return false }
@@ -818,7 +889,7 @@ final class MarkupStyler: NSObject, @preconcurrency NSTextStorageDelegate {
         let content = NSRange(location: paragraph.location, length: contentLength)
         let isShown = touchesSelection(content)
         let role: MarkerRole = isShown ? .revealed : .fence
-        let style = isShown ? MarkupAppearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
+        let style = isShown ? appearance.codeBodyStyle : MarkupAppearance.codeFenceStyle
         let mark = part == .opening ? openingMark(info: info, at: paragraph, in: storage) : CodeBlockMark.closing
         if currentRole(at: paragraph.location, in: storage) == role,
             storage.attribute(.paragraphStyle, at: paragraph.location, effectiveRange: nil) as? NSParagraphStyle

@@ -14,6 +14,10 @@ final class MarkupAppearance {
     let boldFont: NSFont
     /// The width of one character of the monospaced note font, which is what a list's hanging indent counts in.
     let spaceWidth: CGFloat
+    /// The paragraph style of a line of a code block, and of a fence line while it is shown, at this font size: the lines are
+    /// `CodeBlockMetrics.inset` in from both sides of the tinted block (plan 4 "Blocks"), with the spacing after the line
+    /// that every line has.
+    let codeBodyStyle: NSParagraphStyle
     private var indentStyles: [Int: NSParagraphStyle] = [:]
     /// The styles of the first line of code, by the name on the label of the block (`firstCodeLineStyle(labelName:)`).
     private var firstCodeLineStyles: [String: NSParagraphStyle] = [:]
@@ -21,9 +25,26 @@ final class MarkupAppearance {
     init(fontSize: Double) {
         self.fontSize = fontSize
         base = NoteTextView.noteAttributes(size: fontSize)
+        codeBodyStyle = MarkupAppearance.firstCodeLineStyle(labelReserve: 0, fontSize: fontSize)
         regularFont = NoteTextView.noteFont(size: fontSize)
         boldFont = NoteTextView.boldNoteFont(size: fontSize)
         spaceWidth = (" " as NSString).size(withAttributes: [.font: NoteTextView.noteFont(size: fontSize)]).width
+    }
+
+    /// The space after every line of text at `size` points: `round(0.3 x size)`, 4 pt at 13 pt (plan 6 task 7, mockup B: lines
+    /// with air between them). `NSParagraphStyle.lineSpacing` is part of the line fragments' heights in the layout manager,
+    /// so a line is that much further from the next one, also the last line of a paragraph. A fence line (6 pt) and an
+    /// attachment line (as high as its picture) have none: they keep the fixed height they are given.
+    static func lineSpacing(forFontSize size: Double) -> CGFloat {
+        (0.3 * CGFloat(size)).rounded()
+    }
+
+    /// The paragraph style of a plain line at `size` points: the spacing and nothing else. Every paragraph starts with it
+    /// (`NoteTextView.noteAttributes`), and what a span adds (an indent) replaces it with a style that has the spacing too.
+    static func baseStyle(fontSize size: Double) -> NSParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.lineSpacing = lineSpacing(forFontSize: size)
+        return style
     }
 
     /// The paragraph style of a list line whose text starts `characters` characters in: its wrapped lines start there
@@ -33,6 +54,7 @@ final class MarkupAppearance {
         let style = NSMutableParagraphStyle()
         style.headIndent = CGFloat(characters) * spaceWidth
         style.firstLineHeadIndent = 0
+        style.lineSpacing = Self.lineSpacing(forFontSize: fontSize)
         indentStyles[characters] = style
         return style
     }
@@ -60,26 +82,16 @@ final class MarkupAppearance {
         [.strikethroughStyle: NSUnderlineStyle.single.rawValue, .foregroundColor: NSColor.secondaryLabelColor]
     }
 
-    /// The paragraph style of a line of a code block, and of a fence line while it is shown: the lines are
-    /// `CodeBlockMetrics.inset` in from both sides of the tinted block (plan 4 "Blocks").
-    static let codeBodyStyle: NSParagraphStyle = {
-        let style = NSMutableParagraphStyle()
-        style.firstLineHeadIndent = CodeBlockMetrics.inset
-        style.headIndent = CodeBlockMetrics.inset
-        style.tailIndent = -CodeBlockMetrics.inset
-        return style
-    }()
-
     /// The paragraph style of the first line of code of a block whose label takes `labelReserve` points of the right side of
     /// that line (`CodeBlockMetrics.labelReserve`): the style of a line of code with its tail indent pulled in by that much,
-    /// so that the line, and what it wraps into, ends before the label that reaches into it (plan 5 task 7). The style of any
-    /// other line of code, `codeBodyStyle`, for a block with no label.
-    static func firstCodeLineStyle(labelReserve: CGFloat) -> NSParagraphStyle {
-        guard labelReserve > 0 else { return codeBodyStyle }
+    /// so that the line, and what it wraps into, ends before the label that reaches into it (plan 5 task 7). With no
+    /// reserve it is the style of any other line of code. A line of code has the spacing of `fontSize` after it.
+    static func firstCodeLineStyle(labelReserve: CGFloat, fontSize: Double) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.firstLineHeadIndent = CodeBlockMetrics.inset
         style.headIndent = CodeBlockMetrics.inset
-        style.tailIndent = -(CodeBlockMetrics.inset + labelReserve)
+        style.tailIndent = -(CodeBlockMetrics.inset + max(labelReserve, 0))
+        style.lineSpacing = lineSpacing(forFontSize: fontSize)
         return style
     }
 
@@ -88,7 +100,7 @@ final class MarkupAppearance {
     func firstCodeLineStyle(labelName name: String) -> NSParagraphStyle {
         if let style = firstCodeLineStyles[name] { return style }
         let style = Self.firstCodeLineStyle(
-            labelReserve: CodeBlockMetrics.labelReserve(name: name, noteSize: CGFloat(fontSize)))
+            labelReserve: CodeBlockMetrics.labelReserve(name: name, noteSize: CGFloat(fontSize)), fontSize: fontSize)
         // A note can have any number of fence names, each a label of its own: the table stays small.
         if firstCodeLineStyles.count >= Self.firstCodeLineStyleLimit { firstCodeLineStyles.removeAll() }
         firstCodeLineStyles[name] = style
@@ -126,8 +138,9 @@ final class MarkupAppearance {
         ]
     }
 
-    /// What inline code looks like: the code colour on a tint.
+    /// What inline code looks like: the code colour, and the mark that makes `MarkupLayoutManager` draw a pill behind it
+    /// (plan 6 task 7). Not a `.backgroundColor`, which would be a square tint of the glyphs' own size.
     static var inlineCodeAttributes: [NSAttributedString.Key: Any] {
-        [.foregroundColor: MarkupColors.codeText, .backgroundColor: MarkupColors.codeBackground]
+        [.foregroundColor: MarkupColors.codeText, .scratchInlineCode: true]
     }
 }

@@ -76,6 +76,28 @@ enum UITestSupport {
             .sorted { $0.frame.minX < $1.frame.minX }
     }
 
+    /// The close buttons of the tab strip, from left to right: the buttons with the identifier `AccessibilityID.tabClose`.
+    /// Each one's `label` is "Close" and the title of its tab (plan 6 task 8).
+    @MainActor
+    static func closeButtons(in app: XCUIApplication) -> [XCUIElement] {
+        app.buttons.matching(identifier: AccessibilityID.tabClose).allElementsBoundByIndex
+            .sorted { $0.frame.minX < $1.frame.minX }
+    }
+
+    /// The accessibility hierarchy of the app as XCTest sees it, cut to `limit` characters, for the message of a failure that
+    /// is about what an element exposes (plan 6 task 8): which elements are there, with their types, labels and identifiers.
+    @MainActor
+    static func hierarchy(of app: XCUIApplication, limit: Int = 16_000) -> String {
+        String(app.debugDescription.prefix(limit))
+    }
+
+    /// Which part of the window has the keyboard, from `debug.state`'s `firstResponder`: `editor`, `title`, `search`,
+    /// `sidebar` (the note list) or `other`. Empty when the element is missing.
+    @MainActor
+    static func firstResponder(in app: XCUIApplication) -> String {
+        debugState(in: app)["firstResponder"] as? String ?? ""
+    }
+
     /// The titles of the tabs from left to right.
     @MainActor
     static func tabTitles(in app: XCUIApplication) -> [String] {
@@ -118,6 +140,17 @@ enum UITestSupport {
         ).firstMatch
     }
 
+    /// The toolbar's paperclip, which attaches files. A view-less toolbar item like the others: found by its item
+    /// identifier or its label, "Attach File".
+    @MainActor
+    static func attachButton(in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(
+            NSPredicate(
+                format: "identifier == %@ OR label == %@ OR title == %@", AccessibilityID.attachButton, "Attach File",
+                "Attach File")
+        ).firstMatch
+    }
+
     /// The search field at the top of the sidebar. Its `value` is the text typed in it.
     @MainActor
     static func searchField(in app: XCUIApplication) -> XCUIElement {
@@ -138,7 +171,7 @@ enum UITestSupport {
     /// reads "Recently Deleted (N)" (`text(of:)`), and a click on it shows or hides the deleted notes.
     @MainActor
     static func recentlyDeletedHeader(in app: XCUIApplication) -> XCUIElement {
-        app.staticTexts.matching(identifier: AccessibilityID.recentlyDeletedHeader).firstMatch
+        app.descendants(matching: .any).matching(identifier: AccessibilityID.recentlyDeletedHeader).firstMatch
     }
 
     /// The edit time that the sidebar shows on the row of `title`, a title element from `sidebarRow(titled:in:)`: the

@@ -1,9 +1,19 @@
 import Foundation
 
-/// Forces the app's appearance, so a screenshot in light or dark mode does not depend on the machine's setting.
-public enum AppearanceOverride: String, Sendable {
+/// Forces the app's appearance, so a screenshot in light or dark mode does not depend on the machine's setting. The two
+/// `-contrast` ones are light and dark with Increase Contrast on: the app forces light or dark, and the high contrast
+/// variants of its colours (`CatalogColour`), for the screenshots that show them (plan 6 task 8).
+public enum AppearanceOverride: String, CaseIterable, Sendable {
     case light
     case dark
+    case lightContrast = "light-contrast"
+    case darkContrast = "dark-contrast"
+
+    /// True for the two dark appearances.
+    public var isDark: Bool { self == .dark || self == .darkContrast }
+
+    /// True for the two appearances with Increase Contrast on.
+    public var isHighContrast: Bool { self == .lightContrast || self == .darkContrast }
 }
 
 /// Why the launch arguments were rejected. Each case carries the offending flag or value.
@@ -20,8 +30,9 @@ public enum LaunchOptionsError: Error, Equatable {
 /// |---|---|
 /// | `-ScratchDataDir <path>` | the data directory |
 /// | `-ScratchFixture <name>` | a ``Fixture`` raw value: the database is replaced by that fixture |
-/// | `-ScratchAppearance <light\|dark>` | the appearance |
+/// | `-ScratchAppearance <light\|dark\|light-contrast\|dark-contrast>` | the appearance |
 /// | `-ScratchFrameMonitor <path>` | scroll the note by itself, and write the frame times to this JSON file (performance tests) |
+/// | `-ScratchIdleMonitor <path>` | measure the app's CPU over 5 seconds of idle, and write the numbers to this JSON file (performance tests) |
 public struct LaunchOptions: Equatable, Sendable {
     public var dataDirectory: URL
     /// False only for the real data directory. A fixture refuses to run when this is false (see ``ScratchStorage``).
@@ -31,19 +42,24 @@ public struct LaunchOptions: Equatable, Sendable {
     /// Where the app writes the frame times of a scroll that it does by itself, a few seconds after launch. Nil means
     /// it neither scrolls nor measures. A debug flag for the performance tests: the app has no other use for it.
     public var frameMonitorFile: URL?
+    /// Where the app writes how much CPU it used while it did nothing, a few seconds after launch (`IdleMonitor`: ADR 0009).
+    /// Nil means it does not measure. Another debug flag for the performance tests.
+    public var idleMonitorFile: URL?
 
     public init(
         dataDirectory: URL,
         isIsolated: Bool,
         fixture: Fixture? = nil,
         appearance: AppearanceOverride? = nil,
-        frameMonitorFile: URL? = nil
+        frameMonitorFile: URL? = nil,
+        idleMonitorFile: URL? = nil
     ) {
         self.dataDirectory = dataDirectory
         self.isIsolated = isIsolated
         self.fixture = fixture
         self.appearance = appearance
         self.frameMonitorFile = frameMonitorFile
+        self.idleMonitorFile = idleMonitorFile
     }
 
     /// `~/Library/Application Support/Scratch`, the real data directory.
@@ -65,6 +81,7 @@ public struct LaunchOptions: Equatable, Sendable {
         var fixture: Fixture?
         var appearance: AppearanceOverride?
         var frameMonitorPath: String?
+        var idleMonitorPath: String?
 
         var index = arguments.startIndex
         while index < arguments.endIndex {
@@ -92,6 +109,8 @@ public struct LaunchOptions: Equatable, Sendable {
                 appearance = parsed
             case .frameMonitor:
                 frameMonitorPath = value
+            case .idleMonitor:
+                idleMonitorPath = value
             }
         }
 
@@ -107,7 +126,8 @@ public struct LaunchOptions: Equatable, Sendable {
         return LaunchOptions(
             dataDirectory: directory, isIsolated: identity(of: directory) != identity(of: defaultDirectory),
             fixture: fixture, appearance: appearance,
-            frameMonitorFile: frameMonitorPath.map { URL(fileURLWithPath: $0) })
+            frameMonitorFile: frameMonitorPath.map { URL(fileURLWithPath: $0) },
+            idleMonitorFile: idleMonitorPath.map { URL(fileURLWithPath: $0) })
     }
 
     private enum Flag: String {
@@ -115,6 +135,7 @@ public struct LaunchOptions: Equatable, Sendable {
         case fixture = "-ScratchFixture"
         case appearance = "-ScratchAppearance"
         case frameMonitor = "-ScratchFrameMonitor"
+        case idleMonitor = "-ScratchIdleMonitor"
     }
 
     /// The directory's path with `..`, trailing slashes and symbolic links resolved, so that no spelling of the real

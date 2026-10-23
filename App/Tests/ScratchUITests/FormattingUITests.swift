@@ -62,6 +62,37 @@ final class FormattingUITests: XCTestCase {
             "copy keeps the markers: \(String(describing: NSPasteboard.general.string(forType: .string)))")
     }
 
+    /// Plan 6 task 5: ⌘B with the caret in a word bolds the word, and ⌘B again takes the stars off.
+    func testCommandBTwiceOnAWordRestoresIt() throws {
+        continueAfterFailure = false
+        let (app, editor) = launchEditor()
+
+        editor.typeText("say hello now")
+        // Seven steps back from the end of the line is between the e and the first l of "hello".
+        for _ in 0..<7 { app.typeKey(.leftArrow, modifierFlags: []) }
+        app.typeKey("b", modifierFlags: .command)
+        UITestSupport.expectText("say **hello** now", in: editor, "⌘B with a caret in a word makes the word bold")
+
+        app.typeKey("b", modifierFlags: .command)
+        UITestSupport.expectText("say hello now", in: editor, "⌘B again takes the stars off")
+    }
+
+    /// Plan 6 task 5: ⇧⌘U ticks the checklist lines under the selection, and unticks them when they are all ticked.
+    func testMarkAsCheckedShortcutTicksAndUnticks() throws {
+        continueAfterFailure = false
+        let (app, editor) = launchEditor()
+
+        editor.typeText("buy")
+        app.typeKey("l", modifierFlags: [.command, .shift])
+        UITestSupport.expectText("[ ] buy", in: editor, "⇧⌘L puts a box in front of the line")
+
+        app.typeKey("u", modifierFlags: [.command, .shift])
+        UITestSupport.expectText("[x] buy", in: editor, "⇧⌘U ticks the box")
+
+        app.typeKey("u", modifierFlags: [.command, .shift])
+        UITestSupport.expectText("[ ] buy", in: editor, "⇧⌘U on a ticked box unticks it")
+    }
+
     func testTabIndentsNestedBullet() throws {
         continueAfterFailure = false
         let (app, editor) = launchEditor()

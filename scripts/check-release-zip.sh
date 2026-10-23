@@ -12,6 +12,8 @@
 #   - the app carries the highlight queries of ScratchCode (its resource bundle, docs/decisions/0007-tree-sitter.md)
 #   - the app carries Contents/Resources/Acknowledgements.rtf, the licences of tree-sitter and its grammars that the
 #     About panel shows (scripts/make-acknowledgements.py, docs/decisions/0007-tree-sitter.md)
+#   - the app has its icon: Contents/Resources/AppIcon.icns exists (Xcode makes it from the AppIcon set of the asset
+#     catalog, scripts/make-app-icon.py) and CFBundleIconName is AppIcon (docs/decisions/0010-one-point-oh-calls.md)
 #
 # It also prints the sizes of the zip, the app and its executable, which docs/decisions/0007-tree-sitter.md compares.
 #
@@ -109,6 +111,20 @@ elif [[ ! -s $acknowledgements ]]; then
     problem "Contents/Resources/Acknowledgements.rtf is empty"
 elif ! grep -q 'tree-sitter' "$acknowledgements"; then
     problem "Contents/Resources/Acknowledgements.rtf does not name tree-sitter"
+fi
+
+# The icon of the app (plan 6 task 9): Xcode makes Contents/Resources/AppIcon.icns from the AppIcon set of the asset
+# catalog and names the set in CFBundleIconName. A build whose catalog lost the set (or whose project stopped naming it)
+# has the generic icon, which is what 0.5.0 shipped with, so a zip without both must not be released.
+icon="$app/Contents/Resources/AppIcon.icns"
+if [[ ! -f $icon ]]; then
+    problem "no Contents/Resources/AppIcon.icns in the app: the app icon is missing (the AppIcon set of the asset catalog)"
+elif [[ ! -s $icon ]]; then
+    problem "Contents/Resources/AppIcon.icns is empty"
+fi
+found_icon_name=$(plist_value CFBundleIconName)
+if [[ $found_icon_name != AppIcon ]]; then
+    problem "CFBundleIconName is $found_icon_name, not AppIcon (ASSETCATALOG_COMPILER_APPICON_NAME in App/project.yml)"
 fi
 
 zip_bytes=$(wc -c <"$zip" | tr -d ' ')

@@ -88,6 +88,217 @@ final class MarkupStylerTests: XCTestCase {
         "```",
     ].joined(separator: "\n")
 
+    // MARK: Composed text
+
+    /// The underline of the character at `index`: the text storage's, which is where an input method's attributes are put,
+    /// or else the layout manager's temporary one.
+    private func underline(at index: Int, in host: Host) -> Int? {
+        if let value = attribute(.underlineStyle, at: index, in: host) as? Int { return value }
+        return host.editor.textView.layoutManager?.temporaryAttribute(
+            .underlineStyle, atCharacterIndex: index, effectiveRange: nil) as? Int
+    }
+
+    /// What an input method hands over for the text it composes: the text, its underline and its clause segment.
+    private func composed(_ text: String, adding extra: [NSAttributedString.Key: Any] = [:]) -> NSAttributedString {
+        var attributes: [NSAttributedString.Key: Any] = [
+            .underlineStyle: NSUnderlineStyle.single.rawValue, .underlineColor: NSColor.labelColor,
+            .markedClauseSegment: 0,
+        ]
+        attributes.merge(extra) { _, new in new }
+        return NSAttributedString(string: text, attributes: attributes)
+    }
+
+    /// An edit of the storage that carries an input method's attributes, as `setMarkedText` makes it on a version of
+    /// AppKit that gives the composed characters those attributes in the edit itself. The CI's macOS 26.6 does not: a
+    /// hosted view ends `setMarkedText` with the typing attributes on the composed characters and nothing of the
+    /// attributed string's (plan 6 task 5, measured), so the styler's rule is tested with the storage edited directly, with
+    /// the flag that `setMarkedText` raises around its edit.
+    private func compose(
+        _ text: NSAttributedString, replacing range: NSRange, composing: Bool = true, in host: Host
+    ) {
+        let textView = host.editor.textView
+        textView.isSettingMarkedText = composing
+        defer { textView.isSettingMarkedText = false }
+        textView.textStorage?.replaceCharacters(in: range, with: text)
+    }
+
+    /// Plan 6 task 5 (`MarkupStyler`, "Composed text"): the styler resets the attributes of the paragraph an edit touched,
+    /// and composing text is an edit at every key. The marked text keeps the underline that says it is not yet entered.
+    func testMarkedTextKeepsItsUnderline() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        // The caret is inside the bold run, after "bo".
+        show("a **bold** b", caret: 6, in: host)
+
+        compose(composed("ni"), replacing: NSRange(location: 6, length: 0), in: host)
+
+        XCTAssertEqual(host.editor.currentText, "a **bonild** b")
+        for index in 6...7 {
+            XCTAssertEqual(
+                underline(at: index, in: host), NSUnderlineStyle.single.rawValue, "composed character \(index)")
+            XCTAssertEqual(attribute(.markedClauseSegment, at: index, in: host) as? Int, 0, "its clause segment")
+            XCTAssertEqual(attribute(.underlineColor, at: index, in: host) as? NSColor, NSColor.labelColor)
+        }
+        XCTAssertNil(underline(at: 5, in: host), "the text before it is not underlined")
+        XCTAssertNil(underline(at: 8, in: host), "nor the text after it")
+        for index in 4...9 {
+            XCTAssertTrue(isBold(font(at: index, in: host)), "the run is styled whole, composed characters included")
+        }
+
+        // The composition goes on: the marked text is replaced, which is another edit and another restyle.
+        compose(composed("nih"), replacing: NSRange(location: 6, length: 2), in: host)
+
+        XCTAssertEqual(host.editor.currentText, "a **bonihld** b")
+        for index in 6...8 {
+            XCTAssertEqual(
+                underline(at: index, in: host), NSUnderlineStyle.single.rawValue, "composed character \(index)")
+        }
+        XCTAssertNil(underline(at: 5, in: host))
+        XCTAssertNil(underline(at: 9, in: host), "the text after it is not underlined")
+        for index in 4...10 { XCTAssertTrue(isBold(font(at: index, in: host)), "bold at \(index)") }
+    }
+
+    /// What is composed keeps the keys of the view's `markedTextAttributes` (the plan's call: "marked (IME) text keeps
+    /// `markedTextAttributes` while the styler restyles its paragraph"), the colour that highlights it included, but not
+    /// a font or a colour that is not the value of `markedTextAttributes`: those are the text next to it, which the styler
+    /// settles, and a stale one would paint composed text next to inline code or a link as that.
+    func testComposedTextKeepsMarkedTextAttributesButNotTheNeighboursLook() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("plain text", caret: 5, in: host)
+        let textView = host.editor.textView
+        textView.markedTextAttributes = [
+            .underlineStyle: NSUnderlineStyle.single.rawValue, .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+            .backgroundColor: NSColor.systemYellow,
+        ]
+        let plainColour = attribute(.foregroundColor, at: 0, in: host) as? NSColor
+
+        compose(
+            composed(
+                "ni",
+                adding: [
+                    .strikethroughStyle: NSUnderlineStyle.single.rawValue, .backgroundColor: NSColor.systemYellow,
+                    .foregroundColor: NSColor.systemRed, .font: NSFont.boldSystemFont(ofSize: 30),
+                ]), replacing: NSRange(location: 5, length: 0), in: host)
+
+        XCTAssertEqual(host.editor.currentText, "plainni text")
+        for index in 5...6 {
+            XCTAssertEqual(
+                attribute(.strikethroughStyle, at: index, in: host) as? Int, NSUnderlineStyle.single.rawValue,
+                "a key of markedTextAttributes is kept at \(index)")
+            XCTAssertEqual(
+                attribute(.backgroundColor, at: index, in: host) as? NSColor, NSColor.systemYellow,
+                "the marked-text highlight is kept at \(index)")
+            XCTAssertEqual(
+                attribute(.foregroundColor, at: index, in: host) as? NSColor, plainColour,
+                "a foreground colour that markedTextAttributes does not name is the styler's, at \(index)")
+            XCTAssertTrue(
+                isRegular(font(at: index, in: host)),
+                "a font that markedTextAttributes does not name is the styler's, at \(index)")
+        }
+        XCTAssertNil(attribute(.strikethroughStyle, at: 4, in: host))
+        XCTAssertNil(attribute(.strikethroughStyle, at: 7, in: host))
+        XCTAssertNil(attribute(.backgroundColor, at: 4, in: host), "the text before it has no highlight")
+        XCTAssertNil(attribute(.backgroundColor, at: 7, in: host), "nor has the text after it")
+    }
+
+    /// A key that the styler owns is kept at the value of `markedTextAttributes` and at no other: the same key with another
+    /// value is the neighbour's.
+    func testComposedColourIsKeptOnlyAtTheMarkedTextValue() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("plain text", caret: 5, in: host)
+        let textView = host.editor.textView
+        textView.markedTextAttributes = [
+            .underlineStyle: NSUnderlineStyle.single.rawValue, .foregroundColor: NSColor.systemBlue,
+            .backgroundColor: NSColor.systemYellow,
+        ]
+        let plainColour = attribute(.foregroundColor, at: 0, in: host) as? NSColor
+        XCTAssertNotEqual(plainColour, NSColor.systemBlue, "the plain colour must differ from the marked-text one")
+
+        compose(
+            composed("ni", adding: [.foregroundColor: NSColor.systemBlue, .backgroundColor: NSColor.systemOrange]),
+            replacing: NSRange(location: 5, length: 0), in: host)
+
+        XCTAssertEqual(host.editor.currentText, "plainni text")
+        for index in 5...6 {
+            XCTAssertEqual(
+                attribute(.foregroundColor, at: index, in: host) as? NSColor, NSColor.systemBlue,
+                "the marked-text colour is kept at \(index)")
+            XCTAssertNil(
+                attribute(.backgroundColor, at: index, in: host),
+                "a background that is not the marked-text one is dropped at \(index)")
+        }
+        XCTAssertEqual(attribute(.foregroundColor, at: 4, in: host) as? NSColor, plainColour)
+        XCTAssertEqual(attribute(.foregroundColor, at: 7, in: host) as? NSColor, plainColour)
+
+        // The composition goes on with the colour of the text next to it: not the marked-text one, so the styler's.
+        compose(
+            composed("zh", adding: [.foregroundColor: NSColor.systemRed]),
+            replacing: NSRange(location: 5, length: 2), in: host)
+
+        XCTAssertEqual(host.editor.currentText, "plainzh text")
+        for index in 5...6 {
+            XCTAssertEqual(
+                attribute(.foregroundColor, at: index, in: host) as? NSColor, plainColour,
+                "a colour that is not the marked-text one is the styler's, at \(index)")
+        }
+    }
+
+    /// A real `setMarkedText`: the paragraph is styled around the composed characters at every step, the note's text is
+    /// what the input method sent, and the flag that tells the styler about composed text is down again when it returns.
+    func testSetMarkedTextRestylesTheLineAndEndsTheComposing() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("a **bold** b", caret: 6, in: host)
+        let textView = host.editor.textView
+        host.window.makeFirstResponder(textView)
+        defer { textView.unmarkText() }
+
+        textView.setMarkedText(
+            composed("ni"), selectedRange: NSRange(location: 2, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        XCTAssertFalse(textView.isSettingMarkedText)
+        XCTAssertEqual(host.editor.currentText, "a **bonild** b")
+        XCTAssertEqual(textView.markedRange(), NSRange(location: 6, length: 2))
+        for index in [4, 5, 8, 9] { XCTAssertTrue(isBold(font(at: index, in: host)), "bold at \(index)") }
+
+        textView.setMarkedText(
+            composed("nih"), selectedRange: NSRange(location: 3, length: 0),
+            replacementRange: NSRange(location: NSNotFound, length: 0))
+
+        XCTAssertFalse(textView.isSettingMarkedText)
+        XCTAssertEqual(host.editor.currentText, "a **bonihld** b")
+        XCTAssertEqual(textView.markedRange(), NSRange(location: 6, length: 3))
+        for index in [4, 5, 9, 10] { XCTAssertTrue(isBold(font(at: index, in: host)), "bold at \(index)") }
+
+        textView.unmarkText()
+        XCTAssertFalse(textView.hasMarkedText())
+        XCTAssertEqual(host.editor.currentText, "a **bonihld** b", "ending the composition changes no character")
+    }
+
+    func testTextThatIsNotComposedHasNoUnderlineFromTheStyler() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("a **bold** b", caret: 6, in: host)
+
+        insert("xy", into: host)
+
+        for index in 0..<host.editor.currentText.utf16.count {
+            XCTAssertNil(underline(at: index, in: host), "the character at \(index) is not underlined")
+        }
+
+        // An edit that carries the attributes but is not composed (an input method's final text, a paste) gets none of them.
+        compose(composed("zw"), replacing: NSRange(location: 6, length: 0), composing: false, in: host)
+
+        XCTAssertEqual(host.editor.currentText, "a **bozwxyld** b")
+        for index in 0..<host.editor.currentText.utf16.count {
+            XCTAssertNil(underline(at: index, in: host), "the character at \(index) is not underlined")
+            XCTAssertNil(attribute(.markedClauseSegment, at: index, in: host), "nor has a clause segment at \(index)")
+        }
+    }
+
     // MARK: Bold and hidden markers
 
     func testBoldContentIsBoldAndMarkersAreNullGlyphs() {
@@ -211,12 +422,135 @@ final class MarkupStylerTests: XCTestCase {
         show("x `code` y", caret: 0, in: host)
 
         XCTAssertEqual(attribute(.foregroundColor, at: 4, in: host) as? NSColor, MarkupColors.codeText)
-        XCTAssertEqual(attribute(.backgroundColor, at: 4, in: host) as? NSColor, MarkupColors.codeBackground)
+        // The tint is a pill that the layout manager draws (plan 6 task 7), not a background colour of the text.
+        XCTAssertEqual(attribute(.scratchInlineCode, at: 4, in: host) as? Bool, true)
+        XCTAssertNil(attribute(.backgroundColor, at: 4, in: host))
         XCTAssertEqual(attribute(.foregroundColor, at: 0, in: host) as? NSColor, NSColor.textColor)
+        XCTAssertNil(attribute(.scratchInlineCode, at: 0, in: host))
         XCTAssertNil(attribute(.backgroundColor, at: 0, in: host))
         XCTAssertTrue(isNullGlyph(at: 2, in: host), "the opening backtick is hidden")
         XCTAssertTrue(isNullGlyph(at: 7, in: host), "the closing backtick is hidden")
         XCTAssertTrue(isRegular(font(at: 4, in: host)), "inline code keeps the note font")
+    }
+
+    // MARK: Line spacing and the inline code pill (plan 6 task 7, docs/features/formatting.md "Look")
+
+    private func paragraphStyle(at index: Int, in host: Host) -> NSParagraphStyle? {
+        attribute(.paragraphStyle, at: index, in: host) as? NSParagraphStyle
+    }
+
+    /// The text view drawn into a bitmap, for the part of it in `rect` (the view's coordinates).
+    private func render(_ rect: NSRect, in host: Host) -> NSBitmapImageRep? {
+        let textView = host.editor.textView
+        guard let rep = textView.bitmapImageRepForCachingDisplay(in: rect) else { return nil }
+        textView.cacheDisplay(in: rect, to: rep)
+        return rep
+    }
+
+    /// The colour of the pixel of `rep` (drawn from `rect`) that holds `point`, in the view's coordinates.
+    private func colour(at point: NSPoint, in rep: NSBitmapImageRep, from rect: NSRect) -> NSColor? {
+        let scale = CGFloat(rep.pixelsWide) / rect.width
+        let x = Int((point.x - rect.minX) * scale)
+        let y = Int((point.y - rect.minY) * scale)
+        guard x >= 0, y >= 0, x < rep.pixelsWide, y < rep.pixelsHigh else { return nil }
+        return rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)
+    }
+
+    private func distance(_ a: NSColor, _ b: NSColor) -> CGFloat {
+        abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent)
+            + abs(a.blueComponent - b.blueComponent)
+    }
+
+    /// `round(0.3 x font size)` points after every line: 4 pt at 13 pt, for a plain line, a list line and a line of code. A
+    /// fence line (6 pt) and an attachment line (as high as its picture) keep the heights they have.
+    func testLinesHaveSpacing() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let id = AttachmentID.make()
+        let text = ["plain", "- list", "[ ] box", "```sh", "echo hi", "```", AttachmentToken.line(for: id)]
+            .joined(separator: "\n")
+        show(text, caret: 0, in: host)
+
+        func spacing(of needle: String, backwards: Bool = false) -> CGFloat? {
+            let range = (text as NSString).range(of: needle, options: backwards ? .backwards : [])
+            return paragraphStyle(at: range.location, in: host)?.lineSpacing
+        }
+        XCTAssertEqual(MarkupAppearance.lineSpacing(forFontSize: 13), 4)
+        XCTAssertEqual(MarkupAppearance.lineSpacing(forFontSize: 9), 3, "round(2.7)")
+        XCTAssertEqual(MarkupAppearance.lineSpacing(forFontSize: 32), 10, "round(9.6)")
+        XCTAssertEqual(spacing(of: "plain"), 4, "a plain line")
+        XCTAssertEqual(spacing(of: "- list"), 4, "a list line")
+        XCTAssertEqual(spacing(of: "[ ] box"), 4, "a checklist line")
+        XCTAssertEqual(spacing(of: "echo hi"), 4, "a line of code")
+        XCTAssertEqual(spacing(of: "```sh"), 0, "the opening fence line is padding of 6 pt")
+        XCTAssertEqual(spacing(of: "```", backwards: true), 0, "and so is the closing one")
+        XCTAssertEqual(spacing(of: "[[attachment:"), 0, "an attachment line is as high as what is drawn on it")
+        XCTAssertEqual(host.editor.currentText, text, "styling never changes a character")
+
+        // What is typed next has it too, and so has a note at another size.
+        XCTAssertEqual((host.editor.textView.typingAttributes[.paragraphStyle] as? NSParagraphStyle)?.lineSpacing, 4)
+        host.editor.setFontSize(20)
+        XCTAssertEqual(spacing(of: "plain"), 6, "round(0.3 x 20)")
+        XCTAssertEqual(spacing(of: "echo hi"), 6)
+    }
+
+    /// The spacing is in the line fragments' heights: the next line starts one line height and the spacing further down.
+    func testLinesAreFurtherApart() throws {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        show("one\ntwo\nthree", caret: 0, in: host)
+        let layoutManager = try XCTUnwrap(host.editor.textView.layoutManager)
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: 13))
+
+        func top(of index: Int) -> CGFloat {
+            layoutManager.lineFragmentRect(
+                forGlyphAt: layoutManager.glyphIndexForCharacter(at: index), effectiveRange: nil
+            )
+            .minY
+        }
+        let lineHeight = layoutManager.defaultLineHeight(for: NoteTextView.noteFont)
+
+        XCTAssertEqual(top(of: 4) - top(of: 0), lineHeight + 4, accuracy: 1, "air between the first and second line")
+        XCTAssertEqual(top(of: 8) - top(of: 4), lineHeight + 4, accuracy: 1, "and between the second and third")
+    }
+
+    /// Inline code is a pill: `scratchInlineCode` on its characters and no `.backgroundColor`, and the layout manager tints
+    /// a rounded rectangle that reaches 2 pt left and right of the text.
+    func testInlineCodeIsAPill() throws {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let text = "bump `2.4.1` now"
+        show(text, caret: text.utf16.count, in: host)
+        let code = utf16Range(of: "2.4.1", in: text)
+
+        XCTAssertEqual(attribute(.scratchInlineCode, at: code.location, in: host) as? Bool, true)
+        XCTAssertEqual(attribute(.scratchInlineCode, at: NSMaxRange(code) - 1, in: host) as? Bool, true)
+        XCTAssertNil(attribute(.backgroundColor, at: code.location, in: host), "no background attribute")
+        XCTAssertNil(attribute(.scratchInlineCode, at: 0, in: host), "the text before it is not code")
+        XCTAssertNil(attribute(.scratchInlineCode, at: NSMaxRange(code) + 1, in: host), "nor is the text after it")
+        XCTAssertTrue(isNullGlyph(at: code.location - 1, in: host), "the backticks are hidden")
+
+        let textView = host.editor.textView
+        let layoutManager = try XCTUnwrap(textView.layoutManager)
+        let container = try XCTUnwrap(textView.textContainer)
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: text.utf16.count))
+        let glyphs = layoutManager.glyphRange(forCharacterRange: code, actualCharacterRange: nil)
+        var box = layoutManager.boundingRect(forGlyphRange: glyphs, in: container)
+        box.origin.x += textView.textContainerOrigin.x
+        box.origin.y += textView.textContainerOrigin.y
+        let area = NSRect(x: 0, y: box.minY, width: textView.bounds.width, height: box.height).integral
+        let rep = try XCTUnwrap(render(area, in: host))
+        let middle = box.midY
+        let background = try XCTUnwrap(colour(at: NSPoint(x: area.maxX - 20, y: middle), in: rep, from: area))
+
+        let left = try XCTUnwrap(colour(at: NSPoint(x: box.minX - 1, y: middle), in: rep, from: area))
+        XCTAssertGreaterThan(distance(left, background), 0.05, "a point 1 pt left of the first character is tinted")
+        let right = try XCTUnwrap(colour(at: NSPoint(x: box.maxX + 1, y: middle), in: rep, from: area))
+        XCTAssertGreaterThan(distance(right, background), 0.05, "and so is one 1 pt right of the last")
+        let farLeft = try XCTUnwrap(colour(at: NSPoint(x: box.minX - 5, y: middle), in: rep, from: area))
+        XCTAssertLessThan(distance(farLeft, background), 0.02, "5 pt left of it is the page again: the pill has 2 pt")
+        let farRight = try XCTUnwrap(colour(at: NSPoint(x: box.maxX + 5, y: middle), in: rep, from: area))
+        XCTAssertLessThan(distance(farRight, background), 0.02, "and 5 pt right of it too")
     }
 
     func testTheCodeColoursComeFromTheAssets() {

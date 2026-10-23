@@ -10,8 +10,10 @@ import XCTest
 /// that the screenshots are taken once per CI job.
 ///
 /// The names are `typical-light`, `typical-dark`, `empty-light`, `huge-note-light`, `search-light`,
-/// `recently-deleted-light`, `formatting-light`, `formatting-dark`, `code-light`, `code-dark`, `attachments-light` and
-/// `attachments-dark`. The Makefile's `SCREENSHOT_NAMES` lists them and must stay in step with this class.
+/// `recently-deleted-light`, `formatting-light`, `formatting-dark`, `code-light`, `code-dark`, `attachments-light`,
+/// `attachments-dark`, the two with Increase Contrast on, `typical-contrast-light` and `code-contrast-dark` (plan 6
+/// task 8), and `about-light`, the About panel with the app icon (plan 6 task 9). The Makefile's `SCREENSHOT_NAMES` lists
+/// them and must stay in step with this class.
 @MainActor
 final class ScreenshotTests: XCTestCase {
     func testTypicalLight() {
@@ -116,6 +118,55 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
+    /// The typical fixture with Increase Contrast on (`-ScratchAppearance light-contrast`: the accessibility appearance that the
+    /// high contrast variants of the colours answer to, plan 6 task 8). A person (or an agent that opens the PNG) checks: the
+    /// inline code's pill and the block's tint and border stronger than in `typical-light`, the code in darker colours, and
+    /// the glass of the toolbar and the sidebar still the system's.
+    func testTypicalContrastLight() {
+        capture("typical-contrast-light", fixture: "typical", appearance: "light-contrast", sidebarRows: 6)
+    }
+
+    /// The code fixture with Increase Contrast on, in dark mode: the lighter code colours on the stronger tint, a visible
+    /// border, and labels that read.
+    func testCodeContrastDark() {
+        capture("code-contrast-dark", fixture: "code", appearance: "dark-contrast", sidebarRows: 1) { app in
+            waitForColours(in: app)
+        }
+    }
+
+    /// The About panel (plan 6 task 9): Scratch > About Scratch, with the app's icon, its name and version and the licences
+    /// of tree-sitter and its grammars as credits. The picture is of the panel, not of the main window. A person (or an agent
+    /// that opens the PNG) checks: the new icon (a yellow notepad with a ticked checkbox) and not the generic one, the
+    /// version 1.0.0 and the credits' first lines. XCTest sees the panel as a dialog of the app (`aboutPanel(in:)`).
+    func testAboutLight() {
+        capture(
+            "about-light", fixture: "typical", appearance: "light", sidebarRows: 6, parkPointer: false,
+            prepare: { app in
+                app.menuBars.menuBarItems["Scratch"].click()
+                app.menuBars.menuItems["About Scratch"].click()
+                XCTAssertTrue(
+                    UITestSupport.wait { aboutPanel(in: app) != nil },
+                    "the About panel did not appear: \(UITestSupport.hierarchy(of: app))")
+            },
+            subject: { app in aboutPanel(in: app) ?? app.windows.firstMatch },
+            // Looked at once the picture is taken, so that a surprise here never costs the picture. It reads the texts of the
+            // panel and asks for no predicate: a predicate on `value` meets the scroll bar's number.
+            afterwards: { app in
+                let texts =
+                    aboutPanel(in: app)?.staticTexts.allElementsBoundByIndex.map { UITestSupport.text(of: $0) } ?? []
+                XCTAssertTrue(
+                    texts.contains { $0.hasPrefix("Version") }, "the About panel shows no version, its texts: \(texts)")
+            })
+    }
+
+    /// The About panel, or nil while it is not on screen. XCTest reports it as a Dialog (its subrole is `AXDialog`) and not as
+    /// a window, with no title and an identifier of AppKit's own (`_NS:154` on CI), so it is the app's only dialog: the
+    /// Launch Times alert is a sheet.
+    private func aboutPanel(in app: XCUIApplication) -> XCUIElement? {
+        let panel = app.dialogs.firstMatch
+        return panel.exists ? panel : nil
+    }
+
     /// Waits until the app has both attachments of the note in place (`debug.state`: each one `copied`, with its file on
     /// disk) and no preview is waiting to be decoded, then checks what the sidebar says about the note: the title
     /// "Screenshots" and a preview line without a token (titles and previews skip attachment lines).
@@ -149,10 +200,15 @@ final class ScreenshotTests: XCTestCase {
 
     /// Launches `fixture`, waits for the editor and for `sidebarRows` sidebar rows (the fixture's notes that the
     /// sidebar lists), runs `prepare` to bring the window into the state the screenshot is about, and attaches a
-    /// screenshot of the window as `name`, kept even though the test passes.
+    /// screenshot of `subject` (the main window unless a test says otherwise) as `name`, kept even though the test
+    /// passes. `parkPointer` is false for a picture of something that is not the main window (the pointer is then left where
+    /// the preparation put it). `afterwards` runs once the screenshot is attached. `prepare` comes first among the closures, so that a trailing
+    /// closure is the preparation (Swift gives an unlabeled trailing closure to the first closure parameter).
     private func capture(
-        _ name: String, fixture: String, appearance: String, sidebarRows: Int,
-        prepare: @MainActor (XCUIApplication) -> Void = { _ in }
+        _ name: String, fixture: String, appearance: String, sidebarRows: Int, parkPointer: Bool = true,
+        prepare: @MainActor (XCUIApplication) -> Void = { _ in },
+        subject: @MainActor (XCUIApplication) -> XCUIElement = { $0.windows.firstMatch },
+        afterwards: @MainActor (XCUIApplication) -> Void = { _ in }
     ) {
         continueAfterFailure = false
         let app = UITestSupport.launch(fixture: fixture, appearance: appearance)
@@ -167,14 +223,15 @@ final class ScreenshotTests: XCTestCase {
         prepare(app)
         // Park the pointer over the empty part of the editor. Where the last click left it, it can rest on the sidebar
         // or the toolbar, and its tooltip ("Hide Sidebar") then shows in the picture.
-        window.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9)).hover()
+        if parkPointer { window.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9)).hover() }
 
         // Let the first layout, the glass material and the selection highlight settle before the picture is taken.
         Thread.sleep(forTimeInterval: 1.0)
 
-        let screenshot = XCTAttachment(screenshot: window.screenshot())
+        let screenshot = XCTAttachment(screenshot: subject(app).screenshot())
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)
+        afterwards(app)
     }
 }

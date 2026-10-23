@@ -334,6 +334,74 @@ final class EditorViewControllerTests: XCTestCase {
         XCTAssertFalse(undoB.canUndo)
     }
 
+    /// Plan 6 task 5 ("Title undo"): the title's undo steps are the title's own, and leaving a note drops them, whoever
+    /// holds them: the title's manager, and the note's if the text system registered some there with the field editor as
+    /// their target. What the field editor would undo then belongs to a note that is not shown.
+    ///
+    /// The window's field editor is a recording one here (the window's delegate hands it out), so that the test sees
+    /// whether a step that targets it is still there: an undo manager with an open group says it can undo even when the
+    /// group is empty, so `canUndo` is no answer.
+    func testShowDropsTheUndoStepsOfTheTitle() {
+        let host = makeHostedEditor()
+        let source = FieldEditorSource()
+        host.window.delegate = source
+        defer { withExtendedLifetime((host.window, source)) {} }
+        let noteA = makeNote("alpha", title: "A")
+        let noteB = makeNote("beta", title: "B")
+        let undoA = UndoManager()
+        host.editor.show(noteA, tab: makeTab(for: noteA), undoManager: undoA, isReadOnly: false)
+        let title = host.editor.titleField
+        XCTAssertTrue(
+            host.window.fieldEditor(true, for: title) === source.editor, "the window hands out the recording editor")
+        // Steps that count when they are undone: the field editor's registered in the note's manager, as a text view
+        // registers its own, and one in the title's own manager.
+        undoA.registerUndo(withTarget: source.editor, selector: #selector(RecordingFieldEditor.ping(_:)), object: nil)
+        title.titleUndoManager.registerUndo(
+            withTarget: source.editor, selector: #selector(RecordingFieldEditor.ping(_:)), object: nil)
+        XCTAssertTrue(title.titleUndoManager.canUndo)
+
+        host.editor.show(noteB, tab: makeTab(for: noteB), undoManager: UndoManager(), isReadOnly: false)
+
+        XCTAssertFalse(title.titleUndoManager.canUndo, "the title's own steps went with the note")
+        if undoA.canUndo { undoA.undo() }
+        XCTAssertEqual(
+            source.editor.pings, 0, "the step that the field editor registered in the note's manager went too")
+        XCTAssertEqual(title.stringValue, "B")
+    }
+
+    func testTheTitleKeepsItsOwnUndoManager() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let note = makeNote("alpha")
+        let undo = UndoManager()
+        host.editor.show(note, tab: makeTab(for: note), undoManager: undo, isReadOnly: false)
+
+        let title = host.editor.titleField
+
+        XCTAssertTrue(title.undoManager === title.titleUndoManager, "the field editor asks the field")
+        XCTAssertFalse(title.undoManager === undo, "and the note's history is not where title typing goes")
+        XCTAssertTrue(host.editor.textView.undoManager === undo, "the note's text keeps the note's history")
+    }
+
+    /// Leaving a note ends the editing of its title: the keyboard goes to the text, as Return in the title does, and the
+    /// title shown is the next note's.
+    func testShowEndsTheEditingOfTheTitle() {
+        let host = makeHostedEditor()
+        defer { withExtendedLifetime(host.window) {} }
+        let noteA = makeNote("alpha", title: "A")
+        let noteB = makeNote("beta", title: "B")
+        host.editor.show(noteA, tab: makeTab(for: noteA), undoManager: UndoManager(), isReadOnly: false)
+        host.editor.view.layoutSubtreeIfNeeded()
+        host.editor.focusTitle()
+        XCTAssertNotNil(host.editor.titleField.currentEditor(), "the title of the first note is being edited")
+
+        host.editor.show(noteB, tab: makeTab(for: noteB), undoManager: UndoManager(), isReadOnly: false)
+
+        XCTAssertNil(host.editor.titleField.currentEditor(), "the editing of the title ended")
+        XCTAssertTrue(host.window.firstResponder === host.editor.textView, "the keyboard is in the note")
+        XCTAssertEqual(host.editor.titleField.stringValue, "B")
+    }
+
     func testShowDoesNotClearUndo() {
         let host = makeHostedEditor()
         defer { withExtendedLifetime(host.window) {} }
@@ -475,5 +543,29 @@ final class EditorViewControllerTests: XCTestCase {
         host.editor.titleField.stringValue = "New"
         host.editor.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification))
         XCTAssertEqual(reported, ["New"])
+    }
+}
+
+/// A field editor that counts how often it is asked to undo something: `ping(_:)` is the action of its undo steps.
+@MainActor
+private final class RecordingFieldEditor: NSTextView {
+    private(set) var pings = 0
+
+    @objc func ping(_ sender: Any?) {
+        pings += 1
+    }
+}
+
+/// The delegate that gives a window `RecordingFieldEditor` as its field editor.
+@MainActor
+private final class FieldEditorSource: NSObject, NSWindowDelegate {
+    let editor: RecordingFieldEditor = {
+        let editor = RecordingFieldEditor(frame: .zero)
+        editor.isFieldEditor = true
+        return editor
+    }()
+
+    func windowWillReturnFieldEditor(_ sender: NSWindow, to client: Any?) -> Any? {
+        editor
     }
 }

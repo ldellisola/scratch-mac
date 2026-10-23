@@ -53,9 +53,13 @@ final class NoteTextView: NSTextView {
     /// configured. Everything that loads or sizes the text goes through it (`load(_:)`, `applyFontSize(_:)`).
     var styler: MarkupStyler!
 
-    /// How every character of a note looks at `size` points: the note font in the standard text colour.
+    /// How every character of a note looks at `size` points: the note font in the standard text colour, in a paragraph with
+    /// the space after each line that every line has (`MarkupAppearance.lineSpacing(forFontSize:)`, plan 6 task 7).
     static func noteAttributes(size: Double) -> [NSAttributedString.Key: Any] {
-        [.font: noteFont(size: size), .foregroundColor: NSColor.textColor]
+        [
+            .font: noteFont(size: size), .foregroundColor: NSColor.textColor,
+            .paragraphStyle: MarkupAppearance.baseStyle(fontSize: size),
+        ]
     }
 
     /// Plain text is the only thing that leaves the editor, so nothing from the note's font or colours reaches Slack,
@@ -65,10 +69,13 @@ final class NoteTextView: NSTextView {
 
     /// Writes the selected text, as it is stored, as the only thing on the pasteboard, except for attachments (spec §6.5): a
     /// token line is written as the name of its file, and a selection that is exactly one attachment also writes the stored
-    /// file's URL and, for an image, the image as PNG and TIFF (`AttachmentCopying`, `AttachmentPasteboard`). Several
-    /// selections (a rectangular selection) are joined by line breaks. Returns false, and writes nothing, when no text is
-    /// selected or `types` does not ask for plain text. AppKit's own implementation is not used: it writes the types it
-    /// prefers, which are not the same on every SDK. Copy, Cut, drags and Services all end here.
+    /// file's URL and, for an image, the image as PNG and TIFF (`AttachmentCopying`, `AttachmentPasteboard`). A selection that
+    /// holds a token also writes the selection exactly as stored, token lines and all, on the private type
+    /// `AttachmentPasteboard.noteTextType` (plan 6 task 6), which only Scratch reads: a paste or a drop into a note then keeps
+    /// the attachment, and the other applications still see plain text. Several selections (a rectangular selection) are
+    /// joined by line breaks. Returns false, and writes nothing, when no text is selected or `types` does not ask for plain
+    /// text. AppKit's own implementation is not used: it writes the types it prefers, which are not the same on every SDK.
+    /// Copy, Cut, drags and Services all end here.
     override func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
         guard types.contains(.string), let storage = textStorage else { return false }
         let ranges = selectedRanges.map(\.rangeValue).filter { $0.length > 0 }
@@ -80,19 +87,25 @@ final class NoteTextView: NSTextView {
         let name: (AttachmentID) -> String = { catalog?.attachment($0)?.fileName ?? Self.missingAttachmentName }
         let copied = ranges.map { AttachmentCopying.text(of: $0, in: text, name: name, ignoring: isLiteral) }
             .joined(separator: "\n")
+        // The text as it is stored, for Scratch's own paste and drop, only when there is a token in it to keep.
+        let noteText: String? =
+            ranges.contains { AttachmentCopying.holdsAttachment(in: $0, of: text, ignoring: isLiteral) }
+            ? ranges.map { text.substring(with: $0) }.joined(separator: "\n") : nil
 
         if ranges.count == 1, let id = AttachmentCopying.soleAttachment(in: ranges[0], of: text, ignoring: isLiteral),
             let attachment = catalog?.attachment(id), let url = catalog?.fileURL(id),
             FileManager.default.fileExists(atPath: url.path)
         {
-            let made = AttachmentPasteboard.item(name: copied, fileURL: url, isImage: attachment.isImage)
+            let made = AttachmentPasteboard.write(
+                name: copied, fileURL: url, isImage: attachment.isImage, noteText: noteText, to: pboard)
             // The pasteboard asks the provider when an application wants the image, which is after this returns.
             attachmentImageProvider = made.provider
-            _ = pboard.clearContents()
-            return pboard.writeObjects([made.item])
+            return made.written
         }
-        _ = pboard.declareTypes([.string], owner: nil)
-        return pboard.setString(copied, forType: .string)
+        _ = pboard.declareTypes(noteText == nil ? [.string] : [.string, AttachmentPasteboard.noteTextType], owner: nil)
+        guard pboard.setString(copied, forType: .string) else { return false }
+        if let noteText { _ = pboard.setString(noteText, forType: AttachmentPasteboard.noteTextType) }
+        return true
     }
 
     /// What the text of a copy has where the token of an attachment that no row knows was (spec §6.5).
@@ -100,19 +113,22 @@ final class NoteTextView: NSTextView {
 
     /// The provider of the image of the attachment that was copied last, kept for as long as the pasteboard may ask it: an
     /// application that pastes the image asks when it pastes, after Copy has returned.
-    private var attachmentImageProvider: AttachmentImageProvider?
+    private var attachmentImageProvider: (any NSPasteboardItemDataProvider)?
 
-    /// What a paste or a drop takes: text first, which is plain text whatever was copied and drops its font, size and
-    /// colours, so pasted text always looks like the note (spec §6.5, "Paste and Match Style" is the same as Paste), and
-    /// then what makes an attachment (spec §6.5, plan 5 task 5): file references and images. AppKit offers Paste, and
-    /// accepts a drag, only when the pasteboard holds one of these types. What is done with each is decided in
-    /// `readSelection(from:)`, in the order of the spec, and not by the order of this list.
-    override var readablePasteboardTypes: [NSPasteboard.PasteboardType] { [.string, .fileURL, .png, .tiff] }
+    /// What a paste or a drop takes: the note's own text of an earlier copy (`AttachmentPasteboard.noteTextType`, plan 6 task
+    /// 6), then text, which is plain text whatever was copied and drops its font, size and colours, so pasted text always
+    /// looks like the note (spec §6.5, "Paste and Match Style" is the same as Paste), and then what makes an attachment (spec
+    /// §6.5, plan 5 task 5): file references and images. AppKit offers Paste, and accepts a drag, only when the pasteboard
+    /// holds one of these types. What is done with each is decided in `readSelection(from:)`, in the order of the spec, and
+    /// not by the order of this list.
+    override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {
+        [AttachmentPasteboard.noteTextType, .string, .fileURL, .png, .tiff]
+    }
 
     /// What the view registers for dragging: what a paste takes, so that a file or an image can be dropped on the note.
     override var acceptableDragTypes: [NSPasteboard.PasteboardType] {
         var types = super.acceptableDragTypes
-        for type in [NSPasteboard.PasteboardType.fileURL, .png, .tiff] where !types.contains(type) {
+        for type in [AttachmentPasteboard.noteTextType, .fileURL, .png, .tiff] where !types.contains(type) {
             types.append(type)
         }
         return types
@@ -127,10 +143,71 @@ final class NoteTextView: NSTextView {
     }
 
     /// A text view that is not editable (a note in Recently Deleted, spec §6.2) takes no text from anywhere. AppKit
-    /// already refuses it in most paths, and this makes sure of the rest.
+    /// already refuses it in most paths, and this makes sure of the rest. Typing at an edge of a token line goes on a line of
+    /// its own (`makeRoomAtTokenEdge`): the line break is an edit before the text is.
     override func insertText(_ string: Any, replacementRange: NSRange) {
         guard isEditable else { return }
-        super.insertText(string, replacementRange: replacementRange)
+        let target = makeRoomAtTokenEdge(for: string, replacementRange: replacementRange)
+        super.insertText(string, replacementRange: target)
+    }
+
+    /// Typing, composing or inserting text at an edge of a token line must not put it on the token's line: the line would
+    /// hold more than the token and the attachment would be text (plan 6 task 6, `AttachmentEditing.lineBreaks`, which says
+    /// where a line break must go). The break is put in with `apply(_:)`, an edit of its own, before the text is: after a
+    /// break at the start of the range the range moves one on and the caret follows it, and after a break at its end the
+    /// caret stays in front of it, so that the text is on the new line, and the token's line has nothing else on it.
+    /// Returns the range that the text replaces, moved on when the break came before it (an explicit `replacementRange`;
+    /// the not-found range, which means the selection, stays what it is). Does nothing for a paste, which puts its own
+    /// breaks into its own edit (`insertTextWithTokenBreaks`, `insertNoteText`), while text is being composed (its first step
+    /// has put the composed text on a line of its own), for more than one selection and for a token in a fenced block, which
+    /// is text. It reads at most a token's length of the text each way: it runs on every key.
+    private func makeRoomAtTokenEdge(for string: Any, replacementRange: NSRange) -> NSRange {
+        guard pasteDepth == 0, !hasMarkedText(), selectedRanges.count == 1, let styler, let storage = textStorage else {
+            return replacementRange
+        }
+        let inserted: String
+        if let text = string as? String {
+            inserted = text
+        } else if let attributed = string as? NSAttributedString {
+            inserted = attributed.string
+        } else {
+            return replacementRange
+        }
+        let hasRange = replacementRange.location != NSNotFound
+        let target = hasRange ? replacementRange : selectedRange()
+        let breaks = AttachmentEditing.lineBreaks(
+            inserting: inserted, at: target, in: storage.string as NSString, isLiteral: { styler.isInCodeBlock($0) })
+        guard breaks.before || breaks.after else { return replacementRange }
+        var moved = target
+        if breaks.after {
+            apply(
+                TextEdit(range: NSRange(location: NSMaxRange(target), length: 0), replacement: "\n", selection: target))
+        }
+        if breaks.before {
+            moved.location += 1
+            apply(TextEdit(range: NSRange(location: target.location, length: 0), replacement: "\n", selection: moved))
+        }
+        return hasRange ? moved : replacementRange
+    }
+
+    /// True while `setMarkedText(_:selectedRange:replacementRange:)` runs: the edit that it makes puts composed text in the
+    /// note, and the styler keeps the attributes that AppKit gave that text (`MarkupStyler.composedAttributes`). Only
+    /// `setMarkedText` sets it, except in `MarkupStylerTests`, which edit the storage directly with it set: AppKit
+    /// gives a hosted view's composed text none of the input method's attributes, so that is the one way to hand the
+    /// styler an edit that carries them.
+    var isSettingMarkedText = false
+
+    /// An input method is composing text (the owner types, say, pinyin, and has not chosen the characters yet): the text
+    /// is in the note, underlined, until it is entered. Every step replaces it, which is an edit that the styler styles
+    /// the paragraph for, and composed text must keep its underline through that. A note that cannot be edited takes
+    /// nothing, as in `insertText(_:replacementRange:)`.
+    override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        guard isEditable else { return }
+        // At an edge of a token line the composed text goes on a line of its own, and the break is not composed text.
+        let target = makeRoomAtTokenEdge(for: string, replacementRange: replacementRange)
+        isSettingMarkedText = true
+        defer { isSettingMarkedText = false }
+        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: target)
     }
 
     /// The text was edited and AppKit has processed the edit. The styler may have moved paragraphs into or out of a code
@@ -274,23 +351,98 @@ final class NoteTextView: NSTextView {
         return didRead
     }
 
-    /// The order of a paste (spec §6.5): files, then text, then an image. Text is read as `.string` and nothing else, so
-    /// that the image types that `readablePasteboardTypes` lists for the sake of Paste never come between the text of a
-    /// pasteboard and the note: Excel, Word and browsers put an image of the selection next to its text, and the text wins.
+    /// The order of a paste (spec §6.5): the note's own text of an earlier copy, then files, then text, then an image. Text is
+    /// read as `.string` and nothing else, so that the image types that `readablePasteboardTypes` lists for the sake of Paste
+    /// never come between the text of a pasteboard and the note: Excel, Word and browsers put an image of the selection next
+    /// to its text, and the text wins.
     private func readAttachmentsOrText(from pboard: NSPasteboard) -> Bool {
-        readAttachments(from: pboard) || super.readSelection(from: pboard, type: .string)
+        readAttachments(from: pboard) || readSelection(from: pboard, type: .string)
     }
 
-    /// Makes attachments of the files, or the image with no text, on `pboard` and puts them in the note, which is what a
-    /// paste does first (`attachmentSources(from:)`). Returns false, and changes nothing, when there are none or they cannot
-    /// be put in (`insertAttachments`).
+    /// Puts what a paste makes of `pboard` before its text in the note: the note's text of an earlier copy that holds an
+    /// attachment (`insertNoteText`: it comes before the file URL that a copy of one attachment holds too, so that the paste
+    /// is the attachment that was copied), or else attachments made of the files, or the image with no text, on it
+    /// (`attachmentSources(from:)`). Returns false, and changes nothing, when there is none or they cannot be put in
+    /// (`insertAttachments`).
     private func readAttachments(from pboard: NSPasteboard) -> Bool {
-        guard isEditable, let sources = attachmentSources(from: pboard), insertAttachments(sources) else {
-            return false
-        }
+        guard isEditable else { return false }
+        if insertNoteText(from: pboard) { return true }
+        guard let sources = attachmentSources(from: pboard), insertAttachments(sources) else { return false }
         attachmentPasteWasInserted = true
         return true
     }
+
+    /// The text of `pboard` that a paste or a drop reads (`readSelection(from:type:)` is called with `.string` by Paste, and by
+    /// AppKit for a drag that it handles itself). The note's own text of an earlier copy comes first, because it is what was
+    /// selected, token lines and all (`insertNoteText`); a read of the private type is the same read. Plain text is the text
+    /// view's own, unless it would put a token line on a line with other characters (`insertTextWithTokenBreaks`). Everything
+    /// else, and a note that cannot be edited, is AppKit's.
+    override func readSelection(from pboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
+        guard isEditable, type == .string || type == AttachmentPasteboard.noteTextType else {
+            return super.readSelection(from: pboard, type: type)
+        }
+        if insertNoteText(from: pboard) { return true }
+        // The private type with no use here (code, or an attachment that is not known) is the plain text of the pasteboard.
+        if type == AttachmentPasteboard.noteTextType { return readSelection(from: pboard, type: .string) }
+        if insertTextWithTokenBreaks(from: pboard) { return true }
+        return super.readSelection(from: pboard, type: type)
+    }
+
+    /// True when `pboard` holds the note's own text of a copy, going by its types and nothing else.
+    private func hasNoteText(on pboard: NSPasteboard) -> Bool {
+        pboard.availableType(from: [AttachmentPasteboard.noteTextType]) != nil
+    }
+
+    /// Puts the note's own text of a copy (`AttachmentPasteboard.noteTextType`: the selection exactly as stored, written when
+    /// it held a token) over the selection, as one edit with the line breaks that keep every token line whole
+    /// (`AttachmentEditing.lineBreaks`, `textInsertion`), and returns true. The attachments are the ones that were copied: the
+    /// same ids, so two notes may name one file (a file goes only when no note names it). Returns false, and does nothing,
+    /// when there is no such text on `pboard`, the note cannot be edited, more than one range is selected or text is being
+    /// composed, the selection is in code (a block is literal: the plain text, with the names, is what goes in), or the text
+    /// names an attachment that this store has no row for (a copy from another Scratch, say: its file URL, which comes next,
+    /// makes a new attachment of the file, and the plain text is the last resort).
+    private func insertNoteText(from pboard: NSPasteboard) -> Bool {
+        guard isEditable, selectedRanges.count == 1, !hasMarkedText(), let styler, let catalog = styler.catalog,
+            let storage = textStorage, hasNoteText(on: pboard)
+        else { return false }
+        let selection = selectedRange()
+        guard !isPastingIntoCode(selection), let stored = pboard.string(forType: AttachmentPasteboard.noteTextType),
+            !stored.isEmpty
+        else { return false }
+        let ids = AttachmentToken.ids(in: stored)
+        guard !ids.isEmpty, ids.allSatisfy({ catalog.attachment($0) != nil }) else { return false }
+        let document = storage.string as NSString
+        let breaks = AttachmentEditing.lineBreaks(
+            inserting: stored, at: selection, in: document, isLiteral: { styler.isInCodeBlock($0) })
+        applyAndReveal(AttachmentEditing.textInsertion(of: stored, breaks: breaks, over: selection, in: document))
+        // Its text is not code to look at: a paste of this kind is never classified (`endPaste`).
+        if pasteDepth > 0 { attachmentPasteWasInserted = true }
+        return true
+    }
+
+    /// Puts the plain text of `pboard` over the selection when it would otherwise share a line with a token: the text is
+    /// pasted at an edge of a token line, or it holds a token line that is not on a line of its own. The line breaks that
+    /// keep the tokens whole are in the paste's one edit (`AttachmentEditing.lineBreaks`, `textInsertion`), and the caret is
+    /// after the text. Returns false, and does nothing, for every other paste, which is AppKit's: nearly all of them, and a
+    /// paste into code (a block is literal). The text is classified as code on the next turn as any paste is
+    /// (`pasteBreaks` tells `endPaste` which of the characters that came in were the breaks).
+    private func insertTextWithTokenBreaks(from pboard: NSPasteboard) -> Bool {
+        guard selectedRanges.count == 1, !hasMarkedText(), let styler, let storage = textStorage,
+            let text = pboard.string(forType: .string), !text.isEmpty
+        else { return false }
+        let selection = selectedRange()
+        let document = storage.string as NSString
+        let breaks = AttachmentEditing.lineBreaks(
+            inserting: text, at: selection, in: document, isLiteral: { styler.isInCodeBlock($0) })
+        guard breaks.before || breaks.after else { return false }
+        if pasteDepth > 0 { pasteBreaks = breaks }
+        applyAndReveal(AttachmentEditing.textInsertion(of: text, breaks: breaks, over: selection, in: document))
+        return true
+    }
+
+    /// The line breaks that a paste has put around its text (`insertTextWithTokenBreaks`), until `endPaste` has taken them
+    /// out of the range that it classifies.
+    private var pasteBreaks: (before: Bool, after: Bool)?
 
     /// True while the paste that is being read has put attachments, or the names of files, in the note. Such a paste is not
     /// looked at for code on the next turn: its text is token lines.
@@ -329,14 +481,25 @@ final class NoteTextView: NSTextView {
         let interval: OpenInterval
     }
 
-    /// A paste that has been inserted and waits to be classified.
+    /// A paste that has been inserted and waits for its turn.
     private struct PendingPaste {
+        /// What `PasteClassifier` made of the paste, when it was asked.
+        enum Wrap {
+            /// Asked at once, when the paste was read (`endPaste`): the edit that wraps it, or nil to leave it plain. The
+            /// turn applies this edit when the text is the one that was looked at.
+            case decided(TextEdit?)
+            /// A paste too big to be looked at inside the paste's own turn (`PasteClassifier.earlyWrapLimit`): the turn asks.
+            case later
+        }
+
         /// Where the paste is in the text.
         let range: NSRange
         /// `editCount` right after the paste.
         let editCount: Int
         /// True when the paste went into a fenced block or into inline code.
         let isInCode: Bool
+        /// The wrap that was decided when the paste was read, or `.later`.
+        let wrap: Wrap
         /// The `paste-code` signpost interval, from the paste until the colours are on screen.
         let interval: OpenInterval
     }
@@ -357,6 +520,8 @@ final class NoteTextView: NSTextView {
     private func endPaste(_ start: PasteStart?) {
         pasteDepth -= 1
         guard let start else { return }
+        let breaks = pasteBreaks ?? (before: false, after: false)
+        pasteBreaks = nil
         if attachmentPasteWasInserted {
             attachmentPasteWasInserted = false
             return start.interval.endWhenIdle()
@@ -365,20 +530,46 @@ final class NoteTextView: NSTextView {
         // The text that came in is where the selection was and ends where the caret is. Anything else (nothing was pasted,
         // or AppKit did something else with the text) is left alone.
         guard start.canClassify, let length = textStorage?.length else { return start.interval.endWhenIdle() }
-        let pasted = NSRange(location: start.selection.location, length: length - start.length + start.selection.length)
+        // Everything that came in, less the line breaks that were put around the text next to a token.
+        let before = breaks.before ? 1 : 0
+        let after = breaks.after ? 1 : 0
+        let pasted = NSRange(
+            location: start.selection.location + before,
+            length: length - start.length + start.selection.length - before - after)
         guard pasted.length > 0, NSMaxRange(pasted) <= length,
             selectedRange() == NSRange(location: NSMaxRange(pasted), length: 0)
         else { return start.interval.endWhenIdle() }
 
         pendingPastes.append(
-            PendingPaste(range: pasted, editCount: editCount, isInCode: start.isInCode, interval: start.interval))
+            PendingPaste(
+                range: pasted, editCount: editCount, isInCode: start.isInCode,
+                wrap: decideWrap(of: pasted, start: start),
+                interval: start.interval))
         DispatchQueue.main.async { [weak self] in
             MainActor.assumeIsolated { self?.classifyNextPaste(attempt: 0) }
         }
     }
 
-    /// The oldest paste has had its turn: wraps it in a fence when it is code (`PasteClassifier`), and ends the `paste-code`
-    /// interval when the colours of the block are on screen, or at once when nothing is going to be coloured.
+    /// Looks at the paste that was just read, which `PasteClassifier.wrap` only needs its text for, and when it is going to be
+    /// wrapped asks the highlighter for the colours of the block to come (`CodeBlockStyler.prefetch`): the highlighting then
+    /// runs on its queue while the main thread waits for the turn of the wrap, and the block finds its colours when it
+    /// appears. A paste of more than `PasteClassifier.earlyWrapLimit` units is not looked at here: such a block is over the
+    /// highlighter's cap, so there are no colours to get ahead with, and the paste's own turn stays as short as the 50,000-line
+    /// paste of `LargeInsertTests` needs it to be.
+    private func decideWrap(of pasted: NSRange, start: PasteStart) -> PendingPaste.Wrap {
+        guard pasted.length <= PasteClassifier.earlyWrapLimit, let storage = textStorage,
+            NSMaxRange(pasted) <= storage.length
+        else { return .later }
+        let text = storage.string as NSString
+        let edit = PasteClassifier.wrap(
+            pasted: text.substring(with: pasted), at: pasted, in: text, isInCode: start.isInCode)
+        if let edit { styler.codeBlockStyler.prefetch(block: edit.replacement) }
+        return .decided(edit)
+    }
+
+    /// The oldest paste has had its turn: wraps it in a fence when it is code (`PasteClassifier`, decided when the paste was
+    /// read, `decideWrap`, unless it was too big for that), and ends the `paste-code` interval when the colours of the block
+    /// are on screen, or at once when nothing is going to be coloured.
     private func classifyNextPaste(attempt: Int) {
         guard let paste = pendingPastes.first else { return }
         // The undo group of the paste has to be closed first, or the wrap would be a part of it.
@@ -394,11 +585,17 @@ final class NoteTextView: NSTextView {
         guard editCount == paste.editCount, isEditable, let storage = textStorage,
             NSMaxRange(paste.range) <= storage.length
         else { return paste.interval.endWhenIdle() }
-        let text = storage.string as NSString
-        let pasted = text.substring(with: paste.range)
-        guard
-            let edit = PasteClassifier.wrap(pasted: pasted, at: paste.range, in: text, isInCode: paste.isInCode)
-        else { return paste.interval.endWhenIdle() }
+        // The text is the one that was looked at (`editCount` has not moved), so what was decided then still holds.
+        let decided: TextEdit?
+        switch paste.wrap {
+        case .decided(let edit):
+            decided = edit
+        case .later:
+            let text = storage.string as NSString
+            decided = PasteClassifier.wrap(
+                pasted: text.substring(with: paste.range), at: paste.range, in: text, isInCode: paste.isInCode)
+        }
+        guard let edit = decided else { return paste.interval.endWhenIdle() }
 
         applyAndReveal(edit)
         let interval = paste.interval
@@ -591,21 +788,29 @@ final class NoteTextView: NSTextView {
 
     // MARK: Drops
 
-    /// True when a drop of `pboard` would make attachments: the note can be edited and the pasteboard holds files, or an image
-    /// and no text (`wouldMakeAttachments(from:)`, which looks at the types and never at the data). Any other drop, text
+    /// True when a drop of `pboard` would make attachments or put the note's own text where it landed: the note can be edited
+    /// and the pasteboard holds files, or an image and no text (`wouldMakeAttachments(from:)`, which looks at the types and
+    /// never at the data), or the text of a copy that held a token (`AttachmentPasteboard.noteTextType`). Any other drop, text
     /// included, is the text view's own.
     func acceptsDrop(of pboard: NSPasteboard) -> Bool {
-        isEditable && wouldMakeAttachments(from: pboard)
+        isEditable && (wouldMakeAttachments(from: pboard) || hasNoteText(on: pboard))
     }
 
-    /// Makes attachments of what was dropped at `point` (in the coordinates of this view): the caret goes there, and the
-    /// attachments are inserted as a paste of them is. This is where the data of the drop is read, once. Returns false when
-    /// the drop is not an attachment drop, or when nothing could be read from it.
+    /// Puts what was dropped at `point` (in the coordinates of this view) in the note: the caret goes there first. The note's
+    /// own text of a copy that held a token is inserted as it was stored (`insertNoteText`), so a drag that moves text within
+    /// a note, or between two notes, keeps the attachments it holds; it comes before files, as in a paste. Otherwise the
+    /// attachments are made and inserted as a paste of them is, and a drop of the note's text that cannot be used here (into
+    /// code) is the plain text. This is where the data of the drop is read, once. Returns false when the drop is not one of
+    /// these, or when nothing could be read from it.
     func performDrop(of pboard: NSPasteboard, atViewPoint point: NSPoint) -> Bool {
-        guard acceptsDrop(of: pboard), let sources = attachmentSources(from: pboard) else { return false }
+        guard acceptsDrop(of: pboard) else { return false }
+        let sources = attachmentSources(from: pboard)
+        guard sources != nil || hasNoteText(on: pboard) else { return false }
         if window?.firstResponder !== self { window?.makeFirstResponder(self) }
         let length = textStorage?.length ?? 0
         setSelectedRange(NSRange(location: min(max(characterIndexForInsertion(at: point), 0), length), length: 0))
+        if insertNoteText(from: pboard) { return true }
+        guard let sources else { return readSelection(from: pboard, type: .string) }
         return insertAttachments(sources)
     }
 
@@ -768,7 +973,7 @@ final class NoteTextView: NSTextView {
     /// The stored file of the attachment drawn as `mark`, when there is one to open or take out: the line is a preview or a
     /// chip of a file, and the file is there. A missing attachment, one that is still being copied and one whose file went
     /// away have none.
-    private func storedFile(of mark: AttachmentMark) -> URL? {
+    func storedFile(of mark: AttachmentMark) -> URL? {
         guard mark.kind == .image || mark.kind == .file, let url = styler?.catalog?.fileURL(mark.id),
             FileManager.default.fileExists(atPath: url.path)
         else { return nil }
@@ -877,7 +1082,11 @@ final class NoteTextView: NSTextView {
     /// Tab on a list line indents it, and every list line of the selection (`ListEditing.indent`). On any other line it
     /// inserts a tab, as AppKit does.
     override func insertTab(_ sender: Any?) {
-        guard let edit = listEdit(ListEditing.indent) else { return super.insertTab(sender) }
+        guard let edit = listEdit(ListEditing.indent) else {
+            // A tab at an edge of a token line goes on a line of its own, as any typed character does.
+            _ = makeRoomAtTokenEdge(for: "\t", replacementRange: NSRange(location: NSNotFound, length: 0))
+            return super.insertTab(sender)
+        }
         applyAndReveal(edit)
     }
 
@@ -891,23 +1100,29 @@ final class NoteTextView: NSTextView {
     // MARK: Checkboxes
 
     /// A plain click inside the box of a checklist item ticks or unticks it, and goes no further: the caret stays where
-    /// it was, so the box can be clicked while typing somewhere else. A plain click on the language label of a code block
-    /// opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A plain click on
-    /// the preview or the chip of an attachment selects it, and a double-click opens its file (`pressAttachment`), in a note
-    /// that cannot be edited as well: a drag from it then takes the file out (`mouseDragged(with:)`). A ⌘-click on a
-    /// link opens it (`openURL`) and goes no further: it places no caret, and it also works in a note that cannot be
-    /// edited. Any other click, also one on a box, a label or an attachment with a modifier key held (⇧ extends the
-    /// selection) or in a note that cannot be edited, is the text view's own: a plain click on a link places the caret and
-    /// never opens anything.
+    /// it was, so the box can be clicked while typing somewhere else. The second click of a double-click on a box (and a
+    /// third) is taken and does nothing, so a double-click ticks the box once. A plain click on the language label of a
+    /// code block opens its menu and goes no further either (`showCodeBlockMenu`), unless the note cannot be edited. A
+    /// plain click on the preview or the chip of an attachment selects it, and a double-click opens its file
+    /// (`pressAttachment`), in a note that cannot be edited as well: a drag from it then takes the file out
+    /// (`mouseDragged(with:)`). A ⌘-click on a link opens it (`openURL`) and goes no further: it places no caret, and it
+    /// also works in a note that cannot be edited. Any other click, also one on a box, a label or an attachment with a
+    /// modifier key held (⇧ extends the selection) or in a note that cannot be edited, is the text view's own: a plain
+    /// click on a link places the caret and never opens anything.
     override func mouseDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
         attachmentPress = nil
-        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]),
-            toggleCheckbox(atViewPoint: point) || showCodeBlockMenu(atViewPoint: point)
+        if modifiers.isDisjoint(with: [.shift, .command, .option, .control]) {
+            // The second click of a double-click on a box is part of the gesture that the first one made: it would
+            // untick the box again, or select a word. It is taken, and does nothing (a click that is not the first of its
+            // series is not a toggle).
+            if event.clickCount > 1, isEditable, checkboxMarker(atViewPoint: point) != nil { return }
+            if toggleCheckbox(atViewPoint: point) || showCodeBlockMenu(atViewPoint: point)
                 || pressAttachment(with: event, atViewPoint: point)
-        {
-            return
+            {
+                return
+            }
         }
         if modifiers.contains(.command), let url = link(atViewPoint: point) {
             openURL(url)
@@ -939,6 +1154,16 @@ final class NoteTextView: NSTextView {
     @discardableResult
     func toggleCheckbox(atViewPoint point: NSPoint) -> Bool {
         guard isEditable, let marker = checkboxMarker(atViewPoint: point) else { return false }
+        return toggleCheckbox(at: marker)
+    }
+
+    /// Ticks or unticks the checkbox whose `[?]` is at `marker`, which a click on its box (above) and the context menu's
+    /// Mark as Checked (`toggleCheckboxFromMenu`) both come to. Returns false and does nothing when the view cannot be edited
+    /// or `marker` is no checkbox of the text any more. The selection is passed through, so the caret stays; the view takes
+    /// the keyboard, as a click in it does. One undo step.
+    @discardableResult
+    func toggleCheckbox(at marker: NSRange) -> Bool {
+        guard isEditable, styler.checkboxMarker(at: marker.location) == marker else { return false }
         let text = string as NSString
         var lineStart = 0
         var lineEnd = 0
@@ -1106,6 +1331,105 @@ final class NoteTextView: NSTextView {
         updateLinkCursor(atViewPoint: point, modifiers: event.modifierFlags)
     }
 
+    // MARK: Accessibility
+
+    /// What VoiceOver reads for `range`: the note as the editor shows it, with the words of the markers and tokens in the place
+    /// of their characters, "unchecked" for `[ ]`, "image, dashboard.png" for a token and "code block, Swift" for a fence, and
+    /// nothing for the stars of bold (`SpokenText`, plan 6 task 8). The words are not a text of their own: the accessibility
+    /// value is still the stored text (AppKit's own answer, which `SpokenTextTests.testAccessibilityValueIsTheStoredText`
+    /// holds to it), and a range and the caret that VoiceOver reports are the characters of that text.
+    override func accessibilityString(for range: NSRange) -> String? {
+        guard let storage = textStorage, range.location != NSNotFound, NSMaxRange(range) <= storage.length else {
+            return super.accessibilityString(for: range)
+        }
+        return SpokenText.spoken(storage, range: range)
+    }
+
+    /// The same words with attributes. A range that has no marker or token in it is AppKit's own answer, with every attribute
+    /// that it translates (the font, the colours, the underline of a link).
+    override func accessibilityAttributedString(for range: NSRange) -> NSAttributedString? {
+        guard let storage = textStorage, range.location != NSNotFound, NSMaxRange(range) <= storage.length else {
+            return super.accessibilityAttributedString(for: range)
+        }
+        let spoken = SpokenText.spoken(storage, range: range)
+        if spoken == (storage.string as NSString).substring(with: range),
+            let native = super.accessibilityAttributedString(for: range)
+        {
+            return native
+        }
+        return NSAttributedString(string: spoken)
+    }
+
+    // MARK: The context menu
+
+    /// The menu of a right click (or Control-click, or the menu key): what AppKit has for a text view, and in front of it,
+    /// where they apply to what is under the pointer, the items that make what a click does reachable without one
+    /// (`EditorContextMenu`: Mark as Checked, Open Link, Open Attachment and Code Block Language).
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let standard = super.menu(for: event)
+        let items = EditorContextMenu.items(for: self, atViewPoint: convert(event.locationInWindow, from: nil))
+        guard !items.isEmpty else { return standard }
+        let menu = standard ?? NSMenu()
+        for (index, item) in items.enumerated() { menu.insertItem(item, at: index) }
+        if menu.items.count > items.count { menu.insertItem(.separator(), at: items.count) }
+        return menu
+    }
+
+    /// The items of the context menu are the view's own and are always enabled as `EditorContextMenu` made them: AppKit
+    /// validates every item of this menu against the first responder, and how a text view answers for an action it does not
+    /// know is not documented.
+    override func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        let own = [
+            #selector(toggleCheckboxFromMenu(_:)), #selector(openLinkFromMenu(_:)),
+            #selector(openAttachmentFromMenu(_:)),
+        ]
+        if let action = item.action, own.contains(action) { return item.isEnabled }
+        return super.validateMenuItem(item)
+    }
+
+    /// Mark as Checked (or Unchecked) in the context menu: ticks the box that the menu was opened on, not the caret's line.
+    @objc func toggleCheckboxFromMenu(_ sender: Any?) {
+        guard let marker = ((sender as? NSMenuItem)?.representedObject as? NSValue)?.rangeValue else { return }
+        toggleCheckbox(at: marker)
+    }
+
+    /// Open Link in the context menu: the link that the menu was opened on, as a ⌘-click opens it.
+    @objc func openLinkFromMenu(_ sender: Any?) {
+        guard let url = (sender as? NSMenuItem)?.representedObject as? URL else { return }
+        openURL(url)
+    }
+
+    /// Open Attachment in the context menu: the stored file of the attachment that the menu was opened on, as a double-click
+    /// opens it.
+    @objc func openAttachmentFromMenu(_ sender: Any?) {
+        guard let mark = (sender as? NSMenuItem)?.representedObject as? AttachmentMark else { return }
+        openAttachment(mark)
+    }
+
+    /// The attachment whose token line is under `point` (in the coordinates of this view) and its mark, for the context menu:
+    /// the same rectangle that a click is judged by (`attachmentHit(atViewPoint:)`).
+    func attachmentMark(atViewPoint point: NSPoint) -> AttachmentMark? {
+        attachmentTarget(atViewPoint: point)?.mark
+    }
+
+    /// The code block that has the line under `point` (in the coordinates of this view), or nil: the point is not on a line of
+    /// a block, or its fence lines. Below the last line of the note it is nil, although the character nearest to it is the
+    /// block's. The label's own hit test is `labelHit(atViewPoint:)`.
+    func codeBlock(atViewPoint point: NSPoint) -> CodeBlockIndex.Block? {
+        guard let layoutManager, let container = textContainer, let styler, !styler.codeBlockList.isEmpty,
+            let length = textStorage?.length, length > 0
+        else { return nil }
+        let origin = textContainerOrigin
+        let local = NSPoint(x: point.x - origin.x, y: point.y - origin.y)
+        let index = layoutManager.characterIndex(
+            for: local, in: container, fractionOfDistanceBetweenInsertionPoints: nil)
+        guard index != NSNotFound, index < length else { return nil }
+        let glyph = layoutManager.glyphIndexForCharacter(at: index)
+        let line = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        guard local.y >= line.minY, local.y < line.maxY else { return nil }
+        return styler.codeBlock(containing: index)
+    }
+
     // MARK: The Format menu
 
     /// ⇧⌘L (Format > Checklist): the lines of the selection (the caret's line when there is none) become a checklist,
@@ -1123,13 +1447,15 @@ final class NoteTextView: NSTextView {
         apply(edit)
     }
 
-    /// ⌘B (Format > Bold): the selection becomes `**selection**`, or loses its stars when it is a bold run, or, with no
-    /// selection, `****` goes in with the caret between the pairs (`InlineEditing.toggleBold`). One undo step. It does
-    /// nothing but beep when the note cannot be edited, when a fenced block is under the selection (inside a block
-    /// every character is literal), for a rectangular selection and when the selection touches the token line of an
-    /// attachment (a selected attachment, a selection that holds one, or a caret at either end of its line: stars
-    /// there would make the token text, `InlineEditing.touchesAttachment`). The name is not `toggleBold`: that is
-    /// AppKit's action for the font panel, which a plain-text view must not answer.
+    /// ⌘B (Format > Bold): the selection becomes `**selection**`, or loses its stars when it is a bold run; each line of a
+    /// selection of several lines is its own run; a caret in a word makes the word bold, and in a run takes its stars off;
+    /// and with a caret anywhere else `****` goes in with the caret between the pairs (`InlineEditing.toggleBold`). One
+    /// undo step. It does nothing but beep when the note cannot be edited, when a fenced block is under the selection
+    /// (inside a block every character is literal), for a rectangular selection, when the selection touches the token
+    /// line of an attachment (a selected attachment, a selection that holds one, or a caret at either end of its line:
+    /// stars there would make the token text, `InlineEditing.touchesAttachment`) and when the rule has nothing to bold (a
+    /// selection of white space only). The name is not `toggleBold`: that is AppKit's action for the font panel, which a
+    /// plain-text view must not answer.
     @objc func toggleBoldMarkers(_ sender: Any?) {
         guard isEditable, selectedRanges.count == 1 else { return NSSound.beep() }
         let paragraphs = coveringParagraphs()
@@ -1138,8 +1464,25 @@ final class NoteTextView: NSTextView {
             !InlineEditing.touchesAttachment(
                 paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
         else { return NSSound.beep() }
-        applyAndReveal(
-            InlineEditing.toggleBold(
-                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection))
+        guard
+            let edit = InlineEditing.toggleBold(
+                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
+        else { return NSSound.beep() }
+        applyAndReveal(edit)
+    }
+
+    /// ⇧⌘U (Format > Mark as Checked): the checklist lines of the selection (the caret's line when there is none) are
+    /// ticked when any of them is open, and unticked when all are ticked (`ListEditing.toggleCheckmarks`). One undo step,
+    /// and the selection stays. It does nothing but beep when the note cannot be edited, when a fenced block is among the
+    /// lines (nothing in a block is a checkbox), for a rectangular selection and when none of the lines is a checkbox.
+    @objc func toggleCheckmarks(_ sender: Any?) {
+        guard isEditable, selectedRanges.count == 1 else { return NSSound.beep() }
+        let paragraphs = coveringParagraphs()
+        guard !styler.intersectsCodeBlock(paragraphs.range) else { return NSSound.beep() }
+        guard
+            let edit = ListEditing.toggleCheckmarks(
+                paragraphs: paragraphs.text, start: paragraphs.range.location, selection: paragraphs.selection)
+        else { return NSSound.beep() }
+        apply(edit)
     }
 }

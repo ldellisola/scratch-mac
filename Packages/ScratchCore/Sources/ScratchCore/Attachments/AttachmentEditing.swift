@@ -240,6 +240,115 @@ public enum AttachmentEditing {
             selection: NSRange(location: start + replacement.utf16.count + following, length: 0))
     }
 
+    // MARK: Typing and pasting next to a token
+
+    /// Whether a line break must go before and after `inserted`, put at `range` of `text` (typed, composed or pasted over
+    /// the range), so that no token line, in `text` or in `inserted`, shares its line with other characters (spec §6.4,
+    /// plan 6 task 6).
+    ///
+    /// - **`before`:** the text before `range` on its line is a token (the caret is at the end of a token line), or the
+    ///   first line of `inserted` is a token and something comes before it on its line.
+    /// - **`after`:** the text after `range` on its line is a token (the caret is at the start of a token line), or the last
+    ///   line of `inserted` is a token and something comes after it on its line.
+    ///
+    /// Neither is needed when `inserted` has a line break at that end already, when nothing is inserted (a deletion is not
+    /// this rule's), and when `range` starts in a literal position (a fenced block: `isLiteral` is asked for the position
+    /// and for the start of a token that is next to the range), where a token is text. A selection that replaces a whole
+    /// token line needs none, because the token goes. Only a token's length is read at each end of `inserted` and of the
+    /// range, whatever their size, so a paste of a million lines costs what a key does.
+    public static func lineBreaks(
+        inserting inserted: String, at range: NSRange, in text: NSString, isLiteral: (Int) -> Bool
+    ) -> (before: Bool, after: Bool) {
+        let length = text.length
+        guard range.location != NSNotFound, range.location >= 0, range.length >= 0, range.location <= length,
+            range.length <= length - range.location, !inserted.utf16.isEmpty, !isLiteral(range.location)
+        else { return (false, false) }
+        let start = range.location
+        let end = NSMaxRange(range)
+        let edges = insertedEdges(of: inserted)
+        // The token line at either end of the range: the same one for a caret.
+        let tokenAtStart = token(touching: start, in: text)
+        let tokenAtEnd = end == start ? tokenAtStart : token(touching: end, in: text)
+
+        var before = false
+        if !edges.startsWithBreak {
+            if let token = tokenAtStart, NSMaxRange(token.range) == start, !isLiteral(token.range.location) {
+                before = true
+            } else if edges.firstLineIsToken, start > 0, !isLineBreak(text.character(at: start - 1)) {
+                before = true
+            }
+        }
+        var after = false
+        if !edges.endsWithBreak {
+            if let token = tokenAtEnd, token.range.location == end, !isLiteral(token.range.location) {
+                after = true
+            } else if edges.lastLineIsToken, end < length, !isLineBreak(text.character(at: end)) {
+                after = true
+            }
+        }
+        return (before, after)
+    }
+
+    /// The edit that puts `inserted` over `selection` with the line breaks that ``lineBreaks(inserting:at:in:isLiteral:)``
+    /// asked for (`breaks`), as one edit: the text goes between them. The caret ends after the text and in front of the line
+    /// break that was put in after it, so that what is typed next is on the text's own line. When the text ends in a token
+    /// line the caret goes to the line after it, as it does for ``insertion(of:over:in:)``: right after the line break that
+    /// follows the token, or after one that is put in when the token ends the note, so the caret is never at the end of a
+    /// token line.
+    public static func textInsertion(
+        of inserted: String, breaks: (before: Bool, after: Bool), over selection: NSRange, in text: NSString
+    ) -> TextEdit {
+        let units = inserted.utf16.count
+        let bodyStart = selection.location + (breaks.before ? 1 : 0)
+        let bodyEnd = bodyStart + units
+        var replacement = (breaks.before ? "\n" : "") + inserted + (breaks.after ? "\n" : "")
+        var caret = bodyEnd
+        if units > 0, insertedEdges(of: inserted).lastLineIsToken {
+            let following = breakLength(at: NSMaxRange(selection), in: text)
+            if breaks.after {
+                caret = bodyEnd + 1
+            } else if following > 0 {
+                caret = bodyEnd + following
+            } else if NSMaxRange(selection) >= text.length {
+                replacement += "\n"
+                caret = bodyEnd + 1
+            }
+        }
+        return TextEdit(range: selection, replacement: replacement, selection: NSRange(location: caret, length: 0))
+    }
+
+    /// What the two ends of an inserted text are, read from at most a token's length of each (51 units, and one more to see
+    /// that a line is longer): whether it starts and ends with a line break, and whether its first and its last line are a
+    /// token (a line of any other length, or with any other character, is not).
+    private struct InsertedEdges {
+        var startsWithBreak = false
+        var endsWithBreak = false
+        var firstLineIsToken = false
+        var lastLineIsToken = false
+    }
+
+    private static func insertedEdges(of inserted: String) -> InsertedEdges {
+        var edges = InsertedEdges()
+        let size = AttachmentToken.lineLength
+        let units = inserted.utf16
+        let head = Array(units.prefix(size + 1))
+        // The last units, the last one first.
+        let tail = Array(units.reversed().prefix(size + 1))
+        guard let first = head.first, let last = tail.first else { return edges }
+        edges.startsWithBreak = isLineBreak(first)
+        edges.endsWithBreak = isLineBreak(last)
+        let firstLength = head.firstIndex(where: { isLineBreak($0) }) ?? head.count
+        if firstLength == size {
+            edges.firstLineIsToken = AttachmentToken.id(inLine: String(decoding: head[0..<size], as: UTF16.self)) != nil
+        }
+        let lastLength = tail.firstIndex(where: { isLineBreak($0) }) ?? tail.count
+        if lastLength == size {
+            edges.lastLineIsToken =
+                AttachmentToken.id(inLine: String(decoding: tail[0..<size].reversed(), as: UTF16.self)) != nil
+        }
+        return edges
+    }
+
     // MARK: Lines
 
     private static func isLineBreak(_ unit: UInt16) -> Bool {

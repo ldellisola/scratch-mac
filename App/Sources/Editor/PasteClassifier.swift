@@ -14,6 +14,12 @@ import ScratchCore
 /// or inline code), holds no fence line of its own, and is in no danger of pairing with a fence that is in the note
 /// already; and then `CodeDetector` has the last word.
 enum PasteClassifier {
+    /// The longest paste, in UTF-16 units, that `NoteTextView` looks at when it has read it (and not on the turn after), so
+    /// that the colours of the block it will wrap can be asked for at once (`CodeBlockStyler.prefetch`). It is the
+    /// highlighter's own cap: a block over it is never coloured, so a longer paste has nothing to get ahead with, and its
+    /// detection (a JSON document of up to a megabyte is read whole) stays out of the paste's own turn.
+    static let earlyWrapLimit = Highlighter.maximumLength
+
     /// The edit that wraps a paste that was just inserted at `range` of `text` (which has the paste in it) in a fence, or
     /// nil to leave it plain.
     ///

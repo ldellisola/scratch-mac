@@ -26,7 +26,8 @@ format:
 	swift format format --in-place --recursive Packages App
 
 # [linux] Run the tests for the scripts in scripts/ (the ci-results loop, the performance scripts, the version bump
-# check, the release notes, the release DMG and zip checks and the acknowledgements). Needs bash, git and python3.
+# check, the release notes, the release DMG and zip checks, the acknowledgements and the app icon's script). Needs bash,
+# git and python3, and Pillow for the icon (apt-get install python3-pil, or pip install pillow).
 script-test:
 	bash scripts/tests/test-ci-scripts.sh
 	bash scripts/tests/test-perf-check.sh
@@ -36,6 +37,7 @@ script-test:
 	bash scripts/tests/test-release-dmg.sh
 	bash scripts/tests/test-release-zip.sh
 	bash scripts/tests/test-acknowledgements.sh
+	python3 scripts/tests/test_make_app_icon.py
 
 # [linux] Wait for CI results on the ci-results branch: make ci-wait SHA=<sha> [JOBS="linux macos"].
 # CI_WAIT_TIMEOUT (seconds) bounds one wait. make exits 2 on any failure, so read the last line of output to tell a
@@ -69,7 +71,8 @@ app-test: project
 # The screenshots `make screenshots` writes, one PNG each into build/screenshots/. These names are the ones in
 # ScreenshotTests (a test attaches its screenshot under its name) and CI publishes them to ci-results.
 SCREENSHOT_NAMES := typical-light typical-dark empty-light huge-note-light search-light recently-deleted-light \
-  formatting-light formatting-dark code-light code-dark attachments-light attachments-dark
+  formatting-light formatting-dark code-light code-dark attachments-light attachments-dark \
+  typical-contrast-light code-contrast-dark about-light
 
 # [macOS] Render the key screens to PNG files in build/screenshots/<name>.png (SCREENSHOT_NAMES): run ScreenshotTests
 # only, export the attachments from the result bundle (build/results/screenshots.xcresult) into build/screenshots/raw,

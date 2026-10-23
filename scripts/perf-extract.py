@@ -3,33 +3,53 @@
 
     perf-extract.py <xcresult> <out.json> [--raw-dir DIR]
 
-Writes <out.json>, a flat JSON object of milliseconds that perf-check.py reads:
+Writes <out.json>, a flat JSON object that perf-check.py reads (milliseconds, except idle_cpu_pct and idle_wakeups):
 
-    {"launch_ms": ..., "keystroke_ms": ..., "scroll_frame_ms": ..., "switch_small_ms": ..., "switch_huge_ms": ...,
-     "paste_code_ms": ...}
+    {"launch_ms": ..., "launch_reference_ms": ..., "launch_overhead_ms": ..., "keystroke_ms": ...,
+     "switch_small_ms": ..., "switch_huge_ms": ..., "paste_code_ms": ..., "scroll_frame_ms": ...,
+     "idle_cpu_pct": ..., "idle_wakeups": ..., "launch_phase_<name>_ms": ...}
 
 Two sources, both read from <xcresult> with `xcrun xcresulttool`:
 
 - `get test-results metrics`: the XCTest metrics. launch_ms is LaunchPerfTests/testLaunch (XCTApplicationLaunchMetric),
-  keystroke_ms, switch_small_ms and switch_huge_ms are the signpost intervals `keystroke` and `switch-note` of the
-  EditorPerfTests tests, and paste_code_ms is the signpost interval `paste-code` of
+  launch_reference_ms is LaunchPerfTests/testReferenceLaunch (the same measurement of LaunchReference.app, an empty
+  AppKit app built by the same job: what a launch costs on this runner whatever the app does), keystroke_ms,
+  switch_small_ms and switch_huge_ms are the signpost intervals `keystroke` and `switch-note` of the EditorPerfTests
+  tests, and paste_code_ms is the signpost interval `paste-code` of
   CodePastePerfTests/testPasteFiveHundredLinesOfCode (a paste of 500 lines of code until its colours are on screen).
   A value is the median of that test's measurements, in milliseconds. The median, because
   a run on a shared virtual Mac now and then has one iteration that takes ten times as long (an outlier of 228 ms
   among keystrokes of 3 ms moved the mean by 6 ms), and a metric that such an iteration moves cannot be compared
   with a baseline.
-- `export attachments`: EditorPerfTests/testScrollHugeNote attaches the app's FrameMonitor report under the name
-  `scroll_frame_ms` (XCTest has no metric for the main thread's work per frame). scroll_frame_ms is its
-  `median_cpu_ms`: the median, over 300 frames, of the CPU time the main thread used for a frame. scroll_frame_wall_ms
-  (the median of the frames by the clock), scroll_frame_p95_ms and scroll_frame_max_ms (the 95th percentile and the
-  longest frame by CPU time) are for a person: no budget checks them. CPU time, because the clock time of a frame on
-  a shared virtual Mac is the main thread's work and its waiting for the window server and for other tenants, and that
-  varied between runs of the same build by a factor of five (a median of 1.5 to 9 ms).
+- Two numbers are worked out from the two launches, when both were measured (docs/decisions/0009, decision 2).
+  launch_difference_ms is launch_ms minus launch_reference_ms: what Scratch's launch costs above an empty app's, on this
+  runner today. It is for a person, because it grows and shrinks with the runner (181 to 432 ms in six runs of one app,
+  about 41% of launch_ms in five of them). launch_overhead_ms is that difference at the speed of a nominal runner, the
+  one on which the reference app launches in REFERENCE_NOMINAL_MS: launch_difference_ms x REFERENCE_NOMINAL_MS /
+  launch_reference_ms, which is (launch_ms / launch_reference_ms - 1) x REFERENCE_NOMINAL_MS. The reference app is the
+  yardstick of the runner's speed, so a slow runner does not make Scratch's own work look longer, and it is the
+  launch metric that gates.
+- `export attachments`: three tests attach a JSON report under a name.
+  - EditorPerfTests/testScrollHugeNote attaches the app's FrameMonitor report as `scroll_frame_ms` (XCTest has no
+    metric for the main thread's work per frame). scroll_frame_ms is its
+    `median_cpu_ms`: the median, over 300 frames, of the CPU time the main thread used for a frame. scroll_frame_wall_ms
+    (the median of the frames by the clock), scroll_frame_p95_ms and scroll_frame_max_ms (the 95th percentile and the
+    longest frame by CPU time) are for a person: no budget checks them. CPU time, because the clock time of a frame on
+    a shared virtual Mac is the main thread's work and its waiting for the window server and for other tenants, and that
+    varied between runs of the same build by a factor of five (a median of 1.5 to 9 ms).
+  - IdlePerfTests/testIdle attaches the app's IdleMonitor report as `idle_cpu`: idle_cpu_pct is its `cpu_pct` (the
+    app's CPU over 5 seconds of idle, as a percentage of one core) and idle_wakeups its `wakeups` (passes of the main
+    run loop in those seconds), which is for a person.
+  - LaunchPerfTests/testLaunch attaches `launch_phases`: the launch log's newest records (a JSON list, each with
+    `phases`: milliseconds from the start of the process to `main`, `storage`, `restore`, `window` and `firstFrame`).
+    launch_phase_<name>_ms is the median of a phase over the records. They are for a person too: they say where a
+    slow launch spent its time.
 
-A metric that is not found is left out of <out.json> with a warning on stderr, and perf-check.py fails the run for it.
-Nothing found at all is an error.
+A metric that is not found is left out of <out.json> with a warning on stderr, and perf-check.py fails the run for it
+when it has a budget. Nothing found at all is an error.
 
---raw-dir DIR keeps what was read (metrics.json, scroll_frame_ms.json), so that a result can be examined later.
+--raw-dir DIR keeps what was read (metrics.json, scroll_frame_ms.json, idle_cpu.json, launch_phases.json), so that a
+result can be examined later.
 --metrics-json FILE and --attachments-dir DIR stand in for the two `xcresulttool` calls (the tests of this script use
 them). Standard library only.
 
@@ -49,12 +69,14 @@ from pathlib import Path
 # An empty hint takes the test's launch metric, or else its first time metric.
 XCTEST_METRICS = {
     "launch_ms": ("LaunchPerfTests/testLaunch", "launch"),
+    "launch_reference_ms": ("LaunchPerfTests/testReferenceLaunch", "launch"),
     "keystroke_ms": ("EditorPerfTests/testKeystroke", "keystroke"),
     "switch_small_ms": ("EditorPerfTests/testSwitchToSmallNote", "switch-note"),
     "switch_huge_ms": ("EditorPerfTests/testSwitchToHugeNote", "switch-note"),
     "paste_code_ms": ("CodePastePerfTests/testPasteFiveHundredLinesOfCode", "paste-code"),
 }
-# The attachment of the scroll test: its name, and the keys of its JSON that are results: result key -> JSON key.
+# The attachments of the tests that report through the app's own monitors: the attachment's name, which a name that
+# the exported file starts with, and the keys of its JSON that are results: result key -> JSON key.
 SCROLL_KEY = "scroll_frame_ms"
 SCROLL_ATTACHMENT = "scroll_frame_ms"
 SCROLL_FIELDS = {
@@ -63,6 +85,18 @@ SCROLL_FIELDS = {
     "scroll_frame_p95_ms": "p95_cpu_ms",
     "scroll_frame_max_ms": "max_cpu_ms",
 }
+IDLE_KEY = "idle_cpu_pct"
+IDLE_ATTACHMENT = "idle_cpu"
+IDLE_FIELDS = {"idle_cpu_pct": "cpu_pct", "idle_wakeups": "wakeups"}
+PHASES_ATTACHMENT = "launch_phases"
+# The phases of a launch, in the order they happen (LaunchTimer.phases). A phase that is not in the list follows them.
+PHASE_ORDER = ["main", "storage", "restore", "window", "firstFrame"]
+OVERHEAD_KEY = "launch_overhead_ms"
+DIFFERENCE_KEY = "launch_difference_ms"
+# The launch of the reference app, in milliseconds, on the runner that launch_overhead_ms is stated for (ADR 0009). Any
+# number scales the metric and nothing else: this one puts what Scratch costs on CI's runners (about 1.7 times the
+# reference's launch) near the budget of 150 ms, and the hard limit of 300 ms at 2.5 times, which no run has come near.
+REFERENCE_NOMINAL_MS = 200.0
 
 TO_MILLISECONDS = {
     "s": 1000.0, "sec": 1000.0, "secs": 1000.0, "second": 1000.0, "seconds": 1000.0,
@@ -145,12 +179,12 @@ def extract_xctest_metrics(metrics_json: object) -> dict[str, float]:
     return results
 
 
-def extract_scroll(attachments_dir: Path, raw_dir: Path | None) -> dict[str, float]:
-    """The numbers of the last attachment named scroll_frame_ms that has the median CPU time (SCROLL_FIELDS), or {}."""
+def attachment_files(attachments_dir: Path, name: str) -> list[Path]:
+    """The exported files of the attachments whose name starts with `name`, in the manifest's order."""
     try:
         manifest = json.loads((attachments_dir / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return {}
+        return []
     if isinstance(manifest, dict):
         manifest = manifest.get("tests") or manifest.get("attachments") or []
     files = []
@@ -158,18 +192,73 @@ def extract_scroll(attachments_dir: Path, raw_dir: Path | None) -> dict[str, flo
         for attachment in entry.get("attachments", []) if isinstance(entry, dict) else []:
             suggested = str(attachment.get("suggestedHumanReadableName", ""))
             source = attachments_dir / str(attachment.get("exportedFileName", ""))
-            if suggested.startswith(SCROLL_ATTACHMENT) and source.is_file():
+            if suggested.startswith(name) and source.is_file():
                 files.append(source)
-    for source in reversed(files):
+    return files
+
+
+def extract_fields(
+    attachments_dir: Path, name: str, fields: dict[str, str], required: list[str], raw_dir: Path | None
+) -> dict[str, float]:
+    """The numbers of the last attachment called `name` that is a JSON object holding `fields` (result key -> JSON key).
+
+    The result keys in `required` must be there as numbers for the attachment to count, else the one before it is
+    tried: the other fields are taken when they are numbers. Returns {} without such an attachment.
+    """
+    for source in reversed(attachment_files(attachments_dir, name)):
         try:
             report = json.loads(source.read_text(encoding="utf-8"))
-            numbers = {key: report[field] for key, field in SCROLL_FIELDS.items() if field in report}
-        except (OSError, ValueError, TypeError):
+            numbers = {key: report[field] for key, field in fields.items() if field in report}
+        except (OSError, ValueError, TypeError, KeyError):
             continue
-        if is_number(numbers.get(SCROLL_KEY)) and all(is_number(value) for value in numbers.values()):
+        if all(is_number(numbers.get(key)) for key in required):
             if raw_dir is not None:
-                shutil.copyfile(source, raw_dir / "scroll_frame_ms.json")
-            return {key: float(value) for key, value in numbers.items()}
+                shutil.copyfile(source, raw_dir / f"{name}.json")
+            return {key: float(value) for key, value in numbers.items() if is_number(value)}
+    return {}
+
+
+def extract_scroll(attachments_dir: Path, raw_dir: Path | None) -> dict[str, float]:
+    """The numbers of the last attachment named scroll_frame_ms that has all of SCROLL_FIELDS, or {}."""
+    return extract_fields(attachments_dir, SCROLL_ATTACHMENT, SCROLL_FIELDS, list(SCROLL_FIELDS), raw_dir)
+
+
+def extract_idle(attachments_dir: Path, raw_dir: Path | None) -> dict[str, float]:
+    """The numbers of the last attachment named idle_cpu that has a CPU percentage (IDLE_FIELDS), or {}."""
+    return extract_fields(attachments_dir, IDLE_ATTACHMENT, IDLE_FIELDS, [IDLE_KEY], raw_dir)
+
+
+def phase_order(name: str) -> tuple[int, str]:
+    return (PHASE_ORDER.index(name) if name in PHASE_ORDER else len(PHASE_ORDER), name)
+
+
+def extract_phases(attachments_dir: Path, raw_dir: Path | None) -> dict[str, float]:
+    """launch_phase_<name>_ms: the median of each phase over the records of the last launch_phases attachment, or {}.
+
+    The attachment is the launch log's newest records as a JSON list (or an object with the list under `records` or
+    `launchTimes`), each with `phases`, a name -> milliseconds object.
+    """
+    for source in reversed(attachment_files(attachments_dir, PHASES_ATTACHMENT)):
+        try:
+            records = json.loads(source.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(records, dict):
+            records = records.get("records") or records.get("launchTimes")
+        if not isinstance(records, list):
+            continue
+        values: dict[str, list[float]] = {}
+        for record in records:
+            phases = record.get("phases") if isinstance(record, dict) else None
+            for name, milliseconds in (phases.items() if isinstance(phases, dict) else []):
+                if is_number(milliseconds):
+                    values.setdefault(str(name), []).append(float(milliseconds))
+        if values:
+            if raw_dir is not None:
+                shutil.copyfile(source, raw_dir / f"{PHASES_ATTACHMENT}.json")
+            return {
+                f"launch_phase_{name}_ms": statistics.median(values[name]) for name in sorted(values, key=phase_order)
+            }
     return {}
 
 
@@ -210,6 +299,16 @@ def main() -> int:
             raise SourceError(f"the metrics are not JSON: {error}") from error
 
         results = extract_xctest_metrics(metrics_json)
+        if results.get("launch_ms") is not None and results.get("launch_reference_ms", 0) > 0:
+            difference = results["launch_ms"] - results["launch_reference_ms"]
+            results[DIFFERENCE_KEY] = difference
+            results[OVERHEAD_KEY] = difference * REFERENCE_NOMINAL_MS / results["launch_reference_ms"]
+        else:
+            print(
+                f"perf-extract.py: warning: no measurement for {OVERHEAD_KEY} "
+                "(it needs launch_ms and launch_reference_ms)",
+                file=sys.stderr,
+            )
 
         with tempfile.TemporaryDirectory() as scratch:
             if args.attachments_dir is not None:
@@ -218,12 +317,27 @@ def main() -> int:
                 attachments_dir = Path(scratch)
                 run_xcresulttool("export", "attachments", "--path", str(args.xcresult), "--output-path", scratch)
             scroll = extract_scroll(attachments_dir, args.raw_dir)
+            idle = extract_idle(attachments_dir, args.raw_dir)
+            phases = extract_phases(attachments_dir, args.raw_dir)
         if SCROLL_KEY not in scroll:
             print(
                 f"perf-extract.py: warning: no measurement for {SCROLL_KEY} (no attachment {SCROLL_ATTACHMENT})",
                 file=sys.stderr,
             )
+        if IDLE_KEY not in idle:
+            print(
+                f"perf-extract.py: warning: no measurement for {IDLE_KEY} (no attachment {IDLE_ATTACHMENT})",
+                file=sys.stderr,
+            )
+        if not phases:
+            print(
+                "perf-extract.py: warning: no measurement for launch_phase_<name>_ms "
+                f"(no attachment {PHASES_ATTACHMENT})",
+                file=sys.stderr,
+            )
         results.update(scroll)
+        results.update(idle)
+        results.update(phases)
     except SourceError as error:
         print(f"perf-extract.py: {error}", file=sys.stderr)
         return 1
@@ -231,7 +345,12 @@ def main() -> int:
     if not results:
         print("perf-extract.py: no performance numbers found in the result bundle", file=sys.stderr)
         return 1
-    ordered = {key: round(results[key], 3) for key in [*XCTEST_METRICS, *SCROLL_FIELDS] if key in results}
+    keys = [
+        "launch_ms", "launch_reference_ms", DIFFERENCE_KEY, OVERHEAD_KEY,
+        *(key for key in XCTEST_METRICS if key not in ("launch_ms", "launch_reference_ms")),
+        *SCROLL_FIELDS, *IDLE_FIELDS, *phases,
+    ]  # fmt: skip
+    ordered = {key: round(results[key], 3) for key in keys if key in results}
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(ordered, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {args.out}: {json.dumps(ordered)}")

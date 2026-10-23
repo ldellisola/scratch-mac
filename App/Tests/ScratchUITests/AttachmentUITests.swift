@@ -116,6 +116,37 @@ final class AttachmentUITests: XCTestCase {
         waitForCopy(of: id(of: token), in: relaunched)
     }
 
+    // MARK: Typing next to an attachment (plan 6 task 6)
+
+    /// Review Focus 2, with real keys: ← from the line after a pasted image goes to the end of the token line, and a character
+    /// typed there goes on a line of its own, so the token is still a token (and its file is still there). ⌘Z never leaves a
+    /// half of a token, whether it takes back the text only or the text and the line break with it.
+    func testTypingNextToAnImageKeepsIt() throws {
+        continueAfterFailure = false
+        let (app, editor) = launchEditor()
+        try putImageOnPasteboard()
+        app.typeKey("v", modifierFlags: .command)
+        let pasted = UITestSupport.wait { self.tokens(in: self.text(of: editor)).count == 1 }
+        XCTAssertTrue(pasted, "⌘V of an image makes one token: \(text(of: editor).debugDescription)")
+        let token = try XCTUnwrap(tokens(in: text(of: editor)).first)
+        waitForCopy(of: id(of: token), in: app)
+
+        app.typeKey(.leftArrow, modifierFlags: [])
+        editor.typeText("x")
+
+        let typed = UITestSupport.wait { self.text(of: editor).contains("x") }
+        XCTAssertTrue(typed, "the character is typed: \(text(of: editor).debugDescription)")
+        XCTAssertEqual(text(of: editor), token + "\nx\n", "it is on the line below the token")
+        XCTAssertEqual(tokens(in: text(of: editor)), [token], "the token is still a token")
+        waitForCopy(of: id(of: token), in: app)
+
+        app.typeKey("z", modifierFlags: .command)
+        let undone = UITestSupport.wait { !self.text(of: editor).contains("x") }
+        XCTAssertTrue(undone, "⌘Z takes the character back: \(text(of: editor).debugDescription)")
+        XCTAssertEqual(tokens(in: text(of: editor)), [token], "and the token is whole")
+        XCTAssertTrue(text(of: editor).hasPrefix(token + "\n"))
+    }
+
     // MARK: Deleting and undoing
 
     /// Review Focus 1: Backspace once selects the attachment, a second press deletes it, and ⌘Z after the autosave brings

@@ -260,8 +260,10 @@ final class AttachmentCopyTests: XCTestCase {
         isHeld = false
     }
 
-    /// Review Focus: pasting what was copied makes a new attachment, with a copy of its own of the same bytes. The original is
-    /// still there, in the note it came from.
+    /// Pasting what was copied into a store that does not know the attachment (the note text names an id with no row there)
+    /// makes a new attachment from the file on the pasteboard, with a copy of its own of the same bytes. The original is
+    /// still there, in the note it came from. (Into the store that knows it, the paste keeps the attachment: plan 6 task 6,
+    /// `testPastingCopiedTextWithATokenKeepsTheAttachment`.)
     func testPastingCopiedAttachmentMakesANewOne() throws {
         let (source, original) = try makeHost(.text)
         defer { source.cleanUp() }
@@ -289,14 +291,12 @@ final class AttachmentCopyTests: XCTestCase {
         XCTAssertFalse(samePath(copiedFile, originalFile), "a copy of its own")
         XCTAssertEqual(try Data(contentsOf: originalFile), Self.planBytes, "the original is untouched")
 
-        // And into the same note: another attachment, and not the same one twice.
+        // And into the same note, where the attachment is known: the very same attachment again, and no new copy (the
+        // private type of the note's text comes before the file, plan 6 task 6).
         source.textView.setSelectedRange(NSRange(location: source.text.utf16.count, length: 0))
         XCTAssertTrue(source.textView.readSelection(from: pasteboard))
         source.waitForCopies()
-        let both = source.tokenIDs
-        XCTAssertEqual(both.count, 2)
-        XCTAssertEqual(Set(both).count, 2, "two ids")
-        XCTAssertEqual(both.first, original)
+        XCTAssertEqual(source.tokenIDs, [original, original], "two tokens of one attachment")
     }
 
     /// An image that was copied is pasted as an image attachment: the file on the pasteboard wins over the image data.
@@ -321,6 +321,340 @@ final class AttachmentCopyTests: XCTestCase {
         XCTAssertEqual(
             try Data(contentsOf: other.storage.attachments.fileURL(for: row)),
             try Data(contentsOf: try storedFile(original, in: source)))
+    }
+
+    // MARK: The note's own text (plan 6 task 6)
+    //
+    // docs/features/attachments.md ("Copying"): Copy, Cut and a drag of a selection that holds a token also write the private
+    // type `AttachmentPasteboard.noteTextType`, the selection exactly as stored, and Paste and a drop into Scratch read it
+    // first. Other applications still see plain text only.
+
+    private let noteTextType = AttachmentPasteboard.noteTextType
+
+    /// Fails unless `pasteboard` holds plain text and nothing else: no private type, no rich text, no file, no image.
+    private func assertPlainTextOnly(
+        _ pasteboard: NSPasteboard, _ message: String, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        let types = pasteboard.types ?? []
+        XCTAssertTrue(types.contains(.string), "\(message): pasteboard types: \(types)", file: file, line: line)
+        for other in [noteTextType, .rtf, .rtfd, .html, .fileURL, .png, .tiff] {
+            XCTAssertFalse(types.contains(other), "\(message): \(other) in \(types)", file: file, line: line)
+        }
+    }
+
+    /// The point 1 pt inside the left edge of the character at `index`, in the coordinates of the text view.
+    private func pointOfCharacter(_ index: Int, in host: AttachmentTestHost) throws -> NSPoint {
+        let view = host.textView
+        let layoutManager = try XCTUnwrap(view.layoutManager)
+        let container = try XCTUnwrap(view.textContainer)
+        layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: host.text.utf16.count))
+        let glyphs = layoutManager.glyphRange(
+            forCharacterRange: NSRange(location: index, length: 1), actualCharacterRange: nil)
+        let box = layoutManager.boundingRect(forGlyphRange: glyphs, in: container)
+        let origin = view.textContainerOrigin
+        return NSPoint(x: origin.x + box.minX + 1, y: origin.y + box.midY)
+    }
+
+    /// Review Focus 2: a selection that holds a token also writes the note's text as stored, and only the private type is
+    /// more than plain text. The plain text is still the names.
+    func testCopyWithATokenWritesNoteText() throws {
+        let (host, id) = try makeHost()
+        defer { host.cleanUp() }
+        let view = host.textView
+        let token = AttachmentToken.line(for: id)
+        view.setSelectedRange(NSRange(location: 0, length: host.text.utf16.count))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(view.writeSelection(to: pasteboard, types: view.writablePasteboardTypes))
+
+        XCTAssertEqual(pasteboard.string(forType: noteTextType), "before\n\(token)\nafter", "the selection as stored")
+        XCTAssertEqual(pasteboard.string(forType: .string), "before\nrollback-plan.txt\nafter", "others see names")
+        let types = pasteboard.types ?? []
+        XCTAssertTrue(types.contains(.string) && types.contains(noteTextType), "pasteboard types: \(types)")
+        for rich in [NSPasteboard.PasteboardType.rtf, .rtfd, .html, .fileURL, .png, .tiff] {
+            XCTAssertFalse(types.contains(rich), "no \(rich) for a selection of several lines: \(types)")
+        }
+
+        // Exactly one attachment, selected whole: the same item holds the file, and the note's text too.
+        view.setSelectedRange(host.tokenRange(id))
+        XCTAssertTrue(view.writeSelection(to: pasteboard, types: view.writablePasteboardTypes))
+        XCTAssertEqual(pasteboard.string(forType: noteTextType), token)
+        XCTAssertEqual(pasteboard.string(forType: .string), "rollback-plan.txt")
+        XCTAssertEqual(pasteboardURLs(pasteboard).count, 1, "and its file")
+    }
+
+    /// The private type is written only when the selection holds a token: plain text is still plain text and nothing else.
+    func testCopyWithoutATokenWritesOnlyPlainText() throws {
+        let (host, id) = try makeHost()
+        defer { host.cleanUp() }
+        let view = host.textView
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+
+        // The line above the token, up to the start of the token line, and the line below it.
+        for range in [
+            NSRange(location: 0, length: 7), NSRange(location: 7 + AttachmentToken.lineLength + 1, length: 5),
+        ] {
+            view.setSelectedRange(range)
+            XCTAssertEqual(view.selectedRange(), range)
+            XCTAssertTrue(view.writeSelection(to: pasteboard, types: view.writablePasteboardTypes))
+            assertPlainTextOnly(pasteboard, "a selection that holds no token, \(range)")
+            XCTAssertNil(pasteboard.string(forType: noteTextType))
+        }
+        XCTAssertEqual(host.tokenIDs, [id])
+    }
+
+    /// A token in a code block is text: copied as typed, with nothing more than text.
+    func testCopyOfATokenInACodeBlockWritesOnlyPlainText() throws {
+        let token = AttachmentToken.line(for: AttachmentID(rawValue: "6f9619ff-8b86-4d11-b42d-00c04fc964ff"))
+        let text = "```\n\(token)\n```"
+        let host = try AttachmentTestHost(text: text)
+        defer { host.cleanUp() }
+        host.textView.setSelectedRange(NSRange(location: 0, length: text.utf16.count))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.writeSelection(to: pasteboard, types: [.string]))
+
+        assertPlainTextOnly(pasteboard, "a token in a code block")
+        XCTAssertEqual(pasteboard.string(forType: .string), text)
+    }
+
+    /// Review Focus 2: pasting what was copied into another note keeps the attachment: the same id in both notes, drawn as
+    /// what it is, and no new copy of the file.
+    func testPastingCopiedTextWithATokenKeepsTheAttachment() throws {
+        let (host, id) = try makeHost(.image)
+        defer { host.cleanUp() }
+        let view = host.textView
+        let token = AttachmentToken.line(for: id)
+        view.setSelectedRange(NSRange(location: 0, length: host.text.utf16.count))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(view.writeSelection(to: pasteboard, types: [.string]))
+
+        // Another note, in the same editor and the same storage.
+        let other = Note(id: NoteID.make(), title: "", body: "", createdAt: Date(), modifiedAt: Date())
+        let tab = TabState(noteID: other.id, selection: 0, scrollY: 0, scrollAnchor: nil)
+        host.editor.show(other, tab: tab, undoManager: UndoManager(), isReadOnly: false)
+        host.editor.view.layoutSubtreeIfNeeded()
+        XCTAssertEqual(host.text, "")
+
+        XCTAssertTrue(view.readSelection(from: pasteboard))
+        host.waitForCopies()
+
+        XCTAssertEqual(host.text, "before\n\(token)\nafter", "the text as it was stored, not the file's name")
+        XCTAssertEqual(host.tokenIDs, [id], "the same attachment")
+        host.spin(until: {
+            let mark =
+                view.textStorage?.attribute(
+                    .scratchAttachment, at: host.tokenRange(id).location, effectiveRange: nil) as? AttachmentMark
+            return mark?.kind == .image
+        })
+        let mark =
+            view.textStorage?.attribute(.scratchAttachment, at: host.tokenRange(id).location, effectiveRange: nil)
+            as? AttachmentMark
+        XCTAssertEqual(mark?.kind, .image, "it is drawn as its image")
+        XCTAssertEqual(host.importer.pendingCopies, 0, "nothing was copied again")
+    }
+
+    /// The same for Paste as plain text, which is the same as Paste (spec §6.5), through `readSelection(from:type:)`, which is
+    /// what AppKit calls for a drop that it handles itself.
+    func testReadingPlainTextOfAPasteboardThatHasNoteTextReadsNoteText() throws {
+        let (host, id) = try makeHost()
+        defer { host.cleanUp() }
+        let view = host.textView
+        let token = AttachmentToken.line(for: id)
+        view.setSelectedRange(host.tokenRange(id))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(view.writeSelection(to: pasteboard, types: [.string]))
+        view.setSelectedRange(NSRange(location: 0, length: 0))
+
+        XCTAssertTrue(view.readSelection(from: pasteboard, type: .string))
+
+        XCTAssertEqual(host.text, "\(token)\nbefore\n\(token)\nafter", "above \"before\"")
+        XCTAssertEqual(host.tokenIDs, [id, id])
+    }
+
+    /// Review Focus 2: a drag that moves text within a note, as far as the drop goes: the drop inserts the note's text as
+    /// stored where it landed, so the token is the same and a name of a file is never put in its place.
+    func testDroppingDraggedTextWithATokenKeepsTheToken() throws {
+        let (host, id) = try makeHost()
+        defer { host.cleanUp() }
+        let view = host.textView
+        let token = AttachmentToken.line(for: id)
+        let size = AttachmentToken.lineLength
+        view.setSelectedRange(NSRange(location: 0, length: 7 + size))  // "before", the line break and the token
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 0, length: 7 + size))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(view.writeSelection(to: pasteboard, types: view.writablePasteboardTypes))
+        XCTAssertEqual(pasteboard.string(forType: .string), "before\nrollback-plan.txt")
+        let point = try pointOfCharacter(7 + size + 1, in: host)  // the "a" of "after"
+        XCTAssertTrue(view.acceptsDrop(of: pasteboard), "the note's text is a drop that Scratch takes")
+
+        XCTAssertTrue(view.performDrop(of: pasteboard, atViewPoint: point))
+
+        XCTAssertEqual(host.text, "before\n\(token)\nbefore\n\(token)\nafter")
+        XCTAssertEqual(host.tokenIDs, [id, id])
+        XCTAssertEqual(host.importer.pendingCopies, 0)
+    }
+
+    /// One attachment, selected whole, carries its file, its image and the note's text. Dropped in Scratch it is the same
+    /// attachment, with no new copy: the note's text comes before the file.
+    func testDropOfOneSelectedAttachmentKeepsItsId() throws {
+        let (host, id) = try makeHost(.image)
+        defer { host.cleanUp() }
+        let view = host.textView
+        let token = AttachmentToken.line(for: id)
+        view.setSelectedRange(host.tokenRange(id))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(view.writeSelection(to: pasteboard, types: view.writablePasteboardTypes))
+        XCTAssertEqual(pasteboardURLs(pasteboard).count, 1, "its file is on the pasteboard too")
+        let point = try pointOfCharacter(7 + AttachmentToken.lineLength + 1, in: host)
+
+        XCTAssertTrue(view.performDrop(of: pasteboard, atViewPoint: point))
+
+        XCTAssertEqual(host.text, "before\n\(token)\n\(token)\nafter")
+        XCTAssertEqual(host.tokenIDs, [id, id])
+        XCTAssertEqual(host.importer.pendingCopies, 0, "no new attachment")
+    }
+
+    /// Into code a block is literal: the plain text, with the names, goes in, as before. The note's text is not used.
+    func testNoteTextIntoCodeInsertsNames() throws {
+        let note = "```\nx\n```\nbefore\nafter"
+        let (host, id) = try makeHost(text: note, caret: (note as NSString).range(of: "after").location)
+        defer { host.cleanUp() }
+        let view = host.textView
+        XCTAssertEqual(host.text, "```\nx\n```\nbefore\n\(AttachmentToken.line(for: id))\nafter")
+        let start = (host.text as NSString).range(of: "before").location
+        view.setSelectedRange(NSRange(location: start, length: host.text.utf16.count - start))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(view.writeSelection(to: pasteboard, types: [.string]))
+        XCTAssertNotNil(pasteboard.string(forType: noteTextType))
+        view.setSelectedRange(NSRange(location: 5, length: 0))
+        XCTAssertTrue(view.styler.isInCodeBlock(5), "the caret is in the block")
+
+        XCTAssertTrue(view.readSelection(from: pasteboard))
+
+        XCTAssertTrue(
+            host.text.hasPrefix("```\nxbefore\nrollback-plan.txt\nafter\n```"), "the names, as text: \(host.text)")
+        XCTAssertEqual(host.tokenIDs, [id], "no new token")
+    }
+
+    /// A note's text that names an attachment this store does not know is not used: it would be a missing attachment, and
+    /// the rest of the pasteboard, the plain text here, is what is pasted.
+    func testNoteTextOfAnUnknownAttachmentPastesThePlainText() throws {
+        let host = try AttachmentTestHost(text: "")
+        defer { host.cleanUp() }
+        let unknown = AttachmentToken.line(for: AttachmentID(rawValue: "11111111-2222-4333-8444-555555555555"))
+        let pasteboard = host.pasteboard(text: "report.txt")
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.addTypes([noteTextType], owner: nil)
+        XCTAssertTrue(pasteboard.setString(unknown, forType: noteTextType))
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, "report.txt")
+        XCTAssertTrue(host.tokenIDs.isEmpty)
+    }
+
+    /// A note that cannot be edited takes no note text either.
+    func testReadOnlyNoteTakesNoNoteText() throws {
+        let (source, id) = try makeHost()
+        defer { source.cleanUp() }
+        source.textView.setSelectedRange(source.tokenRange(id))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(source.textView.writeSelection(to: pasteboard, types: [.string]))
+        source.editor.setReadOnly(true)
+        let before = source.text
+
+        XCTAssertFalse(source.textView.readSelection(from: pasteboard))
+        XCTAssertFalse(source.textView.acceptsDrop(of: pasteboard))
+
+        XCTAssertEqual(source.text, before)
+    }
+
+    // MARK: A copied image outlives Scratch (plan 6 task 6)
+
+    /// Stands in for the provider of a copied image and notes that it was asked for data.
+    private nonisolated final class WatchingProvider: NSObject, NSPasteboardItemDataProvider {
+        var wasAsked = false
+
+        nonisolated func pasteboard(
+            _ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType
+        ) {
+            wasAsked = true
+        }
+    }
+
+    /// Quitting while the pasteboard still holds the copy of an image: the copy is written again with the PNG and the TIFF in
+    /// place of the promise, which the provider would not be there to keep. Nothing asks the provider.
+    func testMaterializeWritesTheImageData() throws {
+        let (host, id) = try makeHost(.image)
+        defer { host.cleanUp() }
+        let view = host.textView
+        let watcher = WatchingProvider()
+        let original = AttachmentPasteboard.makeImageProvider
+        AttachmentPasteboard.makeImageProvider = { _ in watcher }
+        defer { AttachmentPasteboard.makeImageProvider = original }
+        view.setSelectedRange(host.tokenRange(id))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(view.writeSelection(to: pasteboard, types: view.writablePasteboardTypes))
+        XCTAssertTrue(pasteboard.types?.contains(.png) ?? false, "the image is promised")
+
+        XCTAssertTrue(AttachmentPasteboard.materialize(on: pasteboard))
+
+        let png = try XCTUnwrap(pasteboard.data(forType: .png), "the PNG is on the pasteboard")
+        XCTAssertEqual(Array(png.prefix(4)), Self.pngSignature)
+        let tiff = try XCTUnwrap(pasteboard.data(forType: .tiff), "and the TIFF")
+        XCTAssertEqual(NSBitmapImageRep(data: tiff)?.pixelsWide, 64)
+        XCTAssertFalse(watcher.wasAsked, "the data was not made by the promise")
+        XCTAssertEqual(pasteboard.string(forType: .string), "picture.png", "the rest of the item is as it was")
+        XCTAssertEqual(pasteboard.string(forType: noteTextType), AttachmentToken.line(for: id))
+        let urls = pasteboardURLs(pasteboard)
+        XCTAssertEqual(urls.count, 1)
+        let stored = try storedFile(id, in: host)
+        XCTAssertTrue(urls.first.map { samePath($0, stored) } ?? false, "the file's URL is as it was: \(urls)")
+        XCTAssertFalse(AttachmentPasteboard.materialize(on: pasteboard), "once: the pasteboard holds the data now")
+    }
+
+    /// A pasteboard that something else wrote since the copy is not Scratch's to write again.
+    func testMaterializeLeavesAPasteboardThatChangedAlone() throws {
+        let (host, id) = try makeHost(.image)
+        defer { host.cleanUp() }
+        host.textView.setSelectedRange(host.tokenRange(id))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(host.textView.writeSelection(to: pasteboard, types: [.string]))
+        _ = pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setString("something else", forType: .string))
+
+        XCTAssertFalse(AttachmentPasteboard.materialize(on: pasteboard))
+
+        XCTAssertEqual(pasteboard.string(forType: .string), "something else")
+        XCTAssertNil(pasteboard.data(forType: .png))
+    }
+
+    /// Only the copy of an image has a promise to keep: a file's URL stays good after Scratch quits, and text is text.
+    func testMaterializeHasNothingToDoForAFileOrText() throws {
+        let (host, id) = try makeHost(.text)
+        defer { host.cleanUp() }
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        host.textView.setSelectedRange(host.tokenRange(id))
+        XCTAssertTrue(host.textView.writeSelection(to: pasteboard, types: [.string]))
+        XCTAssertFalse(AttachmentPasteboard.materialize(on: pasteboard), "a file")
+
+        host.textView.setSelectedRange(NSRange(location: 0, length: 6))
+        XCTAssertTrue(host.textView.writeSelection(to: pasteboard, types: [.string]))
+        XCTAssertFalse(AttachmentPasteboard.materialize(on: pasteboard), "text")
+        XCTAssertEqual(pasteboard.string(forType: .string), "before")
     }
 
     // MARK: Hitting an attachment

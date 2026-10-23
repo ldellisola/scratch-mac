@@ -21,7 +21,7 @@ extension SchemaError: LocalizedError {
 /// The version lives in the database file as `PRAGMA user_version`. To change the schema, add a `migrateToVN` step
 /// to ``migrate(_:)``, raise ``currentVersion`` and add a test. Never edit an existing step.
 public enum Schema {
-    public static let currentVersion = 3
+    public static let currentVersion = 4
 
     /// Brings `db` up to ``currentVersion`` in one transaction. It does nothing when `db` is already there.
     ///
@@ -38,6 +38,7 @@ public enum Schema {
             if version < 1 { try migrateToV1(db) }
             if version < 2 { try migrateToV2(db) }
             if version < 3 { try migrateToV3(db) }
+            if version < 4 { try migrateToV4(db) }
         }
     }
 
@@ -117,6 +118,19 @@ public enum Schema {
         try db.execute("CREATE INDEX attachments_note ON attachments(note_id)")
         try recomputeDerivedNoteColumns(db)
         try db.execute("PRAGMA user_version = 3")
+    }
+
+    /// The sidebar columns worked out again, for the rule of Plan 6 that a title and a preview show a line as the editor
+    /// shows it: a list line without its marker, bold and inline code without theirs, and what is inside a fenced block as
+    /// typed (``PlainLine``). Until 0.5.0 a row of a note that starts with `[ ] bump version` said exactly that.
+    ///
+    /// It does what version 3 did, with ``Note``'s rules as they are now (``recomputeDerivedNoteColumns(_:)``): the three
+    /// columns are written, and only when they differ, so `modified_at` stays what the owner's last edit made it, the
+    /// order of the list does not move, no note is lost or changed, and the search index (which follows `title` and `body`)
+    /// is left alone.
+    private static func migrateToV4(_ db: Database) throws {
+        try recomputeDerivedNoteColumns(db)
+        try db.execute("PRAGMA user_version = 4")
     }
 
     /// Works `display_title`, `has_title` and `preview` out again for every note with `Note`'s rules. Notes are read

@@ -139,3 +139,59 @@ private func copied(_ text: String, _ range: NSRange? = nil, literal: (NSRange) 
             == nil)
     #expect(AttachmentCopying.soleAttachment(in: NSRange(location: -1, length: size), of: tokenA as NSString) == nil)
 }
+
+// MARK: Whether a selection holds an attachment (plan 6, Task 6)
+//
+// Copy and Cut also write the selection exactly as stored, on a private type, when it holds a token line, so that a paste or a
+// drop into Scratch keeps the attachment (docs/features/attachments.md, "Copying").
+
+private func holds(_ text: String, _ range: NSRange? = nil, literal: (NSRange) -> Bool = { _ in false }) -> Bool {
+    let whole = NSRange(location: 0, length: text.utf16.count)
+    return AttachmentCopying.holdsAttachment(in: range ?? whole, of: text as NSString, ignoring: literal)
+}
+
+@Test func aSelectionThatHoldsATokenLineHoldsAnAttachment() {
+    let text = "abc\n" + tokenA + "\ndef"
+    #expect(holds(text))
+    #expect(holds(text, NSRange(location: 4, length: size)), "exactly the token")
+    #expect(holds(text, NSRange(location: 2, length: 4 + size - 2)), "ending at the token's end")
+    #expect(holds(text, NSRange(location: 4, length: size + 4)), "starting at the token")
+    #expect(holds(tokenA + "\n" + tokenB))
+}
+
+@Test func aSelectionAwayFromEveryTokenLineHoldsNoAttachment() {
+    let text = "abc\n" + tokenA + "\ndef"
+    #expect(!holds(text, NSRange(location: 0, length: 3)))
+    #expect(!holds(text, NSRange(location: 0, length: 4)), "up to the start of the token line, its line break included")
+    #expect(!holds(text, NSRange(location: 4 + size, length: 4)), "from the end of the token line")
+    #expect(!holds(text, NSRange(location: 4 + size + 1, length: 3)))
+    #expect(!holds("just text, - [ ] a **box**\n`code`"))
+    #expect(!holds(""))
+    #expect(!holds(text, NSRange(location: 5, length: 0)), "an empty selection holds nothing")
+}
+
+@Test func aLineThatHoldsMoreThanTheTokenIsNoAttachment() {
+    #expect(!holds("see " + tokenA))
+    #expect(!holds(tokenA + " "))
+}
+
+@Test func aTokenInACodeBlockIsTextAndSoNoAttachment() {
+    let text = "```\n" + tokenA + "\n```"
+    #expect(!holds(text, literal: { _ in true }))
+    #expect(holds(text, literal: { _ in false }))
+    #expect(holds("x\n" + tokenA + "\n" + tokenB, literal: { $0.location == 2 }), "the second one is not in the block")
+}
+
+@Test func aSelectionPastTheEndOfTheTextIsCutToIt() {
+    let text = "abc\n" + tokenA
+    #expect(holds(text, NSRange(location: 2, length: 1000)))
+    #expect(!holds(text, NSRange(location: 1000, length: 5)))
+    #expect(!holds(text, NSRange(location: NSNotFound, length: 0)))
+}
+
+@Test func aHugeSelectionWithNoTokenIsLookedAtQuickly() {
+    let text = String(repeating: "abcdefghij\n", count: 500_000)
+    let start = Date()
+    #expect(!holds(text))
+    #expect(Date().timeIntervalSince(start) < 1)
+}

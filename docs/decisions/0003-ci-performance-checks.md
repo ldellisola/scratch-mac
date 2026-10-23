@@ -5,6 +5,12 @@ budgets (`launch_ms` and `switch_small_ms`) and the choices that make CI's measu
 next. The spec's two rules stay: CI fails a result that is more than 20% slower than the stored baseline or more than
 twice its budget, and warns when a result is over its budget but inside those limits.
 
+Amended by [0009](0009-performance-at-1-0.md) (plan 6, task 2): `launch_ms` has no budget and cannot fail any more, the launch
+is gated on `launch_overhead_ms` (its launch minus that of an empty AppKit app), and a metric may have a tolerance. The
+`launch_ms` budget of decision 1 and the `launch_ms` baseline of decision 7 are history, and the rest stands. The
+baseline of decision 7 and the 85.3 ms of the `paste_code_ms` addendum were measured again in plan 6, task 10, on the final
+1.0.0 app: the slowest of three runs, in [0009](0009-performance-at-1-0.md) ("Task 10: the baseline") and `perf/baseline.json`.
+
 ## Context
 
 CI measures on GitHub's virtual Macs (`macos-26`, macOS 26.6.2), and the budgets are the owner's M4's. Two things stood

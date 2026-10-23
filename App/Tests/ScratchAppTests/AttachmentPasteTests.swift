@@ -369,6 +369,82 @@ final class AttachmentPasteTests: XCTestCase {
         XCTAssertEqual(host.textView.selectedRange(), NSRange(location: 4, length: 0))
     }
 
+    // MARK: Text next to a token (plan 6 task 6)
+
+    private let tokenID = AttachmentID(rawValue: "6f9619ff-8b86-4d11-b42d-00c04fc964ff")
+    private var token: String { AttachmentToken.line(for: tokenID) }
+    private let tokenSize = AttachmentToken.lineLength
+
+    /// Review Focus 2: a paste of text at either edge of a token line puts the line break into the paste's own edit, so the
+    /// token is a line of its own after it. The caret is after the pasted text.
+    func testPastingTextAtATokenEdgeKeepsTheToken() throws {
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 4 + tokenSize)
+        defer { host.cleanUp() }
+        let view = host.textView
+        let first = host.pasteboard(text: "XYZ")
+        defer { first.releaseGlobally() }
+
+        XCTAssertTrue(view.readSelection(from: first))
+
+        XCTAssertEqual(host.text, "abc\n\(token)\nXYZ\ndef", "below the token")
+        XCTAssertEqual(host.tokenIDs, [tokenID])
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 4 + tokenSize + 1 + 3, length: 0))
+
+        view.setSelectedRange(NSRange(location: 4, length: 0))
+        let second = host.pasteboard(text: "Q\nR")
+        defer { second.releaseGlobally() }
+        XCTAssertTrue(view.readSelection(from: second))
+
+        XCTAssertEqual(host.text, "abc\nQ\nR\n\(token)\nXYZ\ndef", "above the token")
+        XCTAssertEqual(host.tokenIDs, [tokenID])
+        XCTAssertEqual(view.selectedRange(), NSRange(location: 4 + 3, length: 0), "in front of the line break")
+    }
+
+    /// A paste of text that is a token line itself, in the middle of a line, is a line of its own.
+    func testPastingATokenLineMidLineGetsLinesOfItsOwn() throws {
+        let host = try AttachmentTestHost(text: "abcdef", caret: 3)
+        defer { host.cleanUp() }
+        let pasteboard = host.pasteboard(text: token)
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, "abc\n\(token)\ndef")
+        XCTAssertEqual(host.tokenIDs, [tokenID])
+        XCTAssertEqual(host.textView.selectedRange(), NSRange(location: 4 + tokenSize + 1, length: 0))
+    }
+
+    /// Paste into code is not changed: a token there is text.
+    func testPastingTextAtATokenEdgeInACodeBlockIsPlain() throws {
+        let text = "```\n\(token)\n```"
+        let host = try AttachmentTestHost(text: text, caret: 4 + tokenSize)
+        defer { host.cleanUp() }
+        let pasteboard = host.pasteboard(text: "XYZ")
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+
+        XCTAssertEqual(host.text, "```\n\(token)XYZ\n```")
+    }
+
+    /// Code that is pasted next to a token is still wrapped in a fence, on its own lines, and the token stays whole.
+    func testCodePastedAtATokenEdgeIsStillWrapped() throws {
+        // The sample of `CodePasteTests`: Python that `CodeDetector` calls code.
+        let python = "import os\n\ndef main():\n    path = os.getcwd()   \n    print(path)\n\tx = 1"
+        let host = try AttachmentTestHost(text: "abc\n\(token)\ndef", caret: 4 + tokenSize)
+        defer { host.cleanUp() }
+        let pasteboard = host.pasteboard(text: python)
+        defer { pasteboard.releaseGlobally() }
+
+        XCTAssertTrue(host.textView.readSelection(from: pasteboard))
+        XCTAssertEqual(host.text, "abc\n\(token)\n" + python + "\ndef", "the plain paste comes first")
+        host.spin(until: { host.textView.pendingPasteClassifications == 0 })
+
+        XCTAssertEqual(host.textView.pendingPasteClassifications, 0)
+        XCTAssertEqual(host.text, "abc\n\(token)\n```python\n" + python + "\n```\ndef")
+        XCTAssertEqual(host.tokenIDs, [tokenID])
+    }
+
     // MARK: Speed and undo
 
     /// Global Constraints, "Performance": inserting a 50 MB file returns to the run loop in under 100 ms, because the file
