@@ -30,6 +30,13 @@ history, and tabs) and plan 3, task 7 (failed writes, the top inset). Notes are 
   scroll position where they were, and the font size. A saved cursor offset that no longer fits the text is moved to the nearest valid position, and
   never splits a character. A session that points at a note that no longer exists, or is damaged, never keeps the app from
   launching: the app drops the tabs it cannot show and shows the first it can, or else starts a new empty note.
+- **A launch reads the body of the active note and no other** (spec §7, plan 6 task 3). The other tabs are shown with
+  their titles, and told apart from deleted and missing notes, by one query over the note table's derived columns
+  (`NoteStore.tabInfo`, no body), so a launch with twelve tabs, one of them a 10,000-line note, reads as much as a launch with
+  one tab. Every rule of the restore is the same: a tab of a missing or deleted note is dropped, so is a second tab for one
+  note, the active tab is the saved one when it is kept (else the first that is left), and a note nobody ever typed in is
+  still untouched (closing its tab discards it). The other tabs' bodies are read once the first frame is out, on the
+  storage queue, to warm up the highlighter (docs/features/code.md, "Late first colours").
 - **The scroll position is saved as an anchor, not as points.** The anchor is the UTF-16 offset of the first character
   of the line at the top of the visible text (`TabState.scrollAnchor`), so the same text is at the top after a relaunch
   even when the window has another width or the font another size. A session saved by Scratch 0.1.0 has no anchor and
@@ -99,6 +106,10 @@ clicking the editor first, which also proves that the editor is ready to type at
 | Switching back to a note whose write failed shows the text that was left | `SaveFailureTests.testSwitchingBackShowsUnsavedText` |
 | The record of failed writes keeps the newest copy of a note, and forgets it when a write succeeds | ScratchCore `UnsavedNotesTests` |
 | The launch shows the session's active note | `LaunchUITests.testLaunchShowsActiveNoteFromFixture` |
+| A launch with several tabs, one of them the 10,000-line note, reads the active note's body only, and every tab has its title | `SessionRestoreTests.testRestoreReadsTheBodyOfTheActiveNoteOnly` |
+| The restore drops the tabs of deleted and missing notes and of a note's second tab, and keeps the active tab | `SessionRestoreTests.testRestoreDropsTabsOfDeletedNotes`, `testRestoreWithADeletedActiveTabShowsTheFirstTabThatIsLeft`, `testRestoreWithOnlyDeletedNotesStartsANewNote` |
+| A note nobody ever typed in stays untouched after the restore, in the active tab and in the others | `SessionRestoreTests.testRestoreKeepsTheUntouchedNotesOfOtherTabsUntouched`, `testRestoreKeepsTheActiveNeverUsedNoteUntouched` |
+| What a tab needs of its note is read from the derived columns, without the body | ScratchCore `NoteStoreTests.tabInfoReadsNoBody`, `tabInfoHasTheTitleTheRowHas`, `tabInfoMarksNeverUsed`, `tabInfoOmitsMissingNotesAndReportsDeletedOnes` |
 | The sidebar lists the fixture's notes, pinned first | `SidebarUITests.testSidebarListsFixtureNotesPinnedFirst` |
 | Clicking a row shows that note | `SidebarUITests.testClickingRowShowsNote` |
 | The new note button starts a note that is listed once it has text | `SidebarUITests.testNewNoteButtonCreatesListedNote` |

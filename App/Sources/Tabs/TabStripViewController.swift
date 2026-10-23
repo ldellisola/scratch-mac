@@ -55,10 +55,14 @@ final class TabStripViewController: NSViewController {
         view = stripView
     }
 
+    /// The items that the strip shows now, left to right. The tests read them.
+    private(set) var shownItems: [TabStripItem] = []
+
     /// Shows one tab for each of `items`, left to right, with the one at `activeIndex` raised and selected for
     /// accessibility. An index outside `items` selects no tab.
     func show(_ items: [TabStripItem], activeIndex: Int) {
         loadViewIfNeeded()
+        shownItems = items
         strip.show(items, activeIndex: activeIndex)
         stripView.preferredWidth = strip.preferredWidth
     }

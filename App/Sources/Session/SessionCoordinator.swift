@@ -78,9 +78,13 @@ final class SessionCoordinator: AttachmentImporting {
     /// How long after a purge the next one may run: the app becoming active asks for one each time.
     private static let purgeInterval: TimeInterval = 60 * 60
 
-    /// The texts of the notes that were open in tabs when the session was restored, which `warmUpHighlighting()` hands to the
-    /// highlighter once the first frame is out, and then forgets.
-    private var warmUpTexts: [String] = []
+    /// The notes that were open in tabs when the session was restored, whose texts `warmUpHighlighting()` reads (on the
+    /// storage queue) and hands to the highlighter once the first frame is out, and then forgets.
+    private var warmUpNoteIDs: [NoteID] = []
+
+    /// How many notes `restore()` read in full: the note of the active tab, and no other (spec §7: before the first frame a
+    /// launch reads one body). Zero when the launch started a new note. A test reads it.
+    private(set) var notesReadAtRestore = 0
 
     /// Every live note as of the last read of the note list, whatever the search field says. The pin button and the
     /// menu item read the pin of the active note from it.
@@ -157,24 +161,31 @@ final class SessionCoordinator: AttachmentImporting {
 
     /// Has the highlight queue compile the queries of the languages that the fences of the notes in the open tabs name, so
     /// that the first block in such a language, in the note that is shown or in one that a tab switch shows, is coloured
-    /// without waiting for its query (plan 5 task 7). `AppDelegate` calls it once the first frame is out. The texts are read
-    /// and the queries compiled on the highlight queue (`CodeBlockStyler.warmUp`), and a second call has nothing to do.
+    /// without waiting for its query (plan 5 task 7). `AppDelegate` calls it once the first frame is out. The notes' texts are
+    /// read on the storage queue, which is what the launch no longer does before the first frame (plan 6 task 3), the
+    /// fences are looked for on the highlight queue and the queries are compiled there (`CodeBlockStyler.warmUp`). A second
+    /// call has nothing to do.
     func warmUpHighlighting() {
-        let texts = warmUpTexts
-        warmUpTexts = []
-        editor.textView.styler.codeBlockStyler.warmUp(languagesNamedIn: texts)
+        let ids = warmUpNoteIDs
+        warmUpNoteIDs = []
+        guard !ids.isEmpty else { return }
+        let storage = self.storage
+        editor.textView.styler.codeBlockStyler.warmUp(
+            languagesInTextsFrom: { ids.compactMap { (try? storage.notes.note($0))?.body } }, on: storageQueue)
     }
 
     // MARK: Restoring
 
     /// Shows the tabs of the saved session, with the active note, its cursor and scroll position, and starts loading
-    /// the note list. Without a usable session it starts one tab with a new empty note. The notes of all the saved
-    /// tabs are read before the window shows, which is a few small reads (spec §7): the list loads on the storage
-    /// queue.
+    /// the note list. Without a usable session it starts one tab with a new empty note. Before the window shows, the body of
+    /// the active note is read and no other (spec §7): the other tabs get their title and the rest from one query that reads
+    /// no body (`NoteStore.tabInfo`), and the list loads on the storage queue.
     func restore() {
         let (list, note) = restoredTabs()
         tabs = list
         current = note
+        // The active note was read in full, so whether nobody ever used it is known from its own text.
+        untouchedNoteIDs.remove(note.id)
         if Self.isNeverUsed(note) { untouchedNoteIDs.insert(note.id) }
         tabItems[note.id] = Self.item(for: note)
         editor.setFontSize(fontSize)
@@ -189,30 +200,38 @@ final class SessionCoordinator: AttachmentImporting {
     /// or deleted is dropped, and so is a second tab for the same note. The active tab is the saved one, or else the
     /// first that is left. Without a usable session it creates an empty note and saves a one-tab session for it.
     ///
+    /// Only the note of the active tab is read in full (`notesReadAtRestore`). What a tab needs of any other note, its title,
+    /// whether it is deleted and whether nobody ever used it, comes from `NoteStore.tabInfo`, which reads no body. The
+    /// tab strip's items and the set of untouched notes of the other tabs are filled in here from it.
+    ///
     /// When the storage cannot be read at all, the owner still gets an editor: it holds a new note that stays unsaved,
     /// and every save tries again.
     private func restoredTabs() -> (list: TabList, note: Note) {
         do {
             if let state = try storage.session.load() {
                 fontSize = state.fontSize
+                let infos = try storage.notes.tabInfo(state.tabs.map(\.noteID))
                 var kept: [TabState] = []
-                var notes: [NoteID: Note] = [:]
+                var keptItems: [NoteID: TabStripItem] = [:]
+                var keptUntouched: Set<NoteID> = []
                 var activeKept: Int?
-                for (index, tab) in state.tabs.enumerated() where notes[tab.noteID] == nil {
-                    guard let note = try storage.notes.note(tab.noteID), note.deletedAt == nil else { continue }
-                    notes[note.id] = note
+                for (index, tab) in state.tabs.enumerated() where keptItems[tab.noteID] == nil {
+                    guard let info = infos[tab.noteID], info.deletedAt == nil else { continue }
                     if index == state.activeTabIndex { activeKept = kept.count }
                     kept.append(tab)
+                    keptItems[tab.noteID] = Self.item(for: info)
+                    if info.isNeverUsed { keptUntouched.insert(tab.noteID) }
                 }
                 if !kept.isEmpty {
                     let list = TabList(tabs: kept, activeIndex: activeKept ?? 0)
-                    // The notes of all the tabs are read here already: their fences say which queries to compile.
-                    warmUpTexts = kept.compactMap { notes[$0.noteID]?.body }
-                    for note in notes.values {
-                        tabItems[note.id] = Self.item(for: note)
-                        if Self.isNeverUsed(note) { untouchedNoteIDs.insert(note.id) }
+                    notesReadAtRestore += 1
+                    if let active = try storage.notes.note(list.active.noteID), active.deletedAt == nil {
+                        tabItems = keptItems
+                        untouchedNoteIDs = keptUntouched
+                        // Their fences say which queries to compile, once the first frame is out.
+                        warmUpNoteIDs = kept.map(\.noteID)
+                        return (list, active)
                     }
-                    if let active = notes[list.active.noteID] { return (list, active) }
                 }
             }
             let note = try storage.notes.create(now: Date())
@@ -869,6 +888,13 @@ final class SessionCoordinator: AttachmentImporting {
         let title = note.displayTitle
         return TabStripItem(
             title: title.isEmpty ? "Untitled" : title, hasTitle: note.hasTitle, isDeleted: note.deletedAt != nil)
+    }
+
+    /// The tab strip's item for a note that `NoteStore.tabInfo` described: the note's text was not read.
+    private static func item(for info: TabNoteInfo) -> TabStripItem {
+        TabStripItem(
+            title: info.displayTitle.isEmpty ? "Untitled" : info.displayTitle, hasTitle: info.hasTitle,
+            isDeleted: info.deletedAt != nil)
     }
 
     /// The tab strip's item for a row of the note list, which shows the same title as the row.

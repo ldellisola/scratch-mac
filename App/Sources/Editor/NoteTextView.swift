@@ -329,14 +329,25 @@ final class NoteTextView: NSTextView {
         let interval: OpenInterval
     }
 
-    /// A paste that has been inserted and waits to be classified.
+    /// A paste that has been inserted and waits for its turn.
     private struct PendingPaste {
+        /// What `PasteClassifier` made of the paste, when it was asked.
+        enum Wrap {
+            /// Asked at once, when the paste was read (`endPaste`): the edit that wraps it, or nil to leave it plain. The
+            /// turn applies this edit when the text is the one that was looked at.
+            case decided(TextEdit?)
+            /// A paste too big to be looked at inside the paste's own turn (`PasteClassifier.earlyWrapLimit`): the turn asks.
+            case later
+        }
+
         /// Where the paste is in the text.
         let range: NSRange
         /// `editCount` right after the paste.
         let editCount: Int
         /// True when the paste went into a fenced block or into inline code.
         let isInCode: Bool
+        /// The wrap that was decided when the paste was read, or `.later`.
+        let wrap: Wrap
         /// The `paste-code` signpost interval, from the paste until the colours are on screen.
         let interval: OpenInterval
     }
@@ -371,14 +382,35 @@ final class NoteTextView: NSTextView {
         else { return start.interval.endWhenIdle() }
 
         pendingPastes.append(
-            PendingPaste(range: pasted, editCount: editCount, isInCode: start.isInCode, interval: start.interval))
+            PendingPaste(
+                range: pasted, editCount: editCount, isInCode: start.isInCode,
+                wrap: decideWrap(of: pasted, start: start),
+                interval: start.interval))
         DispatchQueue.main.async { [weak self] in
             MainActor.assumeIsolated { self?.classifyNextPaste(attempt: 0) }
         }
     }
 
-    /// The oldest paste has had its turn: wraps it in a fence when it is code (`PasteClassifier`), and ends the `paste-code`
-    /// interval when the colours of the block are on screen, or at once when nothing is going to be coloured.
+    /// Looks at the paste that was just read, which `PasteClassifier.wrap` only needs its text for, and when it is going to be
+    /// wrapped asks the highlighter for the colours of the block to come (`CodeBlockStyler.prefetch`): the highlighting then
+    /// runs on its queue while the main thread waits for the turn of the wrap, and the block finds its colours when it
+    /// appears. A paste of more than `PasteClassifier.earlyWrapLimit` units is not looked at here: such a block is over the
+    /// highlighter's cap, so there are no colours to get ahead with, and the paste's own turn stays as short as the 50,000-line
+    /// paste of `LargeInsertTests` needs it to be.
+    private func decideWrap(of pasted: NSRange, start: PasteStart) -> PendingPaste.Wrap {
+        guard pasted.length <= PasteClassifier.earlyWrapLimit, let storage = textStorage,
+            NSMaxRange(pasted) <= storage.length
+        else { return .later }
+        let text = storage.string as NSString
+        let edit = PasteClassifier.wrap(
+            pasted: text.substring(with: pasted), at: pasted, in: text, isInCode: start.isInCode)
+        if let edit { styler.codeBlockStyler.prefetch(block: edit.replacement) }
+        return .decided(edit)
+    }
+
+    /// The oldest paste has had its turn: wraps it in a fence when it is code (`PasteClassifier`, decided when the paste was
+    /// read, `decideWrap`, unless it was too big for that), and ends the `paste-code` interval when the colours of the block
+    /// are on screen, or at once when nothing is going to be coloured.
     private func classifyNextPaste(attempt: Int) {
         guard let paste = pendingPastes.first else { return }
         // The undo group of the paste has to be closed first, or the wrap would be a part of it.
@@ -394,11 +426,17 @@ final class NoteTextView: NSTextView {
         guard editCount == paste.editCount, isEditable, let storage = textStorage,
             NSMaxRange(paste.range) <= storage.length
         else { return paste.interval.endWhenIdle() }
-        let text = storage.string as NSString
-        let pasted = text.substring(with: paste.range)
-        guard
-            let edit = PasteClassifier.wrap(pasted: pasted, at: paste.range, in: text, isInCode: paste.isInCode)
-        else { return paste.interval.endWhenIdle() }
+        // The text is the one that was looked at (`editCount` has not moved), so what was decided then still holds.
+        let decided: TextEdit?
+        switch paste.wrap {
+        case .decided(let edit):
+            decided = edit
+        case .later:
+            let text = storage.string as NSString
+            decided = PasteClassifier.wrap(
+                pasted: text.substring(with: paste.range), at: paste.range, in: text, isInCode: paste.isInCode)
+        }
+        guard let edit = decided else { return paste.interval.endWhenIdle() }
 
         applyAndReveal(edit)
         let interval = paste.interval

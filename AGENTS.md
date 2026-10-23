@@ -45,8 +45,10 @@ Packages/ScratchCore/             Foundation-only Swift package. Builds and test
                                   row (`deletedAt` is set for Recently Deleted rows). NoteStore: reads and writes the
                                   notes table (pinned first, newest edit first), searches it (`search`), and pins,
                                   deletes, restores and purges notes (`setPinned`, `delete`, `restore`,
-                                  `deletePermanently`, `deletedSummaries`, `purge`), and says which attachments the
-                                  stored bodies name (`referencedAttachmentIDs`). SearchQuery: typed text to an
+                                  `deletePermanently`, `deletedSummaries`, `purge`), says which attachments the
+                                  stored bodies name (`referencedAttachmentIDs`), and says what a tab needs of its note
+                                  without reading the body (`tabInfo(_:)`, one query over the derived columns, a
+                                  `TabNoteInfo`: title, deleted, never used). SearchQuery: typed text to an
                                   FTS5 MATCH expression
   Sources/ScratchCore/Attachments/ AttachmentID (a lowercase UUID, like NoteID) and AttachmentToken: the line
                                   `[[attachment:<id>]]` that stands for an attachment in a note (`line(for:)`,
@@ -158,14 +160,15 @@ App/Sources/Window/               MainWindowController (one window, closing it q
                                   the line macOS 26 draws under the toolbar, section 7), LaunchTimesPanel (the alert of
                                   Help > Launch Times…: the report in a selectable text view, with Copy and OK)
 App/Sources/Tabs/                 TabStripViewController (the glass tab strip: `TabStripItem`, `TabStripView`,
-                                  `TabStripLayout`, `TabStripContentView`, `TabItemView`)
+                                  `TabStripLayout`, `TabStripContentView`, `TabItemView`; `shownItems`, which the tests read)
 App/Sources/Sidebar/              SidebarViewController (the search field and the note list in the glass sidebar: an
                                   NSTableView with group headers; a click or Return opens a note, `onOpen`; `onSearch`,
                                   `onTogglePin`, `onDelete`, `onRestore`, `onDeletePermanently` and
                                   `onToggleRecentlyDeleted`), SidebarRowViews (`NoteRowCellView`, `GroupRowCellView`),
                                   SidebarTableView (Return, ⌘⌫, the click on the Recently Deleted header, the row's
                                   context menu)
-App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore, new note, close,
+App/Sources/Session/              SessionCoordinator (the tabs and which is active, autosave, restore (the body of the active
+                                  note only: `notesReadAtRestore`), new note, close,
                                   pinning, delete, restore and purge, the tab titles, the launch sweep of the attachments
                                   that no note names; the one place that writes to storage; it is the editor's
                                   `AttachmentImporting`), NoteListModel (the sidebar's data: reads the note list, the
@@ -189,10 +192,13 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   (whole paragraphs read in one call), CodeBlockStyler (colours the code of the fenced
                                   blocks with `ScratchCode`'s highlighter on a background queue and keeps each block's
                                   language label: `blocksDidChange`, `language(ofBlockAt:)`, `pendingHighlights`,
-                                  `whenHighlighted`; the query warm-up: `warmUp(languagesNamedIn:using:)`,
-                                  `languages(namedIn:)`, `pendingWarmUps`, `warmedLanguages`), CodeBlockParts (a block's name, code and fence lines from its range)
+                                  `whenHighlighted`, `prefetch(block:)`: the colours of a block that a paste is going to
+                                  make, asked for before it exists, `submittedRequests`; the query warm-up:
+                                  `warmUp(languagesNamedIn:using:)`, `warmUp(languagesInTextsFrom:on:using:)`: the texts
+                                  read on the storage queue, `languages(namedIn:)`, `pendingWarmUps`, `warmedLanguages`), CodeBlockParts (a block's name, code and fence lines from its range)
                                   PasteClassifier (whether a paste is code, and the edit that wraps it in a fence:
-                                  `wrap`; NoteTextView asks it after every paste, `readSelection(from:)`) and
+                                  `wrap`; NoteTextView asks it when it has read a paste of up to `earlyWrapLimit` units,
+                                  `readSelection(from:)`, and the turn after for a bigger one) and
                                   CodeBlockMenu (the menu of a block's language label, with `CodeBlockAction` and
                                   `CodeBlockChoice`, and the edits its items make: `menu`, `edit`; NoteTextView opens it
                                   from a click on a label, `labelHit`, `showCodeBlockMenu`, and applies a choice,
@@ -242,7 +248,8 @@ App/Resources/                    Assets.xcassets (placeholder app icon, the col
 App/Tests/ScratchAppTests/        hosted XCTest unit tests, run inside the app (NoteTextViewTests, LargeInsertTests: a
                                   50,000-line paste returns within 500 ms, and a 50,000-line JSON paste and its wrap do too,
                                   AboutCreditsTests: the About credits list tree-sitter and every grammar,
-                                  SessionWarmUpTests: the open tabs' languages are warmed up, FrameMonitorTests, IdleMonitorTests, EditorViewControllerTests:
+                                  SessionWarmUpTests: the open tabs' languages are warmed up, SessionRestoreTests: a launch
+                                  reads the active note only and keeps every rule of the restore, FrameMonitorTests, IdleMonitorTests, EditorViewControllerTests:
                                   the title, font size, per-note undo, read-only and scroll anchor, TitlebarPocketTests,
                                   MarkupStylerTests: bullets, checkboxes, bold, code and links render, markers hide and
                                   reveal, fenced blocks are literal, a long note is styled in chunks, CheckboxTests: a
@@ -655,8 +662,9 @@ new kind of release file, with no change to the app, ships.
   `ScratchCode_ScratchCode.bundle`. `scripts/check-release-zip.sh` and `HighlighterInAppTests` check that the app carries
   it. Highlight on a background queue, never on the main thread: the first use of a language compiles its query (240 to
   270 ms for Swift, Release, on Linux), and `Highlighter` is thread-safe. `SessionCoordinator.warmUpHighlighting()` (after
-  the first frame, from `AppDelegate`) has `CodeBlockStyler.warmUp(languagesNamedIn:)` compile the queries of the languages
-  that the notes in the open tabs name, through `Highlighter.prepare(_:)`: one language at a time, each a block of its own on
+  the first frame, from `AppDelegate`) reads the texts of the notes in the open tabs on the storage queue (the launch reads the
+  active note only) and has `CodeBlockStyler.warmUp(languagesInTextsFrom:on:)` compile the queries of the languages
+  that they name, through `Highlighter.prepare(_:)`: one language at a time, each a block of its own on
   the highlight queue, so a block that is shown meanwhile waits for one compile at most. It prepares `Highlighter.shared`, the
   cache that every request reads; a test passes a `Highlighter()` of its own, because the shared one may be warm already.
 - **`Acknowledgements.rtf` is generated, and the About panel and the release depend on it.** `scripts/make-acknowledgements.py`
@@ -798,6 +806,17 @@ new kind of release file, with no change to the app, ships.
   `newNoteInNewTab`, closing the active tab, closing the only tab (when its note has been used), `deleteNote` and
   `deleteNotePermanently`. Closing a tab that is not active does not (`closeOtherTab`). Call all of them and `flush()`
   on the main thread only, and never from a block that runs on the storage queue.
+- **A launch reads one body, and a tab's title comes from the derived columns** (plan 6 task 3, spec §7).
+  `SessionCoordinator.restoredTabs` asks `NoteStore.tabInfo(_:)` for every saved tab (one query, in chunks of 500 ids, that
+  names no `body`: `TabNoteInfo` has the title, `hasTitle`, `deletedAt` and `isNeverUsed`), drops the tabs it does not return or
+  returns deleted and the second tab for one note (the rules it had), and reads only the active note in full
+  (`notesReadAtRestore` is the test seam: 1, or 0 when it starts a new note). `isNeverUsed` there is "no title, no line with
+  words, `modified_at == created_at`" from the columns, which differs from `Note.isEmpty && modifiedAt == createdAt` only for a
+  body of fence and attachment lines alone with equal dates, which nothing but a fixture writes; the active note's own
+  `isNeverUsed(note)` replaces its answer, and `discardIfUnused` and `isUntouched` still ask `Note.isEmpty` before anything
+  is discarded. A new read of a body at launch (a count, a preview, a search) must go to the storage queue after the first
+  frame, as `warmUpHighlighting()` does. `TabNoteInfo` follows the derived columns, so a change to how they are worked out
+  (Task 4 of plan 6) reaches it through the migration that works the columns out again.
 - **A new note that nobody has used is not in the sidebar** and is discarded when its tab closes or another note
   replaces it in the tab, while it is still empty. It is "untouched" while it was created in this session (or restored
   empty) and has no text. Test changes that look at the sidebar must type first. Switching to another tab keeps an
@@ -1163,12 +1182,21 @@ new kind of release file, with no change to the app, ships.
   so `Tests/ScratchCoreTests/AttachmentTestSupport.swift` declares `typealias Attachment = ScratchCore.Attachment` for the
   test module, which wins over both.
 - **A paste is the plain paste, and its wrap is a second edit on a later turn** (`NoteTextView.beginPaste`, `endPaste`,
-  `classifyPaste`). `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` (which the hosted tests call, and which
+  `classifyNextPaste`). `paste(_:)`, `pasteAsPlainText(_:)` and `readSelection(from:)` (which the hosted tests call, and which
   Paste runs, a call inside another is the same paste) start and end the paste. Before it, the view works out whether the paste
   goes into code (`isPastingIntoCode`: a fenced block, or between the backticks of inline code, which a multi-line paste would
   split and which cannot be told afterwards). After it, the range that came in is queued with `editCount`, which every
-  `didChangeText` and `load` raises, and `DispatchQueue.main.async` asks `PasteClassifier.wrap`; typing in between drops the
-  paste. **The wrap waits until the paste's undo group has closed** (`undoManager.groupingLevel == 0`, retried at the run loop's
+  `didChangeText` and `load` raises, and `DispatchQueue.main.async` applies the wrap; typing in between drops the
+  paste. **The wrap is decided when the paste is read, and applied on the later turn** (plan 6 task 3): `endPaste` asks
+  `PasteClassifier.wrap` at once (it reads only the text: `PendingPaste.Wrap.decided`) and, for a wrap, has the highlighter
+  start the colours of the block to come (`CodeBlockStyler.prefetch(block: edit.replacement)`), so the highlighting runs on
+  its queue while the main thread waits for the turn, and the block finds its colours in the cache or in the request that is
+  running. The turn applies the same edit, without detecting again, when `editCount` has not moved. A paste of more than
+  `PasteClassifier.earlyWrapLimit` (300,000 units, the highlighter's cap) is not looked at in the paste's own turn
+  (`.later`): such a block is never coloured, and the 50,000-line JSON paste of `LargeInsertTests` is held to 500 ms for the
+  paste and for the wrap separately, which a detection of 760 KB inside the paste would eat into. A prefetched result that comes
+  before its block is only cached (`HighlightRequest.isPrefetch`: not a dropped result, and `pump` keeps such a request though
+  no block holds its code yet). **The wrap waits until the paste's undo group has closed** (`undoManager.groupingLevel == 0`, retried at the run loop's
   idle moments, at most 8 times: a hosted test never ends its turn and goes ahead after that), because a `DispatchQueue.main`
   block can run in the same loop iteration as the event, and then ⌘Z would undo the paste and the wrap together
   (`CodePasteUITests.testUndoAfterCodePasteRestoresPlainText`). Hosted tests wait for `pendingPasteClassifications == 0`, not

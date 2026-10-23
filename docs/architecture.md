@@ -86,16 +86,17 @@ key press
   keystroke in a block keeps the colours of its line until the new result replaces them. A result is for a text, not a
   place, so a result for text that was edited since is dropped and never lands on newer text.
 - **The queries are warmed up after the first frame, and the label has its room.** `AppDelegate` asks
-  `SessionCoordinator.warmUpHighlighting()` once the frame is out, which hands the notes that were open in tabs to
-  `CodeBlockStyler.warmUp`: on the same highlight queue, one language at a time, `Highlighter.prepare` compiles the query of
+  `SessionCoordinator.warmUpHighlighting()` once the frame is out, which reads the notes that were open in tabs on the
+  storage queue (the launch itself reads the active note only) and hands them to `CodeBlockStyler.warmUp`: on the highlight queue, one language at a time, `Highlighter.prepare` compiles the query of
   each language that their fences name, so the first block in it is not coloured 240 to 270 ms late. The first line of code of
   a block with a label has a tail indent for the label (`MarkupAppearance.firstCodeLineStyle`), which `MarkupStyler` keeps
   current (`CodeBlockStyler` tells it when a label is written), so the label never covers code.
 - **A paste is a plain paste first, and a second edit wraps code in a fence.** `NoteTextView.paste` inserts the
-  pasteboard's text as always. On a later turn of the main run loop, once the undo group of the paste has closed,
-  `PasteClassifier.wrap` asks `CodeDetector` about it (never for one line, a paste into code, or one with a fence line in
-  it) and answers a `TextEdit` that puts the pasted text between two fences, applied with `apply`: the paste and the wrap
-  are two undo steps. The label menu (`CodeBlockMenu`) is the same kind of edit on the fence lines, one undo step each.
+  pasteboard's text as always. When it has read the paste, `PasteClassifier.wrap` asks `CodeDetector` about it (never for
+  one line, a paste into code, or one with a fence line in it) and answers a `TextEdit` that puts the pasted text between
+  two fences, and the highlighter starts on the colours of that block at once (`CodeBlockStyler.prefetch`, on its queue).
+  On a later turn of the main run loop, once the undo group of the paste has closed, the same edit is applied with
+  `apply`: the paste and the wrap are two undo steps, and the block finds its colours when it appears. The label menu (`CodeBlockMenu`) is the same kind of edit on the fence lines, one undo step each.
   The `paste-code` signpost runs from the paste until the colours are on screen.
 - **An attachment is a token line that is drawn over, and its file is kept by reference**
   (`docs/features/attachments.md`, `docs/decisions/0008-attachments.md`). The note's text holds the line
@@ -126,9 +127,11 @@ key press
   session (the open note's id, selection and scroll position), and does not re-read the note list.
 - Quitting and deactivating skip the timer: `AppDelegate` calls `SessionCoordinator.persistNow()`, which runs the same
   save at once and waits until the storage queue is empty. Opening another note does the same for the note it leaves.
-- Launching reads the session, then the note of every saved tab (`SessionCoordinator.restoredTabs`: a few small reads
-  on the main thread, a tab whose note is gone or deleted is dropped), before the window shows. The note list is read
-  on the storage queue after that (`SessionCoordinator.restore()`).
+- Launching reads the session, then what every saved tab needs of its note without the body (`NoteStore.tabInfo`: one
+  query; a tab whose note is gone or deleted is dropped) and the active note in full (`SessionCoordinator.restoredTabs`),
+  before the window shows: one body is read, whatever the other tabs hold (spec §7). The note list is read on the storage
+  queue after that (`SessionCoordinator.restore()`), and so are the other tabs' bodies, for the query warm-up, once the
+  first frame is out.
 - A launch measures itself: `LaunchTimer.mark` records the phases `main`, `storage`, `restore` and `window` as the launch
   goes (a clock read each), the main run loop's first idle moment after the window is shown marks `firstFrame`, and only
   then `LaunchTimer.finish` hands the marks to its own utility queue, which appends the record to `launch-times.json`

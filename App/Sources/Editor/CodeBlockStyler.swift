@@ -65,6 +65,10 @@ final class CodeBlockStyler {
     /// How many results were dropped because no block held their text any more. The tests read it.
     private(set) var droppedResults = 0
 
+    /// How many requests were sent to the highlight queue, those made for a block that is not there yet (`prefetch`)
+    /// included. The tests read it.
+    private(set) var submittedRequests = 0
+
     /// How many requests to look for the languages of some texts are on the queue (`warmUp`).
     private var warmUpScans = 0
     /// The languages whose queries are to be compiled, first in first out.
@@ -167,6 +171,26 @@ final class CodeBlockStyler {
             let languages = Self.languages(namedInAny: texts)
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { self?.warmUpScanDidFinish(languages, using: highlighter) }
+            }
+        }
+    }
+
+    /// The same, for texts that are not at hand: `readTexts` reads them on `readQueue` (the storage queue: the launch reads the
+    /// body of the active note only, and the other tabs' bodies are read here, after the first frame, plan 6 task 3), and the
+    /// fences are looked for on the highlight queue. `pendingWarmUps` is above zero from this call until the scan is done.
+    func warmUp(
+        languagesInTextsFrom readTexts: @escaping @Sendable () -> [String], on readQueue: DispatchQueue,
+        using highlighter: Highlighter = .shared
+    ) {
+        warmUpScans += 1
+        let highlightQueue = queue
+        readQueue.async { [weak self] in
+            let texts = readTexts()
+            highlightQueue.async {
+                let languages = Self.languages(namedInAny: texts)
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { self?.warmUpScanDidFinish(languages, using: highlighter) }
+                }
             }
         }
     }
@@ -282,9 +306,40 @@ final class CodeBlockStyler {
         }
         if running?.signature == signature || todo.contains(where: { $0.signature == signature }) { return }
         let request = HighlightRequest(
-            signature: signature, info: parts.info, text: code, length: parts.content.length, declared: declared)
+            signature: signature, info: parts.info, text: code, length: parts.content.length, declared: declared,
+            isPrefetch: false)
         if running == nil, todo.isEmpty {
             // Nothing is ahead of it, and the block was just looked at: no need to find it again.
+            submit(request)
+        } else {
+            todo.append(request)
+        }
+    }
+
+    /// Asks for the colours that a block holding `block` would ask for, before the block exists, so that they are in the cache
+    /// by their hash when it appears (a paste that is going to be wrapped in a fence: `NoteTextView.endPaste` calls it with the
+    /// edit's replacement, whole fenced block as `PasteClassifier.wrap` writes it, with the line breaks that it may have in
+    /// front and behind). The block that the wrap makes is then coloured from the cache, or from the request that is on the
+    /// queue (`request` finds it there), and the paste's colours do not wait for the wrap's turn of the run loop.
+    ///
+    /// A block with no language is not queued: a fence with no name (code of a language that Scratch lacks), a name that is not
+    /// one of the languages, an empty block and a block over the highlighter's cap have no colours to get ahead with. The
+    /// request carries the mark `isPrefetch`: its result is stored in the cache and written only when a block holds its code
+    /// (no block yet is not a dropped result), and `pump` does not drop it for want of a block.
+    func prefetch(block: String) {
+        let text = block as NSString
+        guard let range = FenceScanner.codeBlocks(in: block).first, let parts = CodeBlockParts(block: range, in: text),
+            let declared = CodeLanguage.fromFence(parts.info), parts.content.length > 0,
+            parts.content.length <= Highlighter.maximumLength
+        else { return }
+        let code = text.substring(with: parts.content)
+        let signature = Self.signature(info: parts.info, text: code)
+        if cache.highlight(signature: signature, info: parts.info, text: code) != nil { return }
+        if running?.signature == signature || todo.contains(where: { $0.signature == signature }) { return }
+        let request = HighlightRequest(
+            signature: signature, info: parts.info, text: code, length: parts.content.length, declared: declared,
+            isPrefetch: true)
+        if running == nil, todo.isEmpty {
             submit(request)
         } else {
             todo.append(request)
@@ -313,7 +368,9 @@ final class CodeBlockStyler {
         guard running == nil else { return }
         while !todo.isEmpty {
             let next = todo.removeFirst()
-            guard !matchingBlocks(info: next.info, length: next.length, code: next.text).isEmpty else { continue }
+            // A prefetched request is for a block that is still to come: it is kept (its result is cached).
+            guard next.isPrefetch || !matchingBlocks(info: next.info, length: next.length, code: next.text).isEmpty
+            else { continue }
             submit(next)
             return
         }
@@ -321,6 +378,7 @@ final class CodeBlockStyler {
 
     private func submit(_ request: HighlightRequest) {
         running = request
+        submittedRequests += 1
         queue.async { [weak self] in
             let outcome = CodeBlockStyler.highlight(request)
             DispatchQueue.main.async {
@@ -355,7 +413,12 @@ final class CodeBlockStyler {
             info: request.info, text: request.text, contentLength: request.length, language: outcome.language,
             isDetected: outcome.isDetected, tokens: outcome.tokens)
         cache.store(signature: request.signature, highlight)
-        enqueue(highlight)
+        // A prefetched result that comes before its block waits in the cache: the block finds it when it appears, and the
+        // result is not one that was dropped. When the block is there already (the wrap came first) it is written now.
+        let isWaitingForItsBlock =
+            request.isPrefetch
+            && matchingBlocks(info: request.info, length: request.length, code: request.text).isEmpty
+        if !isWaitingForItsBlock { enqueue(highlight) }
         pump()
     }
 
@@ -500,6 +563,8 @@ nonisolated private struct HighlightRequest: Sendable {
     let length: Int
     /// The language the fence names, nil when it names none (or one that is not known): it is detected then.
     let declared: CodeLanguage?
+    /// True for a request made before its block exists (`CodeBlockStyler.prefetch`).
+    let isPrefetch: Bool
 }
 
 /// What the queue found: the language that was used (nil for none), whether it was detected, and the tokens (none for a

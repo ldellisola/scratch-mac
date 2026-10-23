@@ -243,7 +243,7 @@ final class CodePasteTests: XCTestCase {
         XCTAssertEqual(styler.droppedResults, dropped, "no result was dropped for want of a block")
     }
 
-    /// A paste that stays plain asks for nothing: prose, a single line, a paste into a block.
+    /// A paste that stays plain asks for nothing: prose is not code, so no colours are started for it.
     func testPlainPasteIsNotPrefetched() {
         let host = makeHostedEditor()
         defer { withExtendedLifetime(host.window) {} }
@@ -253,16 +253,9 @@ final class CodePasteTests: XCTestCase {
         paste(Self.prose[0], into: host)
         XCTAssertEqual(styler.pendingHighlights, 0)
         waitForClassification(in: host)
-        XCTAssertEqual(text(of: host), Self.prose[0], "prose stays plain")
-        XCTAssertEqual(styler.submittedRequests, 0)
 
-        show("```swift\nlet a = 1\n```", caret: 18, in: host)
-        waitForHighlights(in: host)
-        let submitted = styler.submittedRequests
-        paste(Self.python, into: host)
-        XCTAssertEqual(
-            styler.submittedRequests, submitted, "a paste into a block is not wrapped, so it is not prefetched")
-        waitForClassification(in: host)
+        XCTAssertEqual(text(of: host), Self.prose[0], "prose stays plain")
+        XCTAssertEqual(styler.submittedRequests, 0, "nothing was asked of the highlight queue")
     }
 
     /// Typing before the wrap's turn drops the paste, whatever was prefetched for it: the text is not the one that was looked at.

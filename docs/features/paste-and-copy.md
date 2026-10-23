@@ -14,7 +14,8 @@ paste and the names and files of attachments on copy. Later plans may add rich c
   browser, Word or Excel.
 - **"Paste and Match Style" is the same as Paste.**
 - **Paste order** (spec §6.5). The pasteboard's text is inserted first, as plain text, exactly as above. Then, on the next
-  turn of the run loop, text of two lines or more that looks like code is wrapped in a fence with its language, an edit of
+  turn of the run loop (the paste is looked at as soon as it is read, so that the colours of the block are on their way
+  before the turn), text of two lines or more that looks like code is wrapped in a fence with its language, an edit of
   its own: ⌘Z once gives back the plain pasted text, and ⌘Z again removes it. Prose, a single line, a paste into code and a
   paste that holds a fence line are left as pasted. The rules are in docs/features/code.md ("Pasting code"). File
   references come before the text in this order and become attachments, and an image with no text comes after it and

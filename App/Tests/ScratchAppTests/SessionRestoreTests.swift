@@ -12,6 +12,7 @@ import XCTest
 /// directory of its own.
 @MainActor
 final class SessionRestoreTests: XCTestCase {
+    @MainActor
     private struct Harness {
         let storage: ScratchStorage
         let coordinator: SessionCoordinator
