@@ -1335,8 +1335,9 @@ final class NoteTextView: NSTextView {
 
     /// What VoiceOver reads for `range`: the note as the editor shows it, with the words of the markers and tokens in the place
     /// of their characters, "unchecked" for `[ ]`, "image, dashboard.png" for a token and "code block, Swift" for a fence, and
-    /// nothing for the stars of bold (`SpokenText`, plan 6 task 8). The words are not a text of their own: `accessibilityValue()`
-    /// is the stored text, and a range and the caret that VoiceOver reports are the characters of that text.
+    /// nothing for the stars of bold (`SpokenText`, plan 6 task 8). The words are not a text of their own: the accessibility
+    /// value is still the stored text (AppKit's own answer, which `SpokenTextTests.testAccessibilityValueIsTheStoredText`
+    /// holds to it), and a range and the caret that VoiceOver reports are the characters of that text.
     override func accessibilityString(for range: NSRange) -> String? {
         guard let storage = textStorage, range.location != NSNotFound, NSMaxRange(range) <= storage.length else {
             return super.accessibilityString(for: range)
@@ -1357,12 +1358,6 @@ final class NoteTextView: NSTextView {
             return native
         }
         return NSAttributedString(string: spoken)
-    }
-
-    /// The stored text, always: the characters that the markers are made of are in it, and every range that VoiceOver and the
-    /// caret use counts them (`accessibilityString(for:)` says what a range sounds like).
-    override func accessibilityValue() -> Any? {
-        string
     }
 
     // MARK: The context menu

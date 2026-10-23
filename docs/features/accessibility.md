@@ -36,7 +36,8 @@ a nested item. Inside a fenced block nothing is a marker: a line `- not a bullet
 - **A range is cut to the text.** A marker is replaced by its words when the range holds its first character. A range that
   starts inside a marker (a word range that begins at the `]` of a box) says nothing for the part of it that it holds: the
   words were not asked for.
-- **The value is the stored text.** `accessibilityValue()` returns the note's text with every marker in it, so that a range
+- **The value is the stored text.** The accessibility value is the note's text with every marker in it (AppKit's own answer:
+  the text view does not override it, and a test holds it to the text), so that a range
   and the caret that VoiceOver reports are characters of that text. `accessibilityString(for:)` says what a range sounds
   like. This is a deviation from a text view that reads what it holds, and it is the plan's: the words differ in length from
   the characters, and only the value fixes the offsets.
@@ -119,7 +120,7 @@ on the machine: `typical-contrast-light` and `code-contrast-dark` (docs/images a
 ## Where it lives
 
 - `App/Sources/Editor/SpokenText.swift`: the words of a range. `NoteTextView.swift`: `accessibilityString(for:)`,
-  `accessibilityAttributedString(for:)`, `accessibilityValue()`, `menu(for:)`, `validateMenuItem`, `toggleCheckbox(at:)`,
+  `accessibilityAttributedString(for:)`, `menu(for:)`, `validateMenuItem`, `toggleCheckbox(at:)`,
   `codeBlock(atViewPoint:)`.
 - `App/Sources/Editor/EditorContextMenu.swift`: the context menu's items.
 - `App/Sources/Sidebar/SidebarRowViews.swift`: the row's label and the header's button. `SidebarViewController.swift`: the

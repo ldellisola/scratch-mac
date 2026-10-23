@@ -261,7 +261,7 @@ App/Sources/Editor/               NoteTextView (plain-text NSTextView, plain pas
                                   (`writeSelection`). Accessibility (plan 6 task 8): SpokenText (`spoken(_:range:)`: what
                                   VoiceOver reads for a range of the styled note, from the marker roles, code block marks and
                                   attachment marks; NoteTextView's `accessibilityString(for:)` and
-                                  `accessibilityAttributedString(for:)` ask it, `accessibilityValue()` is the stored text) and
+                                  `accessibilityAttributedString(for:)` ask it; the accessibility value stays the stored text) and
                                   EditorContextMenu (`items(for:atViewPoint:)`: Mark as Checked, Open Link, Open Attachment and
                                   the Code Block Language submenu, which `NoteTextView.menu(for:)` puts before AppKit's items;
                                   `toggleCheckbox(at:)`, `attachmentMark(atViewPoint:)`, `codeBlock(atViewPoint:)`,
@@ -1488,8 +1488,10 @@ new kind of release file, with no change to the app, ships.
   (plan 6 task 8). `NoteTextView.accessibilityString(for:)` replaces the characters of a marker with its words ("bullet",
   "unchecked", "checked"; a token: "image, <name>", "file, <name>", "missing attachment"; an opening fence "code block,
   <label>", a closing one "end of code block") and says nothing for hidden and revealed markers, so a spoken range is not as
-  long as the range it was asked for, and only the value, which `accessibilityValue()` returns as `string`, fixes the
-  offsets that VoiceOver and the caret use. `spoken(_:range:)` goes paragraph by paragraph, reads the mark on the paragraph's
+  long as the range it was asked for, and only the value, which is AppKit's own answer (the stored text: `NoteTextView`
+  does not override `accessibilityValue()`, which `NSTextView` does not let a subclass override in Swift, and
+  `SpokenTextTests.testAccessibilityValueIsTheStoredText` holds it to the text), fixes the offsets that VoiceOver and the
+  caret use. `spoken(_:range:)` goes paragraph by paragraph, reads the mark on the paragraph's
   first character (`scratchAttachment`, `scratchCodeBlock`) and the `scratchMarker` runs inside it, and says a marker's words
   when the range holds its first character. A new kind of marker or of drawn line needs its words there and a case in
   `SpokenTextTests`. Nothing could be tried with VoiceOver itself (CI has no screen reader): the tests call the text
