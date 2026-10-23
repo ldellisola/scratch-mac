@@ -13,7 +13,7 @@ Copied text always comes out as plain text. The app is developed only by AI agen
 - Design (the source of truth for behaviour): [`docs/superpowers/specs/2026-10-19-scratchpad-design.md`](docs/superpowers/specs/2026-10-19-scratchpad-design.md)
 - Roadmap (six plans, one release each): [`docs/superpowers/plans/2026-10-19-roadmap.md`](docs/superpowers/plans/2026-10-19-roadmap.md)
 - Latest plan: [`docs/superpowers/plans/2026-10-22-plan-6-polish.md`](docs/superpowers/plans/2026-10-22-plan-6-polish.md),
-  in progress, and its release is 1.0.0 (`VERSION` says so from task 1 on): launch speed and a launch log, the CI
+  done, and released as 1.0.0 (`VERSION` says so): launch speed and a launch log, the CI
   performance check, the look of mockup B, accessibility, an icon, and the 0.5.0 follow-ups. Task 1 is done: the app writes
   down each launch (`launch-times.json`, `LaunchLog`, `LaunchTimer`) and Help > Launch Times… shows and copies the record
   ([`docs/features/launch-times.md`](docs/features/launch-times.md)). Task 2 is done: CI gates the launch on Scratch's own
@@ -21,7 +21,10 @@ Copied text always comes out as plain text. The app is developed only by AI agen
   (`idle_cpu_pct`), with `perf/tolerances.json` and report-only metrics (docs/decisions/0009). Task 3 is done: a launch reads
   the body of the active note only, and the colours of a pasted block are asked for before the block exists. Task 4 is done:
   a sidebar row and a tab show a line without its markers (`PlainLine`), and schema version 4 works the titles and previews
-  of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). Task 7 is done: the tab strip is a
+  of the stored notes out again ([`docs/features/sidebar.md`](docs/features/sidebar.md)). Task 5 is done: ⌘B bolds the word
+  under a caret and wraps each selected line, ⇧⌘U (Format > Mark as Checked) ticks a checklist, a double-click on a box ticks
+  it once, composed text keeps what marks it, and a note's title keeps undo steps of its own
+  ([`docs/features/formatting.md`](docs/features/formatting.md), [`docs/features/title-and-font-size.md`](docs/features/title-and-font-size.md)). Task 7 is done: the tab strip is a
   toolbar item in the toolbar row, lines have air between them, inline code is a pill, code blocks have a border, and an open
   box is grey ([`docs/features/tabs.md`](docs/features/tabs.md), [`docs/features/formatting.md`](docs/features/formatting.md)).
   Task 8 is done: VoiceOver hears the rendered note (`SpokenText`: "unchecked", "image, dashboard.png", "code block, Swift"),
@@ -33,7 +36,9 @@ Copied text always comes out as plain text. The app is developed only by AI agen
   writes the note's text on a private type that a paste or a drop into Scratch reads first, and a copied image is written
   with its data when Scratch quits ([`docs/features/attachments.md`](docs/features/attachments.md)). Task 9 is done: the app
   has an icon, a yellow notepad with a ticked checkbox that `scripts/make-app-icon.py` draws with Pillow into
-  `AppIcon.appiconset` (docs/decisions/0010), and the release zip check fails an app without `AppIcon.icns`. The plan before it,
+  `AppIcon.appiconset` (docs/decisions/0010), and the release zip check fails an app without `AppIcon.icns`. Task 10 is done: the CI baseline is measured again
+  (the slowest of three runs of the final app, docs/decisions/0009), the README, its seven screenshots and the decision records
+  0009 and 0010 are final, and the app's 1.0.0 is what a merge of `plan-6-polish` publishes. The plan before it,
   [`2026-10-22-plan-5-attachments.md`](docs/superpowers/plans/2026-10-22-plan-5-attachments.md), is done and released as 0.5.0
   (attachments: images and files pasted, dropped or attached, shown inline, opened, dragged out
   and copied; plus the 0.4.0 follow-ups). Its tasks are done: titles skip fence and attachment lines, `AttachmentID`
@@ -402,7 +407,8 @@ docs/decisions/                   numbered decision records: 0001 (the editor us
                                   licences, and how to add a language), 0008 (attachments: the token line, the files kept
                                   by reference, the own-line layout and the copy rules), 0009 (performance at 1.0: the launch
                                   gates on the overhead above an empty app, idle CPU, the tolerances), 0010 (the 1.0 calls:
-                                  the app icon and Pillow as a development tool; Task 10 adds the look, editing and attachments)
+                                  the look of mockup B, accessibility, the editing and attachment follow-ups, and the app
+                                  icon with Pillow as a development tool)
 docs/superpowers/                 design spec and plans
 ```
 
@@ -539,9 +545,15 @@ docs/decisions/0001, 0003 and 0009. What to know when one fails or changes:
   with this in-app monitor, not with XCTest's scroll metrics. `paste_code_ms`: the `paste-code` signpost, from
   `NoteTextView.paste` until the colours of the block that the paste made are on screen (`CodeBlockStyler.whenHighlighted`),
   one paste of 500 lines of Swift into an empty note per iteration, each with names that the app has not coloured before.
-  Budget 50 (spec §7), baseline 85.3: it is a WARN on CI (55 to 85 ms, depending on the runner: the ADR 0003 addendum),
-  and a FAIL above 100 (2 x the budget), which a slow runner can reach with no change to the paste: run the job again.
+  Budget 50 (spec §7), baseline 94.8: it is a WARN on CI (50 to 95 ms, depending on the runner: the ADR 0003 addendum),
+  and a FAIL above 100 (2 x the budget, which is under 1.2 x the baseline, so it decides), which a slow runner can reach
+  with no change to the paste (3 of 26 runs of plan 6 did): run the job again.
   All in milliseconds, except the idle ones, and all medians.
+- **The baseline is the slowest of three runs of the final 1.0.0 app** (`perf/baseline.json`, written in plan 6 task 10: the
+  three runs, the limits that follow and what they leave open are in docs/decisions/0009, "Task 10: the baseline").
+  `launch_overhead_ms` is 287.3 there (one of the three ran on a slow runner), which puts its regression limit (405) over the
+  hard limit, so it fails above 300 and no sooner. `scroll_frame_ms` is 6.54, the slow of its two modes. A baseline changes only
+  for a change that is meant, from at least three runs of the macOS job (docs/decisions/0003, "How to change them").
 - **The CI runner is slow and noisy.** Runs of the same build differ by up to a factor of two (the first run of a job is
   the slowest), and a launch takes 600 ms and more there (Calculator takes 1 s). The baseline is therefore the slowest of
   many runs, and `switch_small_ms` is budgeted at 12 instead of the spec's 8 (docs/decisions/0003). `launch_ms` does not

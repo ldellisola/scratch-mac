@@ -5,7 +5,7 @@ and copies it. Spec: [§7 Performance](../superpowers/specs/2026-10-19-scratchpa
 and 500 ms from a cold boot, "checked by hand when someone is at a real Mac") and §4 (visible lag). Plan:
 [Plan 6](../superpowers/plans/2026-10-22-plan-6-polish.md), task 1.
 
-Status: plan 6, tasks 1 and 2 (1.0.0). No CI runner can measure a cold boot, so the app measures its own launches and the
+Status: plan 6, tasks 1, 2 and 10 (1.0.0). No CI runner can measure a cold boot, so the app measures its own launches and the
 owner reads the numbers on a real Mac. CI gates the launch differently (decision record 0009, "In CI" below).
 
 ## The phases
@@ -76,6 +76,15 @@ the two, at the speed of a nominal runner (`launch_overhead_ms`: budget 150 ms, 
 launch log's newest records from `debug.state` (`launchTimes`) and attaches them as `launch_phases`, and `perf-extract.py`
 reports the median of each phase (`launch_phase_<name>_ms`) in `perf/report.md`: they say where a slow launch spent its time
 and never fail.
+
+## Checking it on a real Mac
+
+The cold-boot check that the spec leaves to "someone at a real Mac" is the owner's, and the README says how (the section
+"Checking launch speed"): restart the Mac and log in, open Scratch from Raycast, choose Help > Launch Times…, press Copy and
+send the text, then quit and open Scratch five times and send it again. The first launch after the restart is the record marked
+"first after start-up" (500 ms), the five that follow are "other launches" (200 ms), and the report's two medians say which budget
+each met. The numbers go in the table at the end of [decision record 0009](../decisions/0009-performance-at-1-0.md), "The owner's
+Mac".
 
 ## For tests
 

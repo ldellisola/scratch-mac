@@ -12,11 +12,12 @@ App (AppKit shell)  ──depends on──▶  ScratchCore (Foundation + CSQLite
 ```
 
 - **`Packages/ScratchCore`** is a Swift package with no AppKit or SwiftUI imports. It holds everything rule-based:
-  the note model, storage and full-text search (`NoteStore`, `SearchQuery`, the FTS5 index), the tab rules (`TabList`),
-  the sidebar's groups and time labels, session state, autosave policy, launch options and fixtures, and the marker
+  the note model (its title and preview as the editor shows a line: `PlainLine`), storage and full-text search (`NoteStore`,
+  `SearchQuery`, the FTS5 index), the tab rules (`TabList`), the sidebar's groups and time labels, session state, autosave
+  policy, launch options, the launch log (`LaunchLog`) and fixtures, and the marker
   parser (`Markup/`: the spans of a line and the fenced code blocks of a note, as UTF-16 ranges the editor applies
-  directly) and the rules for the keys that edit it (`ListEditing`, `InlineEditing`: what Return, Tab, ⇧Tab, ⇧⌘L, ⌘B
-  and a click on a checkbox change, as a `TextEdit`) and the attachments (`Attachments/`: the token line
+  directly) and the rules for the keys that edit it (`ListEditing`, `InlineEditing`: what Return, Tab, ⇧Tab, ⇧⌘L, ⇧⌘U,
+  ⌘B and a click on a checkbox change, as a `TextEdit`) and the attachments (`Attachments/`: the token line
   `[[attachment:<id>]]`, the `attachments` table and the copied files under `<data directory>/attachments/<id>/`, the rules
   of the keys and the paste around a token, and the text that a copy writes). It builds and tests with plain
   `swift test` on macOS and on Linux.
@@ -119,7 +120,26 @@ key press
   the notes and then ask `AttachmentStore.removeUnreferenced` about the ids that were in them, and the launch sweep
   (`SessionCoordinator.sweepUnreferencedAttachments`) removes unreferenced attachments older than 24 hours. Both read every
   stored body (`NoteStore.referencedAttachmentIDs`) in the same transaction as the removal, so deleting a token and pressing
-  ⌘Z always brings the file back.
+  ⌘Z always brings the file back. **Text that is typed, composed or pasted next to a token goes on a line of its own**
+  (`AttachmentEditing.lineBreaks` decides, `NoteTextView.makeRoomAtTokenEdge` applies the break as its own edit), and a Copy,
+  Cut or drag of a selection that holds a token also writes the note's text exactly as stored on a private pasteboard type
+  that Paste and a drop into Scratch read first, so the attachments travel inside Scratch with their ids while other
+  applications see plain text. A copied image's promised PNG and TIFF are written out in full when Scratch quits
+  (`AttachmentPasteboard.materialize`, from `applicationWillTerminate`).
+- **What VoiceOver reads is made from the same attributes as what is drawn, and the value stays the stored text**
+  (`docs/features/accessibility.md`). `NoteTextView.accessibilityString(for:)` asks `SpokenText.spoken(_:range:)`, which reads
+  the storage's marker roles, code block marks and attachment marks and says "unchecked", "image, dashboard.png" or "code
+  block, Swift" where the note has them, and nothing for a hidden marker. `accessibilityValue` is AppKit's own answer, the
+  stored text, so the ranges and the caret that assistive technology reports are offsets into the characters. The editor's
+  context menu (`EditorContextMenu`, from `NoteTextView.menu(for:)`) and Format > Mark as Checked give every mouse-only
+  action a menu item, and `KeyViewLoop` fixes the order of Tab through the window. Colours come from the asset catalog
+  (`CatalogColour.named`), each with a high contrast variant that AppKit picks for Increase Contrast.
+- **The tab strip is a toolbar item.** `ToolbarController` makes an `NSToolbarItem` whose view is the strip's own glass
+  (`TabStripView`) and puts it after the sidebar's tracking separator, in the row of the pin, paperclip and new note buttons,
+  so the editor area is the editor alone, from the top of the window with the toolbar in its safe area. The strip's width is
+  made to fit (`min(its tabs, the room)`, from `MainSplitViewController.onContentLayout` through
+  `ToolbarController.updateTabStripWidth`), because a toolbar that is short of room moves items into its overflow menu
+  (`docs/features/tabs.md`, `docs/decisions/0010-one-point-oh-calls.md`).
 - A write that fails never costs text: `UnsavedNotes` (ScratchCore) keeps the note with the owner's text until a write of
   it succeeds, `persistNow()` and every save write those notes again, and `SessionCoordinator.loadNote` shows a note
   from there when it is opened again (`docs/features/autosave-and-restore.md`, "Write errors are not silent").

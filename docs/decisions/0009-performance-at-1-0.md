@@ -1,6 +1,6 @@
 # 0009: Performance at 1.0: the launch gates on Scratch's own work, and idle is measured
 
-Status: accepted, 2026-10-22 (Plan 6, tasks 2 and 3, Scratch 1.0.0). Amends [0003](0003-ci-performance-checks.md): the launch
+Status: accepted, 2026-10-22 (Plan 6, tasks 2, 3 and 10, Scratch 1.0.0). Amends [0003](0003-ci-performance-checks.md): the launch
 budget, the launch baseline and the way a result is compared. Adds two gated metrics, `launch_overhead_ms` and `idle_cpu_pct`,
 and a file of tolerances. No new dependency: the reference app is an AppKit app of this repository, and the idle monitor
 reads `getrusage`.
@@ -82,7 +82,7 @@ the runner moves by an amount of milliseconds may be allowed that amount.
    | every other budgeted metric | as in 0003 | 0 | 1.2 x S, or 2 x its budget |
 
 7. **The baseline is measured again** in Plan 6, task 10, as the slowest of three CI runs of the final app (0003, decision
-   7). Until then `launch_overhead_ms` and `idle_cpu_pct` have no baseline, so they can warn ("no baseline") and fail only
+   7; the numbers are in "Task 10: the baseline" below). Until then `launch_overhead_ms` and `idle_cpu_pct` have no baseline, so they can warn ("no baseline") and fail only
    above twice their budget. The baseline of the overhead is a number at the nominal runner's speed, about 150 to 180, so the
    regression limit (1.2 x S + 60, about 240 to 280) is under the hard limit of 300 and decides, as it should.
 
@@ -207,6 +207,67 @@ Phases of `81b0a64` (milliseconds from the process start, medians): `main` 70.0,
   the layout the anchor needs, the first render of the tabs and the sidebar). The second is the first layout and draw. The phases
   do not split the first one further: a launch mark inside `launch()` would, and so would Instruments on a Mac. What was tried is
   what the plan names, and no further change is required by it: a later change would start from those two phases.
+
+## Task 10: the baseline
+
+Plan 6, task 10. `perf/baseline.json` holds, for every metric, the slowest result of three runs of the macOS job on one commit
+(0003, decision 7). The commit is `533c237`, the app that 1.0.0 ships: task 10 changes documents, the README's pictures and
+`perf/baseline.json` and nothing under `App/` or `Packages/`. The job was run three times on it (the first push, and two
+re-runs of the workflow run through the GitHub API, each on a runner of its own: a re-run replaces the folder of the commit in
+`ci-results`, so each run's `perf/results.json` was copied out before the next began). Milliseconds, except `idle_cpu_pct`
+(a percentage of one core) and `idle_wakeups` (a count).
+
+| Metric | Run 1 | Run 2 | Run 3 | Baseline (the slowest) | Fails above |
+|---|---|---|---|---|---|
+| `launch_overhead_ms` | 163.4 | 287.3 | 176.4 | 287.3 | 300 (the 2 x budget limit: 1.2 x 287.3 + 60 is 404.7) |
+| `keystroke_ms` | 5.43 | 6.31 | 5.03 | 6.31 | 7.58 |
+| `scroll_frame_ms` | 0.68 | 6.54 | 0.72 | 6.54 | 7.85 |
+| `switch_small_ms` | 10.4 | 16.6 | 13.0 | 16.6 | 20.0 |
+| `switch_huge_ms` | 31.8 | 34.4 | 27.2 | 34.4 | 41.3 |
+| `paste_code_ms` | 74.1 | 94.8 | 90.2 | 94.8 | 100 (the 2 x budget limit: 1.2 x 94.8 is 113.8) |
+| `idle_cpu_pct` | 0.062 | 0.137 | 0.081 | 0.137 | 0.66 (1.2 x 0.137 + 0.5) |
+| `idle_wakeups` | 3 | 3 | 3 | 3 | reported only |
+| `launch_ms` | 526.0 | 816.7 | 555.2 | 816.7 | reported only |
+| `launch_reference_ms` | 289.4 | 335.2 | 295.0 | 335.2 | reported only |
+| `launch_difference_ms` | 236.5 | 481.5 | 260.2 | 481.5 | reported only |
+
+The phases of the launch log (`launch_phase_<name>_ms`, medians of the launches of the run, from the process start; reported only)
+and the other frame statistics are in the baseline file too, as the slowest of the three.
+
+| Phase | Run 1 | Run 2 | Run 3 |
+|---|---|---|---|
+| `main` | 68.5 | 122.5 | 75.7 |
+| `storage` | 115.8 | 221.1 | 130.3 |
+| `restore` | 316.1 | 562.3 | 358.4 |
+| `window` | 378.2 | 674.6 | 424.8 |
+| `firstFrame` | 529.0 | 1,002.3 | 563.0 |
+
+- **No run fails the baseline**, and none of the three would have: `perf-check.py` says OK or WARN for every metric of every
+  run against the file that they made (the WARNs are the budgets that a CI runner cannot meet: `launch_overhead_ms` over 150 in
+  all three, `paste_code_ms` over 50 in all three and `switch_small_ms` over 12 in two, ADR 0003).
+- **Run 2 is the slow runner, in every number at once.** The reference app launched in 335 ms (289 and 295), Scratch in 817 ms
+  (526 and 555), every phase of the launch was 1.6 to 1.9 times as far from the process start as in the other two, and the
+  ratio of the two launches was 2.44 (1.82 and 1.88), where the five runs of task 2 that had a reference had 1.65 to 1.73 in four and 2.11 in one. This is the
+  noise that ADR 0003 describes, and it is why the baseline is the slowest run: a baseline taken from runs 1 and 3 would fail
+  run 2.
+- **The baseline of `launch_overhead_ms` is therefore 287, not the 150 to 180 that decision 7 expected**, and the regression limit
+  (1.2 x 287 + 60 = 405) is over the hard limit of 300, so the hard limit decides: the check fails an overhead above 300 and
+  nothing under it. That is a coarser gate than the one that decision 7 had in mind (a limit of 240 to 280), and the price of
+  taking the slowest of three runs when one runner is slow. A regression of Scratch's own launch work from about 170 ms to under
+  300 passes the check. What would see it is what task 2 added to look at: the phases (`launch_phase_<name>_ms`) and
+  `launch_difference_ms`, which are in every report, and the owner's own numbers from Help > Launch Times… (the next section).
+  The budget, the tolerance and the nominal speed are not changed for it (AGENTS.md, "Performance").
+- **`scroll_frame_ms` is bimodal again** (0.68, 6.54 and 0.72 here, 0.27 to 0.86 and 3.4 to 6.8 in the 26 runs of this branch that
+  `ci-results` still holds), and one of the three runs was in the slow mode, so the baseline is the slow mode, 6.54, as decision 3
+  of 0003 wants it (the old baseline was 5.8). A baseline of the fast mode would fail every run in the slow mode.
+- **`paste_code_ms` is limited by the 2 x budget and not by the baseline** (74, 95 and 90 here, 50 to 113 over the 26 runs: 101,
+  104 and 113 in three of them). A run above 100 ms with no change to the paste is the runner's, and the job is run again with
+  a new commit (AGENTS.md, section 4).
+- **`switch_small_ms` and `switch_huge_ms` can still fail on the slowest runner.** The limits are 20.0 and 41.3 ms, and a run in
+  the 26 had 22.8 and another 50.7 (with no change of the code). The rule of 0003 is unchanged: look at `perf/report.md` and
+  `perf/metrics.json`, then run the job again with a new commit, and touch the baseline only for a change that is meant.
+- **The idle numbers are the same size as in task 2** (0.04% to 0.39%, 3 to 5 wake-ups), under the budget of 1.0 by a factor of
+  seven.
 
 ## The owner's Mac
 

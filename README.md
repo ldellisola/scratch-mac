@@ -5,7 +5,7 @@ everything back when you open it again. It is made for one person on one Apple S
 notes and todo lists.
 
 <p align="center">
-  <img src="docs/images/window-light.png" alt="Scratch in light mode: a sidebar of notes grouped by day, a tab strip, and a note with a checklist, bullets, bold text and a coloured shell snippet in a tinted block with a Shell label" width="49%">
+  <img src="docs/images/window-light.png" alt="Scratch in light mode: a sidebar of notes grouped by day, the tabs in the toolbar next to the pin, paperclip and new note buttons, and a note with a checklist, bullets, bold text, a code pill and a coloured shell snippet in a bordered block with a Shell label" width="49%">
   <img src="docs/images/window-dark.png" alt="The same window in dark mode" width="49%">
 </p>
 
@@ -18,7 +18,7 @@ from, and text you copy always comes out as plain text.
 
 ## What it does
 
-Scratch is at version 0.5, which does these things:
+Scratch is at version 1.0, which does these things:
 
 - **Always ready.** It opens to a note you can type in at once. There is no Save and no file to name: everything you
   type is written within about a second, and a crash or a force-quit loses at most that second. Quitting and opening
@@ -28,22 +28,24 @@ Scratch is at version 0.5, which does these things:
   note uses one monospaced font (SF Mono, 13 pt by default; ⌘+, ⌘− and ⌘0 change the size for all notes). Nothing
   is autocorrected, so pasted code keeps every character.
 - **Notes with an optional title, and tabs.** A note can have a bold title above its text. Tabs sit in a glass strip
-  above the note, each with its own cursor, scroll position and undo history.
+  in the toolbar, next to the buttons, each with its own cursor, scroll position and undo history, and a title in a tab
+  or in the sidebar shows the line as the note does, without its `- `, `[ ] `, `**` or backticks.
 - **A sidebar that finds things.** Notes are grouped as Pinned, Today, Yesterday and Earlier, newest edit first. Pin a
   note (the pin button or ⇧⌘P) to keep it at the top. The search field filters the notes as you type, over titles and
   text.
 - **Deleting is undoable.** Delete a note from its right-click menu, or with ⌘⌫ in the sidebar. It moves to Recently
   Deleted, where you can restore it, and is removed for good after 30 days.
 - **Just enough formatting, from what you type.** `- ` is a bullet, `[ ] ` and `[x] ` are checkboxes you can click
-  (ticked ones are struck through), `**bold**` is bold, `` `code` `` is tinted, and `http(s)://` links open with
-  ⌘-click. Return continues a list, Tab and ⇧Tab indent it, ⌘B makes text bold and ⇧⌘L makes a checklist. The `**` and
-  the backticks hide, except where the caret is. Bold needs a word boundary on each side, so `x**2 + y**2` and
-  `src/**/*.ts` stay plain text. What is stored never changes, so copying a note out gives the characters you typed,
+  (ticked ones are struck through), `**bold**` is bold, `` `code` `` is a small pill, and `http(s)://` links open with
+  ⌘-click. Return continues a list, Tab and ⇧Tab indent it, ⌘B makes the word under the caret (or each selected line)
+  bold, ⇧⌘L makes a checklist and ⇧⌘U ticks it. Open boxes are grey, ticked ones are blue and struck through, and
+  lines have a little air between them. The `**` and the backticks hide, except where the caret is. Bold needs a word
+  boundary on each side, so `x**2 + y**2` and `src/**/*.ts` stay plain text. What is stored never changes, so copying a note out gives the characters you typed,
   `- ` and `**` included. Inside a fenced block (three backticks), and inside inline code, every character stays
   exactly as typed.
 - **Code looks like code.** A fenced block (a line of three backticks, the code, a line of three backticks) is drawn as a
-  tinted, rounded block with a small language label at its top right, and the code is coloured in the colours of Xcode's
-  default theme, light and dark, for 17 languages: Swift, Python, JavaScript, TypeScript, JSON, Shell, SQL, YAML,
+  tinted, rounded block with a hairline border and a small language label at its top right, and the code is coloured in
+  the colours of Xcode's default theme, light and dark, for 17 languages: Swift, Python, JavaScript, TypeScript, JSON, Shell, SQL, YAML,
   HTML, CSS, C#, Go, Rust, C, C++, Java and PowerShell. The fence lines shrink to a little padding and come back where
   the caret is. A block you type with no language on its fence gets one from its code (shown in italics, which means
   "automatic"). Colouring never changes a character, and a block too long to colour (over 5,000 lines or 300,000 characters)
@@ -59,11 +61,20 @@ Scratch is at version 0.5, which does these things:
   default app, and drag it out of the note to give the file to Finder, Mail or any app that takes files. Scratch keeps its
   own copy of every file, so the original can be moved or deleted, and removes the copy only when no note, Recently
   Deleted included, refers to it any more. Backspace next to an attachment selects it before the next press deletes it,
-  and ⌘Z brings a deleted one back, file and all. Copying text with attachments in it writes the file names, and copying
-  exactly one attachment copies the file (or the image) as well. When a paste holds files, text and an image, the files
+  and ⌘Z brings a deleted one back, file and all. Copying text with attachments in it writes the file names for other
+  apps, and copying exactly one attachment copies the file (or the image) as well. Inside Scratch the attachments themselves travel: a
+  selection with attachments in it, copied or dragged to another place in the note or into another note, keeps them. Typing
+  next to an attachment never breaks it (the text goes on the line above or below), and a copied image can still be pasted
+  after Scratch has quit. When a paste holds files, text and an image, the files
   win, then the text (Excel and Word paste text, not a picture of it), and an image comes in only when there is no text.
+- **It records its own launch times.** Scratch writes down how long each of its launches took. Help > Launch Times…
+  shows the newest 50 and copies them (see Checking launch speed), so the speed on your Mac is a number and not a feeling.
+- **Works with VoiceOver, Increase Contrast and the keyboard.** VoiceOver reads a note as it looks ("unchecked buy milk",
+  "image, dashboard.png", "code block, Swift"), every colour has a stronger variant for Increase Contrast, Reduce
+  Transparency is the system's, and everything a mouse can do (tick a box, open a link or an attachment, choose a code
+  block's language) is also in the editor's right-click menu or the Format menu.
 - **Made for macOS 26.** The sidebar, the tab strip and the toolbar buttons are native Liquid Glass, and the app is
-  built only for Apple Silicon.
+  built only for Apple Silicon. It has an icon: a yellow notepad with a ticked checkbox.
 
 <p align="center">
   <img src="docs/images/formatting.png" alt="One note with a bullet and a nested bullet, an open and a ticked checkbox, bold text, inline code, a link, and a tinted block whose lines show exactly as typed" width="70%">
@@ -82,13 +93,32 @@ Scratch is at version 0.5, which does these things:
   <img src="docs/images/recently-deleted.png" alt="The Recently Deleted section open under the note list" width="49%">
 </p>
 
-Coming in the next release:
+## Releases
 
-| Release | Adds |
+| Release | Added |
 |---|---|
-| 1.0 | Performance and accessibility polish |
+| 0.1 | The walking skeleton: a glass sidebar and toolbar, one plain-text editor, plain paste and copy, autosave and restore |
+| 0.2 | Titles, tabs, the sidebar's groups, pinning and search, Recently Deleted, and the font size |
+| 0.3 | Bullets, checkboxes, bold, inline code and links, and the keys that edit them |
+| 0.4 | Highlighted code blocks in 17 languages, code detection on paste, and the language label menu |
+| 0.5 | Images and files in a note: paste, drop, paperclip, open, drag out and copy |
+| 1.0 | Launch times you can read (Help > Launch Times…), VoiceOver and Increase Contrast, the look of the mockup (tabs in the toolbar, air between lines, code pills and borders), an app icon, and the follow-ups of 0.5 |
 
 The plan behind that order is in [the roadmap](docs/superpowers/plans/2026-10-19-roadmap.md).
+
+## Checking launch speed
+
+The design asks for a launch within 200 ms and within 500 ms right after the Mac has started. CI cannot measure a cold boot, so
+Scratch measures itself: every launch is recorded (from the start of the process to the first frame on screen that takes
+keystrokes), and the newest 50 are in `~/Library/Application Support/Scratch/launch-times.json`. To check it on your Mac:
+
+1. Restart the Mac and log in.
+2. Open Scratch from Raycast.
+3. Choose Help > Launch Times…, press **Copy**, and send it.
+4. Then quit and open Scratch five times, and send it again.
+
+The first launch after the restart is marked "first after start-up" and is compared with 500 ms, the others with 200 ms, each as
+the median of the newest ten. The text you copy has the date, the time and the milliseconds of each launch and the two medians.
 
 ## Install
 
@@ -121,14 +151,18 @@ To update, do the same with the new release and choose Replace. Your notes live 
 | ⌘+, ⌘−, ⌘0 | Bigger, smaller, actual text size |
 | Return | In a list, a new item below (a new checkbox is open). On an empty item it ends the list, or outdents the item |
 | Tab, ⇧Tab | In a list, indent or outdent the item (every list line of the selection) |
-| ⌘B | Bold: put `**` around the selection, or take the stars off a bold run |
+| ⌘B | Bold: with the caret in a word, `**` around the word, and on a bold run the stars come off. With a selection of several lines, each line is its own run |
 | ⇧⌘L | Turn the selected lines into a checklist, or back into plain lines |
+| ⇧⌘U | Mark as Checked: tick every checklist line of the selection, or untick them all when they are all ticked |
+| Right-click in the note | Where they apply: Mark as Checked on a box, Open Link on a link, Open Attachment on an attachment, and Code Block Language inside a code block |
 | ⌘-click a link | Open the `http://` or `https://` link in your browser. A plain click only places the caret |
 | ⌘V | Paste as plain text. Two lines or more of code are then wrapped in a fence with their language: ⌘Z once leaves the plain paste. Files copied in Finder, and an image that comes with no text, become attachments |
 | Click a code block's label | Choose the block's language, show it as plain text, or take its fence off (Not Code) |
 | ⇧⌘A, the paperclip | Attach files: choose them in a sheet, and they go in at the caret (File > Attach File…) |
 | Click an attachment | Select it (⌘C copies its file and its name, ⌘X cuts it) |
 | Double-click an attachment | Open its file with its default app |
+| Click a checkbox | Tick or untick the item. A double-click ticks it once, not twice |
+| Help > Launch Times… | The newest launches, with Copy (see Checking launch speed) |
 | Drag an attachment out | Give its file to Finder, Mail or another app. Scratch's own copy stays in the note |
 | Backspace after an attachment, Delete before it | Select it. Press again to delete it (⌘Z brings it back) |
 

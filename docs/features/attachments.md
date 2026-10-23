@@ -275,7 +275,8 @@ attachments in place (`attachments`: each one `copied`, its file on disk) and no
 zero) before the picture is taken, and they assert the sidebar's title and preview. They were looked at on CI for the
 release: the preview, the chip and the sidebar are as above in light and dark. The README's `attachments.png` is
 `attachments-light`, and its window pictures (`window-light`, `window-dark`, `formatting`, `code`, `search`,
-`recently-deleted`) are copies of the other screenshots of the same run, taken again for the paperclip in the toolbar.
+`recently-deleted`) are copies of the other screenshots of the same run, taken again for 1.0.0 (plan 6 task 10: the tabs in the
+toolbar, the air between lines, the code pills and the borders of the blocks).
 
 ## Tests
 
