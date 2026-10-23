@@ -1,0 +1,42 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "05ffa756289a8378528609cc0d5402e1b33b2c4f",
+        "deviceName" : "My Mac",
+        "modelName" : "Apple Virtual Machine 1",
+        "osBuildNumber" : "25G83",
+        "osVersion" : "26.6.2",
+        "platform" : "macOS"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 0,
+      "passedTests" : 15,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Scratch · Built with macOS 26.6.2",
+  "expectedFailures" : 0,
+  "failedTests" : 0,
+  "finishTime" : 1792776693.611,
+  "passedTests" : 15,
+  "result" : "Passed",
+  "skippedTests" : 0,
+  "startTime" : 1792776564.982,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+
+  ],
+  "title" : "Test - Scratch",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 15
+}
