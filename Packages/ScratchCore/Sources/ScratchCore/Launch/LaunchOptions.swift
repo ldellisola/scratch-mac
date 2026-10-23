@@ -1,9 +1,20 @@
 import Foundation
 
-/// Forces the app's appearance, so a screenshot in light or dark mode does not depend on the machine's setting.
-public enum AppearanceOverride: String, Sendable {
+/// Forces the app's appearance, so a screenshot in light or dark mode does not depend on the machine's setting. The two
+/// `-contrast` ones are light and dark with Increase Contrast on (the app maps them to the accessibility appearances,
+/// `NSAppearance.Name.accessibilityHighContrastAqua` and `…DarkAqua`), for the screenshots that show the high contrast
+/// variants of the colours (plan 6 task 8).
+public enum AppearanceOverride: String, CaseIterable, Sendable {
     case light
     case dark
+    case lightContrast = "light-contrast"
+    case darkContrast = "dark-contrast"
+
+    /// True for the two dark appearances.
+    public var isDark: Bool { self == .dark || self == .darkContrast }
+
+    /// True for the two appearances with Increase Contrast on.
+    public var isHighContrast: Bool { self == .lightContrast || self == .darkContrast }
 }
 
 /// Why the launch arguments were rejected. Each case carries the offending flag or value.
@@ -20,7 +31,7 @@ public enum LaunchOptionsError: Error, Equatable {
 /// |---|---|
 /// | `-ScratchDataDir <path>` | the data directory |
 /// | `-ScratchFixture <name>` | a ``Fixture`` raw value: the database is replaced by that fixture |
-/// | `-ScratchAppearance <light\|dark>` | the appearance |
+/// | `-ScratchAppearance <light\|dark\|light-contrast\|dark-contrast>` | the appearance |
 /// | `-ScratchFrameMonitor <path>` | scroll the note by itself, and write the frame times to this JSON file (performance tests) |
 /// | `-ScratchIdleMonitor <path>` | measure the app's CPU over 5 seconds of idle, and write the numbers to this JSON file (performance tests) |
 public struct LaunchOptions: Equatable, Sendable {

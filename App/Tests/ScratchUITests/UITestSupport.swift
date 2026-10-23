@@ -76,6 +76,21 @@ enum UITestSupport {
             .sorted { $0.frame.minX < $1.frame.minX }
     }
 
+    /// The close buttons of the tab strip, from left to right: the buttons with the identifier `AccessibilityID.tabClose`.
+    /// Each one's `label` is "Close" and the title of its tab (plan 6 task 8).
+    @MainActor
+    static func closeButtons(in app: XCUIApplication) -> [XCUIElement] {
+        app.buttons.matching(identifier: AccessibilityID.tabClose).allElementsBoundByIndex
+            .sorted { $0.frame.minX < $1.frame.minX }
+    }
+
+    /// Which part of the window has the keyboard, from `debug.state`'s `firstResponder`: `editor`, `title`, `search`,
+    /// `sidebar` (the note list) or `other`. Empty when the element is missing.
+    @MainActor
+    static func firstResponder(in app: XCUIApplication) -> String {
+        debugState(in: app)["firstResponder"] as? String ?? ""
+    }
+
     /// The titles of the tabs from left to right.
     @MainActor
     static func tabTitles(in app: XCUIApplication) -> [String] {

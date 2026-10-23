@@ -10,8 +10,9 @@ import XCTest
 /// that the screenshots are taken once per CI job.
 ///
 /// The names are `typical-light`, `typical-dark`, `empty-light`, `huge-note-light`, `search-light`,
-/// `recently-deleted-light`, `formatting-light`, `formatting-dark`, `code-light`, `code-dark`, `attachments-light` and
-/// `attachments-dark`. The Makefile's `SCREENSHOT_NAMES` lists them and must stay in step with this class.
+/// `recently-deleted-light`, `formatting-light`, `formatting-dark`, `code-light`, `code-dark`, `attachments-light`,
+/// `attachments-dark`, and the two with Increase Contrast on, `typical-contrast-light` and `code-contrast-dark` (plan 6
+/// task 8). The Makefile's `SCREENSHOT_NAMES` lists them and must stay in step with this class.
 @MainActor
 final class ScreenshotTests: XCTestCase {
     func testTypicalLight() {
@@ -113,6 +114,22 @@ final class ScreenshotTests: XCTestCase {
     func testAttachmentsDark() {
         capture("attachments-dark", fixture: "attachments", appearance: "dark", sidebarRows: 1) { app in
             waitForAttachments(in: app)
+        }
+    }
+
+    /// The typical fixture with Increase Contrast on (`-ScratchAppearance light-contrast`: the accessibility appearance that the
+    /// high contrast variants of the colours answer to, plan 6 task 8). A person (or an agent that opens the PNG) checks: the
+    /// inline code's pill and the block's tint and border stronger than in `typical-light`, the code in darker colours, and
+    /// the glass of the toolbar and the sidebar still the system's.
+    func testTypicalContrastLight() {
+        capture("typical-contrast-light", fixture: "typical", appearance: "light-contrast", sidebarRows: 6)
+    }
+
+    /// The code fixture with Increase Contrast on, in dark mode: the lighter code colours on the stronger tint, a visible
+    /// border, and labels that read.
+    func testCodeContrastDark() {
+        capture("code-contrast-dark", fixture: "code", appearance: "dark-contrast", sidebarRows: 1) { app in
+            waitForColours(in: app)
         }
     }
 

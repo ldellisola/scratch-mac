@@ -74,6 +74,16 @@ private func parse(_ arguments: [String]) throws -> LaunchOptions {
     #expect(try parse(["-ScratchAppearance", "light"]).appearance == .light)
 }
 
+// Plan 6 task 8: `light-contrast` and `dark-contrast` are the two appearances with Increase Contrast on, for the screenshots
+// that show the high contrast variants of the colours (docs/features/accessibility.md, "Increase Contrast").
+@Test func parsesContrastAppearances() throws {
+    #expect(try parse(["-ScratchAppearance", "light-contrast"]).appearance == .lightContrast)
+    #expect(try parse(["-ScratchAppearance", "dark-contrast"]).appearance == .darkContrast)
+    #expect(AppearanceOverride.allCases.map(\.rawValue) == ["light", "dark", "light-contrast", "dark-contrast"])
+    #expect(AppearanceOverride.allCases.filter(\.isDark) == [.dark, .darkContrast])
+    #expect(AppearanceOverride.allCases.filter(\.isHighContrast) == [.lightContrast, .darkContrast])
+}
+
 // ADR 0001 chose TextKit 1 and removed the switch: the flag is an unrelated argument now, even with a value that was
 // invalid, and it does not hide a flag that follows it.
 @Test func theRemovedTextKitFlagIsIgnored() throws {
