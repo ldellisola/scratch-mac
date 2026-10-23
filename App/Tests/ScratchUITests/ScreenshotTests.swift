@@ -11,8 +11,9 @@ import XCTest
 ///
 /// The names are `typical-light`, `typical-dark`, `empty-light`, `huge-note-light`, `search-light`,
 /// `recently-deleted-light`, `formatting-light`, `formatting-dark`, `code-light`, `code-dark`, `attachments-light`,
-/// `attachments-dark`, and the two with Increase Contrast on, `typical-contrast-light` and `code-contrast-dark` (plan 6
-/// task 8). The Makefile's `SCREENSHOT_NAMES` lists them and must stay in step with this class.
+/// `attachments-dark`, the two with Increase Contrast on, `typical-contrast-light` and `code-contrast-dark` (plan 6
+/// task 8), and `about-light`, the About panel with the app icon (plan 6 task 9). The Makefile's `SCREENSHOT_NAMES` lists
+/// them and must stay in step with this class.
 @MainActor
 final class ScreenshotTests: XCTestCase {
     func testTypicalLight() {
@@ -133,6 +134,39 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
+    /// The About panel (plan 6 task 9): Scratch > About Scratch, with the app's icon, its name and version and the licences
+    /// of tree-sitter and its grammars as credits. The picture is of the panel, not of the main window. A person (or an agent
+    /// that opens the PNG) checks: the new icon (a yellow notepad with a ticked checkbox) and not the generic one, the
+    /// version 1.0.0 and the credits' first lines. The panel has no title and no identifier, so it is found as the window
+    /// that does not hold the editor.
+    func testAboutLight() {
+        capture(
+            "about-light", fixture: "typical", appearance: "light", sidebarRows: 6,
+            prepare: { app in
+                app.menuBars.menuBarItems["Scratch"].click()
+                app.menuBars.menuItems["About Scratch"].click()
+                XCTAssertTrue(
+                    UITestSupport.wait { aboutPanel(in: app) != nil },
+                    "the About panel did not appear: \(UITestSupport.hierarchy(of: app))")
+            },
+            subject: { app in aboutPanel(in: app) ?? app.windows.firstMatch },
+            // Looked at once the picture is taken, so that a surprise here never costs the picture.
+            afterwards: { app in
+                let shownVersion = NSPredicate(format: "label BEGINSWITH 'Version' OR value BEGINSWITH 'Version'")
+                let versions = aboutPanel(in: app)?.descendants(matching: .any).matching(shownVersion).count ?? 0
+                XCTAssertGreaterThan(
+                    versions, 0, "the About panel shows no version: \(UITestSupport.hierarchy(of: app))")
+            })
+    }
+
+    /// The About panel: the window of the app that does not hold the editor, or nil while there is none. A standard About
+    /// panel is a window of its own with no title and no identifier.
+    private func aboutPanel(in app: XCUIApplication) -> XCUIElement? {
+        app.windows.allElementsBoundByIndex.first { window in
+            window.exists && !window.textViews.matching(identifier: AccessibilityID.editorTextView).firstMatch.exists
+        }
+    }
+
     /// Waits until the app has both attachments of the note in place (`debug.state`: each one `copied`, with its file on
     /// disk) and no preview is waiting to be decoded, then checks what the sidebar says about the note: the title
     /// "Screenshots" and a preview line without a token (titles and previews skip attachment lines).
@@ -166,10 +200,14 @@ final class ScreenshotTests: XCTestCase {
 
     /// Launches `fixture`, waits for the editor and for `sidebarRows` sidebar rows (the fixture's notes that the
     /// sidebar lists), runs `prepare` to bring the window into the state the screenshot is about, and attaches a
-    /// screenshot of the window as `name`, kept even though the test passes.
+    /// screenshot of `subject` (the main window unless a test says otherwise) as `name`, kept even though the test
+    /// passes. `afterwards` runs once the screenshot is attached. `prepare` comes first among the closures, so that a trailing
+    /// closure is the preparation (Swift gives an unlabeled trailing closure to the first closure parameter).
     private func capture(
         _ name: String, fixture: String, appearance: String, sidebarRows: Int,
-        prepare: @MainActor (XCUIApplication) -> Void = { _ in }
+        prepare: @MainActor (XCUIApplication) -> Void = { _ in },
+        subject: @MainActor (XCUIApplication) -> XCUIElement = { $0.windows.firstMatch },
+        afterwards: @MainActor (XCUIApplication) -> Void = { _ in }
     ) {
         continueAfterFailure = false
         let app = UITestSupport.launch(fixture: fixture, appearance: appearance)
@@ -189,9 +227,10 @@ final class ScreenshotTests: XCTestCase {
         // Let the first layout, the glass material and the selection highlight settle before the picture is taken.
         Thread.sleep(forTimeInterval: 1.0)
 
-        let screenshot = XCTAttachment(screenshot: window.screenshot())
+        let screenshot = XCTAttachment(screenshot: subject(app).screenshot())
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)
+        afterwards(app)
     }
 }
